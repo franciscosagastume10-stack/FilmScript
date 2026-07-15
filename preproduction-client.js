@@ -1,0 +1,75 @@
+(() => {
+  const resolve = (path) => window.filmscriptApiUrl ? window.filmscriptApiUrl(path) : path;
+  const request = async (url, options = {}) => {
+    const response = await fetch(resolve(url), { credentials: 'include', ...options });
+    const data = await response.json().catch(() => ({}));
+    if (!response.ok) {
+      const error = new Error(data.message || data.error || `Preproduction error ${response.status}`);
+      error.code = data.error || null;
+      error.status = response.status;
+      if (response.status === 401) window.dispatchEvent(new CustomEvent('filmscript:auth-required'));
+      if ((response.status === 402 || response.status === 403) && data.error === 'filmscript_pro_required') {
+        window.dispatchEvent(new CustomEvent('filmscript:pro-required', { detail: data }));
+      }
+      throw error;
+    }
+    return data;
+  };
+  const interfaceLanguage = () => window.filmscriptLanguage?.get?.() === 'es' ? 'es' : 'en';
+  window.filmscriptPreproduction = {
+    get: (scriptId) => request(`/api/scripts/${encodeURIComponent(scriptId)}/preproduction`),
+    analyze: (scriptId) => request(`/api/scripts/${encodeURIComponent(scriptId)}/preproduction`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ language: interfaceLanguage() }) }),
+    saveScene: (scriptId, sceneId, changes) => request(`/api/scripts/${encodeURIComponent(scriptId)}/preproduction/scenes/${encodeURIComponent(sceneId)}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(changes || {}),
+    }),
+    saveStripboard: (scriptId, changes = {}) => request(`/api/scripts/${encodeURIComponent(scriptId)}/preproduction/stripboard`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(changes),
+    }),
+    generateShotLists: (scriptId, sceneId = null) => request(`/api/scripts/${encodeURIComponent(scriptId)}/preproduction/shotlists`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ ...(sceneId ? { sceneId } : {}), language: interfaceLanguage() }),
+    }),
+    saveShots: (scriptId, sceneId, shots) => request(`/api/scripts/${encodeURIComponent(scriptId)}/preproduction/scenes/${encodeURIComponent(sceneId)}/shots`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ shots }),
+    }),
+    uploadShotReference: (scriptId, { sceneId, shotId = '', file }) => request(`/api/scripts/${encodeURIComponent(scriptId)}/preproduction/shotlist/references`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': file.type,
+        'X-Scene-Id': encodeURIComponent(sceneId),
+        ...(shotId ? { 'X-Shot-Id': encodeURIComponent(shotId) } : {}),
+        'X-Filename': encodeURIComponent(file.name || 'reference image'),
+      },
+      body: file,
+    }),
+    shotReferenceUrl: (scriptId, assetId) => resolve(`/api/scripts/${encodeURIComponent(scriptId)}/preproduction/shotlist/references/${encodeURIComponent(assetId)}`),
+    addShotScene: (scriptId, title = '') => request(`/api/scripts/${encodeURIComponent(scriptId)}/preproduction/shotlist/scenes`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(title ? { title } : {}),
+    }),
+    renameShotScene: (scriptId, sceneId, title) => request(`/api/scripts/${encodeURIComponent(scriptId)}/preproduction/shotlist/scenes/${encodeURIComponent(sceneId)}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ title }),
+    }),
+    deleteShotScene: (scriptId, sceneId) => request(`/api/scripts/${encodeURIComponent(scriptId)}/preproduction/shotlist/scenes/${encodeURIComponent(sceneId)}`, {
+      method: 'DELETE',
+    }),
+    exportPdf: async (scriptId) => {
+      const response = await fetch(resolve(`/api/scripts/${encodeURIComponent(scriptId)}/preproduction/breakdown.pdf`), { credentials: 'include' });
+      if (!response.ok) {
+        const data = await response.json().catch(() => ({}));
+        throw new Error(data.error || `PDF export error ${response.status}`);
+      }
+      return response.blob();
+    },
+  };
+})();

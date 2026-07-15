@@ -1,0 +1,1983 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<style>html[data-filmscript-auth-pending] body { visibility: hidden; pointer-events: none; }</style>
+<script>document.documentElement.setAttribute('data-filmscript-auth-pending', '');</script>
+<script src="./support.js"></script>
+<script src="./runtime-config.js?v=20260710-auth1"></script>
+<script src="./scripts-access-guard.js?v=20260713-auth-guard1"></script>
+<script src="./theme-preference.js?v=20260712-theme1"></script>
+<script src="./language-preference.js?v=20260713-i18n1"></script>
+<script src="./ui-sounds.js?v=20260713-profile-option1"></script>
+<script src="./billing-client.js?v=20260712-auth2"></script>
+<script src="./lumiere-client.js?v=20260713-language1"></script>
+<script src="./lumiere-preferences.js?v=20260713-taste1"></script>
+<script src="./pdf-import.js"></script>
+<script src="./scripts-client.js?v=20260710-auth1"></script>
+<script src="./preproduction-client.js?v=20260713-language1"></script>
+<link rel="stylesheet" href="./auth-modal.css?v=20260712-auth2">
+<link rel="stylesheet" href="./filmscript-controls.css?v=20260712-double-outline1">
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin="">
+<link href="https://fonts.googleapis.com/css2?family=Courier+Prime:ital,wght@0,400;0,700;1,400&amp;display=swap" rel="stylesheet">
+<style>
+  * { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; }
+  body { font-family: "Helvetica Neue", Helvetica, Arial, sans-serif; }
+  .fs-brand-mark { min-width: 118px; height: 32px; flex: 0 0 118px; display: flex; align-items: center; cursor: pointer; }
+  .fs-brand-word { display: block; color: #FFFEF9; font-family: "SF Pro Display", "SF Pro Text", -apple-system, BlinkMacSystemFont, "Helvetica Neue", Arial, sans-serif; font-size: 21px; font-weight: 900; line-height: 1; letter-spacing: -1px; opacity: .98; transition: opacity .16s ease, transform .16s ease; }
+  .fs-brand-mark:hover .fs-brand-word { opacity: .78; transform: translateY(-1px); }
+  @media (max-width: 620px) { .fs-brand-mark { min-width: 100px; flex-basis: 100px; } .fs-brand-word { font-size: 19px; } }
+  @keyframes fs-dot { 0%,60%,100% { opacity: .25; transform: translateY(0); } 30% { opacity: 1; transform: translateY(-2px); } }
+  @keyframes fs-glow { 0%,100% { box-shadow: 0 0 0 0 rgba(239,159,39,.55); } 50% { box-shadow: 0 0 0 4px rgba(239,159,39,0); } }
+  @keyframes fs-rise { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: translateY(0); } }
+  @keyframes fs-pop { from { opacity: 0; transform: translateY(8px) scale(.97); } to { opacity: 1; transform: translateY(0) scale(1); } }
+  @keyframes fs-fade { from { opacity: 0; } to { opacity: 1; } }
+  @keyframes fs-sheet { from { opacity: 0; transform: translateY(14px) scale(.985); } to { opacity: 1; transform: translateY(0) scale(1); } }
+  @keyframes fs-avatar { 0%,100% { transform: rotate(-2deg) translateY(0); } 50% { transform: rotate(2deg) translateY(-2px); } }
+  @keyframes fs-caret { 0%,45% { opacity: .7; } 46%,100% { opacity: .16; } }
+  @keyframes fs-script-transition-in { from { opacity: 0; } to { opacity: 1; } }
+  @keyframes fs-script-sheet-open {
+    0% { opacity: 0; transform: translateY(24px) scale(.78) rotate(-1.2deg); }
+    58% { opacity: 1; transform: translateY(0) scale(1) rotate(.35deg); }
+    100% { opacity: 1; transform: translateY(-8px) scale(1.035) rotate(0); }
+  }
+  @keyframes fs-script-title-in { from { opacity: 0; transform: translateY(7px); } to { opacity: 1; transform: translateY(0); } }
+  @keyframes fs-script-stroke-in { from { opacity: .2; transform: scaleX(.08); } to { opacity: 1; transform: scaleX(1); } }
+  @keyframes fs-script-lines-in { from { opacity: 0; transform: translateY(5px); } to { opacity: .34; transform: translateY(0); } }
+  .fs-script-transition {
+    position: fixed;
+    inset: 0;
+    z-index: 120;
+    display: grid;
+    place-items: center;
+    overflow: hidden;
+    background: var(--bg, #F5F0E8);
+    animation: fs-script-transition-in .13s ease-out both;
+    cursor: progress;
+  }
+  .fs-script-transition::after {
+    content: "";
+    position: absolute;
+    left: 0;
+    right: 0;
+    top: 50%;
+    height: 1px;
+    background: var(--soft, #E4E2D8);
+    opacity: .55;
+    transform-origin: center;
+    animation: fs-script-stroke-in .3s cubic-bezier(.2,.8,.2,1) both .04s;
+  }
+  .fs-script-transition-sheet {
+    position: relative;
+    z-index: 1;
+    width: min(228px, 56vw);
+    height: 292px;
+    animation: fs-script-sheet-open .4s cubic-bezier(.2,.82,.22,1) both;
+    will-change: transform, opacity;
+  }
+  .fs-script-transition-paper { position: absolute; inset: 0; width: 100%; height: 100%; overflow: visible; }
+  .fs-script-transition-content {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 34px 28px;
+    color: var(--ink, #2C2C2A);
+    text-align: center;
+  }
+  .fs-script-transition-kicker { font-size: 9px; font-weight: 650; letter-spacing: 1.55px; text-transform: uppercase; color: var(--accent, #BA7517); animation: fs-script-title-in .18s ease-out both .08s; }
+  .fs-script-transition-title { max-width: 170px; margin-top: 12px; font-size: 18px; font-weight: 700; line-height: 1.22; letter-spacing: -.28px; animation: fs-script-title-in .2s ease-out both .11s; }
+  .fs-script-transition-underline { width: 74px; height: 2px; margin-top: 15px; border-radius: 2px; background: var(--accent, #BA7517); transform-origin: center; animation: fs-script-stroke-in .21s cubic-bezier(.2,.8,.2,1) both .14s; }
+  .fs-script-transition-lines { width: 112px; margin-top: 31px; display: grid; gap: 8px; opacity: .34; animation: fs-script-lines-in .2s ease-out both .17s; }
+  .fs-script-transition-lines span { height: 1px; border-radius: 2px; background: var(--ink, #2C2C2A); }
+  .fs-script-transition-lines span:nth-child(2) { width: 78%; justify-self: center; }
+  .fs-script-transition-lines span:nth-child(3) { width: 54%; justify-self: center; }
+  @media (prefers-reduced-motion: reduce) {
+    .fs-script-transition, .fs-script-transition-sheet, .fs-script-transition-kicker, .fs-script-transition-title, .fs-script-transition-underline, .fs-script-transition-lines, .fs-script-transition::after { animation-duration: .01ms !important; animation-delay: 0ms !important; }
+  }
+  .fs-type-caret { display: inline-block; margin-left: 4px; color: var(--accent, #BA7517); animation: fs-caret 1.15s step-end infinite; }
+  a { color: #BA7517; text-decoration: none; }
+  a:hover { color: #8F5A12; }
+  .fsx-lift { transition: transform .18s ease, filter .18s ease; }
+  .fsx-lift:hover { transform: translateY(-1.5px); filter: brightness(1.05); }
+  .fsx-scale { transition: transform .15s ease; }
+  .fsx-scale:hover { transform: scale(1.05); }
+  .fsx-bright { transition: filter .15s ease; }
+  .fsx-bright:hover { filter: brightness(1.55); }
+  .fsx-dim { transition: box-shadow .15s ease; }
+  .fsx-dim:hover { box-shadow: inset 0 0 0 999px rgba(136,135,128,.09); }
+  .fsx-hovbg { transition: background-color .15s ease; }
+  .fsx-hovbg:hover { background: var(--surface, #FFFEF9); }
+  .fs-scripts-background { background-size: 112% !important; background-position: calc(50% + var(--fs-parallax-x, 0px)) calc(50% + var(--fs-parallax-y, 0px)) !important; transition: background-position .18s cubic-bezier(.2,.8,.2,1), background-size .4s ease, background-color .3s ease, background-image .3s ease; }
+  @media (prefers-reduced-motion: reduce) { .fs-scripts-background { background-position: center !important; background-size: cover !important; transition: none !important; } }
+  .fs-script-card {
+    isolation: isolate;
+    background: transparent !important;
+    border: 0 !important;
+    filter: none !important;
+    font-family: "Helvetica Neue", Helvetica, Arial, sans-serif;
+  }
+  .fs-script-card::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    z-index: 0;
+    pointer-events: none;
+    background: var(--surface, #FFFEF9);
+    border: 1.4px solid var(--line, #2C2C2A);
+    border-radius: 15px 14px 16px 13px;
+    filter: url(#fs-sketch);
+  }
+  .fs-script-card > * { position: relative; z-index: 1; }
+  .fs-script-card:focus-visible {
+    outline: 2px solid var(--accent, #BA7517);
+    outline-offset: 4px;
+  }
+  .fs-script-card-title {
+    font-family: "Helvetica Neue", Helvetica, Arial, sans-serif;
+    font-weight: 700;
+    letter-spacing: -.2px;
+  }
+  .fs-script-card-meta {
+    font-family: "Helvetica Neue", Helvetica, Arial, sans-serif;
+    font-weight: 400;
+    letter-spacing: 0;
+  }
+  .fs-script-card-menu {
+    font-family: "Helvetica Neue", Helvetica, Arial, sans-serif;
+    filter: none !important;
+  }
+  @keyframes fs-pulse { 0% { transform: scale(.7); opacity: .28; } 100% { transform: scale(1.9); opacity: 0; } }
+  @keyframes fs-paywall-in { 0% { opacity: 0; transform: translateY(10px) scale(.97); } 100% { opacity: 1; transform: translateY(0) scale(1); } }
+  .fs-paywall-in { animation: fs-paywall-in .45s cubic-bezier(.2,.9,.3,1.2) both; }
+  ::-webkit-scrollbar { width: 9px; height: 9px; }
+  ::-webkit-scrollbar-thumb { background: #b8b6ac; border-radius: 8px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  input.fs-zoom { -webkit-appearance: none; appearance: none; height: 24px; background: transparent; outline: none; margin: 0; }
+  input.fs-zoom::-webkit-slider-runnable-track { height: 24px; background: linear-gradient(#b6b4aa,#b6b4aa) center/100% 2px no-repeat; border-radius: 2px; }
+  input.fs-zoom::-webkit-slider-thumb { -webkit-appearance: none; appearance: none; width: 16px; height: 16px; margin-top: 4px; border-radius: 50%; background: var(--accent, #BA7517); border: 2px solid var(--surface, #FFFEF9); box-shadow: 0 0 0 1.4px var(--line, #2C2C2A); cursor: pointer; }
+  input.fs-zoom::-moz-range-thumb { width: 15px; height: 15px; border-radius: 50%; background: var(--accent, #BA7517); border: 2px solid var(--surface, #FFFEF9); box-shadow: 0 0 0 1.4px var(--line, #2C2C2A); cursor: pointer; }
+  input.fs-zoom::-moz-range-track { height: 24px; background: linear-gradient(#b6b4aa,#b6b4aa) center/100% 2px no-repeat; border-radius: 2px; }
+  input.fs-chat { font-family: "Helvetica Neue", Helvetica, Arial, sans-serif; }
+  input.fs-chat::placeholder { color: #9a988f; }
+  [data-fs-editor]:focus { outline: none; }
+  .fs-tipwrap { position: relative; }
+  .fs-ic { width: 36px; height: 36px; display: flex; align-items: center; justify-content: center; border-radius: 9px; cursor: pointer; transition: background .15s, color .15s; }
+  .fs-ic:hover { background: rgba(186,117,23,.12); color: #BA7517; }
+  .fs-tip { position: absolute; top: 100%; left: 50%; transform: translateX(-50%) translateY(7px); background: #2C2C2A; color: #FFFEF9; font-size: 11px; font-weight: 500; padding: 5px 9px; border-radius: 8px; white-space: nowrap; opacity: 0; pointer-events: none; transition: opacity .14s; z-index: 30; }
+  .fs-tip::before { content: ""; position: absolute; bottom: 100%; left: 50%; transform: translateX(-50%); border: 5px solid transparent; border-bottom-color: #2C2C2A; }
+  .fs-tipwrap:hover .fs-tip { opacity: 1; }
+  .fs-menuitem { padding: 9px 14px; font-size: 13px; color: var(--ink, #2C2C2A); cursor: pointer; border-radius: 8px; transition: background-color .13s ease, color .13s ease; }
+  .fs-menuitem:hover { background: rgba(186,117,23,.1); color: #BA7517; }
+  .fs-account-menu { isolation: isolate; background: transparent !important; border: 0 !important; filter: none !important; color: var(--ink, #2C2C2A); }
+  .fs-account-menu::before { content: ""; position: absolute; inset: 0; z-index: 0; pointer-events: none; background: var(--surface, #FFFEF9); border: 1.4px solid var(--line, #2C2C2A); border-radius: 14px 13px 15px 12px; filter: url(#fs-sketch); }
+  .fs-account-menu > * { position: relative; z-index: 1; }
+  .fs-profile-sheet { animation: fs-sheet .34s cubic-bezier(.2,.8,.25,1.08) both; }
+  .fs-profile-sheet > div:first-child > div:first-child { animation: fs-avatar 3.8s ease-in-out infinite; }
+  .fs-profile-sheet [style*="border: 1px solid var(--soft"] { transition: transform .18s ease, border-color .18s ease, background-color .18s ease; }
+  .fs-profile-sheet [style*="border: 1px solid var(--soft"]:hover { transform: translateX(3px); border-color: var(--accent, #BA7517) !important; background: rgba(186,117,23,.035); }
+  .fs-profile-lumiere { position: relative; isolation: isolate; width: 100%; margin-top: 14px; padding: 15px 16px; display: flex; align-items: center; gap: 12px; text-align: left; border: 0; background: transparent; color: var(--ink, #2C2C2A); font: inherit; cursor: pointer; transition: transform .16s ease; }
+  .fs-profile-lumiere::before, .fs-profile-lumiere::after { content: ""; position: absolute; inset: 0; z-index: -1; border: 1px solid var(--soft, #E4E2D8); border-radius: 13px 15px 12px 14px; background: var(--surface, #FFFEF9); transition: border-color .16s ease, background-color .16s ease; }
+  .fs-profile-lumiere::after { inset: 4px 3px 3px 4px; border-color: color-mix(in srgb, var(--soft, #E4E2D8) 54%, transparent); border-radius: 11px 12px 13px 10px; background: transparent; }
+  .fs-profile-lumiere:hover { transform: translateY(-1px); }
+  .fs-profile-lumiere:hover::before { border-color: var(--accent, #BA7517); background: color-mix(in srgb, var(--accent, #BA7517) 4%, var(--surface, #FFFEF9)); }
+  .fs-profile-lumiere:focus-visible { outline: 2px solid var(--accent, #BA7517); outline-offset: 3px; }
+</style>
+</helmet>
+
+<div style="--accent: {{ accent }}; --accent-hover: {{ accentHover }}; --bg: {{ bg }}; --chrome: {{ chrome }}; --surface: {{ surface }}; --ink: {{ ink }}; --muted: {{ muted }}; --line: {{ line }}; --soft: {{ soft }}; height: 100vh; width: 100%; position: relative; display: flex; flex-direction: column; background: var(--bg, #F5F0E8); color: var(--ink, #2C2C2A); overflow: hidden; font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;">
+
+  <!-- hand-drawn sketch filter: wobbles the edges of any bordered element -->
+  <svg width="0" height="0" style="position: absolute;"><defs><filter id="fs-sketch" x="-6%" y="-22%" width="112%" height="144%"><feTurbulence type="fractalNoise" baseFrequency="0.014" numOctaves="2" seed="7" result="n"></feTurbulence><feDisplacementMap in="SourceGraphic" in2="n" scale="2.6" xChannelSelector="R" yChannelSelector="G"></feDisplacementMap></filter></defs></svg>
+
+  <!-- ============ TOPBAR ============ -->
+  <div style="height: 44px; flex: 0 0 44px; background: var(--chrome, #2C2C2A); display: flex; align-items: center; padding: 0 16px; gap: 16px; user-select: none;">
+    <div class="fs-brand-mark" data-filmscript-brand onClick="{{ goScripts }}" role="link" aria-label="FilmScript, go to scripts"><span class="fs-brand-word">FilmScript</span></div>
+
+    <div style="flex: 1;"></div>
+
+    <div style="display: flex; align-items: center; gap: 8px;">
+      <div onClick="{{ toggleDark }}" title="Theme" class="fsx-bright" style="cursor: pointer; padding: 6px; color: #b9b8b2; display: flex; align-items: center;">
+        <sc-if value="{{ darkMode }}" hint-placeholder-val="{{ false }}">
+          <svg viewBox="0 0 20 20" style="width: 18px; height: 18px;" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><circle cx="10" cy="10" r="3.1"></circle><path d="M10 3.4 V5 M10 15 V16.6 M3.4 10 H5 M15 10 H16.6 M5.5 5.5 L6.6 6.6 M13.4 13.4 L14.5 14.5 M14.5 5.5 L13.4 6.6 M6.6 13.4 L5.5 14.5"></path></svg>
+        </sc-if>
+        <sc-if value="{{ lightMode }}" hint-placeholder-val="{{ true }}">
+          <svg viewBox="0 0 20 20" style="width: 18px; height: 18px;" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><path d="M14.6 11 Q14.3 14.7 10.6 14.8 Q12.9 12.6 12.8 9.3 Q12.7 6.5 10.4 5.1 Q14.9 5.5 14.6 11 Z"></path></svg>
+        </sc-if>
+      </div>
+      <sc-if value="{{ signedOut }}" hint-placeholder-val="{{ true }}">
+        <div onClick="{{ openAuth }}" class="fsx-scale" style="font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; font-size: 13px; font-weight: 600; color: #2C2C2A; background: #FFFEF9; padding: 7px 16px; border-radius: 999px; cursor: pointer;">Sign up</div>
+      </sc-if>
+      <sc-if value="{{ signedIn }}" hint-placeholder-val="{{ false }}">
+        <div style="position: relative;">
+          <div data-testid="account-avatar" onClick="{{ toggleAccount }}" title="{{ userEmail }}" style="width: 28px; height: 28px; border-radius: 50%; background: var(--accent, #BA7517); color: #FFFEF9; display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 600; cursor: pointer;">{{ userInitial }}</div>
+          <sc-if value="{{ accountOpen }}" hint-placeholder-val="{{ false }}">
+          <div class="fs-account-menu" data-filmscript-profile-panel style="position: absolute; right: 0; top: 38px; z-index: 60; width: 234px; padding: 14px 14px 8px; background: var(--surface, #FFFEF9); border: 1.4px solid var(--line, #2C2C2A); border-radius: 14px; filter: url(#fs-sketch); animation: fs-pop .2s ease both;">
+            <div style="font-size: 12.5px; font-weight: 600; color: var(--ink, #2C2C2A); word-break: break-all;">{{ userEmail }}</div>
+            <div style="font-size: 11.5px; color: var(--muted, #888780); margin-top: 4px;">{{ planLabel }}</div>
+            <div style="height: 1px; background: var(--soft, #e4e2d8); margin: 10px 0 6px;"></div>
+            <div class="fs-menuitem" onClick="{{ goScripts }}">My scripts</div>
+            <div class="fs-menuitem" onClick="{{ openAccountDetails }}">Account details</div>
+            <div class="fs-menuitem" onClick="{{ openLumierePreferences }}">Personalize Lumiere</div>
+            <div class="fs-menuitem" onClick="{{ openTerms }}">Terms & conditions</div>
+            <div style="height: 1px; background: var(--soft, #e4e2d8); margin: 6px 0;"></div>
+            <sc-if value="{{ isWriterPlan }}" hint-placeholder-val="{{ false }}">
+              <div class="fs-menuitem" onClick="{{ upgradeToLumiere }}">Upgrade to FilmScript Pro</div>
+            </sc-if>
+            <sc-if value="{{ noPlan }}" hint-placeholder-val="{{ true }}">
+              <div class="fs-menuitem" onClick="{{ goLandingFromAccount }}">Choose FilmScript Pro</div>
+            </sc-if>
+            <sc-if value="{{ hasPlan }}" hint-placeholder-val="{{ false }}">
+              <div class="fs-menuitem" onClick="{{ cancelPlan }}">Plan and billing</div>
+            </sc-if>
+            <div class="fs-menuitem" onClick="{{ signOut }}">Sign out</div>
+          </div>
+          </sc-if>
+        </div>
+      </sc-if>
+    </div>
+  </div>
+
+  <sc-if value="{{ scriptTransitionOpen }}" hint-placeholder-val="false">
+  <div class="fs-script-transition" role="status" aria-live="polite" aria-label="{{ openingAriaLabel }}">
+    <div class="fs-script-transition-sheet">
+      <svg class="fs-script-transition-paper" viewBox="0 0 228 292" preserveAspectRatio="none" aria-hidden="true"><path d="{{ openingSheetPath }}" style="fill: var(--surface, #FFFEF9); stroke: var(--line, #2C2C2A);" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"></path></svg>
+      <div class="fs-script-transition-content">
+        <div class="fs-script-transition-kicker">Opening screenplay</div>
+        <div class="fs-script-transition-title">{{ openingScriptTitle }}</div>
+        <div class="fs-script-transition-underline"></div>
+        <div class="fs-script-transition-lines" aria-hidden="true"><span></span><span></span><span></span></div>
+      </div>
+    </div>
+  </div>
+  </sc-if>
+
+  <sc-if value="{{ accountDetailsOpen }}" hint-placeholder-val="{{ false }}">
+  <div onClick="{{ closeAccountDetails }}" style="position: fixed; inset: 0; z-index: 80; background: rgba(35,35,34,.28); display: flex; align-items: center; justify-content: center; padding: 24px;">
+    <div class="fs-profile-sheet" onClick="{{ stop }}" style="width: min(520px, 100%); max-height: 88vh; overflow-y: auto; background: var(--surface, #FFFEF9); border: 1.5px solid var(--line, #2C2C2A); border-radius: 20px; padding: 26px; filter: url(#fs-sketch); box-shadow: 0 18px 55px rgba(35,35,34,.2);">
+      <div style="display: flex; align-items: center; gap: 14px;"><div style="width: 46px; height: 46px; border-radius: 50%; background: var(--accent, #BA7517); color: #FFFEF9; display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 17px;">{{ userInitial }}</div><div style="flex: 1;"><div style="font-size: 20px; font-weight: 700; color: var(--ink, #2C2C2A);">Your account</div><div style="font-size: 12.5px; color: var(--muted, #888780); margin-top: 4px;">Connected securely with Google.</div></div><div onClick="{{ closeAccountDetails }}" style="font-size: 22px; color: var(--muted, #888780); cursor: pointer;">×</div></div>
+      <div style="margin-top: 24px; display: grid; gap: 9px;"><div style="padding: 14px; border: 1px solid var(--soft, #E4E2D8); border-radius: 13px;"><div style="display: flex; justify-content: space-between;"><div style="font-size: 10px; text-transform: uppercase; letter-spacing: 1.2px; color: var(--muted, #888780);">Name</div><div onClick="{{ saveProfileName }}" style="font-size: 11px; color: var(--accent, #BA7517); font-weight: 700; cursor: pointer;">{{ profileSaveLabel }}</div></div><input value="{{ profileNameDraft }}" onInput="{{ onProfileName }}" aria-label="Name" style="width: 100%; margin-top: 7px; padding: 0; border: none; outline: none; background: transparent; color: var(--ink, #2C2C2A); font-size: 14px; font-family: inherit;"></div><div style="padding: 14px; border: 1px solid var(--soft, #E4E2D8); border-radius: 13px;"><div style="font-size: 10px; text-transform: uppercase; letter-spacing: 1.2px; color: var(--muted, #888780);">Email</div><div style="margin-top: 5px; font-size: 14px; color: var(--ink, #2C2C2A); word-break: break-word;">{{ userEmail }}</div></div></div>
+      <button type="button" class="fs-profile-lumiere" onClick="{{ openLumierePreferences }}"><span style="width: 34px; height: 34px; flex: 0 0 34px; display: grid; place-items: center; border-radius: 10px 11px 9px 10px; color: var(--accent, #BA7517); background: rgba(186,117,23,.1);"><svg viewBox="0 0 24 24" style="width: 18px; height: 18px;" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3.2l.8 2.1 2.2.7 1.9-1.1 1.7 1.7-1.1 2 .6 2.1 2.2.8-.1 2.3-2.2.7-.7 2.2 1.1 1.9-1.7 1.7-1.9-1.1-2.2.6-.8 2.2-2.3-.1-.7-2.2-2.1-.7-2 1.1-1.7-1.7 1.1-1.9-.6-2.2-2.2-.8.1-2.3 2.2-.7.7-2.1-1.1-2 1.7-1.7 2 1.1 2.1-.7.8-2.1z"></path><circle cx="12" cy="12" r="3"></circle></svg></span><span style="min-width: 0; flex: 1;"><span style="display: block; font-size: 13px; font-weight: 650;">Personalize Lumiere</span><span style="display: block; margin-top: 3px; color: var(--muted, #888780); font-size: 11.5px; line-height: 1.4;">Directors, films and the kind of feedback that serves your voice.</span></span><span aria-hidden="true" style="color: var(--accent, #BA7517);">→</span></button>
+      <div style="margin-top: 18px; padding: 15px; border-radius: 15px; background: var(--bg, #F5F0E8);"><div style="font-size: 10px; text-transform: uppercase; letter-spacing: 1.2px; color: var(--muted, #888780);">Subscription</div><div style="font-size: 17px; font-weight: 700; color: var(--ink, #2C2C2A); margin-top: 7px;">{{ planLabel }}</div><sc-if value="{{ noPlan }}" hint-placeholder-val="{{ true }}"><span onClick="{{ openCheckoutLumiere }}" role="button" tabindex="0" style="display: inline-block; margin-top: 8px; color: var(--accent, #BA7517); font-size: 12px; font-weight: 700; cursor: pointer;">Choose FilmScript Pro →</span></sc-if><sc-if value="{{ hasPlan }}" hint-placeholder-val="{{ false }}"><div style="font-size: 12px; color: var(--accent, #BA7517); margin-top: 5px;">{{ accountStatus }}</div></sc-if></div>
+      <div style="margin-top: 22px; text-align: right;"><div onClick="{{ closeAccountDetails }}" style="display: inline-block; padding: 10px 17px; border-radius: 10px; background: var(--ink, #2C2C2A); color: var(--surface, #FFFEF9); font-size: 13px; font-weight: 600; cursor: pointer;">Done</div></div>
+    </div>
+  </div>
+  </sc-if>
+  <sc-if value="{{ termsOpen }}" hint-placeholder-val="{{ false }}"><div onClick="{{ closeTerms }}" style="position: fixed; inset: 0; z-index: 80; background: rgba(35,35,34,.28); display: flex; align-items: center; justify-content: center; padding: 24px;"><div onClick="{{ stop }}" style="width: min(620px, 100%); max-height: 88vh; overflow-y: auto; background: var(--surface, #FFFEF9); border: 1.5px solid var(--line, #2C2C2A); border-radius: 20px; padding: 30px; filter: url(#fs-sketch);"><div style="display: flex; justify-content: space-between;"><div><div style="font-size: 10px; letter-spacing: 1.8px; text-transform: uppercase; color: var(--accent, #BA7517); font-weight: 700;">FilmScript</div><div style="font-size: 25px; font-weight: 700; color: var(--ink, #2C2C2A); margin-top: 7px;">Terms & conditions</div></div><div onClick="{{ closeTerms }}" style="font-size: 22px; color: var(--muted, #888780); cursor: pointer;">×</div></div><div style="margin-top: 24px; display: grid; gap: 17px; color: var(--ink, #2C2C2A); font-size: 13.5px; line-height: 1.6;"><div><b>Your writing stays yours.</b><div style="color: var(--muted, #888780);">You retain ownership of scripts and notes created in FilmScript.</div></div><div><b>Lumiere is an assistant.</b><div style="color: var(--muted, #888780);">It offers suggestions and analysis. You decide what belongs in your work.</div></div><div><b>Subscriptions.</b><div style="color: var(--muted, #888780);">Paid plans renew monthly through Recurrente and can be canceled from your account menu.</div></div><div><b>Fair use.</b><div style="color: var(--muted, #888780);">Use FilmScript only with material you have permission to use.</div></div></div><div style="margin-top: 26px; text-align: right;"><div onClick="{{ closeTerms }}" style="display: inline-block; padding: 10px 17px; border-radius: 10px; background: var(--ink, #2C2C2A); color: var(--surface, #FFFEF9); font-size: 13px; font-weight: 600; cursor: pointer;">I understand</div></div></div></div></sc-if>
+
+  <!-- ============ SCRIPTS DASHBOARD (horizontal, half page) ============ -->
+  <sc-if value="{{ isScripts }}" hint-placeholder-val="{{ true }}">
+  <div class="fs-scripts-background" onMouseMove="{{ onScriptsPointer }}" style="--fs-parallax-x: {{ parallaxX }}px; --fs-parallax-y: {{ parallaxY }}px; flex: 1; min-height: 0; display: flex; flex-direction: column; overflow-y: auto; padding: 48px 56px 64px; background-color: var(--bg, #F5F0E8); background-image: {{ scriptsBackgroundImage }}; background-size: cover; background-position: center; background-attachment: fixed; transition: background-color .3s ease, background-image .3s ease;">
+
+    <!-- left pane: handwritten greeting + new script -->
+    <div style="position: relative; width: min(100%, 1220px); margin: 0 auto; min-height: 155px; padding-right: 386px;">
+      <div style="font-size: 10px; letter-spacing: 1.8px; text-transform: uppercase; color: var(--accent, #BA7517); font-weight: 700; margin-bottom: 13px;">Writing desk</div>
+      <div aria-label="{{ greeting }}" style="font-family: 'Courier Prime', ui-monospace, SFMono-Regular, Menlo, monospace; font-weight: 700; font-size: clamp(31px, 3.25vw, 46px); line-height: 1.12; letter-spacing: -.75px; color: var(--ink, #2C2C2A); animation: fs-rise .32s ease both;"><span>{{ greetingTyped }}</span><span class="fs-type-caret" aria-hidden="true">|</span></div>
+      <div style="font-size: 14px; color: var(--muted, #888780); margin-top: 13px; max-width: 490px; line-height: 1.55; animation: fs-rise .5s ease both .09s;">{{ homeSub }}</div>
+      <button type="button" onClick="{{ newScript }}" class="fs-double-outline fs-outline-control fs-outline-control--primary" style="position: absolute; right: 0; top: 28px; width: 176px; height: 44px; animation: fs-rise .5s ease both .16s;">
+        <div style="position: relative; height: 100%; display: flex; align-items: center; justify-content: center; gap: 9px; color: #1A1A1A;">
+          <span style="position: relative; width: 15px; height: 15px;">
+            <span style="position: absolute; top: 50%; left: 0; width: 15px; height: 1.6px; background: currentColor; transform: translateY(-50%);"></span>
+            <span style="position: absolute; left: 50%; top: 0; height: 15px; width: 1.6px; background: currentColor; transform: translateX(-50%);"></span>
+          </span>
+          <span style="font-size: 13.5px; font-weight: 600;">New script</span>
+        </div>
+      </button>
+      <button type="button" onClick="{{ importScript }}" class="fs-double-outline fs-outline-control fs-outline-control--secondary" style="--fs-frame-bg: {{ importButtonBackground }}; position: absolute; right: 190px; top: 28px; width: 176px; height: 44px; animation: fs-rise .5s ease both .22s;">
+        <div style="position: relative; height: 100%; display: flex; align-items: center; justify-content: center; gap: 9px; color: var(--ink, #2C2C2A);">
+          <svg viewBox="0 0 20 20" style="width: 16px; height: 16px;" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M10 3.4 Q10.2 7.5 10 12.2 M6.8 9.2 Q9 12.3 10 12.4 Q11 12.3 13.2 9.2 M4 13.6 L4 15.8 Q4 16.6 4.8 16.6 L15.2 16.6 Q16 16.6 16 15.8 L16 13.6"></path></svg>
+          <span style="font-size: 13.5px; font-weight: 600;">Import script</span>
+        </div>
+      </button>
+      <sc-if value="{{ importNoteOn }}" hint-placeholder-val="false">
+        <div role="status" aria-live="polite" style="position: absolute; right: 0; top: 86px; width: 366px; font-size: 11.5px; color: var(--muted, #888780); line-height: 1.45; text-align: right; animation: fs-rise .5s ease both .28s;">{{ importNote }}</div>
+      </sc-if>
+    </div>
+
+    <!-- hand-drawn vertical divider -->
+    <svg viewBox="0 0 1200 8" preserveAspectRatio="none" style="width: min(100%, 1220px); height: 8px; display: block; margin: 22px auto 30px;"><path d="{{ stripDivPath }}" style="fill: none; stroke: var(--soft, #e4e2d8);" stroke-width="1.4" stroke-linecap="round"></path></svg>
+
+    <!-- right pane: scripts list -->
+    <div style="width: min(100%, 1220px); margin: 0 auto;">
+      <div style="display: flex; align-items: center; gap: 16px; margin-bottom: 18px; animation: fs-rise .5s ease both .1s;">
+        <div style="flex: 1;"><div style="font-size: 24px; letter-spacing: -.55px; color: var(--ink, #2C2C2A); font-weight: 700;">Your scripts</div><div style="font-size: 12px; color: var(--muted, #888780); margin-top: 5px;">{{ scriptSummary }}</div></div>
+        <div style="width: 196px; display: flex; align-items: center; gap: 7px; padding: 7px 10px; border: 1.2px solid var(--soft, #e4e2d8); border-radius: 10px; background: var(--surface, #FFFEF9);">
+          <span style="font-size: 15px; color: var(--muted, #888780); line-height: 1;">⌕</span>
+          <input value="{{ scriptsSearch }}" onInput="{{ onScriptsSearch }}" placeholder="Search scripts" aria-label="Search scripts" style="width: 100%; min-width: 0; border: none; outline: none; background: transparent; color: var(--ink, #2C2C2A); font: inherit; font-size: 12px;">
+        </div>
+      </div>
+      <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)); gap: 16px;">
+        <sc-for list="{{ cards }}" as="card" hint-placeholder-count="5">
+          <div onClick="{{ card.open }}" onKeyDown="{{ card.onKey }}" role="button" tabindex="0" aria-label="{{ card.openLabel }}" class="fsx-lift fs-script-card" style="position: relative; min-height: 224px; padding: 18px; cursor: pointer; border-radius: 15px; animation: fs-rise .35s ease both {{ card.delay }}; display: flex; flex-direction: column;">
+            <div style="position: relative; width: 55px; flex: 0 0 55px;">
+              <svg viewBox="0 0 62 84" style="width: 55px; height: auto; display: block;">
+                <path d="{{ card.thumbPath }}" style="fill: var(--bg, #F5F0E8); stroke: var(--line, #2C2C2A);" stroke-width="1.3" stroke-linejoin="round" stroke-linecap="round"></path>
+                <sc-for list="{{ thumbLines }}" as="ln" hint-placeholder-count="6">
+                  <rect x="{{ ln.x }}" y="{{ ln.y }}" width="{{ ln.w }}" height="2.6" rx="1" style="fill: var(--ink, #2C2C2A);" opacity="{{ ln.o }}"></rect>
+                </sc-for>
+              </svg>
+            </div>
+            <div style="margin-top: auto; padding-top: 18px; min-width: 0;">
+              <div class="fs-script-card-title" data-i18n-skip style="font-size: 18px; color: var(--ink, #2C2C2A);">{{ card.title }}</div>
+              <div class="fs-script-card-meta" style="font-size: 12px; color: var(--muted, #888780); margin-top: 4px;">{{ card.meta }}</div>
+            </div>
+            <sc-if value="{{ card.canDelete }}" hint-placeholder-val="false">
+              <div onClick="{{ card.toggleMenu }}" title="Script options" style="position: absolute; right: 13px; top: 13px; width: 30px; height: 30px; display: flex; align-items: center; justify-content: center; color: var(--muted, #888780); font-size: 18px; border-radius: 8px; cursor: pointer; letter-spacing: 1px;">•••
+                <sc-if value="{{ card.menuOpen }}" hint-placeholder-val="false">
+                  <div class="fs-script-card-menu" style="position: absolute; z-index: 10; right: 0; top: 30px; width: 126px; padding: 6px; background: var(--surface, #FFFEF9); border: 1.3px solid var(--line, #2C2C2A); border-radius: 10px 9px 11px 8px; color: var(--ink, #2C2C2A); font-size: 12px; font-weight: 600; letter-spacing: 0; white-space: nowrap;">
+                    <div onClick="{{ card.rename }}" style="padding: 6px 7px; border-radius: 6px; cursor: pointer;">Rename</div>
+                    <div onClick="{{ card.remove }}" style="padding: 6px 7px; border-radius: 6px; cursor: pointer; color: #B33B32;">Delete script</div>
+                  </div>
+                </sc-if>
+              </div>
+            </sc-if>
+          </div>
+        </sc-for>
+        <sc-if value="{{ noSearchResults }}" hint-placeholder-val="false">
+          <div style="padding: 30px 6px; color: var(--muted, #888780); font-size: 13px;">No scripts match “{{ scriptsSearch }}”.</div>
+        </sc-if>
+      </div>
+    </div>
+  </div>
+  </sc-if>
+
+  <!-- ============ SCRIPT EDITOR ============ -->
+  <sc-if value="{{ isEditor }}" hint-placeholder-val="{{ false }}">
+  <div style="flex: 1; display: flex; flex-direction: column; min-height: 0;">
+
+    <!-- ===== script toolbar (icons only) ===== -->
+    <div style="flex: 0 0 auto; background: var(--surface, #FFFEF9); display: flex; align-items: center; padding: 7px 22px; gap: 12px;">
+      <div style="font-size: 11px; letter-spacing: 1.4px; text-transform: uppercase; color: var(--muted, #888780); font-weight: 600;">Script</div>
+      <div onClick="{{ openPreproduction }}" style="padding: 7px 10px; border: 1px solid var(--soft, #e4e2d8); border-radius: 8px; font-size: 11px; font-weight: 700; color: var(--ink, #2C2C2A); cursor: pointer;">Preproduction</div>
+      <div style="flex: 1; display: flex; align-items: center; justify-content: center; gap: 4px;">
+        <div class="fs-tipwrap" onClick="{{ fmtScene }}"><div class="fs-ic" style="color: var(--ink, #2C2C2A);"><svg viewBox="0 0 24 24" style="width: 21px; height: 21px;" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M3.7 9.9 Q3.5 9.8 3.6 10.4 L4 19.6 Q4 20.2 4.6 20.2 L19.3 20 Q19.9 20 19.9 19.4 L20.1 10.1 Q20.2 9.6 19.6 9.7 Z"></path><path d="M3.7 9.9 L20 8 L20.4 6.1 L4.1 7.9 Z"></path><path d="M7 7.6 L8.5 5.7 M10.8 7.2 L12.3 5.4 M14.6 6.9 L16 5.1"></path></svg></div><span class="fs-tip">Scene · ⌘1</span></div>
+        <div class="fs-tipwrap" onClick="{{ fmtAction }}"><div class="fs-ic" style="color: var(--ink, #2C2C2A);"><svg viewBox="0 0 24 24" style="width: 21px; height: 21px;" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M4.5 8 Q11 7.4 19.5 8.2"></path><path d="M4.5 12 Q10 11.5 17 12.1"></path><path d="M4.5 16 Q8.5 15.6 14.5 16.1"></path></svg></div><span class="fs-tip">Action · ⌘2</span></div>
+        <div class="fs-tipwrap" onClick="{{ fmtCharacter }}"><div class="fs-ic" style="color: var(--ink, #2C2C2A);"><svg viewBox="0 0 24 24" style="width: 21px; height: 21px;" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5.2 Q14.9 5.2 15 8.4 Q14.9 11.4 12 11.4 Q9.1 11.4 9 8.4 Q9.1 5.2 12 5.2 Z"></path><path d="M5.4 19.2 Q5.6 13.2 12 13.1 Q18.4 13.2 18.6 19.2"></path></svg></div><span class="fs-tip">Character · ⌘3</span></div>
+        <div class="fs-tipwrap" onClick="{{ fmtParen }}"><div class="fs-ic" style="color: var(--ink, #2C2C2A);"><svg viewBox="0 0 24 24" style="width: 21px; height: 21px;" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M10 5 Q6.4 9 6.4 12 Q6.4 15 10 19"></path><path d="M14 5 Q17.6 9 17.6 12 Q17.6 15 14 19"></path></svg></div><span class="fs-tip">Parenthetical · ⌘4</span></div>
+        <div class="fs-tipwrap" onClick="{{ fmtDialogue }}"><div class="fs-ic" style="color: var(--ink, #2C2C2A);"><svg viewBox="0 0 24 24" style="width: 21px; height: 21px;" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5 6.4 Q4.6 6 5.3 6 L18.7 6 Q19.4 6 19.4 6.7 L19.4 14.4 Q19.4 15 18.7 15 L10.5 15 L6.8 18.6 L7 15 L5.3 15 Q4.6 15 4.6 14.4 Z"></path></svg></div><span class="fs-tip">Dialogue · ⌘5</span></div>
+        <div class="fs-tipwrap" onClick="{{ fmtTransition }}"><div class="fs-ic" style="color: var(--ink, #2C2C2A);"><svg viewBox="0 0 24 24" style="width: 21px; height: 21px;" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M4.2 9 Q11 8.6 19.4 9.1"></path><path d="M15.4 6 L19.6 9.1 L15.4 12"></path><path d="M19.8 15 Q13 15.4 4.6 14.9"></path><path d="M8.6 12 L4.4 14.9 L8.6 18"></path></svg></div><span class="fs-tip">Transition · ⌘6</span></div>
+      </div>
+      <div style="position: relative;">
+        <div onClick="{{ toggleMenu }}" style="position: relative; width: 35px; height: 30px; display: flex; align-items: center; justify-content: center; cursor: pointer">
+          <svg viewBox="0 0 38 34" preserveAspectRatio="none" style="position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none;"><path d="{{ dotsBoxPath }}" style="fill: none; stroke: var(--line, #2C2C2A);" stroke-width="1.4" stroke-linejoin="round" stroke-linecap="round"></path></svg>
+          <div style="position: relative; display: flex; gap: 3px;">
+            <span style="width: 3.4px; height: 3.4px; border-radius: 50%; background: var(--ink, #2C2C2A);"></span>
+            <span style="width: 3.4px; height: 3.4px; border-radius: 50%; background: var(--ink, #2C2C2A);"></span>
+            <span style="width: 3.4px; height: 3.4px; border-radius: 50%; background: var(--ink, #2C2C2A);"></span>
+          </div>
+        </div>
+        <sc-if value="{{ menuOpen }}" hint-placeholder-val="{{ false }}">
+        <div style="position: absolute; right: 0; top: 44px; z-index: 40; width: 210px; padding: 7px; background: var(--surface, #FFFEF9); border: 1.4px solid var(--line, #2C2C2A); border-radius: 14px; filter: url(#fs-sketch); animation: fs-pop .2s ease both;">
+          <sc-for list="{{ menuItems }}" as="mi" hint-placeholder-count="6">
+            <div class="fs-menuitem" onClick="{{ closeMenu }}">{{ mi }}</div>
+          </sc-for>
+        </div>
+        </sc-if>
+      </div>
+    </div>
+    <svg viewBox="0 0 1200 8" preserveAspectRatio="none" style="width: 100%; height: 7px; flex: 0 0 7px; display: block;"><path d="{{ toolDivPath }}" style="fill: none; stroke: var(--soft, #e4e2d8);" stroke-width="1.4" stroke-linecap="round" vector-effect="non-scaling-stroke"></path></svg>
+
+    <div style="flex: 1; display: flex; min-height: 0;">
+
+    <!-- Format rail (always visible, left) -->
+          <div style="flex: 0 0 234px; align-self: stretch; overflow-y: auto; margin: 18px 0 18px 18px; padding: 18px; user-select: none; color: var(--ink, #2C2C2A); background: var(--surface, #FFFEF9); border: 1.3px solid var(--line, #2C2C2A); border-radius: 15px; filter: url(#fs-sketch); width: 234px; display: flex; flex-direction: column; gap: 17px;">
+            <div style="order: 2;">
+            <div style="font-size: 10px; letter-spacing: 1.4px; text-transform: uppercase; color: var(--muted, #cbc9bf); opacity: .8; margin-bottom: 14px; font-weight: 600;">Format</div>
+            <div style="display: flex; flex-direction: column; gap: 9px;">
+
+              <div style="display: flex; align-items: center; gap: 9px;">
+                <span style="width: 22px; height: 22px; flex: 0 0 22px; display: flex; align-items: center; justify-content: center;">
+                  <svg viewBox="0 0 20 20" style="width: 19px; height: 19px;" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><path d="M3.6 8.4 Q3.4 7.7 4.1 7.6 L16 7.3 Q16.7 7.5 16.6 8.3 L16.5 15.8 Q16.5 16.6 15.7 16.6 L4.3 16.7 Q3.5 16.6 3.6 15.9 Z"></path><path d="M3.8 7.9 L16.6 7.5"></path><path d="M6 7.6 L8.1 4.2 M9.6 7.5 L11.7 4.1 M13.2 7.4 L15.2 4"></path></svg>
+                </span>
+                <span style="font-size: 11px; min-width: 34px; font-variant-numeric: tabular-nums;">⌘1</span>
+                <span style="font-size: 11px;">Scene</span>
+              </div>
+
+              <div style="display: flex; align-items: center; gap: 9px;">
+                <span style="width: 22px; height: 22px; flex: 0 0 22px; display: flex; align-items: center; justify-content: center;">
+                  <svg viewBox="0 0 20 20" style="width: 19px; height: 19px;" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7 Q9 6.5 16 7.1"></path><path d="M4 11 Q8 10.5 14.5 11"></path><path d="M4 15 Q7 14.6 12 15.1"></path></svg>
+                </span>
+                <span style="font-size: 11px; min-width: 34px; font-variant-numeric: tabular-nums;">⌘2</span>
+                <span style="font-size: 11px;">Action</span>
+              </div>
+
+              <div style="display: flex; align-items: center; gap: 9px;">
+                <span style="width: 22px; height: 22px; flex: 0 0 22px; display: flex; align-items: center; justify-content: center;">
+                  <svg viewBox="0 0 20 20" style="width: 19px; height: 19px;" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><circle cx="10" cy="7" r="2.7"></circle><path d="M5 17 Q5.2 12.4 10 12.3 Q14.8 12.4 15 17"></path></svg>
+                </span>
+                <span style="font-size: 11px; min-width: 34px; font-variant-numeric: tabular-nums;">⌘3</span>
+                <span style="font-size: 11px;">Character</span>
+              </div>
+
+              <div style="display: flex; align-items: center; gap: 9px;">
+                <span style="width: 22px; height: 22px; flex: 0 0 22px; display: flex; align-items: center; justify-content: center;">
+                  <svg viewBox="0 0 20 20" style="width: 19px; height: 19px;" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><path d="M8.6 4 Q5.4 8 5.4 10 Q5.4 12 8.6 16"></path><path d="M11.4 4 Q14.6 8 14.6 10 Q14.6 12 11.4 16"></path></svg>
+                </span>
+                <span style="font-size: 11px; min-width: 34px; font-variant-numeric: tabular-nums;">⌘4</span>
+                <span style="font-size: 11px;">Parenthetical</span>
+              </div>
+
+              <div style="display: flex; align-items: center; gap: 9px;">
+                <span style="width: 22px; height: 22px; flex: 0 0 22px; display: flex; align-items: center; justify-content: center;">
+                  <svg viewBox="0 0 20 20" style="width: 19px; height: 19px;" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><path d="M4 5.6 Q4 5 4.7 5 L15.3 5 Q16 5 16 5.7 L16 11.7 Q16 12.4 15.3 12.4 L9 12.4 L6 15.4 L6.2 12.4 L4.7 12.4 Q4 12.4 4 11.7 Z"></path></svg>
+                </span>
+                <span style="font-size: 11px; min-width: 34px; font-variant-numeric: tabular-nums;">⌘5</span>
+                <span style="font-size: 11px;">Dialogue</span>
+              </div>
+
+              <div style="display: flex; align-items: center; gap: 9px;">
+                <span style="width: 22px; height: 22px; flex: 0 0 22px; display: flex; align-items: center; justify-content: center;">
+                  <svg viewBox="0 0 20 20" style="width: 19px; height: 19px;" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><path d="M3.6 10 Q9 9.6 15.4 10.1"></path><path d="M12 6.7 L15.6 10.1 L12 13.3"></path></svg>
+                </span>
+                <span style="font-size: 11px; min-width: 34px; font-variant-numeric: tabular-nums;">⌘6</span>
+                <span style="font-size: 11px;">Transition</span>
+              </div>
+
+              <svg viewBox="0 0 140 8" preserveAspectRatio="none" style="width: 100%; height: 7px; margin: 3px 0;"><path d="{{ miniDivPath }}" style="fill: none; stroke: var(--soft, #e4e2d8);" stroke-width="1.4" stroke-linecap="round" vector-effect="non-scaling-stroke"></path></svg>
+
+              <div style="display: flex; align-items: center; gap: 9px;">
+                <span style="width: 22px; height: 22px; flex: 0 0 22px; display: flex; align-items: center; justify-content: center;">
+                  <svg viewBox="0 0 20 20" style="width: 19px; height: 19px;" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><path d="M10 4 Q10.2 9 10 14"></path><path d="M6 10.4 L10 14.5 L14 10.4"></path></svg>
+                </span>
+                <span style="font-size: 11px; min-width: 34px; font-variant-numeric: tabular-nums;">TAB</span>
+                <span style="font-size: 11px;">Next</span>
+              </div>
+
+              <div style="display: flex; align-items: center; gap: 9px;">
+                <span style="width: 22px; height: 22px; flex: 0 0 22px; display: flex; align-items: center; justify-content: center;">
+                  <svg viewBox="0 0 20 20" style="width: 19px; height: 19px;" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><path d="M10 16 Q9.8 11 10 6"></path><path d="M6 9.6 L10 5.5 L14 9.6"></path></svg>
+                </span>
+                <span style="font-size: 11px; min-width: 34px; font-variant-numeric: tabular-nums;">⇧TAB</span>
+                <span style="font-size: 11px;">Previous</span>
+              </div>
+
+            </div>
+          </div>
+
+          <div style="order: 1; min-height: 0;">
+          <div style="font-size: 10px; letter-spacing: 1.4px; text-transform: uppercase; color: var(--muted, #888780); margin-bottom: 10px; font-weight: 700;">Scenes</div>
+          <div style="display: flex; flex-direction: column; gap: 2px;">
+            <sc-for list="{{ scriptIndex }}" as="ix" hint-placeholder-count="4">
+              <div onClick="{{ ix.open }}" title="{{ ix.title }}" style="display: flex; align-items: flex-start; gap: 8px; padding: 7px 7px; cursor: pointer; border-radius: 8px; color: var(--ink, #2C2C2A);">
+                <span style="font-size: 10px; color: var(--accent, #BA7517); font-weight: 700; min-width: 19px; padding-top: 1px;">{{ ix.no }}</span>
+                <span style="font-size: 10.5px; line-height: 1.3; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">{{ ix.title }}</span>
+              </div>
+            </sc-for>
+            <sc-if value="{{ noIndex }}" hint-placeholder-val="false"><div style="font-size: 10.5px; color: var(--muted, #888780); line-height: 1.4;">Scene headings will appear here.</div></sc-if>
+          </div>
+          </div>
+          <div style="order: 1; height: 1px; background: var(--soft, #e4e2d8); margin: 0;"></div>
+          </div>
+
+
+    <!-- canvas column -->
+    <div style="flex: 1; min-width: 0; position: relative; display: flex; flex-direction: column;">
+      <div ref="{{ canvasRef }}" style="flex: 1; overflow: auto; display: flex; justify-content: center; padding: 40px 40px 96px 40px;">
+        <div ref="{{ pageRef }}" style="display: flex; gap: 18px; align-items: flex-start;">
+          <!-- the page -->
+          <div style="display: flex; flex-direction: column; gap: 26px; width: 794px; flex: 0 0 794px; transform: scale({{ zoom }}); transform-origin: top center;">
+            <svg width="0" height="0" style="position: absolute;"><defs><filter id="fsgrain" x="0" y="0" width="100%" height="100%"><feTurbulence type="fractalNoise" baseFrequency="0.9" numOctaves="2" stitchTiles="stitch" result="n"></feTurbulence><feColorMatrix in="n" type="matrix" values="0 0 0 0 0  0 0 0 0 0  0 0 0 0 0  0 0 0 .035 0"></feColorMatrix></filter></defs></svg>
+            <sc-for list="{{ pages }}" as="pg" hint-placeholder-count="2">
+              <div style="position: relative; width: 794px; height: 1123px; flex: 0 0 1123px;">
+                <svg viewBox="0 0 794 1123" preserveAspectRatio="none" style="position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none;">
+                  <path d="{{ pg.path }}" style="fill: var(--surface, #FFFEF9); stroke: var(--line, #2C2C2A);" stroke-width="2" stroke-linejoin="round" stroke-linecap="round" vector-effect="non-scaling-stroke"></path>
+                  <rect x="16" y="16" width="762" height="1091" fill="#000" filter="url(#fsgrain)" opacity="0.5"></rect>
+                </svg>
+                <sc-if value="{{ pg.showNumber }}" hint-placeholder-val="true"><span contenteditable="false" style="position: absolute; top: 42px; right: 62px; font-family: 'Courier Prime', monospace; font-size: 11px; color: var(--muted, #888780); user-select: none;">{{ pg.label }}</span></sc-if>
+                <div ref="{{ pg.mount }}" data-fs-page="1" style="position: absolute; inset: 0; padding: 82px 92px 84px 118px; font-family: 'Courier Prime', monospace; font-size: 12.5px; line-height: 1.62; color: var(--ink, #2C2C2A); outline: none; overflow: hidden; caret-color: var(--accent, #BA7517);"></div>
+              </div>
+            </sc-for>
+          </div>
+
+        </div>
+      </div>
+
+      <!-- ===== hand-drawn zoom control bar ===== -->
+      <div style="position: absolute; bottom: 20px; left: 50%; transform: translateX(-50%); width: 408px; height: 56px;">
+        <svg viewBox="0 0 408 56" style="position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none;">
+          <path d="{{ barPath }}" style="fill: var(--surface, #FFFEF9); stroke: var(--line, #2C2C2A);" stroke-width="1.6" stroke-linejoin="round" stroke-linecap="round"></path>
+        </svg>
+        <div style="position: relative; height: 100%; display: flex; align-items: center; gap: 11px; padding: 0 16px;">
+          <div onClick="{{ toggleSound }}" title="Typewriter sound" style="cursor: pointer; width: 26px; height: 26px; display: flex; align-items: center; justify-content: center; color: {{ soundIconColor }};">
+            <sc-if value="{{ soundOn }}" hint-placeholder-val="{{ true }}">
+              <svg viewBox="0 0 24 24" style="width: 21px; height: 21px;" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M4.4 9 Q4 9 4 9.6 L4 14.3 Q4 15 4.6 15 L7.4 15 L11.2 18.4 Q11.9 18.9 11.9 18 L12 6 Q11.9 5.1 11.2 5.6 L7.4 9 Z"></path><path d="M15 8.4 Q17 11.8 15.1 15.4"></path><path d="M17.6 6.4 Q21 11.7 17.8 17.2"></path></svg>
+            </sc-if>
+            <sc-if value="{{ soundOff }}" hint-placeholder-val="{{ false }}">
+              <svg viewBox="0 0 24 24" style="width: 21px; height: 21px;" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M4.4 9 Q4 9 4 9.6 L4 14.3 Q4 15 4.6 15 L7.4 15 L11.2 18.4 Q11.9 18.9 11.9 18 L12 6 Q11.9 5.1 11.2 5.6 L7.4 9 Z"></path><path d="M15.6 9.4 Q18.4 12.3 21 14.8"></path><path d="M21 9.4 Q18.2 12.4 15.6 14.9"></path></svg>
+            </sc-if>
+          </div>
+          <span style="width: 1.4px; height: 22px; background: var(--soft, #e4e2d8);"></span>
+          <span onClick="{{ zoomOut }}" style="font-size: 19px; color: var(--ink, #2C2C2A); cursor: pointer; width: 16px; text-align: center; user-select: none;">−</span>
+          <div style="position: relative; width: 104px; height: 24px; display: flex; align-items: center;">
+            <input class="fs-zoom" type="range" min="0.5" max="2" step="0.05" value="{{ zoom }}" onChange="{{ onZoom }}" style="position: relative; width: 100%; z-index: 1;">
+          </div>
+          <span onClick="{{ zoomIn }}" style="font-size: 18px; color: var(--ink, #2C2C2A); cursor: pointer; width: 16px; text-align: center; user-select: none;">+</span>
+          <span style="font-size: 12px; color: var(--muted, #888780); width: 38px; text-align: center; font-variant-numeric: tabular-nums;">{{ zoomPct }}</span>
+          <div onClick="{{ fillPage }}" style="position: relative; cursor: pointer; padding: 7px 13px;">
+            <svg viewBox="0 0 92 32" preserveAspectRatio="none" style="position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none;">
+              <path d="{{ btnPath }}" style="fill: none; stroke: var(--accent, #BA7517);" stroke-width="1.6" stroke-linejoin="round" stroke-linecap="round"></path>
+            </svg>
+            <span style="position: relative; font-size: 12px; font-weight: 600; color: var(--accent, #BA7517);">Fill page</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ============ LUMIERE SIDEBAR (light, hand-drawn) ============ -->
+    <sc-if value="{{ lumiereOpen }}" hint-placeholder-val="{{ true }}">
+    <div style="flex: 0 0 326px; width: 326px; background: var(--surface, #FFFEF9); border-left: 1px solid var(--soft, #e4e2d8); display: flex; flex-direction: column; min-height: 0; position: relative;">
+
+      <!-- header -->
+      <div style="padding: 20px 20px 17px; display: flex; align-items: center; gap: 9px;">
+        <span style="width: 8px; height: 8px; border-radius: 50%; background: var(--accent, #BA7517); box-shadow: 0 0 0 4px rgba(186,117,23,.1);"></span>
+        <span style="font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; font-weight: 700; font-size: 18px; letter-spacing: -.3px; color: var(--ink, #2C2C2A); flex: 1; line-height: 1;">Lumiere</span>
+        <span style="font-size: 10px; color: var(--muted, #888780); padding: 4px 7px; background: var(--bg, #F5F0E8); border-radius: 7px;">Script editor</span>
+        <span onClick="{{ toggleLumiere }}" aria-label="Close Lumiere" style="color: var(--muted, #888780); font-size: 17px; cursor: pointer; line-height: 1; padding: 4px;">›</span>
+      </div>
+      <div style="height: 1px; background: var(--soft, #e4e2d8); margin: 0 20px;"></div>
+
+      <sc-if value="{{ lumiereUnlocked }}" hint-placeholder-val="{{ false }}">
+      <!-- feature tools -->
+      <div style="padding: 14px 20px 12px; display: flex; flex-wrap: wrap; gap: 7px;">
+        <sc-for list="{{ tools }}" as="t" hint-placeholder-count="5">
+          <div onClick="{{ t.onClick }}" title="{{ t.title }}" style="font-size: 11.5px; color: var(--ink, #2C2C2A); border: 1px solid var(--soft, #e4e2d8); border-radius: 9px; padding: 7px 9px; display: flex; align-items: center; gap: 6px; background: var(--bg, #F5F0E8); cursor: pointer;"><span style="width: 5px; height: 5px; border-radius: 50%; background: var(--accent, #BA7517);"></span>{{ t.label }}</div>
+        </sc-for>
+      </div>
+
+      <!-- chat -->
+      <div ref="{{ chatRef }}" style="flex: 1; overflow-y: auto; padding: 14px 20px 22px; display: flex; flex-direction: column; gap: 18px;">
+        <sc-for list="{{ messages }}" as="m" hint-placeholder-count="2">
+          <div style="{{ m.rowStyle }}">
+            <div data-i18n-skip style="{{ m.bubbleStyle }}">{{ m.text }}</div>
+          </div>
+        </sc-for>
+
+        <!-- typing indicator -->
+        <sc-if value="{{ loading }}" hint-placeholder-val="{{ false }}">
+        <div style="align-self: flex-start; padding: 8px 0 8px 12px; border-left: 2px solid var(--accent, #BA7517); display: flex; gap: 5px;">
+          <span style="width: 6px; height: 6px; border-radius: 50%; background: var(--accent-hover, #EF9F27); animation: fs-dot 1.2s infinite;"></span>
+          <span style="width: 6px; height: 6px; border-radius: 50%; background: var(--accent-hover, #EF9F27); animation: fs-dot 1.2s infinite .15s;"></span>
+          <span style="width: 6px; height: 6px; border-radius: 50%; background: var(--accent-hover, #EF9F27); animation: fs-dot 1.2s infinite .3s;"></span>
+        </div>
+        </sc-if>
+      </div>
+
+      <!-- input -->
+      <div style="padding: 14px 20px 20px; border-top: 1px solid var(--soft, #e4e2d8);">
+        <div style="background: var(--bg, #F5F0E8); border: 1px solid var(--soft, #e4e2d8); border-radius: 12px; padding: 7px 8px 7px 13px; display: flex; align-items: center; gap: 10px;">
+          <input class="fs-chat" value="{{ input }}" onInput="{{ onInput }}" onKeyDown="{{ onKey }}" placeholder="Ask Lumiere anything…" style="flex: 1; background: transparent; border: none; outline: none; color: var(--ink, #2C2C2A); font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; font-size: 13px;">
+          <span onClick="{{ send }}" aria-label="Send message" style="width: 29px; height: 29px; flex: 0 0 29px; border-radius: 9px; background: var(--accent, #BA7517); color: #1A1A1A; display: flex; align-items: center; justify-content: center; font-size: 15px; cursor: pointer;">↑</span>
+        </div>
+      </div>
+      </sc-if>
+
+      <sc-if value="{{ lumiereLocked }}" hint-placeholder-val="{{ true }}">
+      <div class="fs-paywall-in" style="flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; padding: 30px 26px; gap: 14px; overflow: hidden;">
+        <div class="fs-paywall-icon" style="width: 46px; height: 46px; color: var(--accent, #BA7517); position: relative;">
+          <span style="position: absolute; inset: -10px; border-radius: 50%; background: var(--accent, #BA7517); opacity: .14; animation: fs-pulse 2.2s ease-out infinite;"></span>
+          <svg viewBox="0 0 24 24" style="width: 100%; height: 100%; position: relative;" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="5.5" y="10.5" width="13" height="9" rx="2.4"></rect><path d="M8 10.5 V7.8 Q8 4.2 12 4.2 Q16 4.2 16 7.8 V10.5"></path></svg>
+        </div>
+        <div style="font-size: 17px; font-weight: 700; color: var(--ink, #2C2C2A);">Lumiere requires FilmScript Pro</div>
+        <div style="font-size: 13px; line-height: 1.55; color: var(--muted, #888780); max-width: 245px;">Your screenplay and existing production documents remain available to edit and export. An active plan is required only to generate new work with Lumiere.</div>
+        <div onClick="{{ openCheckoutLumiere }}" style="position: relative; margin-top: 6px; padding: 12px 20px; cursor: pointer;">
+          <svg viewBox="0 0 180 44" preserveAspectRatio="none" style="position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none;"><path d="{{ unlockBtnPath }}" style="fill: var(--accent, #BA7517); stroke: var(--accent, #BA7517);" stroke-width="1.6" stroke-linejoin="round"></path></svg>
+          <span style="position: relative; font-size: 13.5px; font-weight: 600; color: #FFFEF9;">View FilmScript Pro · $20 / month</span>
+        </div>
+        <div style="font-size: 10.5px; line-height: 1.45; color: var(--muted, #888780); max-width: 230px;">Canceling never deletes your scripts or existing production documents.</div>
+      </div>
+      </sc-if>
+    </div>
+    </sc-if>
+
+    <!-- collapsed reopen tab -->
+    <sc-if value="{{ lumiereClosed }}" hint-placeholder-val="{{ false }}">
+    <div onClick="{{ toggleLumiere }}" style="flex: 0 0 40px; background: var(--surface, #FFFEF9); display: flex; flex-direction: column; align-items: center; gap: 10px; padding-top: 18px; cursor: pointer; position: relative;">
+      <span style="width: 9px; height: 9px; border-radius: 50%; background: var(--accent-hover, #EF9F27);"></span>
+      <span style="writing-mode: vertical-rl; font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; font-weight: 600; font-size: 14px; color: var(--ink, #2C2C2A); letter-spacing: .5px;">Lumiere</span>
+    </div>
+    </sc-if>
+
+  </div>
+  </div>
+  </sc-if>
+
+  <sc-if value="{{ preproOpen }}" hint-placeholder-val="false">
+  <div style="position: fixed; inset: 0; z-index: 70; background: var(--bg, #F5F0E8); overflow: auto; padding: 38px 48px;">
+    <div style="max-width: 1160px; margin: 0 auto;">
+      <div style="display: flex; align-items: flex-start; justify-content: space-between; gap: 24px; padding-bottom: 24px; border-bottom: 1px solid var(--soft, #e4e2d8);"><div><div style="font-size: 10px; font-weight: 700; letter-spacing: 1.6px; color: var(--accent, #BA7517); text-transform: uppercase;">Active screenplay</div><div style="font-size: 28px; font-weight: 700; color: var(--ink, #2C2C2A); margin-top: 8px;">{{ activeScriptTitle }}</div><div style="font-size: 13px; color: var(--muted, #888780); margin-top: 6px;">Breakdown, stripboard and shot lists stay connected to this script.</div></div><div onClick="{{ closePreproduction }}" style="font-size: 24px; color: var(--muted, #888780); cursor: pointer; padding: 5px 9px;">×</div></div>
+      <div style="display: flex; gap: 8px; margin: 24px 0 32px;"><div onClick="{{ showBreakdown }}" style="padding: 10px 14px; border-radius: 9px; cursor: pointer; font-size: 13px; font-weight: 700; background: {{ breakdownTabBg }}; color: {{ breakdownTabColor }};">Breakdown</div><div onClick="{{ showStripboard }}" style="padding: 10px 14px; border-radius: 9px; cursor: pointer; font-size: 13px; font-weight: 700; background: {{ stripboardTabBg }}; color: {{ stripboardTabColor }};">Stripboard</div><div onClick="{{ showShots }}" style="padding: 10px 14px; border-radius: 9px; cursor: pointer; font-size: 13px; font-weight: 700; background: {{ shotsTabBg }}; color: {{ shotsTabColor }};">Shot lists</div></div>
+      <sc-if value="{{ preproAccessNotice }}" hint-placeholder-val="false"><div style="margin: -12px 0 24px; padding: 14px 16px; display: flex; align-items: center; gap: 14px; background: var(--surface, #FFFEF9); border: 1px solid var(--soft, #e4e2d8); border-radius: 13px 15px 12px 14px;"><span style="width: 8px; height: 8px; flex: 0 0 8px; border-radius: 50%; background: var(--accent, #BA7517); box-shadow: 0 0 0 5px rgba(186,117,23,.1);"></span><div style="flex: 1;"><div style="font-size: 13px; font-weight: 700; color: var(--ink, #2C2C2A);">Your existing production work stays yours.</div><div style="font-size: 11.5px; line-height: 1.55; color: var(--muted, #888780); margin-top: 3px;">Keep editing and exporting existing documents. FilmScript Pro is required only for new Lumiere generation.</div></div><button type="button" onClick="{{ openCheckoutLumiere }}" style="height: 34px; padding: 0 12px; border: 1px solid var(--soft, #e4e2d8); border-radius: 9px; background: transparent; color: var(--ink, #2C2C2A); font-family: inherit; font-size: 11px; font-weight: 650; cursor: pointer;">View FilmScript Pro</button></div></sc-if>
+      <sc-if value="{{ preproLoading }}" hint-placeholder-val="false"><div style="padding: 54px; text-align: center; color: var(--muted, #888780);">Loading production plan…</div></sc-if>
+      <sc-if value="{{ preproEmpty }}" hint-placeholder-val="false"><div style="max-width: 600px; margin: 72px auto; text-align: center; padding: 42px; background: var(--surface, #FFFEF9); border: 1.4px solid var(--line, #2C2C2A); border-radius: 16px; filter: url(#fs-sketch);"><div style="font-size: 26px; font-weight: 700; color: var(--ink, #2C2C2A);">{{ preproEmptyTitle }}</div><div style="font-size: 14px; line-height: 1.6; color: var(--muted, #888780); margin: 14px auto 24px; max-width: 480px;">{{ preproEmptyText }}</div><div onClick="{{ preproPrimaryAction }}" style="display: inline-block; padding: 12px 17px; background: var(--accent, #BA7517); border-radius: 10px; color: #1A1A1A; font-size: 13px; font-weight: 700; cursor: pointer;">{{ preproEmptyAction }}</div></div></sc-if>
+      <sc-if value="{{ preproProgress }}" hint-placeholder-val="false"><div style="margin-bottom: 22px; padding: 13px 15px; background: var(--surface, #FFFEF9); border: 1px solid var(--soft, #e4e2d8); border-radius: 12px; color: var(--ink, #2C2C2A); font-size: 13px;"><strong>{{ preproMessage }}</strong><span style="color: var(--muted, #888780);"> · {{ preproCompleted }} of {{ preproTotal }}</span></div></sc-if>
+      <sc-if value="{{ preproHasData }}" hint-placeholder-val="false"><div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(275px, 1fr)); gap: 16px;"><sc-for list="{{ preproScenes }}" as="scene" hint-placeholder-count="4"><div style="padding: 18px; background: var(--surface, #FFFEF9); border: 1px solid var(--soft, #e4e2d8); border-radius: 13px;"><div style="display: flex; justify-content: space-between; gap: 10px;"><div style="font-size: 14px; font-weight: 700; color: var(--ink, #2C2C2A);">{{ scene.title }}</div><div style="font-size: 10px; color: var(--accent, #BA7517); font-weight: 700;">{{ scene.status }}</div></div><div style="font-size: 12px; line-height: 1.5; color: var(--muted, #888780); margin-top: 10px;">{{ scene.summary }}</div><div style="font-size: 11px; color: var(--ink, #2C2C2A); margin-top: 12px;">{{ scene.detail }}</div></div></sc-for></div></sc-if>
+    </div>
+  </div>
+  </sc-if>
+
+  <!-- ============ SIGN UP MODAL ============ -->
+  <sc-if value="{{ authOpen }}" hint-placeholder-val="{{ false }}">
+  <div class="fs-auth-backdrop" onClick="{{ closeAuth }}">
+    <section class="fs-auth-sheet" onClick="{{ stop }}" role="dialog" aria-modal="true" aria-labelledby="fs-auth-title">
+      <button type="button" class="fs-auth-close" onClick="{{ closeAuth }}" aria-label="Close account creation">×</button>
+      <div class="fs-auth-header">
+        <div class="fs-auth-brand">FilmScript</div>
+        <div class="fs-auth-eyebrow">Your writing workspace</div>
+        <h2 class="fs-auth-title" id="fs-auth-title">Create your account</h2>
+        <svg class="fs-auth-sketch-line" viewBox="0 0 78 9" aria-hidden="true"><path d="M2 5.2 C 18 3.7, 31 6.2, 46 4.5 S 66 5.8, 76 4.2"></path></svg>
+        <p class="fs-auth-copy">Start writing in seconds. Your first script is on us.</p>
+      </div>
+
+      <button type="button" class="fs-auth-google" onClick="{{ googleSignUp }}">
+        <svg viewBox="0 0 24 24" style="width: 19px; height: 19px;"><path fill="#4285F4" d="M21.6 12.2c0-.7-.06-1.4-.18-2H12v3.8h5.4c-.23 1.2-.94 2.3-2 3v2.5h3.24C20.5 17.7 21.6 15.2 21.6 12.2z"></path><path fill="#34A853" d="M12 22c2.7 0 4.96-.9 6.62-2.4l-3.24-2.5c-.9.6-2.05.96-3.38.96-2.6 0-4.8-1.75-5.58-4.1H3.07v2.58C4.72 19.98 8.1 22 12 22z"></path><path fill="#FBBC05" d="M6.42 13.96c-.2-.6-.31-1.24-.31-1.96s.11-1.36.31-1.96V7.46H3.07C2.39 8.8 2 10.36 2 12s.39 3.2 1.07 4.54l3.35-2.58z"></path><path fill="#EA4335" d="M12 5.94c1.47 0 2.78.5 3.82 1.5l2.86-2.86C16.96 2.99 14.7 2 12 2 8.1 2 4.72 4.02 3.07 7.46l3.35 2.58C7.2 7.69 9.4 5.94 12 5.94z"></path></svg>
+        <span>Continue with Google</span>
+      </button>
+
+      <div class="fs-auth-note">Google keeps your scripts, subscription, and production tools connected to one secure account.</div>
+      <p class="fs-auth-terms">By continuing you agree to the Terms and Privacy Policy.</p>
+    </section>
+  </div>
+  </sc-if>
+
+  <!-- ============ CHECKOUT MODAL ============ -->
+  <sc-if value="{{ checkoutOpen }}" hint-placeholder-val="{{ false }}">
+  <div onClick="{{ closeCheckout }}" style="position: absolute; inset: 0; z-index: 50; background: rgba(28,28,26,.42); display: flex; align-items: center; justify-content: center; animation: fs-fade .25s ease both;">
+    <div onClick="{{ stop }}" style="animation: fs-pop .32s cubic-bezier(.2,.8,.3,1.12) both; position: relative; width: 380px; max-width: calc(100% - 40px); padding: 34px 32px 30px; background: var(--surface, #FFFEF9); border: 1.6px solid var(--line, #2C2C2A); border-radius: 22px; filter: url(#fs-sketch);">
+      <span onClick="{{ closeCheckout }}" style="position: absolute; top: 16px; right: 18px; font-size: 20px; line-height: 1; color: var(--muted, #888780); cursor: pointer;">×</span>
+
+      <sc-if value="{{ checkoutConfirmStep }}" hint-placeholder-val="{{ true }}">
+      <div>
+        <div style="font-size: 11px; letter-spacing: 1.6px; text-transform: uppercase; color: var(--accent, #BA7517); font-weight: 600; text-align: center;">Confirm plan</div>
+        <h2 style="font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; font-weight: 700; font-size: 24px; letter-spacing: -0.5px; color: var(--ink, #2C2C2A); margin: 12px 0 0; text-align: center;">{{ checkoutPlanName }}</h2>
+        <div style="text-align: center; margin-top: 8px; font-size: 15px; color: var(--muted, #888780);">{{ checkoutPlanPrice }}</div>
+
+        <sc-if value="{{ checkoutHasLink }}" hint-placeholder-val="{{ true }}">
+        <div onClick="{{ openPayLink }}" class="fsx-lift" style="position: relative; text-align: center; margin-top: 24px; padding: 13px; cursor: pointer;">
+          <svg viewBox="0 0 320 48" preserveAspectRatio="none" style="position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none;"><path d="{{ planBtnPath }}" style="fill: var(--accent, #BA7517); stroke: var(--accent, #BA7517);" stroke-width="1.6" stroke-linejoin="round"></path></svg>
+          <span style="position: relative; font-size: 14px; font-weight: 600; color: #FFFEF9;">Continue to checkout</span>
+        </div>
+        </sc-if>
+
+        <div style="margin-top: 18px; padding: 13px 15px; border: 1.4px solid var(--line, #2C2C2A); border-radius: 14px; background: var(--bg, #F5F0E8); filter: url(#fs-sketch);">
+          <div style="font-size: 12px; line-height: 1.55; color: var(--muted, #888780);">You will return to FilmScript after payment. FilmScript verifies the checkout securely and unlocks Pro automatically.</div>
+        </div>
+      </div>
+      </sc-if>
+
+      <sc-if value="{{ checkoutSuccessStep }}" hint-placeholder-val="{{ false }}">
+      <div style="text-align: center;">
+        <div style="width: 44px; height: 44px; color: var(--accent, #BA7517); margin: 0 auto;">
+          <svg viewBox="0 0 24 24" style="width: 100%; height: 100%;" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"></circle><path d="M7.8 12.3 L10.4 15 L16.4 8.8"></path></svg>
+        </div>
+        <h2 style="font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; font-weight: 700; font-size: 22px; letter-spacing: -0.5px; color: var(--ink, #2C2C2A); margin: 16px 0 0;">You are all set</h2>
+        <p style="font-size: 13.5px; line-height: 1.55; color: var(--muted, #888780); margin: 8px 0 0;">{{ checkoutPlanName }} is active. Your payment was verified securely.</p>
+        <div onClick="{{ continueAfterCheckout }}" class="fsx-lift" style="position: relative; text-align: center; margin-top: 22px; padding: 13px; cursor: pointer;">
+          <svg viewBox="0 0 320 48" preserveAspectRatio="none" style="position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none;"><path d="{{ planBtnPath }}" style="fill: var(--accent, #BA7517); stroke: var(--accent, #BA7517);" stroke-width="1.6" stroke-linejoin="round"></path></svg>
+          <span style="position: relative; font-size: 14px; font-weight: 600; color: #FFFEF9;">Continue to Scripts</span>
+        </div>
+      </div>
+      </sc-if>
+
+    </div>
+  </div>
+  </sc-if>
+
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{
+  &quot;accent&quot;: { &quot;editor&quot;: &quot;color&quot;, &quot;default&quot;: &quot;#BA7517&quot;, &quot;tsType&quot;: &quot;string&quot;, &quot;section&quot;: &quot;Theme&quot; },
+  &quot;accentHover&quot;: { &quot;editor&quot;: &quot;color&quot;, &quot;default&quot;: &quot;#EF9F27&quot;, &quot;tsType&quot;: &quot;string&quot;, &quot;section&quot;: &quot;Theme&quot; },
+  &quot;borderRoughness&quot;: { &quot;editor&quot;: &quot;range&quot;, &quot;default&quot;: 3.2, &quot;min&quot;: 1, &quot;max&quot;: 7, &quot;step&quot;: 0.2, &quot;tsType&quot;: &quot;number&quot;, &quot;section&quot;: &quot;Hand-drawn border&quot;, &quot;unit&quot;: &quot;px&quot; },
+  &quot;startScreen&quot;: { &quot;editor&quot;: &quot;enum&quot;, &quot;default&quot;: &quot;scripts&quot;, &quot;options&quot;: [&quot;scripts&quot;], &quot;tsType&quot;: &quot;string&quot;, &quot;section&quot;: &quot;Theme&quot; }
+}">
+class Component extends DCLogic {
+  state = {
+    screen: this.props.startScreen ?? 'scripts',
+    lumiereOpen: true,
+    soundOn: true,
+    darkMode: window.filmscriptTheme?.isDark() ?? false,
+    mode: 'sample',
+    zoom: 1,
+    menuOpen: false,
+    authOpen: false,
+    user: null,
+    input: '',
+    loading: false,
+    plan: null,
+    pendingPlan: null,
+    checkoutOpen: false,
+    checkoutPlan: null,
+    checkoutStep: 'confirm',
+    accountOpen: false,
+    accountDetailsOpen: false,
+    termsOpen: false,
+    profileName: '',
+    profileNameDraft: '',
+    profileSaving: false,
+    profileSaved: false,
+    importedScripts: [],
+    scriptsSearch: '',
+    parallaxX: 0,
+    parallaxY: 0,
+    scriptMenuId: null,
+    scriptTransitionOpen: false,
+    openingScriptTitle: '',
+    openingScriptId: null,
+    greetingTyped: '',
+    preproOpen: false,
+    preproTab: 'breakdown',
+    preproProject: null,
+    preproLoading: false,
+    paywallOpen: false,
+    importNote: '',
+    chat: [
+      { who: 'l', text: "I've read the railway café scene. Mara's restraint is doing a lot of quiet work. What do you want to push on?" },
+    ],
+  };
+
+  canvasRef = React.createRef();
+  pageRef = React.createRef();
+  chatRef = React.createRef();
+  STORAGE_KEY = 'filmscript_doc_v1';
+
+  async componentDidMount() {
+    const scriptsAccessGranted = await window.filmscriptScriptsAccess?.ready;
+    if (!scriptsAccessGranted) return;
+    if (this.state.screen === 'editor') { window.location.replace('Editor v5.dc.html'); return; }
+    window.filmscriptSounds?.preload('profile');
+    window.filmscriptSounds?.preload('scriptOpen');
+    window.filmscriptSounds?.preload('darkModeOn');
+    window.filmscriptSounds?.preload('lightModeOn');
+    const params = new URLSearchParams(window.location.search);
+    this._accountReturnTo = params.get('returnTo') || '';
+    this._refreshBilling(params.get('payment') === 'success', params.get('checkout_id')).then((me) => {
+      if (me?.authenticated && params.get('profile') === '1') this.setState({ accountDetailsOpen: true });
+    });
+    this._loadScripts();
+    this._typeGreeting();
+    this._proRequiredHandler = () => this._requireLumierePlan();
+    this._languageHandler = () => this._typeGreeting();
+    window.addEventListener('filmscript:pro-required', this._proRequiredHandler);
+    window.addEventListener('filmscript:language-change', this._languageHandler);
+  }
+
+  componentWillUnmount() {
+    if (this._greetingTimer) window.clearInterval(this._greetingTimer);
+    if (this._scriptTransitionTimer) window.clearTimeout(this._scriptTransitionTimer);
+    if (this._proRequiredHandler) window.removeEventListener('filmscript:pro-required', this._proRequiredHandler);
+    if (this._languageHandler) window.removeEventListener('filmscript:language-change', this._languageHandler);
+    this._flushChatSave();
+  }
+
+  _typeGreeting() {
+    const phrase = this._greetingNow().hi;
+    let index = 0;
+    if (this._greetingTimer) window.clearInterval(this._greetingTimer);
+    this.setState({ greetingTyped: '' });
+    this._greetingTimer = window.setInterval(() => {
+      index += 1;
+      this.setState({ greetingTyped: phrase.slice(0, index) });
+      if (index >= phrase.length) {
+        window.clearInterval(this._greetingTimer);
+        this._greetingTimer = null;
+      }
+    }, 52);
+  }
+
+  _starterChat() {
+    return [{ who: 'l', text: "I've read the railway café scene. Mara's restraint is doing a lot of quiet work. What do you want to push on?" }];
+  }
+
+  _queueChatSave(chat) {
+    const scriptId = this._activeImportedScript;
+    if (!scriptId || !window.filmscriptScripts) return;
+    if (this._chatSaveTimer) window.clearTimeout(this._chatSaveTimer);
+    this._pendingChatSave = { scriptId, chat };
+    this._chatSaveTimer = window.setTimeout(() => {
+      this._chatSaveTimer = null;
+      this._flushChatSave();
+    }, 350);
+  }
+
+  _flushChatSave() {
+    if (this._chatSaveTimer) { window.clearTimeout(this._chatSaveTimer); this._chatSaveTimer = null; }
+    const pending = this._pendingChatSave;
+    this._pendingChatSave = null;
+    if (pending && window.filmscriptScripts) window.filmscriptScripts.saveChat(pending.scriptId, pending.chat).catch(() => {});
+  }
+
+  async _loadScripts() {
+    try { this.setState({ importedScripts: (await window.filmscriptScripts.list()).scripts || [] }); }
+    catch (e) { if (e?.status === 401) this.setState({ authOpen: true, importedScripts: [] }); }
+  }
+
+  async _refreshBilling(sync = false, checkoutId = null) {
+    try {
+      const me = await (sync ? window.filmscriptBilling.sync(checkoutId) : window.filmscriptBilling.me());
+      const user = me.authenticated && me.email ? { name: me.name || me.email.split('@')[0], email: me.email, picture: me.picture || null, initial: (me.name || me.email).charAt(0).toUpperCase() } : null;
+      this.setState({ plan: me.plan || null, user, profileName: user?.name || '', profileNameDraft: user?.name || '', authOpen: user ? this.state.authOpen : true });
+      return me;
+    } catch (e) {}
+  }
+
+  _hasLumiereAccess() {
+    return this.state.plan === 'lumiere';
+  }
+
+  _requireLumierePlan(message = 'FilmScript Pro is required to use Lumiere. Your existing work remains editable and exportable.') {
+    if (this._hasLumiereAccess()) return true;
+    this.setState({ plan: null, paywallOpen: true, lumiereOpen: true, toast: message });
+    return false;
+  }
+
+  SCRIPT_TEXT = [
+    'INT. RAILWAY CAFÉ — RAINY AFTERNOON',
+    'Steam fogs the window. MARA (30s, restless, a notebook she never opens) watches the platform. A train sighs in, brakes hissing.',
+    'MARA (barely audible): He\u2019s not coming. He never was. I just liked the waiting.',
+    'She closes the notebook. For the first time, it stays shut.',
+    'EXT. PLATFORM — CONTINUOUS',
+    'The crowd parts around her like water. A conductor checks his watch. Somewhere a bell.',
+  ].join('\n');
+
+  DEFAULT_DOC = [
+    { type: 'scene', text: 'INT. RAILWAY CAFÉ — RAINY AFTERNOON' },
+    { type: 'action', text: 'Steam fogs the window. MARA (30s, restless, a notebook she never opens) watches the platform. A train sighs in, brakes hissing.' },
+    { type: 'character', text: 'MARA' },
+    { type: 'paren', text: '(barely audible)' },
+    { type: 'dialogue', text: "He's not coming. He never was. I just liked the waiting." },
+    { type: 'action', text: 'She closes the notebook. For the first time, it stays shut.' },
+    { type: 'scene', text: 'EXT. PLATFORM — CONTINUOUS' },
+    { type: 'action', text: 'The crowd parts around her like water. A conductor checks his watch. Somewhere a bell.' },
+  ];
+
+  // ---------- hand-drawn geometry ----------
+  _rng(seed) {
+    let s = seed % 2147483647;
+    if (s <= 0) s += 2147483646;
+    return () => { s = (s * 16807) % 2147483647; return (s - 1) / 2147483646; };
+  }
+
+  // hand-drawn rounded rectangle: perpendicular jitter on edges + smooth rounded corners (no cut corners)
+  _roughPath(w, h, amp, seed, r) {
+    const rnd = this._rng(seed);
+    const m = amp + 5;
+    const x0 = m, y0 = m, x1 = w - m, y1 = h - m;
+    r = Math.min(r || 16, (x1 - x0) / 2 - 1, (y1 - y0) / 2 - 1);
+    const P = [];
+    const add = (x, y, nx, ny) => { const d = (rnd() * 2 - 1) * amp; P.push([x + nx * d, y + ny * d]); };
+    const edge = (ax, ay, bx, by, nx, ny, steps) => { for (let i = 0; i < steps; i++) { const t = i / steps; add(ax + (bx - ax) * t, ay + (by - ay) * t, nx, ny); } };
+    const arc = (cx, cy, a0, a1, steps) => { for (let i = 0; i <= steps; i++) { const a = a0 + (a1 - a0) * i / steps; add(cx + Math.cos(a) * r, cy + Math.sin(a) * r, Math.cos(a), Math.sin(a)); } };
+    const sx = Math.max(2, Math.round((x1 - x0) / 80));
+    const sy = Math.max(2, Math.round((y1 - y0) / 80));
+    edge(x0 + r, y0, x1 - r, y0, 0, -1, sx);
+    arc(x1 - r, y0 + r, -Math.PI / 2, 0, 3);
+    edge(x1, y0 + r, x1, y1 - r, 1, 0, sy);
+    arc(x1 - r, y1 - r, 0, Math.PI / 2, 3);
+    edge(x1 - r, y1, x0 + r, y1, 0, 1, sx);
+    arc(x0 + r, y1 - r, Math.PI / 2, Math.PI, 3);
+    edge(x0, y1 - r, x0, y0 + r, -1, 0, sy);
+    arc(x0 + r, y0 + r, Math.PI, Math.PI * 1.5, 3);
+    const n = P.length;
+    let d = `M ${P[0][0].toFixed(1)} ${P[0][1].toFixed(1)} `;
+    for (let i = 0; i < n; i++) {
+      const p0 = P[(i - 1 + n) % n], p1 = P[i], p2 = P[(i + 1) % n], p3 = P[(i + 2) % n];
+      const c1x = p1[0] + (p2[0] - p0[0]) / 6, c1y = p1[1] + (p2[1] - p0[1]) / 6;
+      const c2x = p2[0] - (p3[0] - p1[0]) / 6, c2y = p2[1] - (p3[1] - p1[1]) / 6;
+      d += `C ${c1x.toFixed(1)} ${c1y.toFixed(1)} ${c2x.toFixed(1)} ${c2y.toFixed(1)} ${p2[0].toFixed(1)} ${p2[1].toFixed(1)} `;
+    }
+    return d + 'Z';
+  }
+
+  _roughLineH(len, amp, seed) {
+    const rnd = this._rng(seed);
+    const seg = Math.max(8, Math.round(len / 30)), y = 4;
+    const pts = [];
+    for (let i = 0; i <= seg; i++) pts.push([len * i / seg, y + (rnd() * 2 - 1) * amp]);
+    let d = `M ${pts[0][0].toFixed(1)} ${pts[0][1].toFixed(1)} `;
+    for (let i = 1; i < pts.length; i++) {
+      const cx = (pts[i - 1][0] + pts[i][0]) / 2, cy = (pts[i - 1][1] + pts[i][1]) / 2;
+      d += `Q ${pts[i - 1][0].toFixed(1)} ${pts[i - 1][1].toFixed(1)} ${cx.toFixed(1)} ${cy.toFixed(1)} `;
+    }
+    d += `L ${pts[pts.length - 1][0].toFixed(1)} ${pts[pts.length - 1][1].toFixed(1)}`;
+    return d;
+  }
+
+  _roughLineV(len, amp, seed) {
+    const rnd = this._rng(seed);
+    const seg = Math.max(8, Math.round(len / 30)), x = 4;
+    const pts = [];
+    for (let i = 0; i <= seg; i++) pts.push([x + (rnd() * 2 - 1) * amp, len * i / seg]);
+    let d = `M ${pts[0][0].toFixed(1)} ${pts[0][1].toFixed(1)} `;
+    for (let i = 1; i < pts.length; i++) {
+      const cx = (pts[i - 1][0] + pts[i][0]) / 2, cy = (pts[i - 1][1] + pts[i][1]) / 2;
+      d += `Q ${pts[i - 1][0].toFixed(1)} ${pts[i - 1][1].toFixed(1)} ${cx.toFixed(1)} ${cy.toFixed(1)} `;
+    }
+    d += `L ${pts[pts.length - 1][0].toFixed(1)} ${pts[pts.length - 1][1].toFixed(1)}`;
+    return d;
+  }
+
+  // ---------- editable screenplay ----------
+  _esc(s) { return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;'); }
+
+  _styleFor(type) {
+    const base = 'position:relative;margin:0;min-height:1.62em;white-space:pre-wrap;';
+    const t = {
+      scene: 'font-weight:700;text-transform:uppercase;letter-spacing:.3px;margin-top:18px;',
+      action: 'margin-top:12px;',
+      character: 'text-align:center;font-weight:700;margin-top:14px;',
+      paren: 'text-align:center;font-style:italic;opacity:.72;',
+      dialogue: 'max-width:340px;margin:0 auto;',
+      transition: 'text-align:right;font-weight:700;text-transform:uppercase;margin-top:12px;',
+      title: 'text-align:center;font-weight:700;text-transform:uppercase;letter-spacing:.35px;margin-top:310px;',
+      title_credit: 'text-align:center;margin-top:72px;',
+      title_author: 'text-align:center;margin-top:10px;',
+      title_date: 'text-align:center;margin-top:218px;',
+      fadein: 'font-weight:700;text-transform:uppercase;letter-spacing:.3px;',
+      end: 'text-align:center;font-weight:700;letter-spacing:3px;margin-top:54px;',
+    };
+    return base + (t[type] || t.action);
+  }
+
+  _markerStyle() {
+    return 'position:absolute;left:-46px;top:0;color:var(--accent,#BA7517);opacity:.65;font-size:11px;';
+  }
+
+  // ---------- generate a long invented screenplay ----------
+  _generateScript() {
+    const rnd = this._rng(20260629);
+    const pick = (a) => a[Math.floor(rnd() * a.length)];
+    const intext = ['INT.', 'EXT.', 'INT./EXT.'];
+    const places = [
+      'LIGHTHOUSE — LANTERN ROOM', 'LIGHTHOUSE — SPIRAL STAIR', "KEEPER'S COTTAGE — KITCHEN",
+      'HARBOR ROAD', 'THE BREAKWATER', 'FISHING TRAWLER — DECK', 'VILLAGE PUB — BACK BOOTH',
+      "MARA'S BEDROOM", 'THE CLIFF PATH', 'POST OFFICE', 'CHURCHYARD', 'SUPPLY BOAT — CABIN',
+      'TIDE POOLS', 'THE OLD BOATHOUSE', 'HARBORMASTER\u2019S OFFICE', 'SEA — OPEN WATER',
+    ];
+    const times = ['DAWN', 'DAY', 'DUSK', 'NIGHT', 'CONTINUOUS', 'LATER', 'PRE-DAWN', 'MAGIC HOUR'];
+    const chars = ['MARA', 'THE KEEPER', 'ELIAS', 'HARBORMASTER', 'YOUNG TOM', 'GULL (V.O.)', 'MARA (V.O.)', 'RADIO VOICE'];
+    const actions = [
+      'The lamp turns. A blade of light sweeps the black water and finds nothing.',
+      'Mara wipes salt from the glass. Below, the surf gnaws the rocks like something patient.',
+      'The Keeper climbs, one hand always on the rail, counting the steps he no longer needs to count.',
+      'Rain arrives sideways. The cottage windows rattle in their frames.',
+      'A letter sits unopened on the table, its corner darkened where a thumb keeps returning.',
+      'The trawler pitches. Ropes groan. Somewhere a bell answers a bell.',
+      'She lays the logbook flat and writes the date, then crosses it out.',
+      'Light fails over the headland. The town below blinks awake, window by window.',
+      'He pours two cups of tea and only ever drinks one.',
+      'The radio coughs static, then a voice, then static again.',
+      'Footprints fill with seawater and vanish behind her.',
+      'The flame gutters. For a heartbeat the whole coast goes dark.',
+      'Tom presses his ear to the foghorn housing as if it might confess something.',
+      'A photograph, sun-bleached to ghosts, is tucked back behind the clock.',
+      'The tide draws out farther than it should, baring the wreck no one talks about.',
+    ];
+    const lines = [
+      'You can\u2019t keep a light for someone who isn\u2019t coming back.',
+      'The sea doesn\u2019t take sides. It just takes.',
+      'I counted the flashes every night. Three long, one short. Like a name.',
+      'We don\u2019t leave the lamp. The lamp leaves us, eventually.',
+      'Tell me you saw it too. The boat. Out past the second buoy.',
+      'My father kept this light forty years and it kept him longer.',
+      'There\u2019s a difference between waiting and refusing to let go.',
+      'Storm\u2019s turning. You\u2019ll want to be off the breakwater before it does.',
+      'I wrote it all down so somebody would know we were here.',
+      'You think the dark is the enemy. The dark is just honest.',
+      'If the horn stops, you run. You don\u2019t look back at me.',
+      'Some lights you keep for the living. This one I keep for the rest.',
+      'I\u2019m not frightened of the water. I\u2019m frightened of the quiet after.',
+      'Every keeper leaves a name in the logbook. None of them leave twice.',
+    ];
+    const parens = ['(quietly)', '(beat)', '(not looking up)', '(to herself)', '(sharp)', '(after a moment)', '(barely audible)'];
+    const transitions = ['CUT TO:', 'SMASH CUT TO:', 'DISSOLVE TO:', 'MATCH CUT TO:'];
+
+    const blocks = [{ type: 'fadein', text: 'FADE IN:' }];
+    for (let s = 0; s < 320; s++) {
+      blocks.push({ type: 'scene', text: `${pick(intext)} ${pick(places)} — ${pick(times)}` });
+      const na = 1 + Math.floor(rnd() * 3);
+      for (let a = 0; a < na; a++) blocks.push({ type: 'action', text: pick(actions) });
+      const nd = 1 + Math.floor(rnd() * 4);
+      for (let d = 0; d < nd; d++) {
+        blocks.push({ type: 'character', text: pick(chars) });
+        if (rnd() < 0.4) blocks.push({ type: 'paren', text: pick(parens) });
+        let txt = pick(lines);
+        if (rnd() < 0.4) txt += ' ' + pick(lines);
+        blocks.push({ type: 'dialogue', text: txt });
+        if (rnd() < 0.28) blocks.push({ type: 'action', text: pick(actions) });
+      }
+      if (rnd() < 0.5) blocks.push({ type: 'transition', text: pick(transitions) });
+    }
+    return blocks;
+  }
+
+  _buildPages(rough) {
+    const mode = this.state.mode || 'sample';
+    const key = mode + ':' + rough + ':' + (this._importedRev || 0);
+    if (this._pagesKey === key && this._pagesCache) return this._pagesCache;
+    const self = this;
+    if (mode === 'blank') {
+      const html = `<div data-type="scene" style="${this._styleFor('scene')}"><br><span data-marker contenteditable="false" style="${this._markerStyle()}">1</span></div>`;
+      const out = [{
+        no: 1, label: '1.',
+        path: this._roughPath(794, 1123, rough + 1.6, 9000, 24),
+        mount: (node) => { if (node && node.__fsHtml !== html) { node.__fsHtml = html; self._initPage(node, html); } },
+      }];
+      this._pagesKey = key; this._pagesCache = out;
+      return out;
+    }
+    // Ignore isolated accent glyphs that some PDF fonts expose as separate text
+    // objects. Existing imports are cleaned here too, not only on reimport.
+    const blocks = (mode === 'imported' ? (this._importedBlocks || []) : this._generateScript())
+      .filter(b => b.type === 'pagebreak' || !/^[ÁÉÍÓÚÜÑáéíóúüñ]$/.test((b.text || '').trim()));
+    const preservePdfPages = mode === 'imported' && blocks.some(b => b.type === 'pagebreak');
+    const CW = { dialogue: 38, paren: 42 };
+    const MARG = { scene: 1.1, character: 0.7, action: 0.6, transition: 0.7, fadein: 0.6, end: 3, paren: 0, dialogue: 0 };
+    const est = (b) => { const w = CW[b.type] || 74; return Math.max(1, Math.ceil((b.text.length || 1) / w)) + (MARG[b.type] || 0); };
+    const CAP = 44;
+    const pageBlocks = []; let cur = []; let lines = 0;
+    for (const b of blocks) {
+      // PDF imports keep the source page boundaries. Never render the marker,
+      // but start a fresh editor page when the original screenplay did.
+      if (b.type === 'pagebreak') {
+        if (cur.length) { pageBlocks.push(cur); cur = []; lines = 0; }
+        continue;
+      }
+      const cost = est(b);
+      // A PDF's page breaks are authoritative. Re-paginating it creates
+      // accidental one-character pages when a block crosses our estimate.
+      if (!preservePdfPages && lines + cost > CAP && cur.length) { pageBlocks.push(cur); cur = []; lines = 0; if (pageBlocks.length >= 150) break; }
+      cur.push(b); lines += cost;
+    }
+    if (pageBlocks.length < 150 && cur.length) pageBlocks.push(cur);
+    const pages = pageBlocks.slice(0, 150);
+    if (!pages.length) pages.push([{ type: 'scene', text: '' }]);
+    if (mode !== 'imported') {
+      const last = pages[pages.length - 1];
+      last.push({ type: 'transition', text: 'FADE OUT.' });
+      last.push({ type: 'end', text: 'THE END' });
+    }
+
+    let sceneNo = 0;
+    const out = pages.map((bl, pi) => {
+      const html = bl.map(b => {
+        let marker = '';
+        if (b.type === 'scene') { sceneNo++; marker = `<span data-marker contenteditable="false" style="${this._markerStyle()}">${sceneNo}</span>`; }
+        return `<div data-type="${b.type}" style="${this._styleFor(b.type)}">${this._esc(b.text) || '<br>'}${marker}</div>`;
+      }).join('');
+      return {
+        no: pi + 1,
+        label: (pi + 1) + '.',
+        showNumber: !bl.some(b => b.type === 'title'),
+        scenes: bl.filter(b => b.type === 'scene').map(b => b.text),
+        path: this._roughPath(794, 1123, rough + 1.6, 9000 + pi * 13, 24),
+        mount: (node) => { if (node && node.__fsHtml !== html) { node.__fsHtml = html; self._initPage(node, html); } },
+      };
+    });
+    this._pagesKey = key; this._pagesCache = out;
+    return out;
+  }
+
+  _initPage(node, html) {
+    node.contentEditable = 'true';
+    node.spellcheck = false;
+    node.innerHTML = html;
+    if (!this._editorNode) this._editorNode = node;
+    node.addEventListener('focus', () => { this._editorNode = node; this._rememberActiveBlock(node); });
+    node.addEventListener('mouseup', () => this._rememberActiveBlock(node));
+    node.addEventListener('keyup', () => this._rememberActiveBlock(node));
+    node.addEventListener('input', () => this._rememberActiveBlock(node));
+    node.addEventListener('keydown', (e) => this._onEditorKey(e));
+  }
+
+  _rememberActiveBlock(node) {
+    const selection = window.getSelection();
+    if (!selection || !selection.anchorNode || !node.contains(selection.anchorNode)) return;
+    let block = selection.anchorNode;
+    while (block && block.parentNode !== node) block = block.parentNode;
+    if (block && block.dataset && block.dataset.type) this._activeBlock = block;
+  }
+
+  _currentBlock() {
+    const node = this._editorNode;
+    if (!node) return null;
+    const sel = window.getSelection();
+    if (!sel || !sel.anchorNode || !node.contains(sel.anchorNode)) return this._activeBlock || node.lastElementChild;
+    let el = sel.anchorNode;
+    while (el && el.parentNode !== node) el = el.parentNode;
+    return el || this._activeBlock || node.lastElementChild;
+  }
+
+  _applyType(block, type) {
+    if (!block) return;
+    block.dataset.type = type;
+    block.setAttribute('style', this._styleFor(type));
+    let mk = block.querySelector('[data-marker]');
+    if (type === 'scene') {
+      if (!mk) {
+        mk = document.createElement('span');
+        mk.setAttribute('data-marker', '');
+        mk.contentEditable = 'false';
+        mk.setAttribute('style', this._markerStyle());
+        mk.textContent = '1';
+        block.appendChild(mk);
+      }
+    } else if (mk) {
+      mk.remove();
+    }
+  }
+
+  _renumber() { /* scene numbers are baked globally at build time */ }
+
+  _save() { /* long generated doc is not persisted to avoid storage limits */ }
+
+  _onEditorKey(e) {
+    const order = ['scene', 'action', 'character', 'paren', 'dialogue', 'transition'];
+    if (e.key.length === 1 || e.key === 'Backspace' || e.key === 'Enter' || e.key === 'Tab' || e.key === ' ') this._playClick();
+    if ((e.metaKey || e.ctrlKey) && /^[1-6]$/.test(e.key)) {
+      e.preventDefault();
+      this._applyType(this._currentBlock(), order[+e.key - 1]);
+      this._renumber(); this._save();
+      return;
+    }
+    if (e.key === 'Tab') {
+      e.preventDefault();
+      const b = this._currentBlock();
+      if (b) {
+        let i = order.indexOf(b.dataset.type || 'action');
+        if (i < 0) i = 1;
+        i = (i + (e.shiftKey ? -1 : 1) + order.length) % order.length;
+        this._applyType(b, order[i]);
+        this._renumber(); this._save();
+      }
+      return;
+    }
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault();
+      this._enter();
+    }
+  }
+
+  _enter() {
+    const node = this._editorNode;
+    const cur = this._currentBlock();
+    const nextMap = { scene: 'action', action: 'action', character: 'dialogue', paren: 'dialogue', dialogue: 'action', transition: 'scene' };
+    const type = cur ? (nextMap[cur.dataset.type] || 'action') : 'action';
+    const div = document.createElement('div');
+    div.dataset.type = type;
+    div.setAttribute('style', this._styleFor(type));
+    if (type === 'scene') {
+      const mk = document.createElement('span');
+      mk.setAttribute('data-marker', '');
+      mk.contentEditable = 'false';
+      mk.setAttribute('style', this._markerStyle());
+      mk.textContent = '1';
+      div.appendChild(mk);
+    }
+    div.appendChild(document.createElement('br'));
+    if (cur && cur.nextSibling) node.insertBefore(div, cur.nextSibling);
+    else node.appendChild(div);
+    const sel = window.getSelection();
+    const range = document.createRange();
+    range.setStart(div, type === 'scene' ? 1 : 0);
+    range.collapse(true);
+    sel.removeAllRanges();
+    sel.addRange(range);
+    this._renumber(); this._save();
+  }
+
+  _getScript() {
+    const pages = document.querySelectorAll('[data-fs-page]');
+    if (pages.length) {
+      let t = '';
+      pages.forEach((p, i) => { const txt = (p.innerText || '').trim(); if (txt) t += '\n\n----- PAGE ' + (i + 1) + ' -----\n' + txt; });
+      if (t.trim()) return t.trim();
+    }
+    const n = this._editorNode;
+    return (n && n.innerText.trim()) ? n.innerText : this.SCRIPT_TEXT;
+  }
+
+  setFormat(type) {
+    const b = this._currentBlock();
+    if (b) { this._applyType(b, type); this._activeBlock = b; this._renumber(); this._save(); }
+    if (this._editorNode) this._editorNode.focus();
+    this._playClick();
+  }
+
+  // ---------- zoom ----------
+  fillPage() {
+    const c = this.canvasRef.current, p = this.pageRef.current;
+    if (!c || !p) return;
+    const z = Math.max(0.5, Math.min(2, (c.clientWidth - 48) / p.offsetWidth));
+    this.setState({ zoom: Math.round(z * 100) / 100 });
+  }
+
+  goToPage(pageNumber) {
+    const canvas = this.canvasRef.current;
+    const page = this.pageRef.current && this.pageRef.current.querySelectorAll('[data-fs-page]')[pageNumber - 1];
+    if (!canvas || !page) return;
+    page.parentElement.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }
+
+  // ---------- import (.fs / PDF / text) ----------
+  // .fs is FilmScript's plain text format: one block per line, "type: text",
+  // mirroring the editor's block types. Example:
+  //   title: The Quiet Hour
+  //   scene: INT. RADIO STATION. NIGHT
+  //   action: A single lamp. NOA leans into the microphone.
+  //   character: NOA
+  //   paren: (into the mic)
+  //   dialogue: If you are still awake, this hour is yours.
+  //   transition: CUT TO:
+  // Long blocks may wrap: an unprefixed line continues the block above it.
+  importScript() {
+    window.filmscriptSounds?.play('importScript');
+    const inp = document.createElement('input');
+    inp.type = 'file';
+    inp.accept = '.fs,.pdf,.txt,.fountain';
+    inp.onchange = () => { const f = inp.files && inp.files[0]; if (f) this._importFile(f); };
+    inp.click();
+  }
+
+  async _importFile(file) {
+    this.setState({ importNote: 'Reading ' + file.name + '…' });
+    try {
+      const name = (file.name || '').toLowerCase();
+      let blocks;
+      const imported = await window.filmscriptScripts.import(file);
+      const text = imported.script.text;
+      // The server reads PDF line positions, which is far more reliable than
+      // guessing types from flattened text in the browser.
+      blocks = imported.script.blocks || (name.endsWith('.pdf') ? this._parseGuess(text) : (this._parseFS(text) || this._parseGuess(text)));
+      blocks = (blocks || []).filter(b => b.type === 'pagebreak' || (b.text || '').trim());
+      if (!blocks.length) throw new Error('empty');
+      await window.filmscriptScripts.saveBlocks(imported.script.id, blocks);
+      this._importedBlocks = blocks;
+      this._importedTitle = imported.script.title;
+      this._activeImportedScript = imported.script.id;
+      this._importedRev = (this._importedRev || 0) + 1;
+      this._pagesKey = null; this._pagesCache = null;
+      this._enterScript(`Editor v5.dc.html?script=${encodeURIComponent(imported.script.id)}`, imported.script.title, imported.script.id);
+    } catch (e) {
+      this.setState({ importNote: e.message === 'nopdf'
+        ? 'That PDF keeps its text locked away. Export it as .fs or plain text and try again.'
+        : 'Could not read that file. Try a .fs or plain text export.' });
+    }
+  }
+
+  async openStoredScript(script) {
+    if (!this._startScriptTransition(script.title, script.id)) return;
+    try {
+      this._flushChatSave();
+      const stored = (await window.filmscriptScripts.get(script.id)).script;
+      this._finishScriptTransition(`Editor v5.dc.html?script=${encodeURIComponent(stored.id)}`);
+    } catch (e) {
+      this._cancelScriptTransition();
+      this.setState({ importNote: 'Could not open that imported script.' });
+    }
+  }
+
+  _startScriptTransition(title, scriptId = null) {
+    if (this._scriptOpening) return false;
+    this._scriptOpening = true;
+    this._scriptTransitionStartedAt = Date.now();
+    window.filmscriptSounds?.play('scriptOpen');
+    this.setState({
+      scriptTransitionOpen: true,
+      openingScriptTitle: String(title || 'Untitled screenplay').trim() || 'Untitled screenplay',
+      openingScriptId: scriptId || null,
+      scriptMenuId: null,
+    });
+    return true;
+  }
+
+  _finishScriptTransition(url) {
+    const elapsed = Date.now() - (this._scriptTransitionStartedAt || Date.now());
+    const delay = Math.max(0, 410 - elapsed);
+    if (this._scriptTransitionTimer) window.clearTimeout(this._scriptTransitionTimer);
+    this._scriptTransitionTimer = window.setTimeout(() => {
+      window.location.href = url;
+    }, delay);
+  }
+
+  _cancelScriptTransition() {
+    if (this._scriptTransitionTimer) window.clearTimeout(this._scriptTransitionTimer);
+    this._scriptTransitionTimer = null;
+    this._scriptOpening = false;
+    this._scriptTransitionStartedAt = 0;
+    this.setState({ scriptTransitionOpen: false, openingScriptTitle: '', openingScriptId: null });
+  }
+
+  _enterScript(url, title = 'Untitled screenplay', scriptId = null) {
+    if (!this._startScriptTransition(title, scriptId)) return;
+    this._finishScriptTransition(url);
+  }
+
+  async createNewScript() {
+    window.filmscriptSounds?.play('createNewScript');
+    if (this._scriptOpening) return;
+    if (!window.filmscriptScripts?.create) {
+      this._toast('Could not create a new screenplay.');
+      return;
+    }
+    try {
+      const result = await window.filmscriptScripts.create('Untitled screenplay');
+      const script = result?.script;
+      if (!script?.id) throw new Error('missing script id');
+      this._enterScript(`Editor v5.dc.html?script=${encodeURIComponent(script.id)}`, script.title, script.id);
+    } catch (error) {
+      this._toast('Could not create a new screenplay.');
+    }
+  }
+
+  async openPreproduction() {
+    if (!this._activeImportedScript) { this.setState({ importNote: 'Open an imported screenplay before starting preproduction.', screen: 'scripts' }); return; }
+    this.setState({ preproOpen: true, preproLoading: true });
+    try { const result = await window.filmscriptPreproduction.get(this._activeImportedScript); this.setState({ preproProject: result.project, preproLoading: false }); this._pollPreproduction(); } catch { this.setState({ preproLoading: false }); }
+  }
+  closePreproduction() { if (this._preproTimer) window.clearTimeout(this._preproTimer); this.setState({ preproOpen: false }); }
+  async analyzePreproduction() { if (!this._activeImportedScript || !this._requireLumierePlan()) return; await window.filmscriptPreproduction.analyze(this._activeImportedScript); const result = await window.filmscriptPreproduction.get(this._activeImportedScript); this.setState({ preproProject: result.project }); this._pollPreproduction(); }
+  async _pollPreproduction() { if (this._preproTimer) window.clearTimeout(this._preproTimer); const p = this.state.preproProject; if (!this.state.preproOpen || p?.analysis?.status !== 'running' && p?.analysis?.status !== 'queued') return; this._preproTimer = window.setTimeout(async () => { try { const result = await window.filmscriptPreproduction.get(this._activeImportedScript); this.setState({ preproProject: result.project }, () => this._pollPreproduction()); } catch {} }, 1400); }
+
+  toggleScriptMenu(event, id) {
+    event.stopPropagation();
+    this.setState((state) => ({ scriptMenuId: state.scriptMenuId === id ? null : id }));
+  }
+
+  onScriptsPointer(event) {
+    if (this.state.screen !== 'scripts' || window.matchMedia?.('(prefers-reduced-motion: reduce)').matches) return;
+    const rect = event.currentTarget.getBoundingClientRect();
+    const x = ((event.clientX - rect.left) / Math.max(1, rect.width) - 0.5) * -14;
+    const y = ((event.clientY - rect.top) / Math.max(1, rect.height) - 0.5) * -9;
+    if (this._parallaxFrame) return;
+    this._parallaxFrame = requestAnimationFrame(() => {
+      this._parallaxFrame = null;
+      this.setState({ parallaxX: Number(x.toFixed(2)), parallaxY: Number(y.toFixed(2)) });
+    });
+  }
+
+  async deleteStoredScript(event, script) {
+    event.stopPropagation();
+    const confirmation = `Delete “${script.title}”? This cannot be undone.`;
+    if (!window.confirm(window.filmscriptLanguage?.t(confirmation) || confirmation)) return;
+    try {
+      await window.filmscriptScripts.remove(script.id);
+      this.setState((state) => ({ importedScripts: state.importedScripts.filter((item) => item.id !== script.id), scriptMenuId: null }));
+    } catch (error) {
+      this.setState({ scriptMenuId: null, importNote: 'Could not delete that script. Please try again.' });
+    }
+  }
+
+  async renameStoredScript(event, script) {
+    event.stopPropagation();
+    const currentTitle = String(script.title || 'Untitled screenplay');
+    const nextTitle = window.prompt('Rename screenplay', currentTitle);
+    if (nextTitle === null) return;
+    const title = nextTitle.trim().slice(0, 160);
+    if (!title) return;
+    try {
+      await window.filmscriptScripts.rename(script.id, title);
+      this.setState((state) => ({
+        importedScripts: state.importedScripts.map((item) => item.id === script.id ? { ...item, title, updatedAt: new Date().toISOString() } : item),
+        scriptMenuId: null,
+      }));
+    } catch (error) {
+      this.setState({ scriptMenuId: null, importNote: 'Could not rename that script. Please try again.' });
+    }
+  }
+
+  _parseFS(text) {
+    const re = /^(scene|action|character|paren|parenthetical|dialogue|dialog|transition|fadein|end)\s*:\s?(.*)$/i;
+    const map = { parenthetical: 'paren', dialog: 'dialogue' };
+    const blocks = [];
+    let typed = 0;
+    for (const raw of String(text).split(/\r?\n/)) {
+      const line = raw.trimEnd();
+      if (/^title\s*:/i.test(line)) { this._importedTitle = line.replace(/^title\s*:\s*/i, ''); continue; }
+      const m = line.match(re);
+      if (m) {
+        typed++;
+        const t = m[1].toLowerCase();
+        blocks.push({ type: map[t] || t, text: m[2].trim() });
+      } else if (line.trim() && blocks.length) {
+        blocks[blocks.length - 1].text += ' ' + line.trim();
+      }
+    }
+    return typed >= 2 ? blocks : null;
+  }
+
+  _parseGuess(text) {
+    const lines = String(text).split(/\r?\n/);
+    // Screenplay PDFs encode block type in the left margin. Find the action
+    // margin (leftmost common indent); anything clearly right of it is
+    // dialogue, parenthetical or a character cue.
+    const hist = new Map();
+    for (const raw of lines) {
+      if (!raw.trim()) continue;
+      const ind = raw.length - raw.replace(/^ +/, '').length;
+      hist.set(ind, (hist.get(ind) || 0) + 1);
+    }
+    const inds = [...hist.keys()].sort((a, b) => a - b);
+    // action margin = the scene-heading margin (they share it in standard
+    // format); fallback: most common indent of long lines, then the minimum
+    let base = null;
+    const sceneInds = new Map();
+    const longInds = new Map();
+    for (const raw of lines) {
+      const t = raw.trim();
+      if (!t) continue;
+      const ind = raw.length - raw.replace(/^ +/, '').length;
+      if (/^(INT|EXT|INT\.\/EXT|I\/E)[.\s-]/i.test(t.replace(/^\d+\s+/, ''))) sceneInds.set(ind, (sceneInds.get(ind) || 0) + 1);
+      if (t.length > 45) longInds.set(ind, (longInds.get(ind) || 0) + 1);
+    }
+    const top = (m2) => [...m2.entries()].sort((a, b) => b[1] - a[1])[0];
+    if (sceneInds.size) base = top(sceneInds)[0];
+    else if (longInds.size) base = top(longInds)[0];
+    else base = inds.length ? inds[0] : 0;
+    const useIndent = inds.length && inds[inds.length - 1] - base >= 8;
+
+    const blocks = [];
+    let inDialogue = false, inParen = false;
+    for (const raw of lines) {
+      const line = raw.trim();
+      if (!line) { inDialogue = false; inParen = false; blocks.push({ type: '_gap', text: '' }); continue; }
+      if (/^[\d\s.]+$/.test(line) || /^-+\s*PAGE \d+\s*-+$/i.test(line)) { inDialogue = false; inParen = false; continue; }
+      const clean = line.replace(/^\d+\s+/, '').replace(/\s+\d+$/, '');
+      if (/^(INT|EXT|INT\.\/EXT|I\/E)[.\s-]/i.test(clean)) { blocks.push({ type: 'scene', text: clean.toUpperCase() }); inDialogue = false; inParen = false; continue; }
+      if (/^FADE IN[:.]?$/i.test(line)) { blocks.push({ type: 'fadein', text: line.toUpperCase() }); inDialogue = false; continue; }
+      if (/^THE END\.?$/i.test(line)) { blocks.push({ type: 'end', text: 'THE END' }); inDialogue = false; continue; }
+      if (line.length < 26 && /(TO:|FADE OUT\.?|SMASH CUT|DISSOLVE)$/i.test(line)) { blocks.push({ type: 'transition', text: line.toUpperCase() }); inDialogue = false; continue; }
+      const isCue = line === line.toUpperCase() && line.length <= 34 && /[A-Z]/.test(line) && !/[.,!?]$/.test(line.replace(/\((V\.O\.|O\.S\.|CONT'D)\)$/i, '').trim());
+      if (useIndent) {
+        const ind = raw.length - raw.replace(/^ +/, '').length;
+        if (ind <= base + 3) { blocks.push({ type: 'action', text: line }); inDialogue = false; inParen = false; continue; }
+        if (inParen || /^\(/.test(line)) { blocks.push({ type: 'paren', text: line }); inParen = !/\)$/.test(line); inDialogue = true; continue; }
+        if (isCue) { blocks.push({ type: 'character', text: line }); inDialogue = true; continue; }
+        blocks.push({ type: 'dialogue', text: line });
+        inDialogue = true;
+        continue;
+      }
+      if (inDialogue && /^\(.*\)$/.test(line)) { blocks.push({ type: 'paren', text: line }); continue; }
+      if (isCue) { blocks.push({ type: 'character', text: line }); inDialogue = true; continue; }
+      blocks.push({ type: inDialogue ? 'dialogue' : 'action', text: line });
+    }
+    // drop title-page lines before the first structural block
+    const firstScene = blocks.findIndex(b => b.type === 'scene' || b.type === 'fadein');
+    const trimmed = firstScene > 0 ? blocks.slice(firstScene) : blocks;
+    // merge hard-wrapped continuation lines; a blank-line gap breaks the merge
+    const merged = [];
+    let gap = false;
+    for (const b of trimmed) {
+      if (b.type === '_gap') { gap = true; continue; }
+      const prev = merged[merged.length - 1];
+      if (!gap && prev && prev.type === b.type && (b.type === 'action' || b.type === 'dialogue' || b.type === 'paren')) {
+        prev.text += ' ' + b.text;
+      } else {
+        merged.push(b);
+      }
+      gap = false;
+    }
+    // drop stray (CONT'D)/(MORE) artifacts not attached to a character cue
+    return merged.filter((b, i) => !(b.type === 'paren' && /^\(\s*(CONT'D|MORE)\s*\)$/i.test(b.text) && (!merged[i - 1] || merged[i - 1].type !== 'character')));
+  }
+
+  async _inflate(data) {
+    const out = [];
+    try {
+      const ds = new DecompressionStream('deflate');
+      const writer = ds.writable.getWriter();
+      writer.write(data).catch(() => {});
+      writer.close().catch(() => {});
+      const reader = ds.readable.getReader();
+      while (true) {
+        let r;
+        try { r = await reader.read(); } catch (e) { break; }
+        if (r.done) break;
+        out.push(r.value);
+      }
+    } catch (e) {}
+    const len = out.reduce((a, c) => a + c.length, 0);
+    const all = new Uint8Array(len);
+    let o = 0; for (const c of out) { all.set(c, o); o += c.length; }
+    return all;
+  }
+
+  async _pdfText(buf) {
+    const bytes = new Uint8Array(buf);
+    const latin = new TextDecoder('latin1').decode(bytes);
+    if (latin.indexOf('%PDF') !== 0) return null;
+    // MacRoman-encoded accents decoded as windows-1252 come out as ‡ Ž — – etc.
+    const MACMAP = { '‡': 'á', 'Ž': 'é', '\u2019': 'í', '\u2014': 'ó', 'œ': 'ú', '\u2013': 'ñ', 'ˆ': 'à', 'Ÿ': 'ü', 'À': '¿', 'Á': '¡', 'ç': 'Á', 'ƒ': 'É', 'ê': 'Í', 'î': 'Ó', 'ò': 'Ú', '„': 'Ñ' };
+    let fixOn = latin.indexOf('MacRomanEncoding') >= 0;
+    const fix = (s) => fixOn ? s.replace(/[‡Žœˆ Ÿ„ƒçêîò\u2013\u2014\u2019](?=[a-z])|(?<=[a-z])[‡Žœˆ Ÿ\u2013\u2014\u2019]/g, (c) => MACMAP[c] || c) : s;
+    const unesc = (s) => s.replace(/\\([nrtbf()\\]|\d{1,3})/g, (a, c) => {
+      if (c === 'n') return '\n'; if (c === 'r') return ''; if (c === 't') return ' ';
+      if (c === '(' || c === ')' || c === '\\') return c;
+      if (/^\d+$/.test(c)) return String.fromCharCode(parseInt(c, 8));
+      return '';
+    });
+    let out = '';
+    const streamRe = /stream\r?\n/g;
+    let m;
+    while ((m = streamRe.exec(latin))) {
+      if (latin.slice(Math.max(0, m.index - 3), m.index) === 'end') continue;
+      const start = m.index + m[0].length;
+      const end = latin.indexOf('endstream', start);
+      if (end < 0) break;
+      streamRe.lastIndex = end + 9;
+      let e2 = end;
+      while (e2 > start && (latin[e2 - 1] === '\n' || latin[e2 - 1] === '\r')) e2--;
+      const raw = bytes.subarray(start, e2);
+      const content = raw[0] === 0x78 ? new TextDecoder('latin1').decode(await this._inflate(raw)) : latin.slice(start, e2);
+      if (!content || (content.indexOf('Tj') < 0 && content.indexOf('TJ') < 0)) continue;
+
+      // collect positioned text runs (Tm / Td tracked), then rebuild lines
+      const glyphs = [];
+      let cx = 0, cy = 0;
+      const tokRe = /(-?[\d.]+)\s+(-?[\d.]+)\s+(-?[\d.]+)\s+(-?[\d.]+)\s+(-?[\d.]+)\s+(-?[\d.]+)\s+Tm|(-?[\d.]+)\s+(-?[\d.]+)\s+Td|\(((?:\\.|[^\\()])*)\)\s*Tj|\[((?:\((?:\\.|[^\\()])*\)|[^\]])*)\]\s*TJ/g;
+      let t;
+      while ((t = tokRe.exec(content))) {
+        if (t[1] != null) { cx = parseFloat(t[5]); cy = parseFloat(t[6]); }
+        else if (t[7] != null) { cx += parseFloat(t[7]); cy += parseFloat(t[8]); }
+        else if (t[9] != null) { const s = unesc(t[9]); glyphs.push({ x: cx, y: cy, s }); cx += s.length * 7; }
+        else if (t[10] != null) {
+          let line = '';
+          const pr = /\(((?:\\.|[^\\()])*)\)/g;
+          let p;
+          while ((p = pr.exec(t[10]))) line += unesc(p[1]);
+          glyphs.push({ x: cx, y: cy, s: line }); cx += line.length * 7;
+        }
+      }
+      if (!glyphs.length) continue;
+      const rows = new Map();
+      for (const g of glyphs) {
+        const key = Math.round(g.y / 3) * 3;
+        if (!rows.has(key)) rows.set(key, []);
+        rows.get(key).push(g);
+      }
+      const ys = [...rows.keys()].sort((a, b) => b - a);
+      // typical line height, to detect paragraph gaps between blocks
+      const deltas = [];
+      for (let i = 1; i < ys.length; i++) deltas.push(ys[i - 1] - ys[i]);
+      deltas.sort((a, b) => a - b);
+      const lh = deltas.length ? deltas[Math.floor(deltas.length / 2)] : 14;
+      let prevY = null;
+      for (const y of ys) {
+        if (prevY != null && prevY - y > lh * 1.6) out += '\n';
+        prevY = y;
+        const gs = rows.get(y).sort((a, b) => a.x - b.x);
+        let line = '', lastEnd = null;
+        for (const g of gs) {
+          if (lastEnd != null && g.x - lastEnd > 10) line += ' ';
+          line += g.s;
+          lastEnd = g.x + g.s.length * 7;
+        }
+        // preserve the left margin as indentation: block type lives in it
+        out += ' '.repeat(Math.max(0, Math.round(gs[0].x / 7))) + fix(line) + '\n';
+      }
+      out += '\n';
+    }
+    if (!fixOn && /[a-z][‡Žœ\u2013\u2014\u2019][a-z]/.test(out)) { fixOn = true; out = fix(out); }
+    return out;
+  }
+
+  // ---------- chat ----------
+  _scrollChat() {
+    const c = this.chatRef.current;
+    if (c) c.scrollTop = c.scrollHeight;
+  }
+
+  async sendMessage(forced) {
+    const text = (forced != null ? forced : (this.state.input || '')).trim();
+    if (!text || this.state.loading) return;
+    if (!this._requireLumierePlan()) return;
+    const chat = [...this.state.chat, { who: 'w', text }];
+    this.setState({ chat, input: '', loading: true }, () => { this._scrollChat(); this._queueChatSave(chat); });
+    const history = chat.map(m => (m.who === 'w' ? 'Writer' : 'Lumiere') + ': ' + m.text).join('\n');
+    const prompt = `You are Lumiere, the AI co-writer inside FilmScript, a screenwriting app, named after the Lumiere brothers. Personality: warm, brilliant, cinematically literate, like a great script editor who has read everything. Never use dash characters in your reply; write with commas and periods instead.
+
+IMPORTANT: Read the ENTIRE screenplay below from start to finish before you answer. Reason carefully about the story, characters, structure, and tone across the whole script, so your answer is fully consistent with everything the writer has written, not just the latest scene. Do the thinking silently.
+
+REPLY FORMAT, always: be brief and direct. Lead with the answer in one short sentence (if the writer asked for a number or a fact, give it first, plainly). Then, only if genuinely useful, up to 3 short bullet points, each one line, marked with "•". One closing question at most, only when it earns its place. Never exceed 60 words total. No preamble, no essays, no markdown headers.
+
+FULL SCREENPLAY:
+${this._getScript()}
+
+CONVERSATION SO FAR:
+${history}
+
+Write Lumiere's next reply only:`;
+    try {
+      const reply = await window.claude.complete({ messages: [{ role: 'user', content: prompt }] });
+      this.setState(s => ({ chat: [...s.chat, { who: 'l', text: (reply || '').trim() || '…' }], loading: false }), () => { this._scrollChat(); this._queueChatSave(this.state.chat); });
+    } catch (e) {
+      this.setState(s => ({ chat: [...s.chat, { who: 'l', text: 'I lost the connection to the projection room for a moment. Ask me again?' }], loading: false }), () => { this._scrollChat(); this._queueChatSave(this.state.chat); });
+    }
+  }
+
+  runTool(label) {
+    const map = {
+      'Character analysis': 'Run a character analysis on this scene. Look at motivations, arcs, and relationships, and tell me where a character feels thin.',
+      'Cliché detector': 'Scan this scene for clichés and tired tropes. Quote the exact lines and suggest fresher alternatives.',
+      'Scene suggestions': 'Give me three concrete suggestions to make this current scene stronger.',
+      'Narrative arc': 'Assess the narrative arc so far. Where is the tension rising or sagging across what I have written?',
+      'Format checker': 'Check this scene against WGA screenplay format and flag anything off standard.',
+    };
+    if (!this.state.lumiereOpen) this.setState({ lumiereOpen: true });
+    this.sendMessage(map[label] || label);
+  }
+
+  _playClick() {
+    if (!this.state.soundOn) return;
+    try {
+      const AC = window.AudioContext || window.webkitAudioContext;
+      if (!this._ac) this._ac = new AC();
+      const ac = this._ac;
+      if (ac.state === 'suspended') ac.resume();
+      const t = ac.currentTime;
+      const o = ac.createOscillator();
+      const g = ac.createGain();
+      o.type = 'square';
+      o.frequency.setValueAtTime(1400 + Math.random() * 300, t);
+      o.frequency.exponentialRampToValueAtTime(620, t + 0.012);
+      g.gain.setValueAtTime(0.0001, t);
+      g.gain.exponentialRampToValueAtTime(0.12, t + 0.002);
+      g.gain.exponentialRampToValueAtTime(0.0001, t + 0.05);
+      o.connect(g); g.connect(ac.destination);
+      o.start(t); o.stop(t + 0.06);
+    } catch (e) {}
+  }
+
+  _setPlan(plan) {
+    this.setState({ plan });
+  }
+
+  _startCheckout(plan) {
+    if (!this.state.user) {
+      this.setState({ authOpen: true, pendingPlan: plan, accountOpen: false });
+    } else {
+      this.setState({ checkoutOpen: true, checkoutPlan: plan, checkoutStep: 'confirm', accountOpen: false });
+    }
+  }
+
+  _greetingNow() {
+    const h = new Date().getHours();
+    const es = window.filmscriptLanguage?.get() === 'es';
+    if (h < 5) return es
+      ? { hi: '¿Aún despierto, guionista?', sub: 'A esta hora la inspiración llega en la ducha, con una última película o en una espiral de TikTok que se salió de control. Escríbela antes de que escape.' }
+      : { hi: 'Still awake, writer.', sub: 'Inspiration at this hour comes from the shower, one last movie, or a TikTok spiral that got out of hand. Write it down before it escapes.' };
+    if (h < 8) return es
+      ? { hi: 'Despierto antes que el sol.', sub: 'Primero café, luego páginas. En las horas tranquilas se esconden las buenas escenas.' }
+      : { hi: 'Up before the sun.', sub: 'Coffee first, then pages. The quiet hours are where the good scenes hide.' };
+    if (h < 12) return es
+      ? { hi: 'Buenos días, guionista.', sub: 'Café fresco, páginas nuevas. Tus personajes durmieron aún menos que tú.' }
+      : { hi: 'Good morning, writer.', sub: 'Fresh coffee, fresh pages. Your characters slept even less than you did.' };
+    if (h < 15) return es
+      ? { hi: 'Buenas tardes, guionista.', sub: 'Una hora perfecta para los segundos actos. El almuerzo puede esperar; el punto medio no.' }
+      : { hi: 'Good afternoon, writer.', sub: 'A perfect hour for second acts. Lunch can wait, the midpoint cannot.' };
+    if (h < 19) return es
+      ? { hi: 'Buenas tardes, guionista.', sub: 'La luz se vuelve dorada. Un buen momento para arreglar ese tercer acto.' }
+      : { hi: 'Good afternoon, writer.', sub: 'The light is turning golden. A fine moment to fix that third act.' };
+    if (h < 23) return es
+      ? { hi: 'Buenas noches, guionista.', sub: 'Hora estelar. Tus personajes te han esperado todo el día.' }
+      : { hi: 'Good evening, writer.', sub: 'Prime time. Your characters have been waiting for you all day.' };
+    return es
+      ? { hi: 'Escribiendo después de dormir.', sub: 'Una escena más, dijiste hace dos horas. Te creemos.' }
+      : { hi: 'Writing past bedtime.', sub: 'One more scene, you said, two hours ago. We believe you.' };
+  }
+
+  renderVals() {
+    const accent = this.props.accent ?? '#BA7517';
+    const accentHover = this.props.accentHover ?? '#EF9F27';
+    const rough = this.props.borderRoughness ?? 3.2;
+    const dark = this.state.darkMode;
+
+    const theme = dark
+      ? { bg: '#1E1E1C', chrome: '#151514', surface: '#2A2A27', ink: '#ECEAE2', muted: '#9A988F', line: '#7C7A72', soft: '#3A3A36' }
+      : { bg: '#F5F0E8', chrome: '#2C2C2A', surface: '#FFFEF9', ink: '#2C2C2A', muted: '#888780', line: '#2C2C2A', soft: '#E4E2D8' };
+
+    const screen = this.state.screen;
+    const isLanding = screen === 'landing';
+    const isScripts = screen === 'scripts';
+    const isEditor = screen === 'editor';
+
+    const plan = this.state.plan || null;
+    const prepro = this.state.preproProject;
+    const preproTab = this.state.preproTab;
+    const preproScenesRaw = Object.values(prepro?.scenes || {});
+    const hasBreakdown = preproScenesRaw.some((scene) => scene.breakdown);
+    const hasShots = preproScenesRaw.some((scene) => Array.isArray(scene.shots) && scene.shots.length);
+    const emptyCopy = preproTab === 'breakdown'
+      ? ['Turn your screenplay into a production plan', 'Analyze every scene to identify cast, props, locations, wardrobe, and everything required to produce it.', 'Analyze screenplay with Lumiere']
+      : preproTab === 'stripboard'
+        ? ['Organize your shoot', 'Create a breakdown first so FilmScript can build the shooting plan.', 'Create breakdown']
+        : ['Plan how your film will look', 'Generate practical camera coverage for every scene.', 'Generate shot lists with Lumiere'];
+    const preproHasData = preproTab === 'breakdown' ? hasBreakdown : preproTab === 'stripboard' ? hasBreakdown : hasShots;
+    const preproScenes = preproScenesRaw.map((scene) => ({ title: scene.title, status: scene.status || 'needs_review', summary: preproTab === 'breakdown' ? (scene.breakdown?.synopsis || 'Waiting for analysis.') : preproTab === 'stripboard' ? (scene.strip?.location || 'Unassigned location') : (scene.shots?.[0]?.description || 'Waiting for camera suggestions.'), detail: preproTab === 'breakdown' ? `${scene.breakdown?.elements?.length || 0} production elements` : preproTab === 'stripboard' ? `${scene.strip?.status || 'unscheduled'}` : `${scene.shots?.length || 0} proposed shots` }));
+    const onLumierePlan = plan === 'lumiere';
+    const lumiereUnlocked = onLumierePlan;
+    const lumiereLocked = !onLumierePlan;
+    const showFreeCounter = false;
+    const hasPlan = !!plan;
+    const noPlan = !plan;
+    const isWriterPlan = plan === 'writer';
+    const isLumierePlan = plan === 'lumiere';
+    const planLabel = plan === 'lumiere' ? 'FilmScript Pro · $20 / month' : 'No active plan';
+    const checkoutPlanKey = this.state.checkoutPlan;
+    const checkoutPlanName = checkoutPlanKey === 'lumiere' ? 'FilmScript Pro' : 'Free';
+    const checkoutPlanPrice = '$20 / month';
+    const checkoutConfirmStep = this.state.checkoutStep !== 'success';
+    const checkoutSuccessStep = this.state.checkoutStep === 'success';
+    const checkoutHasLink = !!checkoutPlanKey;
+
+    const mkIcon = (paths) => React.createElement('svg', { viewBox: '0 0 24 24', width: '100%', height: '100%', fill: 'none', stroke: 'currentColor', strokeWidth: 1.5, strokeLinecap: 'round', strokeLinejoin: 'round' },
+      paths.map((d, i) => React.createElement('path', { key: i, d })));
+    const features = [
+      { title: 'No more typos', body: 'Catches spelling and grammar slips as you write, without breaking your flow.', iconEl: mkIcon(['M3.5 17 Q6.5 6.5 9 7 Q11 7.4 9.5 17', 'M4.6 13 Q6.8 12.4 8.6 13', 'M13 8 Q16.5 7.6 16.6 10.4 Q16.6 12.6 13.2 12.6 Q16.8 12.6 16.8 15 Q16.7 17.4 13 17']) },
+      { title: 'Cliché detector', body: 'Flags tired phrases and tropes the moment they appear, and suggests something fresher.', iconEl: mkIcon(['M3 12 Q7 5 12 5 Q17 5 21 12 Q17 19 12 19 Q7 19 3 12 Z', 'M12 9 Q14.8 9 14.9 12 Q14.8 15 12 15 Q9.2 15 9.1 12 Q9.2 9 12 9 Z']) },
+      { title: 'Narrative arc', body: 'Maps the rise and fall of tension across your script so the structure actually lands.', iconEl: mkIcon(['M3.5 18 Q7 17 9 11 Q11 5 14 8.5 Q16.5 11.5 20.5 6']) },
+      { title: 'Character analysis', body: 'Tracks motivations and arcs, and tells you when a character drifts off their want.', iconEl: mkIcon(['M12 5.4 Q14.6 5.4 14.7 8.4 Q14.6 11.2 12 11.2 Q9.4 11.2 9.3 8.4 Q9.4 5.4 12 5.4 Z', 'M5.4 19 Q5.6 13.4 12 13.3 Q18.4 13.4 18.6 19']) },
+      { title: 'WGA format checker', body: 'Keeps every scene heading, slug and margin on industry standard, automatically.', iconEl: mkIcon(['M6.4 4.5 Q5.2 8 5.2 12 Q5.2 16 6.4 19.5 L17 19.4 Q18.4 19.4 18.4 18 L18.4 8 L14 4.6 Z', 'M13.8 4.6 L13.9 8.2 L18.2 8', 'M8.4 12 Q11 11.7 15 12', 'M8.4 15.4 Q10.6 15.2 13.6 15.4']) },
+      { icon: 'scene', title: 'Scene suggestions', body: 'Stuck mid-scene? Lumiere offers angles to improve it — you decide what stays.', iconEl: mkIcon(['M12 4 L13.6 9 L19 9 L14.7 12.2 L16.3 17.2 L12 14 L7.7 17.2 L9.3 12.2 L5 9 L10.4 9 Z']) },
+    ];
+
+
+    const orderedImportedScripts = [...this.state.importedScripts].sort((a, b) => {
+      const timeOf = (script) => {
+        const value = Date.parse(script.updatedAt || script.createdAt || '');
+        return Number.isFinite(value) ? value : 0;
+      };
+      return timeOf(b) - timeOf(a);
+    });
+    const cardData = [
+      ...orderedImportedScripts.map((s) => ({
+        id: s.id, title: s.title, updatedAt: s.updatedAt, meta: typeof s.pages === 'number' ? `${s.pages} pages · imported` : 'Imported screenplay',
+        canDelete: true, menuOpen: this.state.scriptMenuId === s.id,
+        open: () => this.openStoredScript(s),
+        toggleMenu: (event) => this.toggleScriptMenu(event, s.id),
+        rename: (event) => this.renameStoredScript(event, s),
+        remove: (event) => this.deleteStoredScript(event, s),
+      })),
+      { title: 'The Lighthouse Keeper', meta: '150 pages · edited 2h ago' },
+      { title: 'Neon Static', meta: '150 pages · edited yesterday' },
+      { title: 'Saltbound', meta: '150 pages · edited 3d ago' },
+      { title: 'The Quiet Hour', meta: '150 pages · edited 1w ago' },
+      { title: 'Ashfall', meta: '150 pages · edited 2w ago' },
+    ];
+    // Keep the field exactly as the writer typed it. Trimming is only for
+    // matching, otherwise a trailing space is removed on every render.
+    const scriptsSearch = this.state.scriptsSearch || '';
+    const searchNeedle = scriptsSearch.trim().toLocaleLowerCase();
+    const visibleCardData = searchNeedle ? cardData.filter((c) => `${c.title} ${c.meta}`.toLocaleLowerCase().includes(searchNeedle)) : cardData;
+    const cards = visibleCardData.map((c, i) => {
+      const open = c.open || (() => this._enterScript('Editor v5.dc.html', c.title, c.id));
+      return {
+        ...c,
+        thumbPath: this._roughPath(62, 84, 1.5, (i + 1) * 8123 + 17, 8),
+        delay: (0.14 + i * 0.06).toFixed(2) + 's',
+        open,
+        openLabel: `Open ${c.title} in the screenplay editor`,
+        onKey: (event) => {
+          if (event.key !== 'Enter' && event.key !== ' ') return;
+          event.preventDefault();
+          open();
+        },
+      };
+    });
+
+    const thumbLines = [
+      { x: 16, y: 19, w: 24, o: .5 },
+      { x: 16, y: 29, w: 30, o: .16 },
+      { x: 16, y: 37, w: 25, o: .16 },
+      { x: 23, y: 51, w: 15, o: .34 },
+      { x: 19, y: 59, w: 22, o: .2 },
+      { x: 16, y: 69, w: 27, o: .16 },
+    ];
+    const pages = this._buildPages(rough);
+    let indexNo = 0;
+    const scriptIndex = pages.flatMap((page) => (page.scenes || []).map((title) => ({ no: ++indexNo, title, open: () => this.goToPage(page.no) })));
+
+    const writerRow = 'display: flex; justify-content: flex-end;';
+    const lumRow = 'display: flex; justify-content: flex-start;';
+    const writerBubble = "max-width: 84%; background: var(--bg, #F5F0E8); border: 1px solid var(--soft, #e4e2d8); color: var(--ink, #2C2C2A); font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; font-size: 13px; line-height: 1.55; padding: 11px 13px; border-radius: 14px 14px 5px 14px;";
+    const lumBubble = "max-width: 91%; background: transparent; border-left: 2px solid var(--accent, #BA7517); color: var(--ink, #2C2C2A); font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; font-size: 13px; line-height: 1.6; padding: 2px 0 2px 13px; white-space: pre-wrap;";
+    const messages = this.state.chat.map(m => ({
+      text: m.text,
+      rowStyle: m.who === 'w' ? writerRow : lumRow,
+      bubbleStyle: m.who === 'w' ? writerBubble : lumBubble,
+    }));
+
+    return {
+      accent, accentHover,
+      bg: theme.bg, chrome: theme.chrome, surface: theme.surface, ink: theme.ink, muted: theme.muted, line: theme.line, soft: theme.soft,
+      isLanding, isScripts, isEditor,
+      preproOpen: this.state.preproOpen, preproLoading: this.state.preproLoading, preproHasData, preproEmpty: !this.state.preproLoading && !preproHasData, preproScenes,
+      preproAccessNotice: !onLumierePlan,
+      preproEmptyTitle: emptyCopy[0], preproEmptyText: emptyCopy[1], preproEmptyAction: onLumierePlan ? emptyCopy[2] : 'View FilmScript Pro', preproPrimaryAction: onLumierePlan ? () => this.analyzePreproduction() : () => this._startCheckout('lumiere'), preproProgress: prepro?.analysis?.status === 'running' || prepro?.analysis?.status === 'queued', preproMessage: prepro?.analysis?.message || '', preproCompleted: prepro?.analysis?.completed || 0, preproTotal: prepro?.analysis?.total || 0,
+      activeScriptTitle: this._importedTitle || 'Active screenplay', breakdownTabBg: preproTab === 'breakdown' ? 'var(--accent, #BA7517)' : 'transparent', breakdownTabColor: 'var(--ink, #2C2C2A)', stripboardTabBg: preproTab === 'stripboard' ? 'var(--accent, #BA7517)' : 'transparent', stripboardTabColor: 'var(--ink, #2C2C2A)', shotsTabBg: preproTab === 'shots' ? 'var(--accent, #BA7517)' : 'transparent', shotsTabColor: 'var(--ink, #2C2C2A)',
+      features,
+      underlinePath: this._roughLineH(300, 3.2, 4242),
+      stripDivPath: this._roughLineH(968, 2.4, 4343),
+      ctaPath: this._roughPath(200, 52, 2.2, 4444, 16),
+      planBtnPath: this._roughPath(320, 48, 2, 4747, 14),
+      heroFramePath: this._roughPath(480, 300, 3, 4646, 20),
+      heroLines: [
+        { x: 40, y: 44, w: 150, o: .5 }, { x: 40, y: 66, w: 320, o: .12 }, { x: 40, y: 80, w: 280, o: .12 },
+        { x: 190, y: 118, w: 100, o: .32 }, { x: 150, y: 140, w: 180, o: .18 }, { x: 150, y: 154, w: 150, o: .18 },
+        { x: 40, y: 192, w: 300, o: .12 }, { x: 40, y: 206, w: 250, o: .12 },
+        { x: 190, y: 244, w: 100, o: .32 }, { x: 150, y: 266, w: 160, o: .18 },
+      ],
+      darkMode: dark, lightMode: !dark,
+      scriptTransitionOpen: this.state.scriptTransitionOpen,
+      openingScriptTitle: this.state.openingScriptTitle || 'Untitled screenplay',
+      openingAriaLabel: `Opening ${this.state.openingScriptTitle || 'screenplay'} in the editor`,
+      openingSheetPath: this._roughPath(228, 292, 2.4, 9341, 18),
+      scriptsBackgroundImage: dark
+        ? "linear-gradient(rgba(18,18,17,.76), rgba(18,18,17,.88)), url('./assets/writer-desk-sketch-dark.png')"
+        : "linear-gradient(rgba(245,240,232,.84), rgba(245,240,232,.92)), url('./assets/writer-desk-sketch.png')",
+      importButtonBackground: dark ? 'rgba(42,42,39,.5)' : 'transparent',
+      lumiereOpen: this.state.lumiereOpen,
+      lumiereClosed: !this.state.lumiereOpen,
+      loading: this.state.loading,
+      input: this.state.input,
+      zoom: this.state.zoom,
+      zoomPct: Math.round(this.state.zoom * 100) + '%',
+      homeSub: this._greetingNow().sub,
+      greeting: this._greetingNow().hi,
+      greetingTyped: this.state.greetingTyped,
+      cards, thumbLines, messages, scriptsSearch, noSearchResults: cards.length === 0, scriptCount: cardData.length, scriptPlural: cardData.length === 1 ? '' : 's', scriptSummary: window.filmscriptLanguage?.get() === 'es' ? `${cardData.length} ${cardData.length === 1 ? 'guion listo' : 'guiones listos'} para trabajar.` : `${cardData.length} screenplay${cardData.length === 1 ? '' : 's'} ready to shape.`, scriptIndex, noIndex: scriptIndex.length === 0,
+      tools: ['Character analysis', 'Cliché detector', 'Scene suggestions', 'Narrative arc', 'Format checker'].map(label => ({ label, title: 'Run ' + label, onClick: () => this.runTool(label) })),
+      check: '✓',
+      planB: ['Professional screenplay editor and PDF exports', 'Lumiere, your AI script assistant', 'Breakdowns, stripboards and shot lists', 'Cliché, format, character and arc analysis', 'Every FilmScript feature in one plan'],
+      pages,
+      barPath: this._roughPath(408, 56, 2.4, 555, 16),
+      btnPath: this._roughPath(92, 32, 2, 333, 11),
+      newBtnPath: this._roughPath(176, 48, 2.4, 888, 14),
+      trackPath: this._roughLineH(120, 1.8, 222),
+      topDivPath: this._roughLineH(1200, 3.4, 1212),
+      sideDivPath: this._roughLineH(302, 2.6, 1313),
+      sideDivPath2: this._roughLineH(302, 2.6, 1414),
+      miniDivPath: this._roughLineH(140, 1.8, 1616),
+      vDivPath: this._roughLineV(800, 3.6, 1515),
+      canvasRef: this.canvasRef,
+      pageRef: this.pageRef,
+      chatRef: this.chatRef,
+      navHomeColor: isLanding ? '#FFFEF9' : '#b9b8b2',
+      navHomeBg: isLanding ? 'rgba(255,255,255,.12)' : 'transparent',
+      navScriptsColor: isScripts ? '#FFFEF9' : '#b9b8b2',
+      navScriptsBg: isScripts ? 'rgba(255,255,255,.12)' : 'transparent',
+      navEditorColor: isEditor ? '#FFFEF9' : '#b9b8b2',
+      navEditorBg: isEditor ? 'rgba(255,255,255,.12)' : 'transparent',
+      soundOn: this.state.soundOn,
+      soundOff: !this.state.soundOn,
+      soundIconColor: this.state.soundOn ? accent : '#b6b4aa',
+      goHome: () => { window.location.href = 'Features.dc.html'; },
+      goLanding: () => { window.location.href = 'Features.dc.html'; },
+      goScripts: () => { this._loadScripts(); this.setState({ screen: 'scripts' }); },
+      onScriptsPointer: (event) => this.onScriptsPointer(event),
+      goEditor: () => this._enterScript('Editor v5.dc.html', 'Untitled screenplay'),
+      newScript: () => this.createNewScript(),
+      importScript: () => this.importScript(),
+      openPreproduction: () => this.openPreproduction(), closePreproduction: () => this.closePreproduction(), analyzeScript: () => this.analyzePreproduction(), showBreakdown: () => this.setState({ preproTab: 'breakdown' }), showStripboard: () => this.setState({ preproTab: 'stripboard' }), showShots: () => this.setState({ preproTab: 'shots' }),
+      onScriptsSearch: (e) => this.setState({ scriptsSearch: e.target.value }),
+      importBtnPath: this._roughPath(176, 48, 2.2, 891, 14),
+      importNote: this.state.importNote || '',
+      importNoteOn: !!String(this.state.importNote || '').trim(),
+      toggleLumiere: () => this.setState(s => ({ lumiereOpen: !s.lumiereOpen })),
+      toggleSound: () => this.setState(s => ({ soundOn: !s.soundOn })),
+      toggleDark: () => {
+        const darkMode = window.filmscriptTheme?.toggle() ?? !this.state.darkMode;
+        window.filmscriptSounds?.play(darkMode ? 'darkModeOn' : 'lightModeOn');
+        this.setState({ darkMode });
+      },
+      onZoom: (e) => this.setState({ zoom: parseFloat(e.target.value) }),
+      zoomIn: () => this.setState(s => ({ zoom: Math.min(2, Math.round((s.zoom + 0.1) * 100) / 100) })),
+      zoomOut: () => this.setState(s => ({ zoom: Math.max(0.5, Math.round((s.zoom - 0.1) * 100) / 100) })),
+      fillPage: () => this.fillPage(),
+      onInput: (e) => this.setState({ input: e.target.value }),
+      onKey: (e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); this.sendMessage(); } },
+      send: () => this.sendMessage(),
+      menuOpen: this.state.menuOpen,
+      menuItems: ['Title Page Designer', 'Revision History', 'Download PDF', 'Renumber', 'Autosave Settings', 'Import Screenplay'],
+      dotsBoxPath: this._roughPath(38, 34, 1.6, 6161, 9),
+      toolDivPath: this._roughLineH(1200, 2.2, 6262),
+      toggleMenu: () => this.setState(s => ({ menuOpen: !s.menuOpen })),
+      closeMenu: () => this.setState({ menuOpen: false }),
+      fmtScene: () => this.setFormat('scene'),
+      fmtAction: () => this.setFormat('action'),
+      fmtCharacter: () => this.setFormat('character'),
+      fmtParen: () => this.setFormat('paren'),
+      fmtDialogue: () => this.setFormat('dialogue'),
+      fmtTransition: () => this.setFormat('transition'),
+      authOpen: this.state.authOpen,
+      signedIn: !!this.state.user,
+      signedOut: !this.state.user,
+      userInitial: (this.state.profileName || (this.state.user ? this.state.user.name : 'Writer')).trim().charAt(0).toUpperCase() || 'W',
+      userEmail: this.state.user ? this.state.user.email : '',
+      userName: this.state.profileName || (this.state.user ? this.state.user.name : 'Writer'),
+      profileNameDraft: this.state.profileNameDraft,
+      profileSaveLabel: this.state.profileSaving ? 'Saving…' : this.state.profileSaved ? 'Saved' : 'Save',
+      accountStatus: plan ? 'Active' : 'No active plan',
+      openAuth: () => this.setState({ authOpen: true }),
+      closeAuth: () => this.setState({ authOpen: false }),
+      stop: (e) => { e.stopPropagation(); },
+      googleSignUp: () => { window.location.href = window.filmscriptBilling.googleSignInUrl(); },
+      signOut: async () => { try { await window.filmscriptBilling.logout(); } catch (e) {} window.location.href = 'Features.dc.html'; },
+
+      plan, planLabel, hasPlan, noPlan, isWriterPlan, isLumierePlan,
+      lumiereUnlocked, lumiereLocked, showFreeCounter,
+      unlockBtnPath: this._roughPath(180, 44, 2, 999, 14),
+
+      accountOpen: this.state.accountOpen,
+      toggleAccount: () => { if (!this.state.accountOpen) window.filmscriptSounds?.play('profile'); this.setState(s => ({ accountOpen: !s.accountOpen })); },
+      accountDetailsOpen: this.state.accountDetailsOpen,
+      termsOpen: this.state.termsOpen,
+      openAccountDetails: () => this.setState(s => ({ accountOpen: false, accountDetailsOpen: true, profileNameDraft: s.profileName || (s.user ? s.user.name : 'Writer') })),
+      openLumierePreferences: () => { this.setState({ accountOpen: false, accountDetailsOpen: false }); window.filmscriptLumierePreferences?.open(); },
+      closeAccountDetails: () => {
+        if (this._accountReturnTo) window.location.href = this._accountReturnTo;
+        else this.setState({ accountDetailsOpen: false });
+      },
+      onProfileName: (e) => this.setState({ profileNameDraft: e.target.value }),
+      saveProfileName: async () => {
+        if (this.state.profileSaving) return;
+        const name = (this.state.profileNameDraft || '').trim();
+        if (!name) return;
+        this.setState({ profileSaving: true, profileSaved: false });
+        try {
+          const me = await window.filmscriptBilling.updateProfile(name);
+          const savedName = me.name || name;
+          this.setState(s => ({ profileName: savedName, profileNameDraft: savedName, profileSaving: false, profileSaved: true, user: s.user ? { ...s.user, name: savedName, initial: savedName.charAt(0).toUpperCase() } : s.user }));
+        } catch (e) { this.setState({ profileSaving: false, profileSaved: false }); }
+      },
+      openTerms: () => this.setState({ accountOpen: false, termsOpen: true }),
+      closeTerms: () => this.setState({ termsOpen: false }),
+      cancelPlan: () => { window.location.href = 'Subscription.dc.html?returnTo=App.dc.html'; },
+      upgradeToLumiere: () => this._startCheckout('lumiere'),
+      goLandingFromAccount: () => { window.location.href = 'Pricing.dc.html'; },
+
+      chooseLumiere: () => this._startCheckout('lumiere'),
+      openCheckoutLumiere: () => { this.setState({ paywallOpen: false }); this._startCheckout('lumiere'); },
+
+      checkoutOpen: this.state.checkoutOpen,
+      checkoutConfirmStep, checkoutSuccessStep, checkoutPlanName, checkoutPlanPrice, checkoutHasLink,
+      openPayLink: async () => {
+        try { const result = await window.filmscriptBilling.checkout(this.state.checkoutPlan, this.state.user?.email); window.location.href = result.checkoutUrl; }
+        catch (e) { this.setState({ toast: e.message }); }
+      },
+      closeCheckout: () => this.setState({ checkoutOpen: false, checkoutStep: 'confirm', checkoutPlan: null }),
+      continueAfterCheckout: () => this.setState({ checkoutOpen: false, checkoutStep: 'confirm', checkoutPlan: null, screen: 'scripts', lumiereOpen: true }),
+    };
+  }
+}
+</script>
+</body>
+</html>

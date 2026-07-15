@@ -1,0 +1,16 @@
+.env
+.env.local
+data/*.sqlite
+data/*.sqlite-shm
+data/*.sqlite-wal
+billing.json
+scripts.json
+preproduction.json
+credits.json
+dist/
+node_modules/
+__pycache__/
+*.pyc
+tmp/
+.DS_Store
+.vercel/

@@ -1,0 +1,16 @@
+.env
+.env.*
+!.env.example
+data/
+billing.json
+scripts.json
+preproduction.json
+credits.json
+dist/
+node_modules/
+__pycache__/
+*.pyc
+screenshots/
+tmp/
+uploads/
+.DS_Store

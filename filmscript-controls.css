@@ -1,0 +1,153 @@
+/* Shared FilmScript controls: precise content with a subtle hand-drawn double frame. */
+.fs-double-outline {
+  --fs-frame-bg: var(--surface, #FFFEF9);
+  --fs-frame-border: var(--line, #2C2C2A);
+  position: relative;
+  isolation: isolate;
+  border: 0 !important;
+  background: transparent !important;
+  filter: none !important;
+  font-family: "Helvetica Neue", Helvetica, Arial, sans-serif;
+}
+
+.fs-double-outline::before,
+.fs-double-outline::after {
+  content: "";
+  position: absolute;
+  z-index: 0;
+  pointer-events: none;
+  border-style: solid;
+  border-color: var(--fs-frame-border);
+  filter: url(#fs-sketch);
+}
+
+.fs-double-outline::before {
+  inset: 0;
+  border-width: 1.35px;
+  border-radius: 17px 15px 18px 14px;
+  background: var(--fs-frame-bg);
+}
+
+.fs-double-outline::after {
+  inset: 3px 4px 3px 3px;
+  border-width: 1px;
+  border-radius: 14px 13px 15px 12px;
+  background: transparent;
+  opacity: .42;
+  transform: rotate(.12deg);
+  transition: opacity .18s ease, transform .18s ease;
+}
+
+.fs-double-outline > * {
+  position: relative;
+  z-index: 1;
+}
+
+.fs-outline-control {
+  appearance: none;
+  -webkit-appearance: none;
+  min-height: 44px;
+  margin: 0;
+  padding: 0 24px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 9px;
+  color: var(--ink, #2C2C2A);
+  font-size: 14px;
+  font-weight: 600;
+  line-height: 1;
+  letter-spacing: -.05px;
+  cursor: pointer;
+  user-select: none;
+  transition: transform .18s cubic-bezier(.2,.8,.2,1), color .18s ease;
+}
+
+.fs-outline-control:hover {
+  transform: translateY(-2px);
+}
+
+.fs-outline-control:hover::after {
+  opacity: .72;
+  transform: rotate(-.18deg) scale(.992);
+}
+
+.fs-outline-control:active {
+  transform: translateY(0) scale(.985);
+}
+
+.fs-outline-control:focus-visible {
+  outline: 2px solid var(--accent, #BA7517);
+  outline-offset: 4px;
+}
+
+.fs-outline-control--primary {
+  --fs-frame-bg: var(--accent, #BA7517);
+  color: #1A1A1A;
+}
+
+.fs-outline-control--secondary {
+  --fs-frame-bg: var(--surface, #FFFEF9);
+  color: var(--ink, #2C2C2A);
+}
+
+.fs-outline-control--secondary:hover {
+  color: var(--accent, #BA7517);
+}
+
+.fs-control-arrow {
+  display: inline-block;
+  transition: transform .18s ease;
+}
+
+.fs-outline-control:hover .fs-control-arrow {
+  transform: translateX(3px);
+}
+
+.fs-pricing-card {
+  --fs-frame-bg: var(--surface, #FFFEF9);
+  --fs-frame-border: var(--line, #2C2C2A);
+  font-family: "Helvetica Neue", Helvetica, Arial, sans-serif !important;
+}
+
+.fs-pricing-card::before {
+  border-width: 1.45px;
+  border-radius: 23px 20px 24px 19px;
+}
+
+.fs-pricing-card::after {
+  inset: 4px 5px 4px 4px;
+  border-radius: 19px 18px 20px 17px;
+  opacity: .44;
+}
+
+.fs-pricing-card,
+.fs-pricing-card * {
+  font-family: "Helvetica Neue", Helvetica, Arial, sans-serif !important;
+  filter: none !important;
+  text-shadow: none !important;
+}
+
+.fs-price-amount {
+  font-family: "Helvetica Neue", Helvetica, Arial, sans-serif !important;
+  font-weight: 500 !important;
+  letter-spacing: -1.25px !important;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .fs-outline-control,
+  .fs-outline-control::after {
+    transition-duration: .01ms !important;
+  }
+}
+
+@media (max-width: 620px) {
+  .fs-cta-row {
+    flex-wrap: wrap;
+  }
+
+  .fs-cta-row .fs-outline-control {
+    flex: 1 1 150px;
+    min-width: 0 !important;
+  }
+}

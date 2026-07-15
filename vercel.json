@@ -1,0 +1,24 @@
+{
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "framework": null,
+  "rewrites": [
+    {
+      "source": "/_filmscript/pdf",
+      "destination": "/api/pdf-worker"
+    },
+    {
+      "source": "/(.*)",
+      "destination": "/api"
+    }
+  ],
+  "functions": {
+    "api/index.js": {
+      "maxDuration": 300,
+      "includeFiles": "{*.html,*.css,*.py,requirements.txt,assets/**}"
+    },
+    "api/pdf-worker.py": {
+      "maxDuration": 300,
+      "includeFiles": "*.py"
+    }
+  }
+}

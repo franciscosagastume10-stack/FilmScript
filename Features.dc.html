@@ -1,0 +1,1090 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+<script src="./runtime-config.js?v=20260710-auth1"></script>
+<script src="./theme-preference.js?v=20260712-theme1"></script>
+<script src="./language-preference.js?v=20260713-i18n1"></script>
+<script src="./ui-sounds.js?v=20260713-profile-option1"></script>
+<script src="./billing-client.js?v=20260712-auth2"></script>
+<script src="./lumiere-client.js?v=20260713-language1"></script>
+<script src="./lumiere-preferences.js?v=20260713-taste1"></script>
+<link rel="stylesheet" href="./auth-modal.css?v=20260713-login1">
+<link rel="stylesheet" href="./filmscript-controls.css?v=20260712-double-outline1">
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Courier+Prime:ital,wght@0,400;0,700;1,400&display=swap" rel="stylesheet">
+<style>
+  * { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; }
+  body { font-family: "Helvetica Neue", Helvetica, Arial, sans-serif; }
+  .fs-brand-mark { min-width: 118px; height: 32px; flex: 0 0 118px; display: flex; align-items: center; cursor: pointer; }
+  .fs-brand-word { display: block; color: #FFFEF9; font-family: "SF Pro Display", "SF Pro Text", -apple-system, BlinkMacSystemFont, "Helvetica Neue", Arial, sans-serif; font-size: 21px; font-weight: 900; line-height: 1; letter-spacing: -1px; opacity: .98; transition: opacity .16s ease, transform .16s ease; }
+  .fs-brand-mark:hover .fs-brand-word { opacity: .78; transform: translateY(-1px); }
+  @media (max-width: 620px) { .fs-brand-mark { min-width: 100px; flex-basis: 100px; } .fs-brand-word { font-size: 19px; } }
+  @keyframes fs-dot { 0%,60%,100% { opacity: .25; transform: translateY(0); } 30% { opacity: 1; transform: translateY(-2px); } }
+  @keyframes fs-glow { 0%,100% { box-shadow: 0 0 0 0 rgba(239,159,39,.55); } 50% { box-shadow: 0 0 0 4px rgba(239,159,39,0); } }
+  @keyframes fs-rise { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: translateY(0); } }
+  @keyframes fs-pop { from { opacity: 0; transform: translateY(8px) scale(.97); } to { opacity: 1; transform: translateY(0) scale(1); } }
+  @keyframes fs-fade { from { opacity: 0; } to { opacity: 1; } }
+  @keyframes fs-sheet { from { opacity: 0; transform: translateY(14px) scale(.985); } to { opacity: 1; transform: translateY(0) scale(1); } }
+  @keyframes fs-avatar { 0%,100% { transform: rotate(-2deg) translateY(0); } 50% { transform: rotate(2deg) translateY(-2px); } }
+  @keyframes fs-caret { 0%, 55% { opacity: 1; } 56%, 100% { opacity: 0; } }
+  a { color: #BA7517; text-decoration: none; }
+  a:hover { color: #8F5A12; }
+  .fsx-lift { transition: transform .18s ease, filter .18s ease; }
+  .fsx-lift:hover { transform: translateY(-1.5px); filter: brightness(1.05); }
+  .fsx-chip { transition: transform .18s ease; }
+  .fsx-chip:hover { transform: translateY(-2px); }
+  .fsx-arrow span { display: inline-block; transition: transform .18s ease; }
+  .fsx-arrow:hover span { transform: translateX(3px); }
+  .fsx-scale { transition: transform .15s ease; }
+  .fsx-scale:hover { transform: scale(1.05); }
+  .fsx-bright { transition: filter .15s ease; }
+  .fsx-bright:hover { filter: brightness(1.55); }
+  .fsx-dim { transition: box-shadow .15s ease; }
+  .fsx-dim:hover { box-shadow: inset 0 0 0 999px rgba(136,135,128,.09); }
+  ::-webkit-scrollbar { width: 9px; height: 9px; }
+  ::-webkit-scrollbar-thumb { background: #b8b6ac; border-radius: 8px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  input.fs-zoom { -webkit-appearance: none; appearance: none; height: 24px; background: transparent; outline: none; margin: 0; }
+  input.fs-zoom::-webkit-slider-runnable-track { height: 24px; background: linear-gradient(#b6b4aa,#b6b4aa) center/100% 2px no-repeat; border-radius: 2px; }
+  input.fs-zoom::-webkit-slider-thumb { -webkit-appearance: none; appearance: none; width: 16px; height: 16px; margin-top: 4px; border-radius: 50%; background: var(--accent, #BA7517); border: 2px solid var(--surface, #FFFEF9); box-shadow: 0 0 0 1.4px var(--line, #2C2C2A); cursor: pointer; }
+  input.fs-zoom::-moz-range-thumb { width: 15px; height: 15px; border-radius: 50%; background: var(--accent, #BA7517); border: 2px solid var(--surface, #FFFEF9); box-shadow: 0 0 0 1.4px var(--line, #2C2C2A); cursor: pointer; }
+  input.fs-zoom::-moz-range-track { height: 24px; background: linear-gradient(#b6b4aa,#b6b4aa) center/100% 2px no-repeat; border-radius: 2px; }
+  input.fs-chat { font-family: "Helvetica Neue", Helvetica, Arial, sans-serif; }
+  input.fs-chat::placeholder { color: #9a988f; }
+  [data-fs-editor]:focus { outline: none; }
+  .fs-tipwrap { position: relative; }
+  .fs-ic { width: 36px; height: 36px; display: flex; align-items: center; justify-content: center; border-radius: 9px; cursor: pointer; transition: background .15s, color .15s; }
+  .fs-ic:hover { background: rgba(186,117,23,.12); color: #BA7517; }
+  .fs-tip { position: absolute; top: 100%; left: 50%; transform: translateX(-50%) translateY(7px); background: #2C2C2A; color: #FFFEF9; font-size: 11px; font-weight: 500; padding: 5px 9px; border-radius: 8px; white-space: nowrap; opacity: 0; pointer-events: none; transition: opacity .14s; z-index: 30; }
+  .fs-tip::before { content: ""; position: absolute; bottom: 100%; left: 50%; transform: translateX(-50%); border: 5px solid transparent; border-bottom-color: #2C2C2A; }
+  .fs-tipwrap:hover .fs-tip { opacity: 1; }
+  .fs-menuitem { padding: 9px 14px; font-size: 13px; color: var(--ink, #2C2C2A); cursor: pointer; border-radius: 8px; transition: background-color .13s ease, color .13s ease; }
+  .fs-menuitem:hover { background: rgba(186,117,23,.1); color: #BA7517; }
+  .fs-account-menu { isolation: isolate; background: transparent !important; border: 0 !important; filter: none !important; color: var(--ink, #2C2C2A); }
+  .fs-account-menu::before { content: ""; position: absolute; inset: 0; z-index: 0; pointer-events: none; background: var(--surface, #FFFEF9); border: 1.4px solid var(--line, #2C2C2A); border-radius: 14px 13px 15px 12px; filter: url(#fs-sketch); }
+  .fs-account-menu > * { position: relative; z-index: 1; }
+  .fs-profile-sheet { animation: fs-sheet .34s cubic-bezier(.2,.8,.25,1.08) both; }
+  .fs-profile-sheet > div:first-child > div:first-child { animation: fs-avatar 3.8s ease-in-out infinite; }
+  .fs-profile-sheet [style*="border: 1px solid var(--soft"] { transition: transform .18s ease, border-color .18s ease, background-color .18s ease; }
+  .fs-profile-sheet [style*="border: 1px solid var(--soft"]:hover { transform: translateX(3px); border-color: var(--accent, #BA7517) !important; background: rgba(186,117,23,.035); }
+  .fs-navlink { transition: color .15s ease; }
+  .fs-navlink:hover { color: #FFFEF9 !important; }
+</style>
+</helmet>
+
+<div style="--accent: {{ accent }}; --accent-hover: {{ accentHover }}; --bg: {{ bg }}; --chrome: {{ chrome }}; --surface: {{ surface }}; --ink: {{ ink }}; --muted: {{ muted }}; --line: {{ line }}; --soft: {{ soft }}; height: 100vh; width: 100%; position: relative; display: flex; flex-direction: column; background: var(--bg, #F5F0E8); color: var(--ink, #2C2C2A); overflow: hidden; font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;">
+
+  <!-- hand-drawn sketch filter: wobbles the edges of any bordered element -->
+  <svg width="0" height="0" style="position: absolute;"><defs><filter id="fs-sketch" x="-6%" y="-22%" width="112%" height="144%"><feTurbulence type="fractalNoise" baseFrequency="0.014" numOctaves="2" seed="7" result="n"></feTurbulence><feDisplacementMap in="SourceGraphic" in2="n" scale="2.6" xChannelSelector="R" yChannelSelector="G"></feDisplacementMap></filter></defs></svg>
+
+  <!-- ============ TOPBAR ============ -->
+  <div style="height: 44px; flex: 0 0 44px; background: var(--chrome, #2C2C2A); display: flex; align-items: center; padding: 0 16px; gap: 16px; user-select: none;">
+    <div class="fs-brand-mark" data-filmscript-brand onClick="{{ goScripts }}" role="link" aria-label="FilmScript, go to scripts"><span class="fs-brand-word">FilmScript</span></div>
+
+    <div style="flex: 1; display: flex; justify-content: center; gap: 8px;">
+      <div onClick="{{ navFeatures }}" style="font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; font-size: 13px; font-weight: 500; line-height: 1; padding: 6px 14px; border-radius: 8px; cursor: pointer; color: #FFFEF9; background: rgba(255,255,255,.12);">Features</div>
+      <div onClick="{{ navPricing }}" class="fs-navlink" style="font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; font-size: 13px; font-weight: 500; line-height: 1; padding: 6px 14px; border-radius: 8px; cursor: pointer; color: #b9b8b2; background: transparent;">Pricing</div>
+    </div>
+
+    <div style="display: flex; align-items: center; gap: 8px;">
+      <div onClick="{{ toggleDark }}" title="Theme" class="fsx-bright" style="cursor: pointer; padding: 6px; color: #b9b8b2; display: flex; align-items: center;">
+        <sc-if value="{{ darkMode }}" hint-placeholder-val="{{ false }}">
+          <svg viewBox="0 0 20 20" style="width: 18px; height: 18px;" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><circle cx="10" cy="10" r="3.1"></circle><path d="M10 3.4 V5 M10 15 V16.6 M3.4 10 H5 M15 10 H16.6 M5.5 5.5 L6.6 6.6 M13.4 13.4 L14.5 14.5 M14.5 5.5 L13.4 6.6 M6.6 13.4 L5.5 14.5"></path></svg>
+        </sc-if>
+        <sc-if value="{{ lightMode }}" hint-placeholder-val="{{ true }}">
+          <svg viewBox="0 0 20 20" style="width: 18px; height: 18px;" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><path d="M14.6 11 Q14.3 14.7 10.6 14.8 Q12.9 12.6 12.8 9.3 Q12.7 6.5 10.4 5.1 Q14.9 5.5 14.6 11 Z"></path></svg>
+        </sc-if>
+      </div>
+      <div style="display: flex; flex-direction: column; gap: 3px; cursor: pointer; padding: 6px;">
+        <span style="width: 15px; height: 1.5px; background: #b9b8b2;"></span>
+        <span style="width: 15px; height: 1.5px; background: #b9b8b2;"></span>
+        <span style="width: 15px; height: 1.5px; background: #b9b8b2;"></span>
+      </div>
+      <sc-if value="{{ signedOut }}" hint-placeholder-val="{{ true }}">
+        <button type="button" data-testid="landing-login-top" onClick="{{ openAuth }}" class="fsx-scale" style="border: 0; font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; font-size: 13px; font-weight: 600; color: #2C2C2A; background: #FFFEF9; padding: 7px 16px; border-radius: 999px; cursor: pointer;">Log in</button>
+      </sc-if>
+      <sc-if value="{{ signedIn }}" hint-placeholder-val="{{ false }}">
+        <div style="position: relative;">
+          <div data-testid="account-avatar" onClick="{{ toggleAccount }}" title="{{ userEmail }}" style="width: 28px; height: 28px; border-radius: 50%; background: var(--accent, #BA7517); color: #FFFEF9; display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 600; cursor: pointer;">{{ userInitial }}</div>
+          <sc-if value="{{ accountOpen }}" hint-placeholder-val="{{ false }}">
+          <div class="fs-account-menu" data-filmscript-profile-panel style="position: absolute; right: 0; top: 38px; z-index: 60; width: 234px; padding: 14px 14px 8px; background: var(--surface, #FFFEF9); border: 1.4px solid var(--line, #2C2C2A); border-radius: 14px; filter: url(#fs-sketch); animation: fs-pop .2s ease both;">
+            <div style="font-size: 12.5px; font-weight: 600; color: var(--ink, #2C2C2A); word-break: break-all;">{{ userEmail }}</div>
+            <div style="font-size: 11.5px; color: var(--muted, #888780); margin-top: 4px;">{{ planLabel }}</div>
+            <div style="height: 1px; background: var(--soft, #e4e2d8); margin: 10px 0 6px;"></div>
+            <div class="fs-menuitem" onClick="{{ openAccountDetails }}">Account details</div>
+            <div class="fs-menuitem" onClick="{{ openLumierePreferences }}">Personalize Lumiere</div>
+            <div class="fs-menuitem" onClick="{{ openTerms }}">Terms & conditions</div>
+            <div style="height: 1px; background: var(--soft, #e4e2d8); margin: 6px 0;"></div>
+            <sc-if value="{{ isWriterPlan }}" hint-placeholder-val="{{ false }}">
+              <div class="fs-menuitem" onClick="{{ upgradeToLumiere }}">Upgrade to FilmScript Pro</div>
+            </sc-if>
+            <sc-if value="{{ noPlan }}" hint-placeholder-val="{{ true }}">
+              <div class="fs-menuitem" onClick="{{ goLandingFromAccount }}">Choose FilmScript Pro</div>
+            </sc-if>
+            <sc-if value="{{ hasPlan }}" hint-placeholder-val="{{ false }}">
+              <div class="fs-menuitem" onClick="{{ cancelPlan }}">Plan and billing</div>
+            </sc-if>
+            <div class="fs-menuitem" onClick="{{ signOut }}">Sign out</div>
+          </div>
+          </sc-if>
+        </div>
+      </sc-if>
+    </div>
+  </div>
+
+  <sc-if value="{{ accountDetailsOpen }}" hint-placeholder-val="{{ false }}"><div onClick="{{ closeAccountDetails }}" style="position: fixed; inset: 0; z-index: 80; background: rgba(35,35,34,.28); display: flex; align-items: center; justify-content: center; padding: 24px;"><div class="fs-profile-sheet" onClick="{{ stop }}" style="width: min(520px, 100%); max-height: 88vh; overflow-y: auto; background: var(--surface, #FFFEF9); border: 1.5px solid var(--line, #2C2C2A); border-radius: 20px; padding: 26px; filter: url(#fs-sketch);"><div style="display: flex; align-items: center; gap: 14px;"><div style="width: 46px; height: 46px; border-radius: 50%; background: var(--accent, #BA7517); color: #FFFEF9; display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 17px;">{{ userInitial }}</div><div style="flex: 1;"><div style="font-size: 20px; font-weight: 700; color: var(--ink, #2C2C2A);">Your account</div><div style="font-size: 12.5px; color: var(--muted, #888780);">Connected securely with Google.</div></div><div onClick="{{ closeAccountDetails }}" style="font-size: 22px; color: var(--muted, #888780); cursor: pointer;">×</div></div><div style="margin-top: 24px; display: grid; gap: 9px;"><div style="padding: 14px; border: 1px solid var(--soft, #E4E2D8); border-radius: 13px;"><div style="display: flex; justify-content: space-between;"><div style="font-size: 10px; text-transform: uppercase; letter-spacing: 1.2px; color: var(--muted, #888780);">Name</div><div onClick="{{ saveProfileName }}" style="font-size: 11px; color: var(--accent, #BA7517); font-weight: 700; cursor: pointer;">{{ profileSaveLabel }}</div></div><input value="{{ profileNameDraft }}" onInput="{{ onProfileName }}" aria-label="Name" style="width: 100%; margin-top: 7px; padding: 0; border: none; outline: none; background: transparent; color: var(--ink, #2C2C2A); font-size: 14px; font-family: inherit;"></div><div style="padding: 14px; border: 1px solid var(--soft, #E4E2D8); border-radius: 13px;"><div style="font-size: 10px; text-transform: uppercase; letter-spacing: 1.2px; color: var(--muted, #888780);">Email</div><div style="margin-top: 5px; font-size: 14px; color: var(--ink, #2C2C2A); word-break: break-word;">{{ userEmail }}</div></div></div><div style="margin-top: 18px; padding: 15px; border-radius: 15px; background: var(--bg, #F5F0E8);"><div style="font-size: 10px; text-transform: uppercase; letter-spacing: 1.2px; color: var(--muted, #888780);">Subscription</div><div style="font-size: 17px; font-weight: 700; color: var(--ink, #2C2C2A); margin-top: 7px;">{{ planLabel }}</div><sc-if value="{{ noPlan }}" hint-placeholder-val="{{ true }}"><span onClick="{{ openCheckoutLumiere }}" role="button" tabindex="0" style="display: inline-block; margin-top: 8px; color: var(--accent, #BA7517); font-size: 12px; font-weight: 700; cursor: pointer;">Choose FilmScript Pro →</span></sc-if><sc-if value="{{ hasPlan }}" hint-placeholder-val="{{ false }}"><div style="font-size: 12px; color: var(--accent, #BA7517); margin-top: 5px;">{{ accountStatus }}</div></sc-if></div><div style="margin-top: 22px; text-align: right;"><div onClick="{{ closeAccountDetails }}" style="display: inline-block; padding: 10px 17px; border-radius: 10px; background: var(--ink, #2C2C2A); color: var(--surface, #FFFEF9); font-size: 13px; font-weight: 600; cursor: pointer;">Done</div></div></div></div></sc-if>
+  <sc-if value="{{ termsOpen }}" hint-placeholder-val="{{ false }}"><div onClick="{{ closeTerms }}" style="position: fixed; inset: 0; z-index: 80; background: rgba(35,35,34,.28); display: flex; align-items: center; justify-content: center; padding: 24px;"><div onClick="{{ stop }}" style="width: min(620px, 100%); max-height: 88vh; overflow-y: auto; background: var(--surface, #FFFEF9); border: 1.5px solid var(--line, #2C2C2A); border-radius: 20px; padding: 30px; filter: url(#fs-sketch);"><div style="display: flex; justify-content: space-between;"><div><div style="font-size: 10px; letter-spacing: 1.8px; text-transform: uppercase; color: var(--accent, #BA7517); font-weight: 700;">FilmScript</div><div style="font-size: 25px; font-weight: 700; color: var(--ink, #2C2C2A); margin-top: 7px;">Terms & conditions</div></div><div onClick="{{ closeTerms }}" style="font-size: 22px; color: var(--muted, #888780); cursor: pointer;">×</div></div><div style="margin-top: 24px; display: grid; gap: 17px; color: var(--ink, #2C2C2A); font-size: 13.5px; line-height: 1.6;"><div><b>Your writing stays yours.</b><div style="color: var(--muted, #888780);">You retain ownership of scripts and notes created in FilmScript.</div></div><div><b>Lumiere is an assistant.</b><div style="color: var(--muted, #888780);">It offers suggestions and analysis. You decide what belongs in your work.</div></div><div><b>FilmScript Pro subscriptions.</b><div style="color: var(--muted, #888780);">FilmScript Pro renews monthly through Recurrente and can be canceled from your account menu.</div></div><div><b>Fair use.</b><div style="color: var(--muted, #888780);">Use FilmScript only with material you have permission to use.</div></div></div><div style="margin-top: 26px; text-align: right;"><div onClick="{{ closeTerms }}" style="display: inline-block; padding: 10px 17px; border-radius: 10px; background: var(--ink, #2C2C2A); color: var(--surface, #FFFEF9); font-size: 13px; font-weight: 600; cursor: pointer;">I understand</div></div></div></div></sc-if>
+
+    <!-- ============ FEATURES (MAIN) ============ -->
+  <sc-if value="{{ isLanding }}" hint-placeholder-val="{{ true }}">
+  <div ref="{{ landingScrollRef }}" style="flex: 1; min-height: 0; overflow-y: auto;">
+
+    <!-- HERO -->
+    <div style="max-width: 800px; margin: 0 auto; padding: 96px 40px 0; text-align: center;">
+      <h1 style="font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; font-weight: 700; font-size: 64px; line-height: 1.05; letter-spacing: -2px; color: var(--ink, #2C2C2A); margin: 0; animation: fs-rise .55s ease both;">Write the script. FilmScript handles the rest.</h1>
+      <p style="font-size: 20px; line-height: 1.5; color: var(--muted, #888780); max-width: 600px; margin: 24px auto 0; animation: fs-rise .55s ease both .08s;">A professional screenplay editor with an AI companion named Lumiere. Write your pages, then turn them into breakdowns, stripboards and shot lists. All text, all yours.</p>
+      <div class="fs-cta-row" style="display: flex; gap: 16px; margin-top: 34px; align-items: center; justify-content: center; animation: fs-rise .55s ease both .16s;">
+        <button type="button" data-testid="landing-primary-hero" onClick="{{ goScripts }}" class="fs-double-outline fs-outline-control fs-outline-control--primary" style="min-width: 154px; min-height: 50px;"><span style="font-size: 15px; font-weight: 600;">{{ landingPrimaryLabel }}</span></button>
+        <button type="button" onClick="{{ navPricing }}" class="fs-double-outline fs-outline-control fs-outline-control--secondary" style="min-width: 142px; min-height: 50px;"><span style="font-size: 15px; font-weight: 500;">See pricing</span><span class="fs-control-arrow" aria-hidden="true">›</span></button>
+      </div>
+      <div style="font-size: 13px; color: var(--muted, #888780); margin-top: 18px; animation: fs-rise .55s ease both .22s;">FilmScript Pro · $20 a month. Cancel any time.</div>
+    </div>
+
+    <!-- HERO PAGE MOCK -->
+    <div style="max-width: 560px; margin: 56px auto 0; position: relative; padding: 0 40px; animation: fs-rise .6s ease both .26s;">
+      <svg viewBox="0 0 480 300" style="width: 100%; height: auto; display: block;">
+        <path d="{{ heroFramePath }}" style="fill: var(--surface, #FFFEF9); stroke: var(--line, #2C2C2A);" stroke-width="1.6" stroke-linejoin="round" stroke-linecap="round"></path>
+        <sc-for list="{{ heroLines }}" as="ln" hint-placeholder-count="10">
+          <rect x="{{ ln.x }}" y="{{ ln.y }}" width="{{ ln.w }}" height="4" rx="1.5" style="fill: var(--ink, #2C2C2A);" opacity="{{ ln.o }}"></rect>
+        </sc-for>
+      </svg>
+      <div style="position: absolute; right: 6px; bottom: 22px; background: var(--chrome, #2C2C2A); color: #FFFEF9; border-radius: 13px; padding: 12px 15px; max-width: 196px; filter: url(#fs-sketch); animation: fs-pop .45s cubic-bezier(.2,.8,.3,1.1) both .55s;">
+        <div style="font-size: 12px; font-weight: 700; color: var(--accent-hover, #EF9F27); line-height: 1;">Lumiere</div>
+        <div style="font-size: 12px; line-height: 1.45; margin-top: 6px; color: #e6e4dc;">"This line leans on a cliché. Want a sharper image?"</div>
+      </div>
+    </div>
+
+    <!-- 01 WRITE -->
+    
+    <div style="max-width: 1040px; margin: 0 auto; padding: 110px 56px 0;">
+      <div style="display: grid; grid-template-columns: 1fr 1.05fr; gap: 64px; align-items: center;">
+        <div><div style="font-size: 12px; letter-spacing: 1.8px; text-transform: uppercase; color: var(--accent, #BA7517); font-weight: 600;">Step 01 · Write</div><h2 style="font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; font-weight: 700; font-size: 38px; letter-spacing: -1px; color: var(--ink, #2C2C2A); margin: 14px 0 0; line-height: 1.12; max-width: 440px;">A real Hollywood format editor.</h2><p style="font-size: 16.5px; line-height: 1.55; color: var(--muted, #888780); margin: 16px 0 0; max-width: 430px;">Scene headings, action, dialogue and transitions, all on industry standard margins. The page feels like paper and sounds like a typewriter.</p><div style="display: flex; flex-direction: column; gap: 12px; margin-top: 26px;"><div style="display: flex; gap: 10px; align-items: flex-start; font-size: 14px; line-height: 1.5; color: var(--ink, #2C2C2A);"><span style="color: var(--accent, #BA7517); flex: 0 0 auto;">{{ check }}</span><span>Format at one key. Tab cycles the block types, ⌘1 to ⌘6 jumps straight to one.</span></div><div style="display: flex; gap: 10px; align-items: flex-start; font-size: 14px; line-height: 1.5; color: var(--ink, #2C2C2A);"><span style="color: var(--accent, #BA7517); flex: 0 0 auto;">{{ check }}</span><span>Typewriter sound you can mute any time.</span></div><div style="display: flex; gap: 10px; align-items: flex-start; font-size: 14px; line-height: 1.5; color: var(--ink, #2C2C2A);"><span style="color: var(--accent, #BA7517); flex: 0 0 auto;">{{ check }}</span><span>Hand drawn pages, light and dark, WGA checked as you type.</span></div></div></div><div><div style="position: relative; padding: 26px 30px; border: 1.4px solid var(--line, #2C2C2A); border-radius: 18px; background: var(--surface, #FFFEF9); filter: url(#fs-sketch);"><div style="font-family: 'Courier Prime', monospace; font-size: 13px; line-height: 1.8; color: var(--ink, #2C2C2A);">
+            <div style="font-weight: 700;">INT. RAILWAY CAFÉ. RAINY AFTERNOON</div>
+            <div style="margin-top: 10px;">Steam fogs the window. MARA watches the platform. A train sighs in, brakes hissing.</div>
+            <div style="text-align: center; font-weight: 700; margin-top: 10px;">MARA</div>
+            <div style="text-align: center; font-style: italic; opacity: .7;">(barely audible)</div>
+            <div style="max-width: 260px; margin: 0 auto;">He's not coming. He never was. I just liked the waiting.</div>
+            <div style="margin-top: 10px; display: inline-block; border-bottom: 2px solid var(--accent, #BA7517);">She closes the notebook.</div><span style="display: inline-block; width: 2px; height: 15px; background: var(--accent, #BA7517); vertical-align: text-bottom; margin-left: 2px; animation: fs-caret 1.1s step-end infinite;"></span>
+          </div></div></div>
+      </div>
+    </div>
+
+    <!-- 02 REFINE -->
+    
+    <div style="max-width: 1040px; margin: 0 auto; padding: 110px 56px 0;">
+      <div style="display: grid; grid-template-columns: 1fr 1.05fr; gap: 64px; align-items: center;">
+        <div><div style="position: relative; padding: 20px 22px; border: 1.4px solid var(--line, #2C2C2A); border-radius: 18px; background: var(--surface, #FFFEF9); filter: url(#fs-sketch);">
+          <div style="display: flex; align-items: center; gap: 9px;"><span style="width: 9px; height: 9px; border-radius: 50%; background: var(--accent-hover, #EF9F27);"></span><span style="font-size: 13px; font-weight: 700; color: var(--ink, #2C2C2A);">Lumiere</span><span style="font-size: 11px; color: var(--muted, #888780);">reading Scene 12</span></div>
+          <div style="display: flex; flex-direction: column; gap: 12px; margin-top: 16px;">
+            <div style="align-self: flex-start; max-width: 88%; border: 1.4px solid var(--line, #2C2C2A); border-radius: 16px 17px 16px 4px; padding: 10px 13px; font-size: 12.5px; line-height: 1.55; color: var(--ink, #2C2C2A); filter: url(#fs-sketch);">"The crowd parts around her like water" leans on a familiar image. Mara notices textures, not shapes. What does the crowd sound like to her?</div>
+            <div style="align-self: flex-end; max-width: 80%; background: var(--bg, #F5F0E8); border: 1.4px solid var(--line, #2C2C2A); border-radius: 15px 15px 4px 16px; padding: 10px 13px; font-size: 12.5px; line-height: 1.5; color: var(--ink, #2C2C2A); filter: url(#fs-sketch);">Run a full analysis on act two. Where does the tension sag?</div>
+            <div style="align-self: flex-start; max-width: 88%; border: 1.4px solid var(--line, #2C2C2A); border-radius: 16px 17px 16px 4px; padding: 10px 13px; font-size: 12.5px; line-height: 1.55; color: var(--ink, #2C2C2A); filter: url(#fs-sketch);">Done. Tension climbs to the storm, then flattens for eleven pages while Mara waits. Scenes 44 to 47 repeat the same beat. Full report is on your desk.</div>
+          </div></div></div><div><div style="font-size: 12px; letter-spacing: 1.8px; text-transform: uppercase; color: var(--accent, #BA7517); font-weight: 600;">Step 02 · Refine</div><h2 style="font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; font-weight: 700; font-size: 38px; letter-spacing: -1px; color: var(--ink, #2C2C2A); margin: 14px 0 0; line-height: 1.12; max-width: 440px;">Lumiere reads. You decide.</h2><p style="font-size: 16.5px; line-height: 1.55; color: var(--muted, #888780); margin: 16px 0 0; max-width: 430px;">An AI companion that never writes a line for you. It reads like a great script editor and hands the pages back sharper.</p><div style="display: flex; flex-direction: column; gap: 12px; margin-top: 26px;"><div style="display: flex; gap: 10px; align-items: flex-start; font-size: 14px; line-height: 1.5; color: var(--ink, #2C2C2A);"><span style="color: var(--accent, #BA7517); flex: 0 0 auto;">{{ check }}</span><span>Cliché detector flags tired phrases the moment they land.</span></div><div style="display: flex; gap: 10px; align-items: flex-start; font-size: 14px; line-height: 1.5; color: var(--ink, #2C2C2A);"><span style="color: var(--accent, #BA7517); flex: 0 0 auto;">{{ check }}</span><span>Script analysis maps structure, pacing and character arcs into a readable report.</span></div><div style="display: flex; gap: 10px; align-items: flex-start; font-size: 14px; line-height: 1.5; color: var(--ink, #2C2C2A);"><span style="color: var(--accent, #BA7517); flex: 0 0 auto;">{{ check }}</span><span>Spotless spelling and grammar, without breaking your flow.</span></div></div></div>
+      </div>
+    </div>
+
+    <!-- 03 BREAK DOWN -->
+    
+    <div style="max-width: 1040px; margin: 0 auto; padding: 110px 56px 0;">
+      <div style="display: grid; grid-template-columns: 1fr 1.05fr; gap: 64px; align-items: center;">
+        <div><div style="font-size: 12px; letter-spacing: 1.8px; text-transform: uppercase; color: var(--accent, #BA7517); font-weight: 600;">Step 03 · Break down</div><h2 style="font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; font-weight: 700; font-size: 38px; letter-spacing: -1px; color: var(--ink, #2C2C2A); margin: 14px 0 0; line-height: 1.12; max-width: 440px;">One click turns a scene into a breakdown sheet.</h2><p style="font-size: 16.5px; line-height: 1.55; color: var(--muted, #888780); margin: 16px 0 0; max-width: 430px;">Lumiere reads every scene and tags the cast, props, wardrobe and sound it finds. You review, adjust, and export clean breakdown sheets ready for production.</p><div style="display: flex; flex-direction: column; gap: 12px; margin-top: 26px;"><div style="display: flex; gap: 10px; align-items: flex-start; font-size: 14px; line-height: 1.5; color: var(--ink, #2C2C2A);"><span style="color: var(--accent, #BA7517); flex: 0 0 auto;">{{ check }}</span><span>Elements tagged by category, scene by scene.</span></div><div style="display: flex; gap: 10px; align-items: flex-start; font-size: 14px; line-height: 1.5; color: var(--ink, #2C2C2A);"><span style="color: var(--accent, #BA7517); flex: 0 0 auto;">{{ check }}</span><span>A first pass drafted for you. Nothing is final until you approve it.</span></div><div style="display: flex; gap: 10px; align-items: flex-start; font-size: 14px; line-height: 1.5; color: var(--ink, #2C2C2A);"><span style="color: var(--accent, #BA7517); flex: 0 0 auto;">{{ check }}</span><span>Breakdown summaries and element lists as plain text documents.</span></div></div></div><div><div style="position: relative; padding: 24px 26px; border: 1.4px solid var(--line, #2C2C2A); border-radius: 18px; background: var(--surface, #FFFEF9); filter: url(#fs-sketch);">
+          <div style="font-family: 'Courier Prime', monospace; font-size: 13px; line-height: 1.75; color: var(--ink, #2C2C2A);">
+            <div style="font-weight: 700;">12 &nbsp;INT. RAILWAY CAFÉ. RAINY AFTERNOON</div>
+            <div style="margin-top: 10px;">Steam fogs the window. <span style="background: #BA751722; box-shadow: inset 0 -2px 0 #BA7517; border-radius: 3px; padding: 0 2px;">MARA</span> watches the platform, her <span style="background: #5B7A4A22; box-shadow: inset 0 -2px 0 #5B7A4A; border-radius: 3px; padding: 0 2px;">notebook</span> shut beside a cooling <span style="background: #5B7A4A22; box-shadow: inset 0 -2px 0 #5B7A4A; border-radius: 3px; padding: 0 2px;">cup of tea</span>. A <span style="background: #8A5A8A22; box-shadow: inset 0 -2px 0 #8A5A8A; border-radius: 3px; padding: 0 2px;">train</span> sighs in, <span style="background: #8A5A8A22; box-shadow: inset 0 -2px 0 #8A5A8A; border-radius: 3px; padding: 0 2px;">brakes hissing</span>. She pulls her <span style="background: #4A6B8A22; box-shadow: inset 0 -2px 0 #4A6B8A; border-radius: 3px; padding: 0 2px;">wool coat</span> tighter.</div>
+          </div>
+          <div style="height: 1px; background: var(--soft, #e4e2d8); margin: 18px 0 14px;"></div>
+          <div style="display: flex; flex-wrap: wrap; gap: 8px;">
+            <div style="display: flex; align-items: center; gap: 7px; font-size: 11.5px; font-weight: 600; color: var(--ink, #2C2C2A); border: 1.3px solid var(--line, #2C2C2A); border-radius: 999px; padding: 5px 11px; filter: url(#fs-sketch);"><span style="width: 8px; height: 8px; border-radius: 50%; background: #BA7517;"></span>Cast<span style="color: var(--muted, #888780); font-weight: 500;">1</span></div><div style="display: flex; align-items: center; gap: 7px; font-size: 11.5px; font-weight: 600; color: var(--ink, #2C2C2A); border: 1.3px solid var(--line, #2C2C2A); border-radius: 999px; padding: 5px 11px; filter: url(#fs-sketch);"><span style="width: 8px; height: 8px; border-radius: 50%; background: #5B7A4A;"></span>Props<span style="color: var(--muted, #888780); font-weight: 500;">2</span></div><div style="display: flex; align-items: center; gap: 7px; font-size: 11.5px; font-weight: 600; color: var(--ink, #2C2C2A); border: 1.3px solid var(--line, #2C2C2A); border-radius: 999px; padding: 5px 11px; filter: url(#fs-sketch);"><span style="width: 8px; height: 8px; border-radius: 50%; background: #4A6B8A;"></span>Wardrobe<span style="color: var(--muted, #888780); font-weight: 500;">1</span></div><div style="display: flex; align-items: center; gap: 7px; font-size: 11.5px; font-weight: 600; color: var(--ink, #2C2C2A); border: 1.3px solid var(--line, #2C2C2A); border-radius: 999px; padding: 5px 11px; filter: url(#fs-sketch);"><span style="width: 8px; height: 8px; border-radius: 50%; background: #8A5A8A;"></span>Sound<span style="color: var(--muted, #888780); font-weight: 500;">2</span></div>
+          </div></div></div>
+      </div>
+    </div>
+
+    <!-- 04 SCHEDULE -->
+    
+    <div style="max-width: 1040px; margin: 0 auto; padding: 110px 56px 0;">
+      <div style="display: grid; grid-template-columns: 1fr 1.05fr; gap: 64px; align-items: center;">
+        <div><div style="position: relative; padding: 22px; border: 1.4px solid var(--line, #2C2C2A); border-radius: 18px; background: var(--surface, #FFFEF9); filter: url(#fs-sketch);">
+          <div style="display: flex; flex-direction: column; gap: 8px;">
+            <div style="display: flex; align-items: center; gap: 12px; background: #F5E9BC; border: 1.3px solid var(--line, #2C2C2A); border-radius: 8px; padding: 9px 14px; font-size: 12px; color: #2C2C2A; filter: url(#fs-sketch);"><span style="font-weight: 700; min-width: 20px;">12</span><span style="font-weight: 600; min-width: 30px;">INT</span><span style="flex: 1;">RAILWAY CAFÉ</span><span style="min-width: 44px; opacity: .75;">DAY</span><span style="min-width: 40px; text-align: right; font-variant-numeric: tabular-nums;">2 3/8</span></div>
+            <div style="display: flex; align-items: center; gap: 12px; background: #DCE8C4; border: 1.3px solid var(--line, #2C2C2A); border-radius: 8px; padding: 9px 14px; font-size: 12px; color: #2C2C2A; filter: url(#fs-sketch);"><span style="font-weight: 700; min-width: 20px;">4</span><span style="font-weight: 600; min-width: 30px;">EXT</span><span style="flex: 1;">PLATFORM</span><span style="min-width: 44px; opacity: .75;">DAY</span><span style="min-width: 40px; text-align: right; font-variant-numeric: tabular-nums;">1 1/8</span></div>
+            <div style="display: flex; align-items: center; gap: 12px; background: #CFE0EE; border: 1.3px solid var(--line, #2C2C2A); border-radius: 8px; padding: 9px 14px; font-size: 12px; color: #2C2C2A; filter: url(#fs-sketch);"><span style="font-weight: 700; min-width: 20px;">27</span><span style="font-weight: 600; min-width: 30px;">INT</span><span style="flex: 1;">MARA'S BEDROOM</span><span style="min-width: 44px; opacity: .75;">NIGHT</span><span style="min-width: 40px; text-align: right; font-variant-numeric: tabular-nums;">5/8</span></div>
+            <div style="display: flex; align-items: center; justify-content: space-between; background: var(--chrome, #2C2C2A); color: #FFFEF9; border-radius: 8px; padding: 8px 14px; font-size: 11px; font-weight: 600; letter-spacing: 1.2px;"><span>END OF DAY 1</span><span style="font-weight: 500; letter-spacing: 0; opacity: .8;">4 1/8 pages</span></div>
+            <div style="display: flex; align-items: center; gap: 12px; background: #D9D2E8; border: 1.3px solid var(--line, #2C2C2A); border-radius: 8px; padding: 9px 14px; font-size: 12px; color: #2C2C2A; filter: url(#fs-sketch);"><span style="font-weight: 700; min-width: 20px;">31</span><span style="font-weight: 600; min-width: 30px;">EXT</span><span style="flex: 1;">THE BREAKWATER</span><span style="min-width: 44px; opacity: .75;">NIGHT</span><span style="min-width: 40px; text-align: right; font-variant-numeric: tabular-nums;">1 4/8</span></div>
+            <div style="display: flex; align-items: center; gap: 12px; background: #CFE0EE; border: 1.3px solid var(--line, #2C2C2A); border-radius: 8px; padding: 9px 14px; font-size: 12px; color: #2C2C2A; filter: url(#fs-sketch);"><span style="font-weight: 700; min-width: 20px;">8</span><span style="font-weight: 600; min-width: 30px;">INT</span><span style="flex: 1;">VILLAGE PUB</span><span style="min-width: 44px; opacity: .75;">NIGHT</span><span style="min-width: 40px; text-align: right; font-variant-numeric: tabular-nums;">2 2/8</span></div>
+          </div></div></div><div><div style="font-size: 12px; letter-spacing: 1.8px; text-transform: uppercase; color: var(--accent, #BA7517); font-weight: 600;">Step 04 · Schedule</div><h2 style="font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; font-weight: 700; font-size: 38px; letter-spacing: -1px; color: var(--ink, #2C2C2A); margin: 14px 0 0; line-height: 1.12; max-width: 440px;">Every scene becomes a strip. Drag them into days.</h2><p style="font-size: 16.5px; line-height: 1.55; color: var(--muted, #888780); margin: 16px 0 0; max-width: 430px;">The classic stripboard, kept simple. Strips carry scene number, set, time of day and page count. Move one and the day breaks recalculate.</p><div style="display: flex; flex-direction: column; gap: 12px; margin-top: 26px;"><div style="display: flex; gap: 10px; align-items: flex-start; font-size: 14px; line-height: 1.5; color: var(--ink, #2C2C2A);"><span style="color: var(--accent, #BA7517); flex: 0 0 auto;">{{ check }}</span><span>Colors follow the old convention: day, night, interior, exterior.</span></div><div style="display: flex; gap: 10px; align-items: flex-start; font-size: 14px; line-height: 1.5; color: var(--ink, #2C2C2A);"><span style="color: var(--accent, #BA7517); flex: 0 0 auto;">{{ check }}</span><span>Day breaks total your pages so you never overplan a day.</span></div><div style="display: flex; gap: 10px; align-items: flex-start; font-size: 14px; line-height: 1.5; color: var(--ink, #2C2C2A);"><span style="color: var(--accent, #BA7517); flex: 0 0 auto;">{{ check }}</span><span>Export the board as a one page shooting schedule.</span></div></div></div>
+      </div>
+    </div>
+
+    <!-- 05 SHOOT -->
+    
+    <div style="max-width: 1040px; margin: 0 auto; padding: 110px 56px 0;">
+      <div style="display: grid; grid-template-columns: 1fr 1.05fr; gap: 64px; align-items: center;">
+        <div><div style="font-size: 12px; letter-spacing: 1.8px; text-transform: uppercase; color: var(--accent, #BA7517); font-weight: 600;">Step 05 · Shoot</div><h2 style="font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; font-weight: 700; font-size: 38px; letter-spacing: -1px; color: var(--ink, #2C2C2A); margin: 14px 0 0; line-height: 1.12; max-width: 440px;">Plan every shot before you roll.</h2><p style="font-size: 16.5px; line-height: 1.55; color: var(--muted, #888780); margin: 16px 0 0; max-width: 430px;">Build a shot list per scene with the specs that matter: size, angle, movement and a line of intent. Print it, share it, check it off on the day.</p><div style="display: flex; flex-direction: column; gap: 12px; margin-top: 26px;"><div style="display: flex; gap: 10px; align-items: flex-start; font-size: 14px; line-height: 1.5; color: var(--ink, #2C2C2A);"><span style="color: var(--accent, #BA7517); flex: 0 0 auto;">{{ check }}</span><span>Preset shot sizes and angles keep the list consistent.</span></div><div style="display: flex; gap: 10px; align-items: flex-start; font-size: 14px; line-height: 1.5; color: var(--ink, #2C2C2A);"><span style="color: var(--accent, #BA7517); flex: 0 0 auto;">{{ check }}</span><span>Lumiere suggests coverage from the scene text. You keep what serves the story.</span></div><div style="display: flex; gap: 10px; align-items: flex-start; font-size: 14px; line-height: 1.5; color: var(--ink, #2C2C2A);"><span style="color: var(--accent, #BA7517); flex: 0 0 auto;">{{ check }}</span><span>Exports as a clean text document your crew can read anywhere.</span></div></div></div><div><div style="position: relative; padding: 22px 24px; border: 1.4px solid var(--line, #2C2C2A); border-radius: 18px; background: var(--surface, #FFFEF9); filter: url(#fs-sketch);">
+          <div style="display: grid; grid-template-columns: 34px 74px 84px 70px 1fr; gap: 10px; padding: 0 4px 8px; font-size: 10.5px; letter-spacing: 1.2px; text-transform: uppercase; font-weight: 600; color: var(--muted, #888780); border-bottom: 1.3px solid var(--line, #2C2C2A);"><span>Shot</span><span>Size</span><span>Angle</span><span>Move</span><span>Description</span></div>
+          <div style="display: grid; grid-template-columns: 34px 74px 84px 70px 1fr; gap: 10px; padding: 9px 4px; border-bottom: 1px solid var(--soft, #e4e2d8); font-size: 12px; color: var(--ink, #2C2C2A); align-items: baseline;"><span style="font-weight: 700; color: var(--accent, #BA7517);">12A</span><span>Wide</span><span>Eye level</span><span>Static</span><span style="color: var(--muted, #888780);">Mara alone at the window, steam on the glass</span></div>
+          <div style="display: grid; grid-template-columns: 34px 74px 84px 70px 1fr; gap: 10px; padding: 9px 4px; border-bottom: 1px solid var(--soft, #e4e2d8); font-size: 12px; color: var(--ink, #2C2C2A); align-items: baseline;"><span style="font-weight: 700; color: var(--accent, #BA7517);">12B</span><span>Close up</span><span>High</span><span>Dolly in</span><span style="color: var(--muted, #888780);">The notebook stays shut</span></div>
+          <div style="display: grid; grid-template-columns: 34px 74px 84px 70px 1fr; gap: 10px; padding: 9px 4px; border-bottom: 1px solid var(--soft, #e4e2d8); font-size: 12px; color: var(--ink, #2C2C2A); align-items: baseline;"><span style="font-weight: 700; color: var(--accent, #BA7517);">12C</span><span>Medium</span><span>Over shoulder</span><span>Pan</span><span style="color: var(--muted, #888780);">The train arrives beyond the glass</span></div>
+          <div style="display: grid; grid-template-columns: 34px 74px 84px 70px 1fr; gap: 10px; padding: 9px 4px 0; font-size: 12px; color: var(--ink, #2C2C2A);"><span style="font-weight: 700; color: var(--accent, #BA7517);">12D</span><span>Insert</span><span>Top down</span><span>Static</span><span style="color: var(--muted, #888780);">Tea gone cold, untouched</span></div></div></div>
+      </div>
+    </div>
+
+    <!-- EXPORTS BAND -->
+    <div style="max-width: 760px; margin: 0 auto; padding: 110px 56px 0; text-align: center;">
+      <h2 style="font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; font-weight: 700; font-size: 36px; letter-spacing: -1px; color: var(--ink, #2C2C2A); margin: 0; line-height: 1.12;">Every document, plain text out.</h2>
+      <p style="font-size: 16.5px; line-height: 1.55; color: var(--muted, #888780); max-width: 520px; margin: 16px auto 0;">No renders, no heavy assets. Clean documents you can print, share or paste anywhere.</p>
+      <div style="display: flex; flex-wrap: wrap; gap: 10px; justify-content: center; margin-top: 30px;">
+        <div class="fsx-chip" style="font-size: 12.5px; font-weight: 600; color: var(--ink, #2C2C2A); border: 1.3px solid var(--line, #2C2C2A); border-radius: 999px; padding: 8px 16px; filter: url(#fs-sketch);">Screenplay PDF</div>
+        <div class="fsx-chip" style="font-size: 12.5px; font-weight: 600; color: var(--ink, #2C2C2A); border: 1.3px solid var(--line, #2C2C2A); border-radius: 999px; padding: 8px 16px; filter: url(#fs-sketch);">Script analysis</div>
+        <div class="fsx-chip" style="font-size: 12.5px; font-weight: 600; color: var(--ink, #2C2C2A); border: 1.3px solid var(--line, #2C2C2A); border-radius: 999px; padding: 8px 16px; filter: url(#fs-sketch);">Breakdown sheets</div>
+        <div class="fsx-chip" style="font-size: 12.5px; font-weight: 600; color: var(--ink, #2C2C2A); border: 1.3px solid var(--line, #2C2C2A); border-radius: 999px; padding: 8px 16px; filter: url(#fs-sketch);">Stripboard schedule</div>
+        <div class="fsx-chip" style="font-size: 12.5px; font-weight: 600; color: var(--ink, #2C2C2A); border: 1.3px solid var(--line, #2C2C2A); border-radius: 999px; padding: 8px 16px; filter: url(#fs-sketch);">Shot lists</div>
+      </div>
+    </div>
+
+    <!-- FINAL CTA -->
+    <div style="max-width: 720px; margin: 0 auto; padding: 110px 56px 0; text-align: center;">
+      <h2 style="font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; font-weight: 700; font-size: 38px; letter-spacing: -1px; color: var(--ink, #2C2C2A); line-height: 1.12; margin: 0;">Ready when you are.</h2>
+      <div class="fs-cta-row" style="display: flex; gap: 16px; margin-top: 30px; align-items: center; justify-content: center;">
+        <button type="button" data-testid="landing-primary-final" onClick="{{ goScripts }}" class="fs-double-outline fs-outline-control fs-outline-control--primary" style="min-width: 154px; min-height: 50px;"><span style="font-size: 15px; font-weight: 600;">{{ landingPrimaryLabel }}</span></button>
+        <button type="button" onClick="{{ navPricing }}" class="fs-double-outline fs-outline-control fs-outline-control--secondary" style="min-width: 142px; min-height: 50px;"><span style="font-size: 15px; font-weight: 500;">See pricing</span><span class="fs-control-arrow" aria-hidden="true">›</span></button>
+      </div>
+    </div>
+
+    <div style="text-align: center; padding: 80px 0 60px; font-size: 13px; color: var(--muted, #888780);">FilmScript. Write better, not louder.</div>
+  </div>
+  </sc-if>
+
+  <!-- ============ LOG IN MODAL ============ -->
+  <sc-if value="{{ authOpen }}" hint-placeholder-val="{{ false }}">
+  <div class="fs-auth-backdrop" onClick="{{ closeAuth }}">
+    <section class="fs-auth-sheet fs-auth-sheet--login" onClick="{{ stop }}" role="dialog" aria-modal="true" aria-labelledby="fs-auth-title">
+      <button type="button" class="fs-auth-close" onClick="{{ closeAuth }}" aria-label="Close login">×</button>
+      <div class="fs-auth-header">
+        <h2 class="fs-auth-title" id="fs-auth-title">Log in</h2>
+        <svg class="fs-auth-sketch-line" viewBox="0 0 78 9" aria-hidden="true"><path d="M2 5.2 C 18 3.7, 31 6.2, 46 4.5 S 66 5.8, 76 4.2"></path></svg>
+        <p class="fs-auth-copy">Use your Google account to continue to FilmScript.</p>
+      </div>
+
+      <button type="button" class="fs-auth-google" data-testid="google-login" onClick="{{ googleLogIn }}">
+        <svg viewBox="0 0 24 24" style="width: 19px; height: 19px;"><path fill="#4285F4" d="M21.6 12.2c0-.7-.06-1.4-.18-2H12v3.8h5.4c-.23 1.2-.94 2.3-2 3v2.5h3.24C20.5 17.7 21.6 15.2 21.6 12.2z"></path><path fill="#34A853" d="M12 22c2.7 0 4.96-.9 6.62-2.4l-3.24-2.5c-.9.6-2.05.96-3.38.96-2.6 0-4.8-1.75-5.58-4.1H3.07v2.58C4.72 19.98 8.1 22 12 22z"></path><path fill="#FBBC05" d="M6.42 13.96c-.2-.6-.31-1.24-.31-1.96s.11-1.36.31-1.96V7.46H3.07C2.39 8.8 2 10.36 2 12s.39 3.2 1.07 4.54l3.35-2.58z"></path><path fill="#EA4335" d="M12 5.94c1.47 0 2.78.5 3.82 1.5l2.86-2.86C16.96 2.99 14.7 2 12 2 8.1 2 4.72 4.02 3.07 7.46l3.35 2.58C7.2 7.69 9.4 5.94 12 5.94z"></path></svg>
+        <span>Log in with your Google account</span>
+      </button>
+
+      <div class="fs-auth-note">Google keeps your scripts, subscription, and production tools connected to one secure account.</div>
+      <p class="fs-auth-terms">By continuing you agree to the Terms and Privacy Policy.</p>
+    </section>
+  </div>
+  </sc-if>
+
+  <!-- ============ CHECKOUT MODAL ============ -->
+  <sc-if value="{{ checkoutOpen }}" hint-placeholder-val="{{ false }}">
+  <div onClick="{{ closeCheckout }}" style="position: absolute; inset: 0; z-index: 50; background: rgba(28,28,26,.42); display: flex; align-items: center; justify-content: center; animation: fs-fade .25s ease both;">
+    <div onClick="{{ stop }}" style="animation: fs-pop .32s cubic-bezier(.2,.8,.3,1.12) both; position: relative; width: 380px; max-width: calc(100% - 40px); padding: 34px 32px 30px; background: var(--surface, #FFFEF9); border: 1.6px solid var(--line, #2C2C2A); border-radius: 22px; filter: url(#fs-sketch);">
+      <span onClick="{{ closeCheckout }}" style="position: absolute; top: 16px; right: 18px; font-size: 20px; line-height: 1; color: var(--muted, #888780); cursor: pointer;">×</span>
+
+      <sc-if value="{{ checkoutConfirmStep }}" hint-placeholder-val="{{ true }}">
+      <div>
+        <div style="font-size: 11px; letter-spacing: 1.6px; text-transform: uppercase; color: var(--accent, #BA7517); font-weight: 600; text-align: center;">Confirm plan</div>
+        <h2 style="font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; font-weight: 700; font-size: 24px; letter-spacing: -0.5px; color: var(--ink, #2C2C2A); margin: 12px 0 0; text-align: center;">{{ checkoutPlanName }}</h2>
+        <div style="text-align: center; margin-top: 8px; font-size: 15px; color: var(--muted, #888780);">{{ checkoutPlanPrice }}</div>
+
+        <sc-if value="{{ checkoutHasLink }}" hint-placeholder-val="{{ true }}">
+        <div onClick="{{ openPayLink }}" class="fsx-lift" style="position: relative; text-align: center; margin-top: 24px; padding: 13px; cursor: pointer;">
+          <svg viewBox="0 0 320 48" preserveAspectRatio="none" style="position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none;"><path d="{{ planBtnPath }}" style="fill: var(--accent, #BA7517); stroke: var(--accent, #BA7517);" stroke-width="1.6" stroke-linejoin="round"></path></svg>
+          <span style="position: relative; font-size: 14px; font-weight: 600; color: #FFFEF9;">Continue to checkout</span>
+        </div>
+        </sc-if>
+
+        <div style="margin-top: 18px; padding: 13px 15px; border: 1.4px solid var(--line, #2C2C2A); border-radius: 14px; background: var(--bg, #F5F0E8); filter: url(#fs-sketch);">
+          <div style="font-size: 12px; line-height: 1.55; color: var(--muted, #888780);">You will return to FilmScript after payment. FilmScript verifies the checkout securely and unlocks Pro automatically.</div>
+        </div>
+      </div>
+      </sc-if>
+
+      <sc-if value="{{ checkoutSuccessStep }}" hint-placeholder-val="{{ false }}">
+      <div style="text-align: center;">
+        <div style="width: 44px; height: 44px; color: var(--accent, #BA7517); margin: 0 auto;">
+          <svg viewBox="0 0 24 24" style="width: 100%; height: 100%;" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"></circle><path d="M7.8 12.3 L10.4 15 L16.4 8.8"></path></svg>
+        </div>
+        <h2 style="font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; font-weight: 700; font-size: 22px; letter-spacing: -0.5px; color: var(--ink, #2C2C2A); margin: 16px 0 0;">You are all set</h2>
+        <p style="font-size: 13.5px; line-height: 1.55; color: var(--muted, #888780); margin: 8px 0 0;">{{ checkoutPlanName }} is active. Your payment was verified securely.</p>
+        <div onClick="{{ continueAfterCheckout }}" class="fsx-lift" style="position: relative; text-align: center; margin-top: 22px; padding: 13px; cursor: pointer;">
+          <svg viewBox="0 0 320 48" preserveAspectRatio="none" style="position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none;"><path d="{{ planBtnPath }}" style="fill: var(--accent, #BA7517); stroke: var(--accent, #BA7517);" stroke-width="1.6" stroke-linejoin="round"></path></svg>
+          <span style="position: relative; font-size: 14px; font-weight: 600; color: #FFFEF9;">Continue to Scripts</span>
+        </div>
+      </div>
+      </sc-if>
+
+    </div>
+  </div>
+  </sc-if>
+
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{
+  &quot;accent&quot;: { &quot;editor&quot;: &quot;color&quot;, &quot;default&quot;: &quot;#BA7517&quot;, &quot;tsType&quot;: &quot;string&quot;, &quot;section&quot;: &quot;Theme&quot; },
+  &quot;accentHover&quot;: { &quot;editor&quot;: &quot;color&quot;, &quot;default&quot;: &quot;#EF9F27&quot;, &quot;tsType&quot;: &quot;string&quot;, &quot;section&quot;: &quot;Theme&quot; },
+  &quot;borderRoughness&quot;: { &quot;editor&quot;: &quot;range&quot;, &quot;default&quot;: 3.2, &quot;min&quot;: 1, &quot;max&quot;: 7, &quot;step&quot;: 0.2, &quot;tsType&quot;: &quot;number&quot;, &quot;section&quot;: &quot;Hand-drawn border&quot;, &quot;unit&quot;: &quot;px&quot; },
+  &quot;startScreen&quot;: { &quot;editor&quot;: null, &quot;default&quot;: &quot;landing&quot;, &quot;tsType&quot;: &quot;string&quot; }
+}">
+class Component extends DCLogic {
+  state = {
+    screen: 'landing',
+    lumiereOpen: true,
+    soundOn: true,
+    darkMode: window.filmscriptTheme?.isDark() ?? false,
+    mode: 'sample',
+    zoom: 1,
+    menuOpen: false,
+    authOpen: false,
+    user: null,
+    input: '',
+    loading: false,
+    plan: null,
+    pendingPlan: null,
+    checkoutOpen: false,
+    checkoutPlan: null,
+    checkoutStep: 'confirm',
+    accountOpen: false,
+    accountDetailsOpen: false,
+    termsOpen: false,
+    profileName: '',
+    profileNameDraft: '',
+    profileSaving: false,
+    profileSaved: false,
+    chat: [
+      { who: 'l', text: "I've read the railway café scene. Mara's restraint is doing a lot of quiet work. What do you want to push on?" },
+    ],
+  };
+
+  canvasRef = React.createRef();
+  landingScrollRef = React.createRef();
+
+  componentDidMount() {
+    window.filmscriptSounds?.preload('profile');
+    window.filmscriptSounds?.preload('darkModeOn');
+    window.filmscriptSounds?.preload('lightModeOn');
+    const billingParams = new URLSearchParams(window.location.search);
+    this._refreshBilling(billingParams.get('payment') === 'success', billingParams.get('checkout_id'));
+    let tries = 0;
+    const arm = () => {
+      const el = this.landingScrollRef.current;
+      if (!el) { if (++tries < 90) setTimeout(arm, 33); return; }
+      this._armReveal(el);
+    };
+    setTimeout(arm, 0);
+  }
+
+  async _refreshBilling(sync = false, checkoutId = null) {
+    try {
+      const me = await (sync ? window.filmscriptBilling.sync(checkoutId) : window.filmscriptBilling.me());
+      const user = me.authenticated && me.email ? { name: me.name || me.email.split('@')[0], email: me.email, picture: me.picture || null, initial: (me.name || me.email).charAt(0).toUpperCase() } : null;
+      this.setState({ plan: me.plan || null, user, profileName: user?.name || '', profileNameDraft: user?.name || '' });
+      return me;
+    } catch (e) {}
+  }
+
+  _armReveal(c) {
+    if (this._revealInit) return;
+    this._revealInit = true;
+    const io = new IntersectionObserver((ens) => {
+      ens.forEach(en => {
+        if (en.isIntersecting) {
+          en.target.style.opacity = '1';
+          en.target.style.transform = 'translateY(0px)';
+          io.unobserve(en.target);
+        }
+      });
+    }, { root: c, rootMargin: '0px 0px -70px 0px', threshold: 0.06 });
+    const bottom = c.getBoundingClientRect().bottom;
+    Array.from(c.children).forEach(el => {
+      if (el.getBoundingClientRect().top < bottom - 40) return;
+      el.style.transition = 'opacity .65s ease, transform .65s cubic-bezier(.2,.7,.2,1)';
+      el.style.opacity = '0';
+      el.style.transform = 'translateY(22px)';
+      io.observe(el);
+    });
+  }
+
+  _scrollToSec(name) {
+    const c = this.landingScrollRef.current;
+    if (!c) return;
+    if (!name) { c.scrollTo({ top: 0, behavior: 'smooth' }); return; }
+    const el = c.querySelector('[data-sec="' + name + '"]');
+    if (!el) return;
+    const top = el.getBoundingClientRect().top - c.getBoundingClientRect().top + c.scrollTop - 16;
+    c.scrollTo({ top, behavior: 'smooth' });
+  }
+
+  pageRef = React.createRef();
+  chatRef = React.createRef();
+  STORAGE_KEY = 'filmscript_doc_v1';
+
+  SCRIPT_TEXT = [
+    'INT. RAILWAY CAFÉ — RAINY AFTERNOON',
+    'Steam fogs the window. MARA (30s, restless, a notebook she never opens) watches the platform. A train sighs in, brakes hissing.',
+    'MARA (barely audible): He\u2019s not coming. He never was. I just liked the waiting.',
+    'She closes the notebook. For the first time, it stays shut.',
+    'EXT. PLATFORM — CONTINUOUS',
+    'The crowd parts around her like water. A conductor checks his watch. Somewhere a bell.',
+  ].join('\n');
+
+  DEFAULT_DOC = [
+    { type: 'scene', text: 'INT. RAILWAY CAFÉ — RAINY AFTERNOON' },
+    { type: 'action', text: 'Steam fogs the window. MARA (30s, restless, a notebook she never opens) watches the platform. A train sighs in, brakes hissing.' },
+    { type: 'character', text: 'MARA' },
+    { type: 'paren', text: '(barely audible)' },
+    { type: 'dialogue', text: "He's not coming. He never was. I just liked the waiting." },
+    { type: 'action', text: 'She closes the notebook. For the first time, it stays shut.' },
+    { type: 'scene', text: 'EXT. PLATFORM — CONTINUOUS' },
+    { type: 'action', text: 'The crowd parts around her like water. A conductor checks his watch. Somewhere a bell.' },
+  ];
+
+  // ---------- hand-drawn geometry ----------
+  _rng(seed) {
+    let s = seed % 2147483647;
+    if (s <= 0) s += 2147483646;
+    return () => { s = (s * 16807) % 2147483647; return (s - 1) / 2147483646; };
+  }
+
+  // hand-drawn rounded rectangle: perpendicular jitter on edges + smooth rounded corners (no cut corners)
+  _roughPath(w, h, amp, seed, r) {
+    const rnd = this._rng(seed);
+    const m = amp + 5;
+    const x0 = m, y0 = m, x1 = w - m, y1 = h - m;
+    r = Math.min(r || 16, (x1 - x0) / 2 - 1, (y1 - y0) / 2 - 1);
+    const P = [];
+    const add = (x, y, nx, ny) => { const d = (rnd() * 2 - 1) * amp; P.push([x + nx * d, y + ny * d]); };
+    const edge = (ax, ay, bx, by, nx, ny, steps) => { for (let i = 0; i < steps; i++) { const t = i / steps; add(ax + (bx - ax) * t, ay + (by - ay) * t, nx, ny); } };
+    const arc = (cx, cy, a0, a1, steps) => { for (let i = 0; i <= steps; i++) { const a = a0 + (a1 - a0) * i / steps; add(cx + Math.cos(a) * r, cy + Math.sin(a) * r, Math.cos(a), Math.sin(a)); } };
+    const sx = Math.max(2, Math.round((x1 - x0) / 80));
+    const sy = Math.max(2, Math.round((y1 - y0) / 80));
+    edge(x0 + r, y0, x1 - r, y0, 0, -1, sx);
+    arc(x1 - r, y0 + r, -Math.PI / 2, 0, 3);
+    edge(x1, y0 + r, x1, y1 - r, 1, 0, sy);
+    arc(x1 - r, y1 - r, 0, Math.PI / 2, 3);
+    edge(x1 - r, y1, x0 + r, y1, 0, 1, sx);
+    arc(x0 + r, y1 - r, Math.PI / 2, Math.PI, 3);
+    edge(x0, y1 - r, x0, y0 + r, -1, 0, sy);
+    arc(x0 + r, y0 + r, Math.PI, Math.PI * 1.5, 3);
+    const n = P.length;
+    let d = `M ${P[0][0].toFixed(1)} ${P[0][1].toFixed(1)} `;
+    for (let i = 0; i < n; i++) {
+      const p0 = P[(i - 1 + n) % n], p1 = P[i], p2 = P[(i + 1) % n], p3 = P[(i + 2) % n];
+      const c1x = p1[0] + (p2[0] - p0[0]) / 6, c1y = p1[1] + (p2[1] - p0[1]) / 6;
+      const c2x = p2[0] - (p3[0] - p1[0]) / 6, c2y = p2[1] - (p3[1] - p1[1]) / 6;
+      d += `C ${c1x.toFixed(1)} ${c1y.toFixed(1)} ${c2x.toFixed(1)} ${c2y.toFixed(1)} ${p2[0].toFixed(1)} ${p2[1].toFixed(1)} `;
+    }
+    return d + 'Z';
+  }
+
+  _roughLineH(len, amp, seed) {
+    const rnd = this._rng(seed);
+    const seg = Math.max(8, Math.round(len / 30)), y = 4;
+    const pts = [];
+    for (let i = 0; i <= seg; i++) pts.push([len * i / seg, y + (rnd() * 2 - 1) * amp]);
+    let d = `M ${pts[0][0].toFixed(1)} ${pts[0][1].toFixed(1)} `;
+    for (let i = 1; i < pts.length; i++) {
+      const cx = (pts[i - 1][0] + pts[i][0]) / 2, cy = (pts[i - 1][1] + pts[i][1]) / 2;
+      d += `Q ${pts[i - 1][0].toFixed(1)} ${pts[i - 1][1].toFixed(1)} ${cx.toFixed(1)} ${cy.toFixed(1)} `;
+    }
+    d += `L ${pts[pts.length - 1][0].toFixed(1)} ${pts[pts.length - 1][1].toFixed(1)}`;
+    return d;
+  }
+
+  _roughLineV(len, amp, seed) {
+    const rnd = this._rng(seed);
+    const seg = Math.max(8, Math.round(len / 30)), x = 4;
+    const pts = [];
+    for (let i = 0; i <= seg; i++) pts.push([x + (rnd() * 2 - 1) * amp, len * i / seg]);
+    let d = `M ${pts[0][0].toFixed(1)} ${pts[0][1].toFixed(1)} `;
+    for (let i = 1; i < pts.length; i++) {
+      const cx = (pts[i - 1][0] + pts[i][0]) / 2, cy = (pts[i - 1][1] + pts[i][1]) / 2;
+      d += `Q ${pts[i - 1][0].toFixed(1)} ${pts[i - 1][1].toFixed(1)} ${cx.toFixed(1)} ${cy.toFixed(1)} `;
+    }
+    d += `L ${pts[pts.length - 1][0].toFixed(1)} ${pts[pts.length - 1][1].toFixed(1)}`;
+    return d;
+  }
+
+  // ---------- editable screenplay ----------
+  _esc(s) { return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;'); }
+
+  _styleFor(type) {
+    const base = 'position:relative;margin:0;min-height:1.62em;white-space:pre-wrap;';
+    const t = {
+      scene: 'font-weight:700;text-transform:uppercase;letter-spacing:.3px;margin-top:18px;',
+      action: 'margin-top:12px;',
+      character: 'text-align:center;font-weight:700;margin-top:14px;',
+      paren: 'text-align:center;font-style:italic;opacity:.72;',
+      dialogue: 'max-width:340px;margin:0 auto;',
+      transition: 'text-align:right;font-weight:700;text-transform:uppercase;margin-top:12px;',
+      fadein: 'font-weight:700;text-transform:uppercase;letter-spacing:.3px;',
+      end: 'text-align:center;font-weight:700;letter-spacing:3px;margin-top:54px;',
+    };
+    return base + (t[type] || t.action);
+  }
+
+  _markerStyle() {
+    return 'position:absolute;left:-46px;top:0;color:var(--accent,#BA7517);opacity:.65;font-size:11px;';
+  }
+
+  // ---------- generate a long invented screenplay ----------
+  _generateScript() {
+    const rnd = this._rng(20260629);
+    const pick = (a) => a[Math.floor(rnd() * a.length)];
+    const intext = ['INT.', 'EXT.', 'INT./EXT.'];
+    const places = [
+      'LIGHTHOUSE — LANTERN ROOM', 'LIGHTHOUSE — SPIRAL STAIR', "KEEPER'S COTTAGE — KITCHEN",
+      'HARBOR ROAD', 'THE BREAKWATER', 'FISHING TRAWLER — DECK', 'VILLAGE PUB — BACK BOOTH',
+      "MARA'S BEDROOM", 'THE CLIFF PATH', 'POST OFFICE', 'CHURCHYARD', 'SUPPLY BOAT — CABIN',
+      'TIDE POOLS', 'THE OLD BOATHOUSE', 'HARBORMASTER\u2019S OFFICE', 'SEA — OPEN WATER',
+    ];
+    const times = ['DAWN', 'DAY', 'DUSK', 'NIGHT', 'CONTINUOUS', 'LATER', 'PRE-DAWN', 'MAGIC HOUR'];
+    const chars = ['MARA', 'THE KEEPER', 'ELIAS', 'HARBORMASTER', 'YOUNG TOM', 'GULL (V.O.)', 'MARA (V.O.)', 'RADIO VOICE'];
+    const actions = [
+      'The lamp turns. A blade of light sweeps the black water and finds nothing.',
+      'Mara wipes salt from the glass. Below, the surf gnaws the rocks like something patient.',
+      'The Keeper climbs, one hand always on the rail, counting the steps he no longer needs to count.',
+      'Rain arrives sideways. The cottage windows rattle in their frames.',
+      'A letter sits unopened on the table, its corner darkened where a thumb keeps returning.',
+      'The trawler pitches. Ropes groan. Somewhere a bell answers a bell.',
+      'She lays the logbook flat and writes the date, then crosses it out.',
+      'Light fails over the headland. The town below blinks awake, window by window.',
+      'He pours two cups of tea and only ever drinks one.',
+      'The radio coughs static, then a voice, then static again.',
+      'Footprints fill with seawater and vanish behind her.',
+      'The flame gutters. For a heartbeat the whole coast goes dark.',
+      'Tom presses his ear to the foghorn housing as if it might confess something.',
+      'A photograph, sun-bleached to ghosts, is tucked back behind the clock.',
+      'The tide draws out farther than it should, baring the wreck no one talks about.',
+    ];
+    const lines = [
+      'You can\u2019t keep a light for someone who isn\u2019t coming back.',
+      'The sea doesn\u2019t take sides. It just takes.',
+      'I counted the flashes every night. Three long, one short. Like a name.',
+      'We don\u2019t leave the lamp. The lamp leaves us, eventually.',
+      'Tell me you saw it too. The boat. Out past the second buoy.',
+      'My father kept this light forty years and it kept him longer.',
+      'There\u2019s a difference between waiting and refusing to let go.',
+      'Storm\u2019s turning. You\u2019ll want to be off the breakwater before it does.',
+      'I wrote it all down so somebody would know we were here.',
+      'You think the dark is the enemy. The dark is just honest.',
+      'If the horn stops, you run. You don\u2019t look back at me.',
+      'Some lights you keep for the living. This one I keep for the rest.',
+      'I\u2019m not frightened of the water. I\u2019m frightened of the quiet after.',
+      'Every keeper leaves a name in the logbook. None of them leave twice.',
+    ];
+    const parens = ['(quietly)', '(beat)', '(not looking up)', '(to herself)', '(sharp)', '(after a moment)', '(barely audible)'];
+    const transitions = ['CUT TO:', 'SMASH CUT TO:', 'DISSOLVE TO:', 'MATCH CUT TO:'];
+
+    const blocks = [{ type: 'fadein', text: 'FADE IN:' }];
+    for (let s = 0; s < 320; s++) {
+      blocks.push({ type: 'scene', text: `${pick(intext)} ${pick(places)} — ${pick(times)}` });
+      const na = 1 + Math.floor(rnd() * 3);
+      for (let a = 0; a < na; a++) blocks.push({ type: 'action', text: pick(actions) });
+      const nd = 1 + Math.floor(rnd() * 4);
+      for (let d = 0; d < nd; d++) {
+        blocks.push({ type: 'character', text: pick(chars) });
+        if (rnd() < 0.4) blocks.push({ type: 'paren', text: pick(parens) });
+        let txt = pick(lines);
+        if (rnd() < 0.4) txt += ' ' + pick(lines);
+        blocks.push({ type: 'dialogue', text: txt });
+        if (rnd() < 0.28) blocks.push({ type: 'action', text: pick(actions) });
+      }
+      if (rnd() < 0.5) blocks.push({ type: 'transition', text: pick(transitions) });
+    }
+    return blocks;
+  }
+
+  _buildPages(rough) {
+    const mode = this.state.mode || 'sample';
+    const key = mode + ':' + rough;
+    if (this._pagesKey === key && this._pagesCache) return this._pagesCache;
+    const self = this;
+    if (mode === 'blank') {
+      const html = `<div data-type="scene" style="${this._styleFor('scene')}"><br><span data-marker contenteditable="false" style="${this._markerStyle()}">1</span></div>`;
+      const out = [{
+        no: 1, label: '1.',
+        path: this._roughPath(794, 1123, rough + 1.6, 9000, 24),
+        mount: (node) => { if (node && node.__fsHtml !== html) { node.__fsHtml = html; self._initPage(node, html); } },
+      }];
+      this._pagesKey = key; this._pagesCache = out;
+      return out;
+    }
+    const blocks = this._generateScript();
+    const CW = { dialogue: 38, paren: 42 };
+    const MARG = { scene: 1.1, character: 0.7, action: 0.6, transition: 0.7, fadein: 0.6, end: 3, paren: 0, dialogue: 0 };
+    const est = (b) => { const w = CW[b.type] || 74; return Math.max(1, Math.ceil((b.text.length || 1) / w)) + (MARG[b.type] || 0); };
+    const CAP = 44;
+    const pageBlocks = []; let cur = []; let lines = 0;
+    for (const b of blocks) {
+      const cost = est(b);
+      if (lines + cost > CAP && cur.length) { pageBlocks.push(cur); cur = []; lines = 0; if (pageBlocks.length >= 150) break; }
+      cur.push(b); lines += cost;
+    }
+    if (pageBlocks.length < 150 && cur.length) pageBlocks.push(cur);
+    const pages = pageBlocks.slice(0, 150);
+    const last = pages[pages.length - 1];
+    last.push({ type: 'transition', text: 'FADE OUT.' });
+    last.push({ type: 'end', text: 'THE END' });
+
+    let sceneNo = 0;
+    const out = pages.map((bl, pi) => {
+      const html = bl.map(b => {
+        let marker = '';
+        if (b.type === 'scene') { sceneNo++; marker = `<span data-marker contenteditable="false" style="${this._markerStyle()}">${sceneNo}</span>`; }
+        return `<div data-type="${b.type}" style="${this._styleFor(b.type)}">${this._esc(b.text) || '<br>'}${marker}</div>`;
+      }).join('');
+      return {
+        no: pi + 1,
+        label: (pi + 1) + '.',
+        path: this._roughPath(794, 1123, rough + 1.6, 9000 + pi * 13, 24),
+        mount: (node) => { if (node && node.__fsHtml !== html) { node.__fsHtml = html; self._initPage(node, html); } },
+      };
+    });
+    this._pagesKey = key; this._pagesCache = out;
+    return out;
+  }
+
+  _initPage(node, html) {
+    node.contentEditable = 'true';
+    node.spellcheck = false;
+    node.innerHTML = html;
+    if (!this._editorNode) this._editorNode = node;
+    node.addEventListener('focus', () => { this._editorNode = node; });
+    node.addEventListener('keydown', (e) => this._onEditorKey(e));
+  }
+
+  _currentBlock() {
+    const node = this._editorNode;
+    if (!node) return null;
+    const sel = window.getSelection();
+    if (!sel || !sel.anchorNode || !node.contains(sel.anchorNode)) return node.lastElementChild;
+    let el = sel.anchorNode;
+    while (el && el.parentNode !== node) el = el.parentNode;
+    return el || node.lastElementChild;
+  }
+
+  _applyType(block, type) {
+    if (!block) return;
+    block.dataset.type = type;
+    block.setAttribute('style', this._styleFor(type));
+    let mk = block.querySelector('[data-marker]');
+    if (type === 'scene') {
+      if (!mk) {
+        mk = document.createElement('span');
+        mk.setAttribute('data-marker', '');
+        mk.contentEditable = 'false';
+        mk.setAttribute('style', this._markerStyle());
+        mk.textContent = '1';
+        block.appendChild(mk);
+      }
+    } else if (mk) {
+      mk.remove();
+    }
+  }
+
+  _renumber() { /* scene numbers are baked globally at build time */ }
+
+  _save() { /* long generated doc is not persisted to avoid storage limits */ }
+
+  _onEditorKey(e) {
+    const order = ['scene', 'action', 'character', 'paren', 'dialogue', 'transition'];
+    if (e.key.length === 1 || e.key === 'Backspace' || e.key === 'Enter' || e.key === 'Tab' || e.key === ' ') this._playClick();
+    if ((e.metaKey || e.ctrlKey) && /^[1-6]$/.test(e.key)) {
+      e.preventDefault();
+      this._applyType(this._currentBlock(), order[+e.key - 1]);
+      this._renumber(); this._save();
+      return;
+    }
+    if (e.key === 'Tab') {
+      e.preventDefault();
+      const b = this._currentBlock();
+      if (b) {
+        let i = order.indexOf(b.dataset.type || 'action');
+        if (i < 0) i = 1;
+        i = (i + (e.shiftKey ? -1 : 1) + order.length) % order.length;
+        this._applyType(b, order[i]);
+        this._renumber(); this._save();
+      }
+      return;
+    }
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault();
+      this._enter();
+    }
+  }
+
+  _enter() {
+    const node = this._editorNode;
+    const cur = this._currentBlock();
+    const nextMap = { scene: 'action', action: 'action', character: 'dialogue', paren: 'dialogue', dialogue: 'action', transition: 'scene' };
+    const type = cur ? (nextMap[cur.dataset.type] || 'action') : 'action';
+    const div = document.createElement('div');
+    div.dataset.type = type;
+    div.setAttribute('style', this._styleFor(type));
+    if (type === 'scene') {
+      const mk = document.createElement('span');
+      mk.setAttribute('data-marker', '');
+      mk.contentEditable = 'false';
+      mk.setAttribute('style', this._markerStyle());
+      mk.textContent = '1';
+      div.appendChild(mk);
+    }
+    div.appendChild(document.createElement('br'));
+    if (cur && cur.nextSibling) node.insertBefore(div, cur.nextSibling);
+    else node.appendChild(div);
+    const sel = window.getSelection();
+    const range = document.createRange();
+    range.setStart(div, type === 'scene' ? 1 : 0);
+    range.collapse(true);
+    sel.removeAllRanges();
+    sel.addRange(range);
+    this._renumber(); this._save();
+  }
+
+  _getScript() {
+    const pages = document.querySelectorAll('[data-fs-page]');
+    if (pages.length) {
+      let t = '';
+      pages.forEach((p, i) => { const txt = (p.innerText || '').trim(); if (txt) t += '\n\n----- PAGE ' + (i + 1) + ' -----\n' + txt; });
+      if (t.trim()) return t.trim().slice(0, 32000);
+    }
+    const n = this._editorNode;
+    return (n && n.innerText.trim()) ? n.innerText.slice(0, 32000) : this.SCRIPT_TEXT;
+  }
+
+  setFormat(type) {
+    const b = this._currentBlock();
+    if (b) { this._applyType(b, type); this._renumber(); this._save(); }
+    if (this._editorNode) this._editorNode.focus();
+    this._playClick();
+  }
+
+  // ---------- zoom ----------
+  fillPage() {
+    const c = this.canvasRef.current, p = this.pageRef.current;
+    if (!c || !p) return;
+    const z = Math.max(0.5, Math.min(2, (c.clientWidth - 48) / p.offsetWidth));
+    this.setState({ zoom: Math.round(z * 100) / 100 });
+  }
+
+  // ---------- chat ----------
+  _scrollChat() {
+    const c = this.chatRef.current;
+    if (c) c.scrollTop = c.scrollHeight;
+  }
+
+  async sendMessage(forced) {
+    const text = (forced != null ? forced : (this.state.input || '')).trim();
+    if (!text || this.state.loading) return;
+    const chat = [...this.state.chat, { who: 'w', text }];
+    this.setState({ chat, input: '', loading: true }, () => this._scrollChat());
+    const history = chat.map(m => (m.who === 'w' ? 'Writer' : 'Lumiere') + ': ' + m.text).join('\n');
+    const prompt = `You are Lumiere, the AI co-writer inside FilmScript, a screenwriting app, named after the Lumiere brothers. Personality: warm, brilliant, cinematically literate, like a great script editor who has read everything. Never use dash characters in your reply; write with commas and periods instead.
+
+IMPORTANT: Read the ENTIRE screenplay below from start to finish before you answer. Reason carefully about the story, characters, structure, and tone across the whole script, so your answer is fully consistent with everything the writer has written, not just the latest scene. Do the thinking silently, then give only your final reply, concise (1 to 5 sentences) and specific. No markdown headers.
+
+FULL SCREENPLAY:
+${this._getScript()}
+
+CONVERSATION SO FAR:
+${history}
+
+Write Lumiere's next reply only:`;
+    try {
+      const reply = await window.claude.complete({ messages: [{ role: 'user', content: prompt }] });
+      this.setState(s => ({ chat: [...s.chat, { who: 'l', text: (reply || '').trim() || '…' }], loading: false }), () => this._scrollChat());
+    } catch (e) {
+      this.setState(s => ({ chat: [...s.chat, { who: 'l', text: 'I lost the connection to the projection room for a moment. Ask me again?' }], loading: false }), () => this._scrollChat());
+    }
+  }
+
+  runTool(label) {
+    const map = {
+      'Character analysis': 'Run a character analysis on this scene. Look at motivations, arcs, and relationships, and tell me where a character feels thin.',
+      'Cliché detector': 'Scan this scene for clichés and tired tropes. Quote the exact lines and suggest fresher alternatives.',
+      'Scene suggestions': 'Give me three concrete suggestions to make this current scene stronger.',
+      'Narrative arc': 'Assess the narrative arc so far. Where is the tension rising or sagging across what I have written?',
+      'Format checker': 'Check this scene against WGA screenplay format and flag anything off standard.',
+    };
+    if (!this.state.lumiereOpen) this.setState({ lumiereOpen: true });
+    this.sendMessage(map[label] || label);
+  }
+
+  _playClick() {
+    if (!this.state.soundOn) return;
+    try {
+      const AC = window.AudioContext || window.webkitAudioContext;
+      if (!this._ac) this._ac = new AC();
+      const ac = this._ac;
+      if (ac.state === 'suspended') ac.resume();
+      const t = ac.currentTime;
+      const o = ac.createOscillator();
+      const g = ac.createGain();
+      o.type = 'square';
+      o.frequency.setValueAtTime(1400 + Math.random() * 300, t);
+      o.frequency.exponentialRampToValueAtTime(620, t + 0.012);
+      g.gain.setValueAtTime(0.0001, t);
+      g.gain.exponentialRampToValueAtTime(0.12, t + 0.002);
+      g.gain.exponentialRampToValueAtTime(0.0001, t + 0.05);
+      o.connect(g); g.connect(ac.destination);
+      o.start(t); o.stop(t + 0.06);
+    } catch (e) {}
+  }
+
+  _setPlan(plan) {
+    this.setState({ plan });
+  }
+
+  _startCheckout(plan) {
+    if (!this.state.user) {
+      this.setState({ authOpen: true, pendingPlan: plan, accountOpen: false });
+    } else {
+      this.setState({ checkoutOpen: true, checkoutPlan: plan, checkoutStep: 'confirm', accountOpen: false });
+    }
+  }
+
+  renderVals() {
+    const accent = this.props.accent ?? '#BA7517';
+    const accentHover = this.props.accentHover ?? '#EF9F27';
+    const rough = this.props.borderRoughness ?? 3.2;
+    const dark = this.state.darkMode;
+
+    const theme = dark
+      ? { bg: '#1E1E1C', chrome: '#151514', surface: '#2A2A27', ink: '#ECEAE2', muted: '#9A988F', line: '#7C7A72', soft: '#3A3A36' }
+      : { bg: '#F5F0E8', chrome: '#2C2C2A', surface: '#FFFEF9', ink: '#2C2C2A', muted: '#888780', line: '#2C2C2A', soft: '#E4E2D8' };
+
+    const screen = this.state.screen;
+    const isLanding = screen === 'landing';
+    const isScripts = screen === 'scripts';
+    const isEditor = screen === 'editor';
+
+    const plan = this.state.plan || null;
+    const lumiereUnlocked = plan === 'lumiere';
+    const lumiereLocked = !lumiereUnlocked;
+    const hasPlan = !!plan;
+    const noPlan = !plan;
+    const isWriterPlan = plan === 'writer';
+    const isLumierePlan = plan === 'lumiere';
+    const planLabel = plan === 'lumiere' ? 'FilmScript Pro · $20 / month' : 'No active plan';
+    const checkoutPlanKey = this.state.checkoutPlan;
+    const checkoutPlanName = checkoutPlanKey === 'lumiere' ? 'FilmScript Pro' : 'Free';
+    const checkoutPlanPrice = '$20 / month';
+    const checkoutConfirmStep = this.state.checkoutStep !== 'success';
+    const checkoutSuccessStep = this.state.checkoutStep === 'success';
+    const checkoutHasLink = !!checkoutPlanKey;
+
+    const mkIcon = (paths) => React.createElement('svg', { viewBox: '0 0 24 24', width: '100%', height: '100%', fill: 'none', stroke: 'currentColor', strokeWidth: 1.5, strokeLinecap: 'round', strokeLinejoin: 'round' },
+      paths.map((d, i) => React.createElement('path', { key: i, d })));
+    const features = [
+      { title: 'No more typos', body: 'Catches spelling and grammar slips as you write, without breaking your flow.', iconEl: mkIcon(['M3.5 17 Q6.5 6.5 9 7 Q11 7.4 9.5 17', 'M4.6 13 Q6.8 12.4 8.6 13', 'M13 8 Q16.5 7.6 16.6 10.4 Q16.6 12.6 13.2 12.6 Q16.8 12.6 16.8 15 Q16.7 17.4 13 17']) },
+      { title: 'Cliché detector', body: 'Flags tired phrases and tropes the moment they appear, and suggests something fresher.', iconEl: mkIcon(['M3 12 Q7 5 12 5 Q17 5 21 12 Q17 19 12 19 Q7 19 3 12 Z', 'M12 9 Q14.8 9 14.9 12 Q14.8 15 12 15 Q9.2 15 9.1 12 Q9.2 9 12 9 Z']) },
+      { title: 'Narrative arc', body: 'Maps the rise and fall of tension across your script so the structure actually lands.', iconEl: mkIcon(['M3.5 18 Q7 17 9 11 Q11 5 14 8.5 Q16.5 11.5 20.5 6']) },
+      { title: 'Character analysis', body: 'Tracks motivations and arcs, and tells you when a character drifts off their want.', iconEl: mkIcon(['M12 5.4 Q14.6 5.4 14.7 8.4 Q14.6 11.2 12 11.2 Q9.4 11.2 9.3 8.4 Q9.4 5.4 12 5.4 Z', 'M5.4 19 Q5.6 13.4 12 13.3 Q18.4 13.4 18.6 19']) },
+      { title: 'WGA format checker', body: 'Keeps every scene heading, slug and margin on industry standard, automatically.', iconEl: mkIcon(['M6.4 4.5 Q5.2 8 5.2 12 Q5.2 16 6.4 19.5 L17 19.4 Q18.4 19.4 18.4 18 L18.4 8 L14 4.6 Z', 'M13.8 4.6 L13.9 8.2 L18.2 8', 'M8.4 12 Q11 11.7 15 12', 'M8.4 15.4 Q10.6 15.2 13.6 15.4']) },
+      { icon: 'scene', title: 'Scene suggestions', body: 'Stuck mid-scene? Lumiere offers angles to improve it — you decide what stays.', iconEl: mkIcon(['M12 4 L13.6 9 L19 9 L14.7 12.2 L16.3 17.2 L12 14 L7.7 17.2 L9.3 12.2 L5 9 L10.4 9 Z']) },
+    ];
+
+
+    const cardData = [
+      { title: 'The Lighthouse Keeper', meta: '150 pages · edited 2h ago' },
+      { title: 'Neon Static', meta: '150 pages · edited yesterday' },
+      { title: 'Saltbound', meta: '150 pages · edited 3d ago' },
+      { title: 'The Quiet Hour', meta: '150 pages · edited 1w ago' },
+      { title: 'Ashfall', meta: '150 pages · edited 2w ago' },
+    ];
+    const cards = cardData.map((c, i) => ({
+      ...c,
+      thumbPath: this._roughPath(62, 84, 1.5, (i + 1) * 8123 + 17, 8),
+      open: () => this.setState({ screen: 'editor', mode: 'sample' }),
+    }));
+
+    const thumbLines = [
+      { x: 9, y: 14, w: 28, o: .5 },
+      { x: 9, y: 24, w: 44, o: .16 },
+      { x: 9, y: 32, w: 36, o: .16 },
+      { x: 24, y: 48, w: 16, o: .34 },
+      { x: 18, y: 56, w: 28, o: .2 },
+      { x: 9, y: 70, w: 42, o: .16 },
+    ];
+
+    const writerRow = 'display: flex; justify-content: flex-end;';
+    const lumRow = 'display: flex; justify-content: flex-start;';
+    const writerBubble = 'max-width: 82%; background: var(--bg, #F5F0E8); border: 1.4px solid var(--line, #2C2C2A); color: var(--ink, #2C2C2A); font-size: 12.5px; line-height: 1.5; padding: 10px 13px; border-radius: 15px 15px 4px 16px; filter: url(#fs-sketch);';
+    const lumBubble = 'max-width: 86%; background: transparent; border: 1.4px solid var(--line, #2C2C2A); color: var(--ink, #2C2C2A); font-size: 12.5px; line-height: 1.55; padding: 10px 13px; border-radius: 16px 17px 16px 4px; white-space: pre-wrap; filter: url(#fs-sketch);';
+    const messages = this.state.chat.map(m => ({
+      text: m.text,
+      rowStyle: m.who === 'w' ? writerRow : lumRow,
+      bubbleStyle: m.who === 'w' ? writerBubble : lumBubble,
+    }));
+
+    return {
+      accent, accentHover,
+      bg: theme.bg, chrome: theme.chrome, surface: theme.surface, ink: theme.ink, muted: theme.muted, line: theme.line, soft: theme.soft,
+      isLanding, isScripts, isEditor,
+      features,
+      underlinePath: this._roughLineH(300, 3.2, 4242),
+      stripDivPath: this._roughLineH(968, 2.4, 4343),
+      ctaPath: this._roughPath(200, 52, 2.2, 4444, 16),
+      planBtnPath: this._roughPath(320, 48, 2, 4747, 14),
+      heroFramePath: this._roughPath(480, 300, 3, 4646, 20),
+      heroLines: [
+        { x: 40, y: 44, w: 150, o: .5 }, { x: 40, y: 66, w: 320, o: .12 }, { x: 40, y: 80, w: 280, o: .12 },
+        { x: 190, y: 118, w: 100, o: .32 }, { x: 150, y: 140, w: 180, o: .18 }, { x: 150, y: 154, w: 150, o: .18 },
+        { x: 40, y: 192, w: 300, o: .12 }, { x: 40, y: 206, w: 250, o: .12 },
+        { x: 190, y: 244, w: 100, o: .32 }, { x: 150, y: 266, w: 160, o: .18 },
+      ],
+      darkMode: dark, lightMode: !dark,
+      lumiereOpen: this.state.lumiereOpen,
+      lumiereClosed: !this.state.lumiereOpen,
+      loading: this.state.loading,
+      input: this.state.input,
+      zoom: this.state.zoom,
+      zoomPct: Math.round(this.state.zoom * 100) + '%',
+      homeSub: '5 scripts in progress · Last edited: The Lighthouse Keeper, 2h ago',
+      cards, thumbLines, messages,
+      tools: ['Character analysis', 'Cliché detector', 'Scene suggestions', 'Narrative arc', 'Format checker'].map(label => ({ label, title: 'Run ' + label, onClick: () => this.runTool(label) })),
+      check: '✓',
+      planB: ['Professional screenplay editor and PDF exports', 'Lumiere, your AI script assistant', 'Breakdowns, stripboards and shot lists', 'Cliché, format, character and arc analysis', 'Every FilmScript feature in one plan'],
+      pages: this._buildPages(rough),
+      barPath: this._roughPath(408, 56, 2.4, 555, 16),
+      btnPath: this._roughPath(92, 32, 2, 333, 11),
+      newBtnPath: this._roughPath(176, 48, 2.4, 888, 14),
+      trackPath: this._roughLineH(120, 1.8, 222),
+      topDivPath: this._roughLineH(1200, 3.4, 1212),
+      sideDivPath: this._roughLineH(302, 2.6, 1313),
+      sideDivPath2: this._roughLineH(302, 2.6, 1414),
+      miniDivPath: this._roughLineH(140, 1.8, 1616),
+      vDivPath: this._roughLineV(800, 3.6, 1515),
+      canvasRef: this.canvasRef,
+      pageRef: this.pageRef,
+      chatRef: this.chatRef,
+      navHomeColor: isLanding ? '#FFFEF9' : '#b9b8b2',
+      navHomeBg: isLanding ? 'rgba(255,255,255,.12)' : 'transparent',
+      navScriptsColor: isScripts ? '#FFFEF9' : '#b9b8b2',
+      navScriptsBg: isScripts ? 'rgba(255,255,255,.12)' : 'transparent',
+      navEditorColor: isEditor ? '#FFFEF9' : '#b9b8b2',
+      navEditorBg: isEditor ? 'rgba(255,255,255,.12)' : 'transparent',
+      soundOn: this.state.soundOn,
+      soundOff: !this.state.soundOn,
+      soundIconColor: this.state.soundOn ? accent : '#b6b4aa',
+      goHome: () => this.setState({ screen: 'landing' }),
+      goLanding: () => this.setState({ screen: 'landing' }),
+      landingScrollRef: this.landingScrollRef,
+      navHome: () => this._scrollToSec(null),
+      navFeatures: () => this._scrollToSec(null),
+      navPricing: () => { window.location.href = 'Pricing.dc.html'; },
+      goScripts: () => {
+        if (this.state.user) window.location.href = 'App.dc.html';
+        else this.setState({ authOpen: true, accountOpen: false });
+      },
+      goEditor: () => { window.location.href = 'App.dc.html'; },
+      newScript: () => { window.location.href = 'App.dc.html'; },
+      toggleLumiere: () => this.setState(s => ({ lumiereOpen: !s.lumiereOpen })),
+      toggleSound: () => this.setState(s => ({ soundOn: !s.soundOn })),
+      toggleDark: () => {
+        const darkMode = window.filmscriptTheme?.toggle() ?? !this.state.darkMode;
+        window.filmscriptSounds?.play(darkMode ? 'darkModeOn' : 'lightModeOn');
+        this.setState({ darkMode });
+      },
+      onZoom: (e) => this.setState({ zoom: parseFloat(e.target.value) }),
+      zoomIn: () => this.setState(s => ({ zoom: Math.min(2, Math.round((s.zoom + 0.1) * 100) / 100) })),
+      zoomOut: () => this.setState(s => ({ zoom: Math.max(0.5, Math.round((s.zoom - 0.1) * 100) / 100) })),
+      fillPage: () => this.fillPage(),
+      onInput: (e) => this.setState({ input: e.target.value }),
+      onKey: (e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); this.sendMessage(); } },
+      send: () => this.sendMessage(),
+      menuOpen: this.state.menuOpen,
+      menuItems: ['Title Page Designer', 'Revision History', 'Download PDF', 'Renumber', 'Autosave Settings', 'Import Screenplay'],
+      dotsBoxPath: this._roughPath(38, 34, 1.6, 6161, 9),
+      toolDivPath: this._roughLineH(1200, 2.2, 6262),
+      toggleMenu: () => this.setState(s => ({ menuOpen: !s.menuOpen })),
+      closeMenu: () => this.setState({ menuOpen: false }),
+      fmtScene: () => this.setFormat('scene'),
+      fmtAction: () => this.setFormat('action'),
+      fmtCharacter: () => this.setFormat('character'),
+      fmtParen: () => this.setFormat('paren'),
+      fmtDialogue: () => this.setFormat('dialogue'),
+      fmtTransition: () => this.setFormat('transition'),
+      authOpen: this.state.authOpen,
+      signedIn: !!this.state.user,
+      signedOut: !this.state.user,
+      landingPrimaryLabel: this.state.user ? 'Open Scripts' : 'Log in',
+      userInitial: (this.state.profileName || (this.state.user ? this.state.user.name : 'Writer')).trim().charAt(0).toUpperCase() || 'W',
+      userEmail: this.state.user ? this.state.user.email : '',
+      userName: this.state.profileName || (this.state.user ? this.state.user.name : 'Writer'),
+      profileNameDraft: this.state.profileNameDraft,
+      profileSaveLabel: this.state.profileSaving ? 'Saving…' : this.state.profileSaved ? 'Saved' : 'Save',
+      accountStatus: plan ? 'Active' : 'No active plan',
+      openAuth: () => this.setState({ authOpen: true }),
+      closeAuth: () => this.setState({ authOpen: false }),
+      stop: (e) => { e.stopPropagation(); },
+      googleLogIn: () => { window.location.href = window.filmscriptBilling.googleSignInUrl(); },
+      signOut: async () => { try { await window.filmscriptBilling.logout(); } catch (e) {} this.setState({ user: null, plan: null, accountOpen: false }); },
+
+      plan, planLabel, hasPlan, noPlan, isWriterPlan, isLumierePlan,
+      lumiereUnlocked, lumiereLocked,
+      unlockBtnPath: this._roughPath(180, 44, 2, 999, 14),
+
+      accountOpen: this.state.accountOpen,
+      toggleAccount: () => { if (!this.state.accountOpen) window.filmscriptSounds?.play('profile'); this.setState(s => ({ accountOpen: !s.accountOpen })); },
+      accountDetailsOpen: this.state.accountDetailsOpen,
+      termsOpen: this.state.termsOpen,
+      openAccountDetails: () => this.setState(s => ({ accountOpen: false, accountDetailsOpen: true, profileNameDraft: s.profileName || (s.user ? s.user.name : 'Writer') })),
+      openLumierePreferences: () => { this.setState({ accountOpen: false, accountDetailsOpen: false }); window.filmscriptLumierePreferences?.open(); },
+      closeAccountDetails: () => this.setState({ accountDetailsOpen: false }),
+      onProfileName: (e) => this.setState({ profileNameDraft: e.target.value }),
+      saveProfileName: async () => {
+        if (this.state.profileSaving) return;
+        const name = (this.state.profileNameDraft || '').trim();
+        if (!name) return;
+        this.setState({ profileSaving: true, profileSaved: false });
+        try {
+          const me = await window.filmscriptBilling.updateProfile(name);
+          const savedName = me.name || name;
+          this.setState(s => ({ profileName: savedName, profileNameDraft: savedName, profileSaving: false, profileSaved: true, user: s.user ? { ...s.user, name: savedName, initial: savedName.charAt(0).toUpperCase() } : s.user }));
+        } catch (e) { this.setState({ profileSaving: false, profileSaved: false }); }
+      },
+      openTerms: () => this.setState({ accountOpen: false, termsOpen: true }),
+      closeTerms: () => this.setState({ termsOpen: false }),
+      cancelPlan: () => { window.location.href = 'Subscription.dc.html?returnTo=Features.dc.html'; },
+      upgradeToLumiere: () => this._startCheckout('lumiere'),
+      goLandingFromAccount: () => { window.location.href = 'Pricing.dc.html'; },
+
+      chooseLumiere: () => this._startCheckout('lumiere'),
+      openCheckoutLumiere: () => this._startCheckout('lumiere'),
+
+      checkoutOpen: this.state.checkoutOpen,
+      checkoutConfirmStep, checkoutSuccessStep, checkoutPlanName, checkoutPlanPrice, checkoutHasLink,
+      openPayLink: async () => {
+        try { const result = await window.filmscriptBilling.checkout(this.state.checkoutPlan, this.state.user?.email); window.location.href = result.checkoutUrl; }
+        catch (e) { this.setState({ toast: e.message }); }
+      },
+      closeCheckout: () => this.setState({ checkoutOpen: false, checkoutStep: 'confirm', checkoutPlan: null }),
+      continueAfterCheckout: () => { window.location.href = 'App.dc.html'; },
+    };
+  }
+}
+</script>
+</body>
+</html>
