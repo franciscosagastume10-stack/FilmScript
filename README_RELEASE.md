@@ -49,11 +49,11 @@ Authorized redirect URI:      https://app.example.com/auth/google/callback
 Use a Recurrente live key only when real payments should be processed. Test keys
 must remain limited to development.
 
-## Split deployment: Netlify frontend + container backend
+## Production deployment: Vercel frontend + AWS backend
 
-Deploy the Docker image as the API first. Then set the non-secret Netlify build
-variable `API_URL` to the public API origin and deploy this repository using
-`netlify.toml`. Netlify runs `npm run build:netlify` and publishes `dist/`.
+Deploy the Docker image through the CloudFormation stack in `aws/` first. Then
+set the non-secret Vercel build variable `API_URL` to the public AWS API origin.
+Vercel runs `npm run build:vercel` and publishes `dist/`.
 
 For sibling domains such as `app.example.com` and `api.example.com`, keep
 `SESSION_COOKIE_SAMESITE=Lax`. If the frontend and API are on unrelated sites,
@@ -62,9 +62,8 @@ use `SESSION_COOKIE_SAMESITE=None` together with `SESSION_COOKIE_SECURE=true`.
 ## Data and scaling
 
 The included SQLite database is suitable for one persistent server instance.
-Do not run multiple backend replicas against the same SQLite file. Before
-horizontal scaling, migrate the storage interface to PostgreSQL/RDS and the two
-local media adapters to S3. The application already isolates those adapters so
-the frontend does not need to be rebuilt for that migration.
+The AWS stack persists it on encrypted EFS and stores Canvas/Shot List media in
+private S3. Do not run multiple backend replicas against the same SQLite file.
+Before horizontal scaling, migrate the database interface to PostgreSQL/RDS.
 
 More architecture detail is available in `docs/DEPLOYMENT.md`.

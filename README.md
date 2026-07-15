@@ -2,26 +2,32 @@
 
 FilmScript is a connected screenplay writing and pre-production workspace with the Editor, Lumiere, Analysis, Breakdown, Stripboard, Shot List, Canvas and Budget in one project.
 
-## Deploy to Vercel
+## Production deployment: Vercel + AWS
 
 [![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/new/clone?repository-url=https%3A%2F%2Fgithub.com%2Ffranciscosagastume10-stack%2FFIlmScript)
 
-1. Import this GitHub repository into Vercel.
-2. Keep the project root as the repository root and the framework preset as `Other`.
-3. Add the service keys and URL variables from `.env.example` in Vercel Settings → Environment Variables. Leave `FILMSCRIPT_DATA_DIR`, `FILMSCRIPT_DB_PATH` and `GOOGLE_OAUTH_CLIENT_FILE` unset.
-4. Set `APP_URL`, `PUBLIC_APP_URL` and `API_URL` to the final Vercel `https://` domain.
-5. Add that same domain and `${APP_URL}/auth/google/callback` to the Google OAuth client.
-6. Deploy, then verify `${APP_URL}/api/health`.
+1. Deploy the backend stack in [`aws/`](aws/) to ECS Fargate.
+2. Point an HTTPS API hostname at the stack's Application Load Balancer.
+3. Import this GitHub repository into Vercel with framework preset `Other`.
+4. Set the non-sensitive Vercel build variable `API_URL` to the AWS API origin.
+5. Deploy Vercel and test Google sign-in, billing, scripts, S3 images and exports.
 
 Never commit `.env`, Google client-secret JSON, API keys, local databases, user uploads or customer data.
 
-## Important persistence note
+Vercel publishes only the static FilmScript UI. API keys, Google OAuth secrets,
+Recurrente secrets, account data and the database stay in AWS.
 
-The current backend uses SQLite and local media storage. Vercel Functions have an ephemeral filesystem, so the Vercel adapter uses `/tmp/filmscript` only to make preview deployments runnable. It is not durable production storage and different function instances do not share it.
+## Durable storage status
 
-Before opening FilmScript to real users, connect the existing storage boundaries to a durable database and object store (for example AWS RDS + S3, or a serverless database from the Vercel Marketplace). The application already keeps API secrets on the server and has provider boundaries for Shot List and Canvas assets.
+The AWS backend stores Canvas and Shot List images in a private encrypted S3
+bucket. The current synchronous SQLite database is persisted on encrypted EFS,
+with the ECS service intentionally limited to one task.
 
-See [docs/VERCEL.md](docs/VERCEL.md) for the complete checklist and [README_RELEASE.md](README_RELEASE.md) for the Docker/AWS deployment path.
+Before horizontally scaling the backend, migrate the database contract to RDS
+PostgreSQL. Do not increase ECS `DesiredCount` while SQLite is active.
+
+See [aws/README.md](aws/README.md) for AWS deployment and
+[docs/VERCEL.md](docs/VERCEL.md) for the frontend checklist.
 
 ## Local development
 

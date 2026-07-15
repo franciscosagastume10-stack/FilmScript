@@ -1,6 +1,7 @@
 import fs from "node:fs/promises";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+import { S3ObjectStorage } from "./s3-storage.js";
 
 const ROOT = path.dirname(fileURLToPath(import.meta.url));
 
@@ -46,13 +47,16 @@ class LocalReferenceStorage {
   }
 }
 
-// The app stores only provider-neutral asset metadata on the screenplay.
-// A future S3 adapter only needs to implement put/get/remove with this contract;
-// no Shot List UI or project schema changes are required.
+// The app stores only provider-neutral asset metadata on the screenplay. The
+// S3 adapter only needs to implement put/get/remove with this contract; no Shot
+// List UI or project schema changes are required.
 const adapters = new Map([["local", new LocalReferenceStorage()]]);
 const configuredProvider = String(process.env.FILMSCRIPT_REFERENCE_STORAGE || "local").trim().toLowerCase();
 
 function adapterFor(provider = configuredProvider) {
+  if (provider === "s3" && !adapters.has("s3")) {
+    adapters.set("s3", new S3ObjectStorage({ namespace: "shot-references" }));
+  }
   const adapter = adapters.get(provider);
   if (!adapter) throw new Error(`reference storage provider is not configured: ${provider}`);
   return adapter;

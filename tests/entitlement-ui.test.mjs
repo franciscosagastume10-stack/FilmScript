@@ -275,7 +275,7 @@ test("Shot List is grouped by scene, connected to Stripboard time, and supports 
   assert.match(server, /shot_time_budget_exceeded/);
   assert.match(server, /estimatedMinutes: cleanShotMinutes/);
   assert.match(server, /Production time available from Stripboard/);
-  assert.match(storage, /future S3 adapter only needs to implement put\/get\/remove/);
+  assert.match(storage, /new S3ObjectStorage\(\{ namespace: "shot-references" \}\)/);
   assert.match(pdf, /"TIME"/);
   assert.match(pdf, /MIN AVAILABLE/);
 });

@@ -1,4 +1,4 @@
-# FilmScript: local now, Netlify + AWS later
+# FilmScript: local development, Vercel + AWS production
 
 ## Current local architecture
 
@@ -25,18 +25,18 @@ curl http://localhost:4173/api/health
 ## Target production architecture
 
 ```text
-Netlify (static FilmScript UI)
+Vercel (static FilmScript UI)
         |
         | HTTPS + credentialed API requests
         v
-AWS Application Load Balancer
+AWS Application Load Balancer (HTTPS)
         |
         v
-ECS Fargate (Node API + PDF workers)
+ECS Fargate (Node API + PDF workers, one task)
         |             |
-        |             +--> S3 (imports and generated documents)
+        |             +--> S3 (private Canvas and Shot List images)
         v
-RDS PostgreSQL (private subnets)
+EFS + SQLite (durable transition)
 
 Secrets: AWS Secrets Manager
 Logs/metrics: CloudWatch
@@ -44,27 +44,30 @@ Logs/metrics: CloudWatch
 
 ECS Fargate fits the current long-running Node process and background scene analysis better than moving the existing server directly into short-lived functions. AWS describes Fargate as serverless compute for ECS container workloads: <https://docs.aws.amazon.com/AmazonECS/latest/developerguide/getting-started-fargate.html>.
 
-RDS PostgreSQL supports private VPC deployment, backups, Multi-AZ, read replicas and SSL connections: <https://docs.aws.amazon.com/AmazonRDS/latest/UserGuide/CHAP_PostgreSQL.html>.
+The current deployable stack is in `aws/filmscript-backend.yml`. It uses one
+task and EFS because the existing database module is synchronous SQLite. RDS
+PostgreSQL is the next phase and is required before horizontal scaling.
 
-API keys, OAuth secrets, Recurrente credentials and database credentials belong in Secrets Manager, never in Netlify or frontend JavaScript: <https://docs.aws.amazon.com/secretsmanager/latest/userguide/best-practices.html>.
+API keys, OAuth secrets, Recurrente credentials and database credentials belong in Secrets Manager, never in Vercel or frontend JavaScript: <https://docs.aws.amazon.com/secretsmanager/latest/userguide/best-practices.html>.
 
-## Deploying the frontend to Netlify
+## Deploying the frontend to Vercel
 
-The repository contains `netlify.toml` and a safe frontend-only build. Only the generated `dist/` directory is published, so the server, database, `.env`, uploads and API keys are excluded.
+The repository contains `vercel.json` and a safe frontend-only build. Only the generated `dist/` directory is published, so the server, database, `.env`, uploads and API keys are excluded.
 
-Set this non-sensitive Netlify build variable:
+Set this non-sensitive Vercel build variable:
 
 ```text
 API_URL=https://api.your-filmscript-domain.com
 ```
 
-Then run:
+Vercel runs:
 
 ```bash
-npm run build:netlify
+npm run build:vercel
 ```
 
-Netlify documents build commands and publish directories here: <https://docs.netlify.com/build/configure-builds/overview/>. Its build environment variables are available to the build script; values copied into browser code must be non-sensitive: <https://docs.netlify.com/build/configure-builds/environment-variables/>.
+Only `API_URL` is copied into browser code, so it must remain a non-sensitive
+public origin. All credentials stay in AWS Secrets Manager.
 
 ## AWS backend variables
 
@@ -98,18 +101,19 @@ FilmScript verifies the exact checkout when the customer returns, so local devel
 npm run recurrente:webhook
 ```
 
-The command registers `${API_URL}/api/webhooks/recurrente` and prints the signing secret once. Store that value as `RECURRENTE_WEBHOOK_SECRET` in AWS Secrets Manager and restart the API. Never put it in Netlify or browser code.
+The command registers `${API_URL}/api/webhooks/recurrente` and prints the signing secret once. Store that value as `RECURRENTE_WEBHOOK_SECRET` in AWS Secrets Manager and restart the API. Never put it in Vercel or browser code.
 
 Use a test key while developing and a live key only after launch. Recurrente test checkouts do not move money and may not emit the normal checkout webhook flow, so FilmScript also revalidates the checkout and reconciles the subscription through the secret-key API when the user returns.
 
-## Database migration path
+## Database migration path to RDS
 
-SQLite is intentionally local-only. Before running more than one ECS task:
+SQLite is durable on EFS but intentionally single-task. Before running more
+than one ECS task:
 
 1. Create private RDS PostgreSQL.
 2. Add a PostgreSQL implementation matching the exported storage functions in `database.js`.
 3. Run a one-time SQLite-to-PostgreSQL migration.
-4. Store uploads in S3 instead of local disk.
+4. Verify all media adapters remain on the existing private S3 bucket.
 5. Move Lumiere analysis jobs to an SQS-backed worker if generation volume grows.
 6. Enable backups, alarms and database migrations in CI/CD.
 

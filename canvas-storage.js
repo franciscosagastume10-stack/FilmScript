@@ -1,6 +1,7 @@
 import fs from "node:fs/promises";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+import { S3ObjectStorage } from "./s3-storage.js";
 
 const ROOT = path.dirname(fileURLToPath(import.meta.url));
 const DATA_DIR = process.env.FILMSCRIPT_DATA_DIR
@@ -45,12 +46,15 @@ class LocalCanvasStorage {
   }
 }
 
-// This adapter boundary is intentionally small so local development can move
-// to S3-compatible object storage without changing Canvas, Vault, or Boards.
-function createCanvasStorage() {
-  const provider = String(process.env.FILMSCRIPT_CANVAS_STORAGE_PROVIDER || "local").toLowerCase();
-  if (provider !== "local") throw new Error(`Unsupported Canvas storage provider: ${provider}`);
-  return new LocalCanvasStorage();
+// This adapter boundary keeps Canvas, Vault, and Boards independent from the
+// durable object store selected by the backend environment.
+function createCanvasStorage(options = {}) {
+  const provider = String(
+    options.provider || process.env.FILMSCRIPT_CANVAS_STORAGE_PROVIDER || "local",
+  ).trim().toLowerCase();
+  if (provider === "local") return new LocalCanvasStorage();
+  if (provider === "s3") return new S3ObjectStorage({ namespace: "canvas", ...options });
+  throw new Error(`Unsupported Canvas storage provider: ${provider}`);
 }
 
 const canvasStorage = createCanvasStorage();
