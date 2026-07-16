@@ -2,7 +2,11 @@
 (() => {
   const signinResult = new URLSearchParams(window.location.search).get('signin');
   const currentPage = window.location.pathname.split('/').pop();
-  if (signinResult === 'success' && (currentPage === 'Features.dc.html' || currentPage === 'Pricing.dc.html')) {
+  // OAuth may return through the canonical .html route or the legacy
+  // extensionless route. In both cases, authenticated users belong in the
+  // app workspace rather than staying on the landing page.
+  const isLandingPage = /^(Features|Pricing)\.dc(?:\.html)?$/i.test(currentPage);
+  if (signinResult === 'success' && isLandingPage) {
     window.location.replace(new URL('./App.dc.html', window.location.href).toString());
     return;
   }
