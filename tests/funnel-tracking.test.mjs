@@ -184,7 +184,8 @@ test("all checkout surfaces load and emit shared funnel events", () => {
     const source = read(page);
     assert.match(source, /funnel-tracking\.js\?v=/, page);
     assert.match(source, /track\?\.\('plan_selected'/, page);
-    assert.match(source, /trackCheckoutRedirected\(this\.state\.checkoutPlan\)/, page);
+    assert.match(source, /billing-client\.js\?v=20260717-erp2/, page);
+    assert.match(source, /trackCheckoutRedirected\?\.\(this\.state\.checkoutPlan\)/, page);
   }
   assert.match(read("scripts/build-netlify.mjs"), /"funnel-tracking\.js"/);
   assert.match(read("scripts/build-netlify.mjs"), /process\.env\.ERP_API_URL/);
