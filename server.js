@@ -2650,6 +2650,60 @@ function planConfig() {
   };
 }
 
+const CHECKOUT_TRACKING_UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+const CHECKOUT_ATTRIBUTION_LIMITS = Object.freeze({
+  utm_source: 160,
+  utm_medium: 160,
+  utm_campaign: 160,
+  utm_term: 160,
+  utm_content: 160,
+  referrer: 1024,
+  landing_path: 512,
+  captured_at: 40,
+});
+
+function checkoutTracking(body) {
+  const validateUuid = (value, field) => {
+    if (value == null || value === "") return { value: null };
+    if (typeof value !== "string" || !CHECKOUT_TRACKING_UUID_PATTERN.test(value.trim())) {
+      return { error: `invalid ${field}` };
+    }
+    return { value: value.trim().toLowerCase() };
+  };
+  const visitor = validateUuid(body.visitorId, "visitor id");
+  if (visitor.error) return visitor;
+  const session = validateUuid(body.sessionId, "session id");
+  if (session.error) return session;
+
+  let attribution = null;
+  if (body.attribution != null) {
+    if (typeof body.attribution !== "object" || Array.isArray(body.attribution)) {
+      return { error: "invalid attribution" };
+    }
+    const unknown = Object.keys(body.attribution)
+      .filter((key) => !Object.prototype.hasOwnProperty.call(CHECKOUT_ATTRIBUTION_LIMITS, key));
+    if (unknown.length) return { error: "invalid attribution" };
+    attribution = {};
+    for (const [key, limit] of Object.entries(CHECKOUT_ATTRIBUTION_LIMITS)) {
+      const raw = body.attribution[key];
+      if (raw == null || raw === "") continue;
+      if (typeof raw !== "string") return { error: "invalid attribution" };
+      const value = raw.trim();
+      if (!value || value.length > limit) return { error: "invalid attribution" };
+      if (key === "captured_at" && !Number.isFinite(Date.parse(value))) return { error: "invalid attribution" };
+      attribution[key] = key === "captured_at" ? new Date(value).toISOString() : value;
+    }
+    if (!Object.keys(attribution).length) attribution = null;
+    if (attribution && JSON.stringify(attribution).length > 4096) return { error: "invalid attribution" };
+  }
+
+  return {
+    visitorId: visitor.value,
+    sessionId: session.value,
+    attribution,
+  };
+}
+
 // Only states that currently grant product access belong here. Recurrente
 // explicitly treats paused subscriptions as non-billing, while past_due needs
 // payment attention and must not silently unlock paid features.
@@ -3043,6 +3097,8 @@ async function handleCheckout(req, res) {
   try { body = JSON.parse(await readBody(req)); } catch { return json(res, 400, { error: "invalid request body" }); }
   const plan = body.plan;
   if (plan !== 'lumiere') return json(res, 400, { error: "only FilmScript Pro is available" });
+  const tracking = checkoutTracking(body);
+  if (tracking.error) return json(res, 400, { error: tracking.error });
   const sid = sessionId(req, res);
   if (!sid) return googleRequired(res);
   const cfg = planConfig();
@@ -3061,11 +3117,15 @@ async function handleCheckout(req, res) {
     return json(res, 409, { error: "subscription_already_active", message: "FilmScript Pro is already active for this Google account." });
   }
   const item = { product_id: cfg.productId, quantity: 1 };
+  const metadata = { app_user_id: sid, plan, product_id: cfg.productId };
+  if (tracking.visitorId) metadata.visitor_id = tracking.visitorId;
+  if (tracking.sessionId) metadata.session_id = tracking.sessionId;
+  if (tracking.attribution) metadata.attribution = JSON.stringify(tracking.attribution);
   const checkout = await recurrenteRequest("/checkouts", { method: "POST", body: JSON.stringify({
     items: [item],
     success_url: `${publicAppUrl()}/Pricing.dc.html?payment=success`,
     cancel_url: `${publicAppUrl()}/Pricing.dc.html?payment=cancelled`,
-    metadata: { app_user_id: sid, plan, product_id: cfg.productId },
+    metadata,
   }) });
   const db = loadBilling();
   db.checkouts[checkout.id] = { id: checkout.id, userId: sid, email, plan, productId: cfg.productId, status: "pending", createdAt: new Date().toISOString() };

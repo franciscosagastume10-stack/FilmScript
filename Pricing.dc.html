@@ -5,10 +5,11 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <script src="./support.js"></script>
 <script src="./runtime-config.js?v=20260710-auth1"></script>
+<script src="./funnel-tracking.js?v=20260716-erp1"></script>
 <script src="./theme-preference.js?v=20260712-theme1"></script>
 <script src="./language-preference.js?v=20260713-i18n1"></script>
 <script src="./ui-sounds.js?v=20260713-profile-option1"></script>
-<script src="./billing-client.js?v=20260712-auth2"></script>
+<script src="./billing-client.js?v=20260717-erp2"></script>
 <script src="./lumiere-client.js?v=20260713-language1"></script>
 <script src="./lumiere-preferences.js?v=20260713-taste1"></script>
 <link rel="stylesheet" href="./auth-modal.css?v=20260712-auth2">
@@ -840,6 +841,7 @@ Write Lumiere's next reply only:`;
   }
 
   _startCheckout(plan) {
+    window.filmscriptFunnel?.track?.('plan_selected', { plan, cycle: 'monthly' });
     if (!this.state.user) {
       this.setState({ authOpen: true, pendingPlan: plan, accountOpen: false });
     } else {
@@ -1058,6 +1060,7 @@ Write Lumiere's next reply only:`;
       openPayLink: async () => {
         try {
           const result = await window.filmscriptBilling.checkout(this.state.checkoutPlan, this.state.user?.email);
+          window.filmscriptBilling.trackCheckoutRedirected?.(this.state.checkoutPlan);
           window.location.href = result.checkoutUrl;
         } catch (e) { this.setState({ toast: e.message }); }
       },

@@ -35,7 +35,19 @@
     getLumierePreferences: () => api('/api/me/lumiere-preferences'),
     updateLumierePreferences: (preferences) => api('/api/me/lumiere-preferences', { method: 'PATCH', body: JSON.stringify(preferences || {}) }),
     sync: (checkoutId = null) => api('/api/billing/sync', { method: 'POST', body: JSON.stringify(checkoutId ? { checkoutId } : {}) }),
-    checkout: (plan, email) => api('/api/checkout', { method: 'POST', body: JSON.stringify({ plan, email }) }),
+    checkout: async (plan, email) => {
+      const tracking = window.filmscriptFunnel?.context?.() || {};
+      window.filmscriptFunnel?.track?.('checkout_requested', { plan, cycle: 'monthly' });
+      const payload = { plan, email };
+      if (tracking.visitorId) payload.visitorId = tracking.visitorId;
+      if (tracking.sessionId) payload.sessionId = tracking.sessionId;
+      if (tracking.attribution) payload.attribution = tracking.attribution;
+      return api('/api/checkout', {
+        method: 'POST',
+        body: JSON.stringify(payload),
+      });
+    },
+    trackCheckoutRedirected: (plan) => window.filmscriptFunnel?.track?.('checkout_redirected', { plan, cycle: 'monthly' }),
     manageSubscription: () => api('/api/subscription/manage'),
     cancel: (mode = 'recurrente') => api('/api/subscription/cancel', { method: 'POST', body: JSON.stringify({ confirm: true, mode }) }),
     logout: () => api('/auth/logout', { method: 'POST', body: '{}' }),

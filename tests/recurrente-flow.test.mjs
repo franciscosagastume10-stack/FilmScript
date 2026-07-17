@@ -13,6 +13,8 @@ const PRODUCT_ID = "prod_filmscript_pro_test";
 const CHECKOUT_ID = "ch_filmscripttest";
 const SUBSCRIPTION_ID = "su_filmscripttest";
 const EMAIL = "writer@example.com";
+const VISITOR_ID = "11111111-1111-4111-8111-111111111111";
+const TRACKING_SESSION_ID = "22222222-2222-4222-8222-222222222222";
 const WEBHOOK_SECRET_BYTES = Buffer.from("filmscript-webhook-integration-secret");
 const WEBHOOK_SECRET = `whsec_${WEBHOOK_SECRET_BYTES.toString("base64")}`;
 
@@ -148,15 +150,38 @@ test("Google account checkout activates and cancels the matching Recurrente subs
     Cookie: `filmscript_sid=${encodeURIComponent(identity.token)}`,
   };
 
+  const invalidTrackingResponse = await fetch(`${appUrl}/api/checkout`, {
+    method: "POST",
+    headers,
+    body: JSON.stringify({ plan: "lumiere", visitorId: "not-a-uuid" }),
+  });
+  assert.equal(invalidTrackingResponse.status, 400);
+  assert.equal(checkoutRequest, null);
+
+  const attribution = {
+    utm_source: "newsletter",
+    utm_campaign: "launch",
+    landing_path: "/Pricing.dc.html",
+    captured_at: "2026-07-16T18:00:00.000Z",
+  };
   const checkoutResponse = await fetch(`${appUrl}/api/checkout`, {
     method: "POST",
     headers,
-    body: JSON.stringify({ plan: "lumiere", email: "attacker@example.com" }),
+    body: JSON.stringify({
+      plan: "lumiere",
+      email: "attacker@example.com",
+      visitorId: VISITOR_ID,
+      sessionId: TRACKING_SESSION_ID,
+      attribution,
+    }),
   });
   assert.equal(checkoutResponse.status, 201);
   assert.deepEqual(checkoutRequest.items, [{ product_id: PRODUCT_ID, quantity: 1 }]);
   assert.equal(checkoutRequest.metadata.product_id, PRODUCT_ID);
   assert.equal(checkoutRequest.metadata.app_user_id, identity.userId);
+  assert.equal(checkoutRequest.metadata.visitor_id, VISITOR_ID);
+  assert.equal(checkoutRequest.metadata.session_id, TRACKING_SESSION_ID);
+  assert.deepEqual(JSON.parse(checkoutRequest.metadata.attribution), attribution);
 
   const webhookEvent = JSON.stringify({
     id: SUBSCRIPTION_ID,
