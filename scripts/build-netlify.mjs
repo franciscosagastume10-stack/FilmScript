@@ -18,6 +18,7 @@ const frontendFiles = [
   "ui-sounds.js",
   "writing-idle.js",
   "character-name-tools.js",
+  "funnel-tracking.js",
   "billing-client.js",
   "lumiere-client.js",
   "lumiere-preferences.js",
@@ -46,10 +47,13 @@ fs.cpSync(path.join(root, "assets"), path.join(output, "assets"), { recursive: t
 
 const sourceConfig = fs.readFileSync(path.join(root, "runtime-config.js"), "utf8");
 const apiUrl = String(process.env.API_URL || "").replace(/\/$/, "");
+const erpApiUrl = String(process.env.ERP_API_URL || "").replace(/\/$/, "");
+const erpEnvironment = String(process.env.ERP_ENVIRONMENT || "").trim().toLowerCase();
 fs.writeFileSync(
   path.join(output, "runtime-config.js"),
-  `window.FILMSCRIPT_CONFIG = { apiUrl: ${JSON.stringify(apiUrl)} };\n${sourceConfig}`,
+  `window.FILMSCRIPT_CONFIG = { apiUrl: ${JSON.stringify(apiUrl)}, erpApiUrl: ${JSON.stringify(erpApiUrl)}, erpEnvironment: ${JSON.stringify(erpEnvironment)} };\n${sourceConfig}`,
 );
 
 console.log(`FilmScript frontend built in ${output}`);
 console.log(`API URL: ${apiUrl || "same origin (set API_URL for Netlify)"}`);
+console.log(`ERP API URL: ${erpApiUrl || "disabled (set ERP_API_URL to enable funnel tracking)"}`);

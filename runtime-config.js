@@ -14,10 +14,20 @@
       || window.FILMSCRIPT_API_URL
       || (fileMode ? localApiUrl : ''),
   ).replace(/\/$/, '');
+  const erpApiUrl = String(
+    configured.erpApiUrl
+      || window.FILMSCRIPT_ERP_API_URL
+      || '',
+  ).replace(/\/$/, '');
+  const erpEnvironment = String(
+    configured.erpEnvironment
+      || window.FILMSCRIPT_ERP_ENVIRONMENT
+      || '',
+  ).trim().toLowerCase();
   const resolveApiUrl = (pathname) => {
     const path = pathname.startsWith('/') ? pathname : `/${pathname}`;
     return `${apiUrl}${path}`;
   };
-  window.FILMSCRIPT_CONFIG = { ...configured, apiUrl, localApiUrl };
+  window.FILMSCRIPT_CONFIG = { ...configured, apiUrl, localApiUrl, erpApiUrl, erpEnvironment };
   window.filmscriptApiUrl = resolveApiUrl;
 })();
