@@ -7,11 +7,13 @@
 - `/api/*`, `/auth/*`, Google OAuth, Lumiere, Recurrente and persistence run in AWS.
 - No backend API key or customer database is deployed to Vercel.
 
-## Required environment variables
+## Frontend environment variables
 
-Configure this non-sensitive **build** variable in the Vercel project:
+Configure these non-sensitive **build** variables in the Vercel project:
 
 - `API_URL=https://api.your-filmscript-domain.com`
+- `ERP_API_URL=https://erp.your-filmscript-domain.com` is optional and enables anonymous funnel events.
+- `ERP_ENVIRONMENT=live` labels those events as `live`. Use `test` in preview deployments.
 
 All secret variables belong in AWS Secrets Manager. Do not duplicate them in
 Vercel.

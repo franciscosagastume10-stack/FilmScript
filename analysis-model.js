@@ -420,6 +420,7 @@ function buildAnalysisSnapshot(script, previous = {}) {
     words: scene.words,
     dialogueWords: scene.dialogueWords,
     actionWords: scene.actionWords,
+    estimatedSeconds: scene.estimatedSeconds,
     intExt: scene.headingMeta.intExt,
     dayNight: scene.headingMeta.dayNight,
     location: scene.headingMeta.location,

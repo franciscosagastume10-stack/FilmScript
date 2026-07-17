@@ -7,13 +7,13 @@
 <script src="./runtime-config.js?v=20260710-auth1"></script>
 <script src="./funnel-tracking.js?v=20260716-erp1"></script>
 <script src="./theme-preference.js?v=20260712-theme1"></script>
-<script src="./language-preference.js?v=20260713-i18n1"></script>
+<script src="./language-preference.js?v=20260716-credits1"></script>
 <script src="./ui-sounds.js?v=20260713-profile-option1"></script>
-<script src="./billing-client.js?v=20260717-erp2"></script>
+<script src="./billing-client.js?v=20260716-profile-safe1"></script>
 <script src="./lumiere-client.js?v=20260713-language1"></script>
 <script src="./lumiere-preferences.js?v=20260713-taste1"></script>
 <link rel="stylesheet" href="./auth-modal.css?v=20260712-auth2">
-<link rel="stylesheet" href="./filmscript-controls.css?v=20260712-double-outline1">
+<link rel="stylesheet" href="./filmscript-controls.css?v=20260716-typography1">
 </head>
 <body>
 <x-dc>
@@ -99,13 +99,8 @@
           <svg viewBox="0 0 20 20" style="width: 18px; height: 18px;" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><circle cx="10" cy="10" r="3.1"></circle><path d="M10 3.4 V5 M10 15 V16.6 M3.4 10 H5 M15 10 H16.6 M5.5 5.5 L6.6 6.6 M13.4 13.4 L14.5 14.5 M14.5 5.5 L13.4 6.6 M6.6 13.4 L5.5 14.5"></path></svg>
         </sc-if>
         <sc-if value="{{ lightMode }}" hint-placeholder-val="{{ true }}">
-          <svg viewBox="0 0 20 20" style="width: 18px; height: 18px;" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><path d="M14.6 11 Q14.3 14.7 10.6 14.8 Q12.9 12.6 12.8 9.3 Q12.7 6.5 10.4 5.1 Q14.9 5.5 14.6 11 Z"></path></svg>
+          <svg viewBox="0 0 20 20" style="width: 22px; height: 22px;" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><path d="M17.5 10.66 A7.5 7.5 0 1 1 9.34 2.5 A5.83 5.83 0 0 0 17.5 10.66 Z"></path></svg>
         </sc-if>
-      </div>
-      <div style="display: flex; flex-direction: column; gap: 3px; cursor: pointer; padding: 6px;">
-        <span style="width: 15px; height: 1.5px; background: #b9b8b2;"></span>
-        <span style="width: 15px; height: 1.5px; background: #b9b8b2;"></span>
-        <span style="width: 15px; height: 1.5px; background: #b9b8b2;"></span>
       </div>
       <sc-if value="{{ signedOut }}" hint-placeholder-val="{{ true }}">
         <div onClick="{{ openAuth }}" class="fsx-scale" style="font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; font-size: 13px; font-weight: 600; color: #2C2C2A; background: #FFFEF9; padding: 7px 16px; border-radius: 999px; cursor: pointer;">Sign up</div>
@@ -119,14 +114,14 @@
             <div style="font-size: 11.5px; color: var(--muted, #888780); margin-top: 4px;">{{ planLabel }}</div>
             <div style="height: 1px; background: var(--soft, #e4e2d8); margin: 10px 0 6px;"></div>
             <div class="fs-menuitem" onClick="{{ openAccountDetails }}">Account details</div>
-            <div class="fs-menuitem" onClick="{{ openLumierePreferences }}">Personalize Lumiere</div>
+            <sc-if value="{{ isLumierePlan }}" hint-placeholder-val="{{ false }}"><div class="fs-menuitem" onClick="{{ openLumierePreferences }}">Personalize Lumiere</div></sc-if>
             <div class="fs-menuitem" onClick="{{ openTerms }}">Terms & conditions</div>
             <div style="height: 1px; background: var(--soft, #e4e2d8); margin: 6px 0;"></div>
-            <sc-if value="{{ isWriterPlan }}" hint-placeholder-val="{{ false }}">
+            <sc-if value="{{ isBasicPlan }}" hint-placeholder-val="{{ false }}">
               <div class="fs-menuitem" onClick="{{ upgradeToLumiere }}">Upgrade to FilmScript Pro</div>
             </sc-if>
             <sc-if value="{{ noPlan }}" hint-placeholder-val="{{ true }}">
-              <div class="fs-menuitem" onClick="{{ goLandingFromAccount }}">Choose FilmScript Pro</div>
+              <div class="fs-menuitem" onClick="{{ goLandingFromAccount }}">Choose a plan</div>
             </sc-if>
             <sc-if value="{{ hasPlan }}" hint-placeholder-val="{{ false }}">
               <div class="fs-menuitem" onClick="{{ cancelPlan }}">Plan and billing</div>
@@ -154,8 +149,8 @@
       <div style="margin-top: 22px; padding: 16px; border-radius: 15px; background: var(--bg, #F5F0E8); border: 1px solid var(--soft, #E4E2D8);">
         <div style="display: flex; justify-content: space-between; align-items: baseline; gap: 12px;"><div style="font-size: 10px; text-transform: uppercase; letter-spacing: 1.2px; color: var(--muted, #888780);">Subscription</div><div style="font-size: 12px; color: var(--accent, #BA7517); font-weight: 700;">{{ accountStatus }}</div></div>
         <div style="font-size: 17px; font-weight: 700; color: var(--ink, #2C2C2A); margin-top: 7px;">{{ planLabel }}</div>
-        <sc-if value="{{ noPlan }}" hint-placeholder-val="{{ true }}"><span onClick="{{ openCheckoutLumiere }}" role="button" tabindex="0" style="display: inline-block; margin-top: 8px; color: var(--accent, #BA7517); font-size: 12.5px; font-weight: 700; cursor: pointer;">Choose FilmScript Pro →</span></sc-if>
-        <sc-if value="{{ hasPlan }}" hint-placeholder-val="{{ false }}"><div style="font-size: 12.5px; color: var(--muted, #888780); margin-top: 5px;">Manage or cancel FilmScript Pro from the profile menu.</div></sc-if>
+        <sc-if value="{{ noPlan }}" hint-placeholder-val="{{ true }}"><span onClick="{{ goPricing }}" role="button" tabindex="0" style="display: inline-block; margin-top: 8px; color: var(--accent, #BA7517); font-size: 12.5px; font-weight: 700; cursor: pointer;">Choose a plan →</span></sc-if>
+        <sc-if value="{{ hasPlan }}" hint-placeholder-val="{{ false }}"><div style="font-size: 12.5px; color: var(--muted, #888780); margin-top: 5px;">Manage your plan from the account menu.</div></sc-if>
       </div>
       <div style="margin-top: 22px; display: flex; justify-content: flex-end;"><div onClick="{{ closeAccountDetails }}" style="padding: 10px 17px; border-radius: 10px; background: var(--ink, #2C2C2A); color: var(--surface, #FFFEF9); font-size: 13px; font-weight: 600; cursor: pointer;">Done</div></div>
     </div>
@@ -166,7 +161,7 @@
   <div onClick="{{ closeTerms }}" style="position: fixed; inset: 0; z-index: 80; background: rgba(35,35,34,.28); display: flex; align-items: center; justify-content: center; padding: 24px; animation: fs-fade .2s ease both;">
     <div class="fs-profile-sheet" onClick="{{ stop }}" style="width: min(620px, 100%); max-height: min(720px, 88vh); overflow-y: auto; background: var(--surface, #FFFEF9); border: 1.5px solid var(--line, #2C2C2A); border-radius: 20px; padding: 30px; filter: url(#fs-sketch); box-shadow: 0 18px 55px rgba(35,35,34,.2);">
       <div style="display: flex; justify-content: space-between; align-items: flex-start; gap: 16px;"><div><div style="font-size: 10px; letter-spacing: 1.8px; text-transform: uppercase; color: var(--accent, #BA7517); font-weight: 700;">FilmScript</div><div style="font-size: 25px; font-weight: 700; letter-spacing: -.7px; color: var(--ink, #2C2C2A); margin-top: 7px;">Terms & conditions</div><div style="font-size: 12px; color: var(--muted, #888780); margin-top: 5px;">Last updated July 2026</div></div><div onClick="{{ closeTerms }}" style="font-size: 22px; line-height: 1; color: var(--muted, #888780); cursor: pointer;">×</div></div>
-      <div style="margin-top: 25px; display: grid; gap: 18px; color: var(--ink, #2C2C2A); font-size: 13.5px; line-height: 1.6;"><div><div style="font-weight: 700;">Your writing stays yours.</div><div style="color: var(--muted, #888780); margin-top: 4px;">You retain ownership of scripts, notes, and material created in FilmScript. We do not sell your writing.</div></div><div><div style="font-weight: 700;">Lumiere is an assistant.</div><div style="color: var(--muted, #888780); margin-top: 4px;">Lumiere offers editorial suggestions and analysis. You decide what belongs in your work and remain responsible for the final text.</div></div><div><div style="font-weight: 700;">FilmScript Pro subscriptions.</div><div style="color: var(--muted, #888780); margin-top: 4px;">FilmScript Pro renews monthly through Recurrente. You can cancel from your account menu. Access remains available according to the payment provider’s confirmed subscription status.</div></div><div><div style="font-weight: 700;">Fair use.</div><div style="color: var(--muted, #888780); margin-top: 4px;">Do not use FilmScript to upload material you do not have permission to use, or to interfere with the service or other writers.</div></div><div><div style="font-weight: 700;">Questions?</div><div style="color: var(--muted, #888780); margin-top: 4px;">Contact support if you need help with your account, billing, or your writing workspace.</div></div></div>
+      <div style="margin-top: 25px; display: grid; gap: 18px; color: var(--ink, #2C2C2A); font-size: 13.5px; line-height: 1.6;"><div><div style="font-weight: 700;">Your writing stays yours.</div><div style="color: var(--muted, #888780); margin-top: 4px;">You retain ownership of scripts, notes, and material created in FilmScript. We do not sell your writing.</div></div><div><div style="font-weight: 700;">Lumiere is an assistant.</div><div style="color: var(--muted, #888780); margin-top: 4px;">Lumiere offers editorial suggestions and analysis. You decide what belongs in your work and remain responsible for the final text.</div></div><div><div style="font-weight: 700;">Lumiere credits and usage limits.</div><div style="color: var(--muted, #888780); margin-top: 4px;">FilmScript Pro includes 100 Lumiere credits per monthly billing period. A rolling 8-hour session allows 20 credits and each week allows 60; both windows reset automatically. Credits reset with each monthly renewal, do not roll over, and have no cash value. When a window or the monthly allowance is reached, new Lumiere generations pause until the next reset; you can wait for its reset or purchase 80 extra credits for $5. Your scripts and existing production documents stay available. Free and Basic plans include no Lumiere credits.</div></div><div><div style="font-weight: 700;">Paid plans renew monthly.</div><div style="color: var(--muted, #888780); margin-top: 4px;">Basic and Pro renew through Recurrente. You can cancel from your account menu. Access remains available according to the payment provider’s confirmed subscription status.</div></div><div><div style="font-weight: 700;">Fair use.</div><div style="color: var(--muted, #888780); margin-top: 4px;">Do not use FilmScript to upload material you do not have permission to use, or to interfere with the service or other writers.</div></div><div><div style="font-weight: 700;">Questions?</div><div style="color: var(--muted, #888780); margin-top: 4px;">Contact support if you need help with your account, billing, or your writing workspace.</div></div></div>
       <div style="margin-top: 28px; display: flex; justify-content: flex-end;"><div onClick="{{ closeTerms }}" style="padding: 10px 17px; border-radius: 10px; background: var(--ink, #2C2C2A); color: var(--surface, #FFFEF9); font-size: 13px; font-weight: 600; cursor: pointer;">I understand</div></div>
     </div>
   </div>
@@ -177,46 +172,35 @@
   <div ref="{{ landingScrollRef }}" style="flex: 1; min-height: 0; overflow-y: auto;">
 
     <!-- PRICING -->
-    <div style="max-width: 880px; margin: 0 auto; padding: 84px 56px 0; text-align: center;">
+    <div style="max-width: 1180px; margin: 0 auto; padding: 84px 36px 0; text-align: center;">
       <div style="font-size: 12px; letter-spacing: 1.8px; text-transform: uppercase; color: var(--accent, #BA7517); font-weight: 600; animation: fs-rise .5s ease both;">Pricing</div>
-      <h2 style="font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; font-weight: 700; font-size: 40px; letter-spacing: -1px; color: var(--ink, #2C2C2A); margin: 14px auto 0; line-height: 1.12; animation: fs-rise .5s ease both .07s;">Everything you need to finish the script.</h2>
-      <p style="font-size: 17px; color: var(--muted, #888780); max-width: 520px; margin: 18px auto 52px; animation: fs-rise .5s ease both .13s;">One simple plan. No annual lock in. Cancel whenever you like.</p>
+      <h2 style="font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; font-weight: 700; font-size: 40px; letter-spacing: -1px; color: var(--ink, #2C2C2A); margin: 14px auto 0; line-height: 1.12; animation: fs-rise .5s ease both .07s;">Choose the workspace that fits your process.</h2>
+      <p style="font-size: 17px; color: var(--muted, #888780); max-width: 640px; margin: 18px auto 52px; animation: fs-rise .5s ease both .13s;">Start free, build your production manually with Basic, or unlock the full Lumiere workflow with Pro.</p>
 
-      <div style="max-width: 460px; margin: 0 auto; text-align: left;">
-        <div class="fsx-card fs-double-outline fs-pricing-card" style="position: relative; padding: 34px 32px 36px; animation: fs-rise .55s ease both .18s;">
-          <div style="display: flex; align-items: center; justify-content: space-between;">
-            <div style="font-size: 14px; font-weight: 600; color: var(--ink, #2C2C2A);">FilmScript Pro</div>
-            <div style="font-size: 11px; font-weight: 600; color: #FFFEF9; background: var(--accent, #BA7517); border-radius: 999px; padding: 3px 10px;">Most loved</div>
-          </div>
-          <div style="display: flex; align-items: baseline; gap: 6px; margin-top: 16px;">
-            <span class="fs-price-amount" style="font-size: 52px; color: var(--ink, #2C2C2A);">$20</span>
-            <span style="font-size: 14px; color: var(--muted, #888780);">/ month</span>
-          </div>
-          <div style="font-size: 13.5px; color: var(--muted, #888780); margin-top: 4px;">Every FilmScript tool, connected from first draft to production.</div>
-          <div style="display: flex; flex-direction: column; gap: 11px; margin-top: 24px;">
-            <sc-for list="{{ planB }}" as="p" hint-placeholder-count="5">
-              <div style="display: flex; gap: 10px; align-items: flex-start; font-size: 13.5px; color: var(--ink, #2C2C2A);"><span style="color: var(--accent, #BA7517); flex: 0 0 auto;">{{ check }}</span>{{ p }}</div>
-            </sc-for>
-          </div>
-          <button type="button" onClick="{{ chooseLumiere }}" class="fs-double-outline fs-outline-control fs-outline-control--primary" style="width: 100%; min-height: 48px; margin-top: 28px;"><span style="font-size: 14px; font-weight: 600;">Choose FilmScript Pro</span></button>
+      <div data-testid="pricing-plans" style="display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 18px; text-align: left; align-items: stretch;">
+        <div data-testid="pricing-free" class="fsx-card fs-double-outline fs-pricing-card" style="position: relative; padding: 30px 25px 28px; animation: fs-rise .55s ease both .15s;">
+          <div style="font-size: 14px; font-weight: 700; color: var(--ink, #2C2C2A);">Free</div>
+          <div style="display: flex; align-items: baseline; gap: 6px; margin-top: 16px;"><span class="fs-price-amount" style="font-size: 46px; color: var(--ink, #2C2C2A);">$0</span><span style="font-size: 14px; color: var(--muted, #888780);">/ month</span></div>
+          <div style="font-size: 13.5px; line-height: 1.45; color: var(--muted, #888780); margin-top: 4px;">See the workspace before you commit.</div>
+          <div style="display: flex; flex-direction: column; gap: 10px; margin-top: 23px;"><sc-for list="{{ planFree }}" as="p" hint-placeholder-count="5"><div style="display: flex; gap: 9px; align-items: flex-start; font-size: 13px; line-height: 1.4; color: var(--ink, #2C2C2A);"><span style="color: var(--muted, #888780); flex: 0 0 auto;">{{ check }}</span>{{ p }}</div></sc-for></div>
+          <button type="button" onClick="{{ chooseFree }}" class="fs-double-outline fs-outline-control fs-outline-control--secondary" style="width: 100%; min-height: 46px; margin-top: 27px;"><span style="font-size: 14px; font-weight: 600;">Start for free</span></button>
         </div>
-      </div>
-    </div>
 
-    <!-- COMPARE -->
-    <div style="display: none;">
-      <h2 style="font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; font-weight: 700; font-size: 30px; letter-spacing: -0.8px; color: var(--ink, #2C2C2A); text-align: center; margin: 0;">What comes with each plan.</h2>
-      <div style="margin-top: 34px;">
-        <div style="display: grid; grid-template-columns: 1fr 90px 150px; gap: 12px; padding: 0 4px 10px; border-bottom: 1.3px solid var(--line, #2C2C2A); font-size: 11px; letter-spacing: 1.4px; text-transform: uppercase; font-weight: 600; color: var(--muted, #888780);"><span></span><span style="text-align: center;">Free</span><span style="text-align: center;">FilmScript Pro</span></div>
-        <div style="display: grid; grid-template-columns: 1fr 90px 150px; gap: 12px; padding: 13px 4px; border-bottom: 1px solid var(--soft, #e4e2d8); font-size: 13.5px; color: var(--ink, #2C2C2A); align-items: baseline;"><span>Hollywood format editor</span><span style="text-align: center; color: var(--accent, #BA7517); font-weight: 600;">{{ check }}</span><span style="text-align: center; color: var(--accent, #BA7517); font-weight: 600;">{{ check }}</span></div>
-        <div style="display: grid; grid-template-columns: 1fr 90px 150px; gap: 12px; padding: 13px 4px; border-bottom: 1px solid var(--soft, #e4e2d8); font-size: 13.5px; color: var(--ink, #2C2C2A); align-items: baseline;"><span>Typewriter pages, light and dark</span><span style="text-align: center; color: var(--accent, #BA7517); font-weight: 600;">{{ check }}</span><span style="text-align: center; color: var(--accent, #BA7517); font-weight: 600;">{{ check }}</span></div>
-        <div style="display: grid; grid-template-columns: 1fr 90px 150px; gap: 12px; padding: 13px 4px; border-bottom: 1px solid var(--soft, #e4e2d8); font-size: 13.5px; color: var(--ink, #2C2C2A); align-items: baseline;"><span>WGA format checker</span><span style="text-align: center; color: var(--accent, #BA7517); font-weight: 600;">{{ check }}</span><span style="text-align: center; color: var(--accent, #BA7517); font-weight: 600;">{{ check }}</span></div>
-        <div style="display: grid; grid-template-columns: 1fr 90px 150px; gap: 12px; padding: 13px 4px; border-bottom: 1px solid var(--soft, #e4e2d8); font-size: 13.5px; color: var(--ink, #2C2C2A); align-items: baseline;"><span>Screenplay PDF export</span><span style="text-align: center; color: var(--accent, #BA7517); font-weight: 600;">{{ check }}</span><span style="text-align: center; color: var(--accent, #BA7517); font-weight: 600;">{{ check }}</span></div>
-        <div style="display: grid; grid-template-columns: 1fr 90px 150px; gap: 12px; padding: 13px 4px; border-bottom: 1px solid var(--soft, #e4e2d8); font-size: 13.5px; color: var(--ink, #2C2C2A); align-items: baseline;"><span>Lumiere chat and script analysis</span><span style="text-align: center; color: var(--accent, #BA7517); font-weight: 600;"></span><span style="text-align: center; color: var(--accent, #BA7517); font-weight: 600;">{{ check }}</span></div>
-        <div style="display: grid; grid-template-columns: 1fr 90px 150px; gap: 12px; padding: 13px 4px; border-bottom: 1px solid var(--soft, #e4e2d8); font-size: 13.5px; color: var(--ink, #2C2C2A); align-items: baseline;"><span>Cliché detector and spotless spelling</span><span style="text-align: center; color: var(--accent, #BA7517); font-weight: 600;"></span><span style="text-align: center; color: var(--accent, #BA7517); font-weight: 600;">{{ check }}</span></div>
-        <div style="display: grid; grid-template-columns: 1fr 90px 150px; gap: 12px; padding: 13px 4px; border-bottom: 1px solid var(--soft, #e4e2d8); font-size: 13.5px; color: var(--ink, #2C2C2A); align-items: baseline;"><span>Script breakdowns</span><span style="text-align: center; color: var(--accent, #BA7517); font-weight: 600;"></span><span style="text-align: center; color: var(--accent, #BA7517); font-weight: 600;">{{ check }}</span></div>
-        <div style="display: grid; grid-template-columns: 1fr 90px 150px; gap: 12px; padding: 13px 4px; border-bottom: 1px solid var(--soft, #e4e2d8); font-size: 13.5px; color: var(--ink, #2C2C2A); align-items: baseline;"><span>Stripboard schedule</span><span style="text-align: center; color: var(--accent, #BA7517); font-weight: 600;"></span><span style="text-align: center; color: var(--accent, #BA7517); font-weight: 600;">{{ check }}</span></div>
-        <div style="display: grid; grid-template-columns: 1fr 90px 150px; gap: 12px; padding: 13px 4px;  font-size: 13.5px; color: var(--ink, #2C2C2A); align-items: baseline;"><span>Shot lists</span><span style="text-align: center; color: var(--accent, #BA7517); font-weight: 600;"></span><span style="text-align: center; color: var(--accent, #BA7517); font-weight: 600;">{{ check }}</span></div>
+        <div data-testid="pricing-basic" class="fsx-card fs-double-outline fs-pricing-card" style="position: relative; padding: 30px 25px 28px; animation: fs-rise .55s ease both .2s;">
+          <div style="display: flex; align-items: center; justify-content: space-between; gap: 8px;"><div style="font-size: 14px; font-weight: 700; color: var(--ink, #2C2C2A);">FilmScript Basic</div><div style="font-size: 10px; font-weight: 700; color: var(--accent, #BA7517); border: 1px solid var(--accent, #BA7517); border-radius: 999px; padding: 3px 8px; white-space: nowrap;">Manual control</div></div>
+          <div style="display: flex; align-items: baseline; gap: 6px; margin-top: 16px;"><span class="fs-price-amount" style="font-size: 46px; color: var(--ink, #2C2C2A);">$12.99</span><span style="font-size: 14px; color: var(--muted, #888780);">/ month</span></div>
+          <div style="font-size: 13.5px; line-height: 1.45; color: var(--muted, #888780); margin-top: 4px;">The complete manual production desk, without AI.</div>
+          <div style="display: flex; flex-direction: column; gap: 10px; margin-top: 23px;"><sc-for list="{{ planBasic }}" as="p" hint-placeholder-count="12"><div style="display: flex; gap: 9px; align-items: flex-start; font-size: 13px; line-height: 1.4; color: var(--ink, #2C2C2A);"><span style="color: var(--accent, #BA7517); flex: 0 0 auto;">{{ check }}</span>{{ p }}</div></sc-for></div>
+          <button type="button" onClick="{{ chooseBasic }}" class="fs-double-outline fs-outline-control fs-outline-control--secondary" style="width: 100%; min-height: 46px; margin-top: 27px;"><span style="font-size: 14px; font-weight: 600;">Choose Basic</span></button>
+        </div>
+
+        <div data-testid="pricing-pro" class="fsx-card fs-double-outline fs-pricing-card" style="position: relative; padding: 30px 25px 28px; border-color: var(--accent, #BA7517); animation: fs-rise .55s ease both .25s;">
+          <div style="display: flex; align-items: center; justify-content: space-between; gap: 8px;"><div style="font-size: 14px; font-weight: 700; color: var(--ink, #2C2C2A);">FilmScript Pro</div><div style="font-size: 10px; font-weight: 700; color: #FFFEF9; background: var(--accent, #BA7517); border-radius: 999px; padding: 3px 8px; white-space: nowrap;">Full studio</div></div>
+          <div style="display: flex; align-items: baseline; gap: 6px; margin-top: 16px;"><span class="fs-price-amount" style="font-size: 46px; color: var(--ink, #2C2C2A);">$19.99</span><span style="font-size: 14px; color: var(--muted, #888780);">/ month</span></div>
+          <div style="font-size: 13.5px; line-height: 1.45; color: var(--muted, #888780); margin-top: 4px;">Every FilmScript tool, plus Lumiere on every production pass.</div>
+          <div style="display: flex; flex-direction: column; gap: 10px; margin-top: 23px;"><sc-for list="{{ planPro }}" as="p" hint-placeholder-count="20"><div style="display: flex; gap: 9px; align-items: flex-start; font-size: 13px; line-height: 1.4; color: var(--ink, #2C2C2A);"><span style="color: var(--accent, #BA7517); flex: 0 0 auto;">{{ check }}</span>{{ p }}</div></sc-for></div>
+          <button type="button" onClick="{{ chooseLumiere }}" class="fs-double-outline fs-outline-control fs-outline-control--primary" style="width: 100%; min-height: 46px; margin-top: 27px;"><span style="font-size: 14px; font-weight: 600;">Choose Pro</span></button>
+        </div>
       </div>
     </div>
 
@@ -230,7 +214,7 @@
         </div>
         <div style="padding: 22px 4px; border-bottom: 1px solid var(--soft, #e4e2d8);">
           <div style="font-size: 16px; font-weight: 600; color: var(--ink, #2C2C2A);">Can I switch plans later?</div>
-          <div style="font-size: 14px; line-height: 1.55; color: var(--muted, #888780); margin-top: 8px;">Yes. Add or drop Lumiere any time from your account menu. Changes apply right away.</div>
+          <div style="font-size: 14px; line-height: 1.55; color: var(--muted, #888780); margin-top: 8px;">Yes. Move from Free to Basic or Pro at any time. Your existing scripts and manual production work stay available.</div>
         </div>
         <div style="padding: 22px 4px; border-bottom: 1px solid var(--soft, #e4e2d8);">
           <div style="font-size: 16px; font-weight: 600; color: var(--ink, #2C2C2A);">What do my pages export to?</div>
@@ -238,7 +222,7 @@
         </div>
         <div style="padding: 22px 4px; border-bottom: 1px solid var(--soft, #e4e2d8);">
           <div style="font-size: 16px; font-weight: 600; color: var(--ink, #2C2C2A);">Which plan makes the production documents?</div>
-          <div style="font-size: 14px; line-height: 1.55; color: var(--muted, #888780); margin-top: 8px;">Breakdowns, stripboards, shot lists and script analysis are Lumiere features, included in the $20 plan.</div>
+          <div style="font-size: 14px; line-height: 1.55; color: var(--muted, #888780); margin-top: 8px;">Basic includes manual breakdowns, shot lists, schedules and Budget. Pro adds Lumiere, automated analysis and AI-assisted production passes.</div>
         </div>
         <div style="padding: 22px 4px;">
           <div style="font-size: 16px; font-weight: 600; color: var(--ink, #2C2C2A);">Is there a free trial?</div>
@@ -296,7 +280,7 @@
         </sc-if>
 
         <div style="margin-top: 18px; padding: 13px 15px; border: 1.4px solid var(--line, #2C2C2A); border-radius: 14px; background: var(--bg, #F5F0E8); filter: url(#fs-sketch);">
-          <div style="font-size: 12px; line-height: 1.55; color: var(--muted, #888780);">You will return to FilmScript after payment. FilmScript verifies the checkout securely and unlocks Pro automatically.</div>
+          <div style="font-size: 12px; line-height: 1.55; color: var(--muted, #888780);">You will return to FilmScript after payment. FilmScript verifies the checkout securely and unlocks your selected plan automatically.</div>
         </div>
       </div>
       </sc-if>
@@ -333,7 +317,7 @@ class Component extends DCLogic {
     lumiereOpen: true,
     soundOn: true,
     darkMode: window.filmscriptTheme?.isDark() ?? false,
-    mode: 'sample',
+    mode: 'blank',
     zoom: 1,
     menuOpen: false,
     authOpen: false,
@@ -352,9 +336,7 @@ class Component extends DCLogic {
     profileNameDraft: '',
     profileSaving: false,
     profileSaved: false,
-    chat: [
-      { who: 'l', text: "I've read the railway café scene. Mara's restraint is doing a lot of quiet work. What do you want to push on?" },
-    ],
+    chat: [],
   };
 
   canvasRef = React.createRef();
@@ -367,7 +349,7 @@ class Component extends DCLogic {
     const billingParams = new URLSearchParams(window.location.search);
     const paymentSucceeded = billingParams.get('payment') === 'success';
     this._refreshBilling(paymentSucceeded, billingParams.get('checkout_id')).then((me) => {
-      if (paymentSucceeded && me?.plan === 'lumiere') this.setState({ checkoutOpen: true, checkoutPlan: 'lumiere', checkoutStep: 'success' });
+      if (paymentSucceeded && (me?.plan === 'lumiere' || me?.plan === 'basic')) this.setState({ checkoutOpen: true, checkoutPlan: me.plan, checkoutStep: 'success' });
     });
     let tries = 0;
     const arm = () => {
@@ -423,25 +405,9 @@ class Component extends DCLogic {
   chatRef = React.createRef();
   STORAGE_KEY = 'filmscript_doc_v1';
 
-  SCRIPT_TEXT = [
-    'INT. RAILWAY CAFÉ — RAINY AFTERNOON',
-    'Steam fogs the window. MARA (30s, restless, a notebook she never opens) watches the platform. A train sighs in, brakes hissing.',
-    'MARA (barely audible): He\u2019s not coming. He never was. I just liked the waiting.',
-    'She closes the notebook. For the first time, it stays shut.',
-    'EXT. PLATFORM — CONTINUOUS',
-    'The crowd parts around her like water. A conductor checks his watch. Somewhere a bell.',
-  ].join('\n');
-
-  DEFAULT_DOC = [
-    { type: 'scene', text: 'INT. RAILWAY CAFÉ — RAINY AFTERNOON' },
-    { type: 'action', text: 'Steam fogs the window. MARA (30s, restless, a notebook she never opens) watches the platform. A train sighs in, brakes hissing.' },
-    { type: 'character', text: 'MARA' },
-    { type: 'paren', text: '(barely audible)' },
-    { type: 'dialogue', text: "He's not coming. He never was. I just liked the waiting." },
-    { type: 'action', text: 'She closes the notebook. For the first time, it stays shut.' },
-    { type: 'scene', text: 'EXT. PLATFORM — CONTINUOUS' },
-    { type: 'action', text: 'The crowd parts around her like water. A conductor checks his watch. Somewhere a bell.' },
-  ];
+  // Pricing opens a clean editor preview; no bundled screenplay is used.
+  SCRIPT_TEXT = '';
+  DEFAULT_DOC = [];
 
   // ---------- hand-drawn geometry ----------
   _rng(seed) {
@@ -531,76 +497,11 @@ class Component extends DCLogic {
     return 'position:absolute;left:-46px;top:0;color:var(--accent,#BA7517);opacity:.65;font-size:11px;';
   }
 
-  // ---------- generate a long invented screenplay ----------
-  _generateScript() {
-    const rnd = this._rng(20260629);
-    const pick = (a) => a[Math.floor(rnd() * a.length)];
-    const intext = ['INT.', 'EXT.', 'INT./EXT.'];
-    const places = [
-      'LIGHTHOUSE — LANTERN ROOM', 'LIGHTHOUSE — SPIRAL STAIR', "KEEPER'S COTTAGE — KITCHEN",
-      'HARBOR ROAD', 'THE BREAKWATER', 'FISHING TRAWLER — DECK', 'VILLAGE PUB — BACK BOOTH',
-      "MARA'S BEDROOM", 'THE CLIFF PATH', 'POST OFFICE', 'CHURCHYARD', 'SUPPLY BOAT — CABIN',
-      'TIDE POOLS', 'THE OLD BOATHOUSE', 'HARBORMASTER\u2019S OFFICE', 'SEA — OPEN WATER',
-    ];
-    const times = ['DAWN', 'DAY', 'DUSK', 'NIGHT', 'CONTINUOUS', 'LATER', 'PRE-DAWN', 'MAGIC HOUR'];
-    const chars = ['MARA', 'THE KEEPER', 'ELIAS', 'HARBORMASTER', 'YOUNG TOM', 'GULL (V.O.)', 'MARA (V.O.)', 'RADIO VOICE'];
-    const actions = [
-      'The lamp turns. A blade of light sweeps the black water and finds nothing.',
-      'Mara wipes salt from the glass. Below, the surf gnaws the rocks like something patient.',
-      'The Keeper climbs, one hand always on the rail, counting the steps he no longer needs to count.',
-      'Rain arrives sideways. The cottage windows rattle in their frames.',
-      'A letter sits unopened on the table, its corner darkened where a thumb keeps returning.',
-      'The trawler pitches. Ropes groan. Somewhere a bell answers a bell.',
-      'She lays the logbook flat and writes the date, then crosses it out.',
-      'Light fails over the headland. The town below blinks awake, window by window.',
-      'He pours two cups of tea and only ever drinks one.',
-      'The radio coughs static, then a voice, then static again.',
-      'Footprints fill with seawater and vanish behind her.',
-      'The flame gutters. For a heartbeat the whole coast goes dark.',
-      'Tom presses his ear to the foghorn housing as if it might confess something.',
-      'A photograph, sun-bleached to ghosts, is tucked back behind the clock.',
-      'The tide draws out farther than it should, baring the wreck no one talks about.',
-    ];
-    const lines = [
-      'You can\u2019t keep a light for someone who isn\u2019t coming back.',
-      'The sea doesn\u2019t take sides. It just takes.',
-      'I counted the flashes every night. Three long, one short. Like a name.',
-      'We don\u2019t leave the lamp. The lamp leaves us, eventually.',
-      'Tell me you saw it too. The boat. Out past the second buoy.',
-      'My father kept this light forty years and it kept him longer.',
-      'There\u2019s a difference between waiting and refusing to let go.',
-      'Storm\u2019s turning. You\u2019ll want to be off the breakwater before it does.',
-      'I wrote it all down so somebody would know we were here.',
-      'You think the dark is the enemy. The dark is just honest.',
-      'If the horn stops, you run. You don\u2019t look back at me.',
-      'Some lights you keep for the living. This one I keep for the rest.',
-      'I\u2019m not frightened of the water. I\u2019m frightened of the quiet after.',
-      'Every keeper leaves a name in the logbook. None of them leave twice.',
-    ];
-    const parens = ['(quietly)', '(beat)', '(not looking up)', '(to herself)', '(sharp)', '(after a moment)', '(barely audible)'];
-    const transitions = ['CUT TO:', 'SMASH CUT TO:', 'DISSOLVE TO:', 'MATCH CUT TO:'];
-
-    const blocks = [{ type: 'fadein', text: 'FADE IN:' }];
-    for (let s = 0; s < 320; s++) {
-      blocks.push({ type: 'scene', text: `${pick(intext)} ${pick(places)} — ${pick(times)}` });
-      const na = 1 + Math.floor(rnd() * 3);
-      for (let a = 0; a < na; a++) blocks.push({ type: 'action', text: pick(actions) });
-      const nd = 1 + Math.floor(rnd() * 4);
-      for (let d = 0; d < nd; d++) {
-        blocks.push({ type: 'character', text: pick(chars) });
-        if (rnd() < 0.4) blocks.push({ type: 'paren', text: pick(parens) });
-        let txt = pick(lines);
-        if (rnd() < 0.4) txt += ' ' + pick(lines);
-        blocks.push({ type: 'dialogue', text: txt });
-        if (rnd() < 0.28) blocks.push({ type: 'action', text: pick(actions) });
-      }
-      if (rnd() < 0.5) blocks.push({ type: 'transition', text: pick(transitions) });
-    }
-    return blocks;
-  }
+  // No bundled screenplay: a new session is always a clean writing surface.
+  _generateScript() { return []; }
 
   _buildPages(rough) {
-    const mode = this.state.mode || 'sample';
+    const mode = this.state.mode || 'blank';
     const key = mode + ':' + rough;
     if (this._pagesKey === key && this._pagesCache) return this._pagesCache;
     const self = this;
@@ -869,12 +770,12 @@ Write Lumiere's next reply only:`;
     const lumiereLocked = !lumiereUnlocked;
     const hasPlan = !!plan;
     const noPlan = !plan;
-    const isWriterPlan = plan === 'writer';
+    const isBasicPlan = plan === 'basic';
     const isLumierePlan = plan === 'lumiere';
-    const planLabel = plan === 'lumiere' ? 'FilmScript Pro · $20 / month' : 'No active plan';
+    const planLabel = plan === 'lumiere' ? 'FilmScript Pro · $19.99 / month' : plan === 'basic' ? 'FilmScript Basic · $12.99 / month' : 'Free';
     const checkoutPlanKey = this.state.checkoutPlan;
-    const checkoutPlanName = checkoutPlanKey === 'lumiere' ? 'FilmScript Pro' : 'Free';
-    const checkoutPlanPrice = '$20 / month';
+    const checkoutPlanName = checkoutPlanKey === 'lumiere' ? 'FilmScript Pro' : checkoutPlanKey === 'basic' ? 'FilmScript Basic' : 'Free';
+    const checkoutPlanPrice = checkoutPlanKey === 'lumiere' ? '$19.99 / month' : '$12.99 / month';
     const checkoutConfirmStep = this.state.checkoutStep !== 'success';
     const checkoutSuccessStep = this.state.checkoutStep === 'success';
     const checkoutHasLink = !!checkoutPlanKey;
@@ -891,17 +792,11 @@ Write Lumiere's next reply only:`;
     ];
 
 
-    const cardData = [
-      { title: 'The Lighthouse Keeper', meta: '150 pages · edited 2h ago' },
-      { title: 'Neon Static', meta: '150 pages · edited yesterday' },
-      { title: 'Saltbound', meta: '150 pages · edited 3d ago' },
-      { title: 'The Quiet Hour', meta: '150 pages · edited 1w ago' },
-      { title: 'Ashfall', meta: '150 pages · edited 2w ago' },
-    ];
+    const cardData = [];
     const cards = cardData.map((c, i) => ({
       ...c,
       thumbPath: this._roughPath(62, 84, 1.5, (i + 1) * 8123 + 17, 8),
-      open: () => this.setState({ screen: 'editor', mode: 'sample' }),
+      open: () => this.setState({ screen: 'editor', mode: 'blank' }),
     }));
 
     const thumbLines = [
@@ -946,11 +841,13 @@ Write Lumiere's next reply only:`;
       input: this.state.input,
       zoom: this.state.zoom,
       zoomPct: Math.round(this.state.zoom * 100) + '%',
-      homeSub: '5 scripts in progress · Last edited: The Lighthouse Keeper, 2h ago',
+      homeSub: 'Start with a blank screenplay and shape it into something yours.',
       cards, thumbLines, messages,
       tools: ['Character analysis', 'Cliché detector', 'Scene suggestions', 'Narrative arc', 'Format checker'].map(label => ({ label, title: 'Run ' + label, onClick: () => this.runTool(label) })),
       check: '✓',
-      planB: ['Professional screenplay editor and PDF exports', 'Lumiere, your AI script assistant', 'Breakdowns, stripboards and shot lists', 'Cliché, format, character and arc analysis', 'Every FilmScript feature in one plan'],
+      planFree: ['Workspace preview with a clean writing surface', 'Explore the editor, Breakdown and Budget surfaces', 'See exactly what Basic and Pro unlock', 'No Lumiere or AI generation'],
+      planBasic: ['Industry screenplay editor with standard formatting', 'Write, save and export screenplay PDFs', 'Title page, revisions, autosave and light/dark themes', 'Manual script Breakdown by scene', 'Manual cast, props, wardrobe, locations and production elements', 'Manual Stripboard and shooting schedule', 'Manual Calendar and Timeline planning', 'Manual Shot Lists with camera specs and notes', 'Budget Quick View and Budget Summary', 'Budget Breakdown, taxes and contingency controls', 'Finance Plan and weekly Cash Flow', 'Expense Report with receipts and compressed images', 'A4 PDF exports for production documents', 'No Analysis, Lumiere chat or AI generation'],
+      planPro: ['Everything in FilmScript Basic', 'Lumiere AI writing companion inside the editor', 'Spelling and grammar assistance while you write', 'Cliché detector with sharper alternatives', 'Scene suggestions and narrative arc analysis', 'Character motivation and character arc analysis', 'WGA format and screenplay structure analysis', 'Full screenplay Analysis with evidence and production context', 'AI-assisted scene Breakdown and production tagging', 'AI-assisted Stripboard and schedule planning', 'AI-assisted Shot List coverage suggestions', 'AI-assisted shot generation with scene time budgets', 'Lumiere taste profile and creative preferences', 'Manual editing remains available on every AI result', 'Budget connected to Breakdown and Stripboard schedules', 'Cash Flow by week with payment timing and search', 'Expense Report variance, overruns and unexpected costs', 'Compressed receipt uploads linked to budget lines', 'Finance Plan, funding gap and contingency tracking', 'A4 PDF exports for every production document', 'Account persistence across scripts and production work', 'Priority access to the complete FilmScript workflow'],
       pages: this._buildPages(rough),
       barPath: this._roughPath(408, 56, 2.4, 555, 16),
       btnPath: this._roughPath(92, 32, 2, 333, 11),
@@ -1016,14 +913,14 @@ Write Lumiere's next reply only:`;
       userName: this.state.profileName || (this.state.user ? this.state.user.name : 'Writer'),
       profileNameDraft: this.state.profileNameDraft,
       profileSaveLabel: this.state.profileSaving ? 'Saving…' : this.state.profileSaved ? 'Saved' : 'Save',
-      accountStatus: plan ? 'Active' : 'No active plan',
+      accountStatus: plan ? 'Active' : 'Free',
       openAuth: () => this.setState({ authOpen: true }),
       closeAuth: () => this.setState({ authOpen: false }),
       stop: (e) => { e.stopPropagation(); },
       googleSignUp: () => { window.location.href = window.filmscriptBilling.googleSignInUrl(); },
       signOut: async () => { try { await window.filmscriptBilling.logout(); } catch (e) {} this.setState({ user: null, plan: null, accountOpen: false }); },
 
-      plan, planLabel, hasPlan, noPlan, isWriterPlan, isLumierePlan,
+      plan, planLabel, hasPlan, noPlan, isBasicPlan, isLumierePlan,
       lumiereUnlocked, lumiereLocked,
       unlockBtnPath: this._roughPath(180, 44, 2, 999, 14),
 
@@ -1051,16 +948,24 @@ Write Lumiere's next reply only:`;
       cancelPlan: () => { window.location.href = 'Subscription.dc.html?returnTo=Pricing.dc.html'; },
       upgradeToLumiere: () => this._startCheckout('lumiere'),
       goLandingFromAccount: () => this.setState({ accountOpen: false }),
+      goPricing: () => this.setState({ accountOpen: false }),
 
+      chooseFree: () => {
+        if (!this.state.user) return this.setState({ authOpen: true, pendingPlan: null, accountOpen: false });
+        window.location.href = 'App.dc.html';
+      },
+      chooseBasic: () => this._startCheckout('basic'),
       chooseLumiere: () => this._startCheckout('lumiere'),
+      openCheckoutBasic: () => this._startCheckout('basic'),
       openCheckoutLumiere: () => this._startCheckout('lumiere'),
 
       checkoutOpen: this.state.checkoutOpen,
       checkoutConfirmStep, checkoutSuccessStep, checkoutPlanName, checkoutPlanPrice, checkoutHasLink,
       openPayLink: async () => {
         try {
-          const result = await window.filmscriptBilling.checkout(this.state.checkoutPlan, this.state.user?.email);
-          window.filmscriptBilling.trackCheckoutRedirected?.(this.state.checkoutPlan);
+          const language = window.filmscriptLanguage?.get?.() || document.documentElement.lang || 'en';
+          const result = await window.filmscriptBilling.checkout(this.state.checkoutPlan, this.state.user?.email, language);
+          window.filmscriptBilling.trackCheckoutRedirected(this.state.checkoutPlan);
           window.location.href = result.checkoutUrl;
         } catch (e) { this.setState({ toast: e.message }); }
       },

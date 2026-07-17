@@ -10,9 +10,10 @@
   <link href="https://fonts.googleapis.com/css2?family=Courier+Prime:wght@400;700&amp;display=swap" rel="stylesheet">
   <script src="./runtime-config.js?v=20260711-cancel1"></script>
   <script src="./theme-preference.js?v=20260712-theme1"></script>
-  <script src="./language-preference.js?v=20260713-i18n1"></script>
+  <script src="./language-preference.js?v=20260716-language-choice1"></script>
   <script src="./ui-sounds.js?v=20260713-subscription-cancel1"></script>
-  <script src="./billing-client.js?v=20260712-auth2"></script>
+  <script src="./billing-client.js?v=20260716-profile-safe1"></script>
+  <script src="./profile-onboarding.js?v=20260716-profile1"></script>
   <style>
     :root {
       --bg: #faf7f2;
@@ -28,13 +29,15 @@
       --danger-hover: #ad3431;
       --success: #2e7d5b;
       --shadow: 0 20px 55px rgba(30, 28, 23, .09);
-      font-family: Inter, -apple-system, BlinkMacSystemFont, "SF Pro Text", "Helvetica Neue", Arial, sans-serif;
+      font-family: "SF Pro Text", -apple-system, BlinkMacSystemFont, "Helvetica Neue", Arial, sans-serif;
       color: var(--ink);
       background: var(--bg);
     }
 
     * { box-sizing: border-box; }
-    body { margin: 0; min-height: 100vh; background: var(--bg); color: var(--ink); }
+    body { margin: 0; min-height: 100vh; background: var(--bg); color: var(--ink); font-family: "SF Pro Text", -apple-system, BlinkMacSystemFont, "Helvetica Neue", Arial, sans-serif; }
+    h1, h2, h3, h4, h5, h6 { font-family: "SF Pro Display", "SF Pro Text", -apple-system, BlinkMacSystemFont, "Helvetica Neue", Arial, sans-serif; font-weight: 800; }
+    h1 { font-weight: 900; }
     button, input { font: inherit; }
     button, a { -webkit-tap-highlight-color: transparent; }
     [hidden] { display: none !important; }
@@ -433,29 +436,29 @@
         <div class="eyebrow">Membership</div>
         <h1>Plan &amp; billing</h1>
         <svg class="sketch-line" viewBox="0 0 84 9" aria-hidden="true"><path d="M2 5 C18 2, 38 7, 82 3"/><path d="M9 8 C29 6, 49 8, 72 6" opacity=".45"/></svg>
-        <p class="lede">Manage your membership, billing and access to FilmScript Pro.</p>
+        <p class="lede" id="overview-lede">Manage your membership, billing and access to your FilmScript plan.</p>
 
         <div class="plan-hero">
           <div class="plan-kicker">Current plan</div>
           <div class="plan-heading">
             <div>
-              <h2>FilmScript Pro</h2>
+              <h2 id="overview-plan-name">FilmScript Pro</h2>
               <div class="active-pill" id="overview-status">Active</div>
             </div>
-            <div class="plan-price">$20 / month</div>
+            <div class="plan-price" id="overview-plan-price">$19.99 / month</div>
           </div>
           <div class="plan-account" id="overview-email">Connected Google account</div>
         </div>
 
-        <h2 class="section-title">Everything included</h2>
-        <p class="section-copy">One connected workflow for writing, planning and preparing the shoot.</p>
+        <h2 class="section-title" id="overview-features-title">Everything included</h2>
+        <p class="section-copy" id="overview-features-copy">One connected workflow for writing, planning and preparing the shoot.</p>
         <div class="feature-grid">
           <div class="feature-card">
             <div class="feature-icon"><svg viewBox="0 0 24 24"><path class="icon-page" d="M6 3.5h8l4 4V20H6z"/><path class="icon-writing" d="M14 3.5V8h4M9 12h6M9 15.5h5"/></svg></div>
             <div class="feature-name">Screenplay editor</div>
             <div class="feature-description">Professional formatting, scene navigation and focused writing.</div>
           </div>
-          <div class="feature-card">
+          <div class="feature-card" id="lumiere-feature-card">
             <div class="feature-icon"><svg viewBox="0 0 24 24"><path class="icon-star-main" d="m12 3 1.5 5.5L19 10l-5.5 1.5L12 17l-1.5-5.5L5 10l5.5-1.5z"/><path class="icon-star-small" d="m18.5 16 .7 2.3 2.3.7-2.3.7-.7 2.3-.7-2.3-2.3-.7 2.3-.7z"/></svg></div>
             <div class="feature-name">Lumiere</div>
             <div class="feature-description">Script feedback, analysis and conversations saved per screenplay.</div>
@@ -473,7 +476,7 @@
           <div class="feature-card">
             <div class="feature-icon"><svg viewBox="0 0 24 24"><path d="M4 6h16v12H4z"/><path class="icon-shot-spine" d="M8 6v12"/><path class="icon-shot-rows" d="M12 9h5M12 12h5M12 15h3"/></svg></div>
             <div class="feature-name">Shot lists</div>
-            <div class="feature-description">Editable camera coverage generated scene by scene with Lumiere.</div>
+            <div class="feature-description" id="shot-feature-description">Editable camera coverage generated scene by scene with Lumiere.</div>
           </div>
           <div class="feature-card">
             <div class="feature-icon"><svg viewBox="0 0 24 24"><path d="M7 3.5h8l3 3V20H7zM15 3.5V7h3"/><path class="icon-pdf-lines" d="M10 12h5M10 15h5"/><path class="icon-pdf-back" d="M4 8v10h3"/></svg></div>
@@ -516,10 +519,10 @@
         <div class="plan-card">
           <div class="plan-row">
             <div>
-              <div class="plan-name">FilmScript Pro</div>
+              <div class="plan-name" id="manage-plan-name">FilmScript Pro</div>
               <div class="plan-meta" id="account-email">Connected Google account</div>
             </div>
-            <div class="price">$20 / month</div>
+            <div class="price" id="manage-plan-price">$19.99 / month</div>
           </div>
           <div class="provider">
             <span class="provider-mark" aria-hidden="true"></span>
@@ -553,9 +556,9 @@
         </div>
         <div class="eyebrow">Plan and billing</div>
         <h1>No active plan</h1>
-        <p class="lede">This Google account does not have an active FilmScript Pro subscription. Existing scripts and production documents remain editable and exportable.</p>
+        <p class="lede">This Google account does not have an active FilmScript subscription. Existing scripts and production documents remain editable and exportable.</p>
         <div class="actions">
-          <button class="button button-primary" id="view-plans" type="button">View FilmScript Pro</button>
+          <button class="button button-primary" id="view-plans" type="button">View plans</button>
           <button class="button button-secondary js-back" type="button">Back</button>
         </div>
       </div>
@@ -565,8 +568,8 @@
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="m6 12 4 4 8-9"/></svg>
         </div>
         <div class="eyebrow">Cancellation complete</div>
-        <h1 id="success-title">FilmScript Pro canceled</h1>
-        <p class="lede" id="success-message">FilmScript Pro is canceled. Your existing work remains available to edit and export; Lumiere generation is now locked.</p>
+        <h1 id="success-title">Plan canceled</h1>
+        <p class="lede" id="success-message">Your plan is canceled. Your existing work remains available to edit and export.</p>
         <div class="actions">
           <button class="button button-primary" id="success-back" type="button">Return to FilmScript</button>
         </div>
@@ -629,23 +632,40 @@
       byId('recurrente-link').addEventListener('click', () => playSound('profileOption'));
 
       function configureOverview() {
+        const planName = management.planName || (management.plan === 'basic' ? 'FilmScript Basic' : 'FilmScript Pro');
+        const planPrice = management.price || (management.plan === 'basic' ? '$12.99 / month' : '$19.99 / month');
+        const isBasic = management.plan === 'basic';
         const recurringSubscription = management.cancelMode === 'recurrente' && management.subscriptionLinked;
         const cancelableSubscription = !!management.cancelMode;
         byId('overview-email').textContent = account?.email || 'Connected Google account';
+        byId('overview-plan-name').textContent = planName;
+        byId('overview-plan-price').textContent = planPrice;
+        byId('overview-lede').textContent = `Manage your membership, billing and access to ${planName}.`;
+        byId('overview-features-title').textContent = isBasic ? 'Your manual production toolkit' : 'Everything included';
+        byId('overview-features-copy').textContent = isBasic ? 'Write, break down, schedule and budget your production with full manual control.' : 'One connected workflow for writing, planning and preparing the shoot.';
+        byId('lumiere-feature-card').hidden = isBasic;
+        byId('shot-feature-description').textContent = isBasic
+          ? 'Build and edit camera coverage scene by scene with full manual control.'
+          : 'Editable camera coverage generated scene by scene with Lumiere.';
         byId('overview-status').textContent = 'Active';
         byId('overview-environment').hidden = true;
         byId('overview-provider').textContent = recurringSubscription ? 'Managed securely with Recurrente' : 'Payment verified securely';
         byId('overview-notice').hidden = !management.message;
         byId('overview-notice').textContent = management.message || '';
         byId('overview-developer-link').hidden = true;
-        byId('start-cancel-button').textContent = 'Cancel FilmScript Pro';
+        byId('start-cancel-button').textContent = `Cancel ${planName}`;
         byId('danger-zone').hidden = !cancelableSubscription;
-        byId('danger-copy').textContent = 'Canceling stops future renewals and Lumiere generation. Your scripts and existing production documents remain available to edit and export.';
+        byId('danger-copy').textContent = isBasic
+          ? 'Canceling stops future renewals. Your scripts and manual production documents remain available to edit and export.'
+          : 'Canceling stops future renewals and Lumiere generation. Your scripts and existing production documents remain available to edit and export.';
         show('overview');
       }
 
       function configureManage() {
         if (!management?.cancelMode) return configureOverview();
+        const planName = management.planName || (management.plan === 'basic' ? 'FilmScript Basic' : 'FilmScript Pro');
+        const planPrice = management.price || (management.plan === 'basic' ? '$12.99 / month' : '$19.99 / month');
+        const isBasic = management.plan === 'basic';
         byId('account-email').textContent = account?.email || 'Connected Google account';
         byId('environment-badge').textContent = 'Secure billing';
         byId('developer-link').hidden = true;
@@ -653,12 +673,18 @@
         byId('provider-notice').textContent = management.message || '';
         byId('confirm-checkbox').checked = false;
         byId('cancel-button').disabled = true;
+        byId('manage-plan-name').textContent = planName;
+        byId('manage-plan-price').textContent = planPrice;
 
-        byId('manage-title').textContent = 'Cancel FilmScript Pro?';
-        byId('manage-copy').textContent = 'FilmScript will securely stop future renewals and Lumiere generation. Your scripts and existing production documents will remain editable and exportable.';
+        byId('manage-title').textContent = `Cancel ${planName}?`;
+        byId('manage-copy').textContent = isBasic
+          ? 'FilmScript will securely stop future renewals. Your scripts and manual production documents will remain editable and exportable.'
+          : 'FilmScript will securely stop future renewals and Lumiere generation. Your scripts and existing production documents will remain editable and exportable.';
         byId('provider-label').textContent = management.cancelMode === 'recurrente' ? 'Managed securely with Recurrente' : 'Payment verified securely';
-        byId('confirm-copy').textContent = 'I understand that canceling removes Lumiere generation, while my scripts and existing production documents remain editable and exportable.';
-        byId('cancel-button').textContent = 'Cancel FilmScript Pro';
+        byId('confirm-copy').textContent = isBasic
+          ? 'I understand that canceling stops renewals, while my scripts and manual production documents remain editable and exportable.'
+          : 'I understand that canceling removes Lumiere generation, while my scripts and existing production documents remain editable and exportable.';
+        byId('cancel-button').textContent = `Cancel ${planName}`;
         byId('cancel-button').classList.add('button-danger');
         byId('cancel-button').classList.remove('button-primary');
         show('manage');
@@ -672,7 +698,7 @@
           management = await window.filmscriptBilling.manageSubscription();
           if (!management.active) {
             byId('empty-view').querySelector('h1').textContent = 'No active plan';
-            byId('empty-view').querySelector('.lede').textContent = 'This Google account does not have an active FilmScript Pro subscription. Existing scripts and production documents remain editable and exportable.';
+            byId('empty-view').querySelector('.lede').textContent = 'This Google account does not have an active FilmScript subscription. Existing scripts and production documents remain editable and exportable.';
             if (management.status === 'pending_activation') {
               byId('empty-view').querySelector('h1').textContent = 'Finishing your subscription';
               byId('empty-view').querySelector('.lede').textContent = 'Your payment was received. FilmScript is waiting for Recurrente to confirm the recurring subscription.';
@@ -692,13 +718,16 @@
         playSound('cancelPro');
         const button = byId('cancel-button');
         button.disabled = true;
-        button.textContent = 'Canceling FilmScript Pro…';
+        const planName = management.planName || (management.plan === 'basic' ? 'FilmScript Basic' : 'FilmScript Pro');
+        button.textContent = `Canceling ${planName}…`;
         try {
           const result = await window.filmscriptBilling.cancel(management.cancelMode);
           const refreshed = await window.filmscriptBilling.me();
           if (refreshed.plan) throw new Error('Cancellation was not confirmed. Your plan remains active.');
-          byId('success-title').textContent = 'FilmScript Pro canceled';
-          byId('success-message').textContent = 'FilmScript Pro is canceled. Your existing work remains available to edit and export; Lumiere generation is now locked.';
+          byId('success-title').textContent = `${planName} canceled`;
+          byId('success-message').textContent = management.plan === 'basic'
+            ? `${planName} is canceled. Your existing work remains available to edit and export.`
+            : `${planName} is canceled. Your existing work remains available to edit and export; Lumiere generation is now locked.`;
           show('success');
         } catch (error) {
           byId('error-message').textContent = error.message || 'The cancellation could not be verified. Your plan has not been changed.';

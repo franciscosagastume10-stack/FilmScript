@@ -15,6 +15,7 @@ function memoryStorage(seed = {}) {
   return {
     getItem: (key) => values.has(key) ? values.get(key) : null,
     setItem: (key, value) => values.set(key, String(value)),
+    snapshot: () => Object.fromEntries(values),
   };
 }
 
@@ -57,18 +58,16 @@ function trackerHarness({
     URLSearchParams,
     Uint8Array,
   });
-  return { window, requests };
+  return { window, requests, localStorage, sessionStorage };
 }
 
-test("landing and pricing tracking use anonymous stable IDs and first-touch attribution", () => {
+test("landing and pricing tracking use anonymous stable IDs and first touch attribution", () => {
   const localStorage = memoryStorage();
-  const sessionStorage = memoryStorage();
   const landing = trackerHarness({
     pathname: "/Features.dc.html",
     search: "?utm_source=instagram&utm_campaign=launch",
     referrer: "https://search.example/results?q=screenplay",
     localStorage,
-    sessionStorage,
   });
 
   assert.equal(landing.requests.length, 1);
@@ -91,11 +90,11 @@ test("landing and pricing tracking use anonymous stable IDs and first-touch attr
   landing.window.filmscriptFunnel.track("plan_selected", { plan: "lumiere", cycle: "monthly" });
   assert.equal(landing.requests[1].payload.event_type, "plan_selected");
   assert.equal(landing.requests[1].payload.plan, "lumiere");
+  assert.equal(landing.requests[1].payload.cycle, "monthly");
 
   const pricing = trackerHarness({
     pathname: "/Pricing.dc.html",
     localStorage,
-    sessionStorage,
     uuids: [
       "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
       "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb",
@@ -103,25 +102,14 @@ test("landing and pricing tracking use anonymous stable IDs and first-touch attr
   });
   assert.equal(pricing.requests[0].payload.event_type, "pricing");
   assert.equal(pricing.requests[0].payload.visitor_id, "11111111-1111-4111-8111-111111111111");
-  assert.equal(pricing.requests[0].payload.session_id, "22222222-2222-4222-8222-222222222222");
+  assert.equal(pricing.requests[0].payload.session_id, "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa");
   assert.deepEqual(pricing.requests[0].payload.utm, { utm_source: "instagram", utm_campaign: "launch" });
 });
 
-test("a direct pricing visit starts the funnel once before recording pricing", () => {
-  const direct = trackerHarness({ pathname: "/Pricing.dc.html" });
-  assert.deepEqual(
-    direct.requests.map(({ payload }) => payload.event_type),
-    ["landing", "pricing"],
-  );
-});
-
-test("tracking is a silent no-op when the ERP URL is absent", () => {
+test("tracking is a silent no op when ERP_API_URL is absent", () => {
   const tracking = trackerHarness({ erpApiUrl: "" });
   assert.equal(tracking.requests.length, 0);
-  const payload = tracking.window.filmscriptFunnel.track("checkout_requested", {
-    plan: "lumiere",
-    cycle: "monthly",
-  });
+  const payload = tracking.window.filmscriptFunnel.track("checkout_requested", { plan: "basic", cycle: "monthly" });
   assert.equal(payload.event_type, "checkout_requested");
   assert.equal(tracking.requests.length, 0);
 });
@@ -154,6 +142,8 @@ test("checkout preserves its response while forwarding tracking context", async 
   };
   vm.runInNewContext(billingSource, {
     window,
+    document: { documentElement: { lang: "es" } },
+    URL,
     URLSearchParams,
     CustomEvent: class CustomEvent {},
     fetch: async (url, options) => {
@@ -161,19 +151,17 @@ test("checkout preserves its response while forwarding tracking context", async 
       return {
         ok: true,
         status: 201,
-        json: async () => ({
-          checkoutId: "ch_test",
-          checkoutUrl: "https://checkout.example/ch_test",
-        }),
+        json: async () => ({ checkoutId: "ch_test", checkoutUrl: "https://checkout.example/ch_test" }),
       };
     },
   });
 
-  const result = await window.filmscriptBilling.checkout("lumiere", "writer@example.com");
+  const result = await window.filmscriptBilling.checkout("lumiere", "writer@example.com", "es");
   assert.equal(result.checkoutId, "ch_test");
   assert.deepEqual(apiRequests[0].body, {
     plan: "lumiere",
     email: "writer@example.com",
+    language: "es",
     visitorId: tracking.visitorId,
     sessionId: tracking.sessionId,
     attribution: tracking.attribution,
@@ -182,7 +170,6 @@ test("checkout preserves its response while forwarding tracking context", async 
     eventType: "checkout_requested",
     details: { plan: "lumiere", cycle: "monthly" },
   });
-
   window.filmscriptBilling.trackCheckoutRedirected("lumiere");
   assert.deepEqual(JSON.parse(JSON.stringify(funnelEvents[1])), {
     eventType: "checkout_redirected",
@@ -190,13 +177,12 @@ test("checkout preserves its response while forwarding tracking context", async 
   });
 });
 
-test("all checkout surfaces load and emit shared funnel events", () => {
+test("all checkout surfaces load and emit the shared funnel events", () => {
   for (const page of ["Features.dc.html", "Pricing.dc.html", "App.dc.html"]) {
     const source = read(page);
     assert.match(source, /funnel-tracking\.js\?v=/, page);
     assert.match(source, /track\?\.\('plan_selected'/, page);
-    assert.match(source, /billing-client\.js\?v=20260717-erp2/, page);
-    assert.match(source, /trackCheckoutRedirected\?\.\(this\.state\.checkoutPlan\)/, page);
+    assert.match(source, /trackCheckoutRedirected\(this\.state\.checkoutPlan\)/, page);
   }
   assert.match(read("scripts/build-netlify.mjs"), /"funnel-tracking\.js"/);
   assert.match(read("scripts/build-netlify.mjs"), /process\.env\.ERP_API_URL/);

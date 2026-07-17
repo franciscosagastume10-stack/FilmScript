@@ -30,3 +30,13 @@ test('PDF imports keep the uploaded filename as the screenplay title', () => {
   assert.doesNotMatch(server, /replace\(\/_-\+\/g, " "\)/);
   assert.match(editor, /stored\.source === 'pdf' \? \(stored\.title \|\| 'Untitled screenplay'\)/);
 });
+
+test('PDF opening transition formats long underscore titles without changing the stored title', () => {
+  const app = fs.readFileSync(path.join(root, 'App.dc.html'), 'utf8');
+  assert.match(app, /overflow-wrap: anywhere/);
+  assert.match(app, /-webkit-line-clamp: 3/);
+  assert.match(app, /_formatOpeningTitle\(title\)/);
+  assert.match(app, /value\.replace\(\/\[_\]\+\/g, ' '\)\.replace\(\/\\s\+\/g, ' '\)/);
+  assert.match(app, /openingScriptTitle: this\._formatOpeningTitle\(this\.state\.openingScriptTitle\)/);
+  assert.match(app, /this\._enterScript\(`Editor v5\.dc\.html\?script=\$\{encodeURIComponent\(imported\.script\.id\)\}`, imported\.script\.title/);
+});

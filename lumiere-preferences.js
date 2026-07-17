@@ -1,5 +1,5 @@
-// Shared account-level creative taste profile for Lumière.
-// The server injects the saved profile into every subjective Lumière request.
+// Shared account-level creative taste profile for Lumiere.
+// The server injects the saved profile into every subjective Lumiere request.
 (() => {
   'use strict';
 
@@ -32,25 +32,25 @@
   ];
   const COPY = {
     en: {
-      eyebrow: 'Creative taste profile', title: 'Make Lumière feel like your collaborator',
-      intro: 'Share the films, filmmakers and qualities you return to. Lumière will use them as a quiet lens for feedback while protecting your own voice.',
-      close: 'Close Lumière personalization', enabled: 'Use my taste profile',
+      eyebrow: 'Creative taste profile', title: 'Make Lumiere feel like your collaborator',
+      intro: 'Share the films, filmmakers and qualities you return to. Lumiere will use them as a quiet lens for feedback while protecting your own voice.',
+      close: 'Close Lumiere personalization', enabled: 'Use my taste profile',
       enabledHelp: 'Apply these references to subjective creative feedback.', loading: 'Opening your creative notebook…',
       directors: 'Favorite directors', directorsHelp: 'Add filmmakers whose creative decisions you admire.',
       directorsPlaceholder: 'e.g. Céline Sciamma, Alfonso Cuarón', films: 'Favorite films',
       filmsHelp: 'The films that best describe what you respond to.', filmsPlaceholder: 'e.g. Aftersun, Roma',
-      qualities: 'Storytelling qualities', qualitiesHelp: 'Choose the qualities you want Lumière to understand, not a style to copy.',
+      qualities: 'Storytelling qualities', qualitiesHelp: 'Choose the qualities you want Lumiere to understand, not a style to copy.',
       qualitiesPlaceholder: 'Add another quality', add: 'Add', feedback: 'How should feedback feel?',
       direct: 'Direct and rigorous', balanced: 'Balanced', gentle: 'Gentle and exploratory',
-      protect: 'What should Lumière protect?', protectHelp: 'Your voice, ambiguity, humor, pacing, cultural detail…',
+      protect: 'What should Lumiere protect?', protectHelp: 'Your voice, ambiguity, humor, pacing, cultural detail…',
       protectPlaceholder: 'Keep the dialogue restrained and protect the silences between the characters.',
-      avoid: 'What should Lumière avoid?', avoidHelp: 'Patterns of feedback that do not serve your work.',
+      avoid: 'What should Lumiere avoid?', avoidHelp: 'Patterns of feedback that do not serve your work.',
       avoidPlaceholder: 'Do not make every emotional beat explicit or push the story toward a conventional ending.',
       surprise: 'Keep a window open', surpriseHelp: 'Offer at least one useful direction beyond my usual references.',
       guardTitle: 'Your taste is a compass, not a cage.',
-      guardCopy: 'FilmScript uses these references for broad qualities such as rhythm, restraint and tone. Lumière will not imitate a filmmaker or overrule what is on the page.',
+      guardCopy: 'FilmScript uses these references for broad qualities such as rhythm, restraint and tone. Lumiere will not imitate a filmmaker or overrule what is on the page.',
       reset: 'Start over', save: 'Save personalization', saving: 'Saving…', saved: 'Creative profile saved',
-      savedHelp: 'Future Lumière feedback will use this profile when it is relevant.',
+      savedHelp: 'Future Lumiere feedback will use this profile when it is relevant.',
       unsaved: 'Unsaved changes', error: 'We could not save your creative profile. Try again.',
       retry: 'Try again', remove: 'Remove', summaryEmpty: 'No references yet',
       directorsCount: 'directors', filmsCount: 'films', qualitiesCount: 'qualities',
@@ -60,25 +60,25 @@
       styleVisual: 'Visually bold', styleIntimate: 'Intimate', styleGenre: 'Genre-forward',
     },
     es: {
-      eyebrow: 'Perfil de gusto creativo', title: 'Haz que Lumière se sienta como tu colaborador',
-      intro: 'Comparte las películas, cineastas y cualidades a las que siempre vuelves. Lumière las usará como una guía sutil para darte feedback sin perder tu propia voz.',
-      close: 'Cerrar personalización de Lumière', enabled: 'Usar mi perfil de gusto',
+      eyebrow: 'Perfil de gusto creativo', title: 'Haz que Lumiere se sienta como tu colaborador',
+      intro: 'Comparte las películas, cineastas y cualidades a las que siempre vuelves. Lumiere las usará como una guía sutil para darte feedback sin perder tu propia voz.',
+      close: 'Cerrar personalización de Lumiere', enabled: 'Usar mi perfil de gusto',
       enabledHelp: 'Aplicar estas referencias al feedback creativo y subjetivo.', loading: 'Abriendo tu libreta creativa…',
       directors: 'Directores favoritos', directorsHelp: 'Agrega cineastas cuyas decisiones creativas admiras.',
       directorsPlaceholder: 'Ej. Céline Sciamma, Alfonso Cuarón', films: 'Películas favoritas',
       filmsHelp: 'Las películas que mejor describen lo que te conmueve.', filmsPlaceholder: 'Ej. Aftersun, Roma',
-      qualities: 'Cualidades narrativas', qualitiesHelp: 'Elige las cualidades que Lumière debe comprender, no un estilo que deba copiar.',
+      qualities: 'Cualidades narrativas', qualitiesHelp: 'Elige las cualidades que Lumiere debe comprender, no un estilo que deba copiar.',
       qualitiesPlaceholder: 'Agregar otra cualidad', add: 'Agregar', feedback: '¿Cómo debe sentirse el feedback?',
       direct: 'Directo y riguroso', balanced: 'Equilibrado', gentle: 'Suave y exploratorio',
-      protect: '¿Qué debe proteger Lumière?', protectHelp: 'Tu voz, ambigüedad, humor, ritmo, detalles culturales…',
+      protect: '¿Qué debe proteger Lumiere?', protectHelp: 'Tu voz, ambigüedad, humor, ritmo, detalles culturales…',
       protectPlaceholder: 'Mantén el diálogo contenido y protege los silencios entre los personajes.',
-      avoid: '¿Qué debe evitar Lumière?', avoidHelp: 'Tipos de feedback que no ayudan a tu obra.',
+      avoid: '¿Qué debe evitar Lumiere?', avoidHelp: 'Tipos de feedback que no ayudan a tu obra.',
       avoidPlaceholder: 'No hagas explícito cada momento emocional ni lleves la historia hacia un final convencional.',
       surprise: 'Mantener una ventana abierta', surpriseHelp: 'Ofrecer al menos una dirección útil fuera de mis referencias habituales.',
       guardTitle: 'Tu gusto es una brújula, no una jaula.',
-      guardCopy: 'FilmScript usa estas referencias para cualidades generales como ritmo, sutileza y tono. Lumière no imitará a un cineasta ni ignorará lo que ya está en la página.',
+      guardCopy: 'FilmScript usa estas referencias para cualidades generales como ritmo, sutileza y tono. Lumiere no imitará a un cineasta ni ignorará lo que ya está en la página.',
       reset: 'Reiniciar', save: 'Guardar personalización', saving: 'Guardando…', saved: 'Perfil creativo guardado',
-      savedHelp: 'El próximo feedback de Lumière usará este perfil cuando sea relevante.',
+      savedHelp: 'El próximo feedback de Lumiere usará este perfil cuando sea relevante.',
       unsaved: 'Cambios sin guardar', error: 'No pudimos guardar tu perfil creativo. Inténtalo de nuevo.',
       retry: 'Intentar de nuevo', remove: 'Eliminar', summaryEmpty: 'Aún no hay referencias',
       directorsCount: 'directores', filmsCount: 'películas', qualitiesCount: 'cualidades',
@@ -132,6 +132,7 @@
   let statusMode = '';
 
   const css = `
+    .fs-lp-overlay,.fs-lp-overlay *{font-family:"SF Pro Text",-apple-system,BlinkMacSystemFont,"Helvetica Neue",Arial,sans-serif!important}.fs-lp-overlay h1,.fs-lp-overlay h2,.fs-lp-overlay h3{font-family:"SF Pro Display","SF Pro Text",-apple-system,BlinkMacSystemFont,"Helvetica Neue",Arial,sans-serif!important;font-weight:800!important}
     .fs-lp-overlay{--lp-bg:#F5F0E8;--lp-surface:#FFFEF9;--lp-soft:#EFEBE1;--lp-ink:#2C2C2A;--lp-muted:#77756F;--lp-hair:#D8D4C9;--lp-accent:#BA7517;position:fixed;inset:0;z-index:10000;display:grid;place-items:center;padding:18px;background:rgba(24,24,23,.42);backdrop-filter:blur(3px);opacity:0;visibility:hidden;transition:opacity .18s ease,visibility .18s ease;font-family:"Helvetica Neue",Helvetica,Arial,sans-serif;color:var(--lp-ink)}
     html[data-filmscript-theme="dark"] .fs-lp-overlay{--lp-bg:#111110;--lp-surface:#1B1B19;--lp-soft:#262522;--lp-ink:#F3EFE7;--lp-muted:#B5B0A7;--lp-hair:#45423B;--lp-accent:#D08A28;background:rgba(0,0,0,.62)}
     .fs-lp-overlay[data-open="true"]{opacity:1;visibility:visible}.fs-lp-modal{position:relative;isolation:isolate;width:min(760px,100%);max-height:calc(100vh - 36px);display:grid;grid-template-rows:auto minmax(0,1fr) auto;background:var(--lp-surface);border:1.3px solid var(--lp-ink);border-radius:22px 20px 23px 19px;box-shadow:0 24px 70px rgba(20,20,19,.24);animation:fs-lp-in .22s cubic-bezier(.2,.8,.25,1) both}
@@ -187,7 +188,7 @@
     root.dataset.open = 'false';
     root.dataset.loading = 'false';
     root.setAttribute('data-i18n-skip', '');
-    root.innerHTML = template.replaceAll('Lumière', 'Lumiere');
+    root.innerHTML = template;
     document.body.appendChild(root);
 
     root.addEventListener('click', (event) => {

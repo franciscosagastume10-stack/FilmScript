@@ -7,13 +7,13 @@
 <script src="./runtime-config.js?v=20260710-auth1"></script>
 <script src="./funnel-tracking.js?v=20260716-erp1"></script>
 <script src="./theme-preference.js?v=20260712-theme1"></script>
-<script src="./language-preference.js?v=20260713-i18n1"></script>
+<script src="./language-preference.js?v=20260716-credits1"></script>
 <script src="./ui-sounds.js?v=20260713-profile-option1"></script>
-<script src="./billing-client.js?v=20260717-erp2"></script>
+<script src="./billing-client.js?v=20260716-profile-safe1"></script>
 <script src="./lumiere-client.js?v=20260713-language1"></script>
 <script src="./lumiere-preferences.js?v=20260713-taste1"></script>
 <link rel="stylesheet" href="./auth-modal.css?v=20260713-login1">
-<link rel="stylesheet" href="./filmscript-controls.css?v=20260712-double-outline1">
+<link rel="stylesheet" href="./filmscript-controls.css?v=20260716-typography1">
 </head>
 <body>
 <x-dc>
@@ -79,6 +79,11 @@
   .fs-profile-sheet [style*="border: 1px solid var(--soft"]:hover { transform: translateX(3px); border-color: var(--accent, #BA7517) !important; background: rgba(186,117,23,.035); }
   .fs-navlink { transition: color .15s ease; }
   .fs-navlink:hover { color: #FFFEF9 !important; }
+  .fs-hero-title { text-wrap: balance; }
+  .fs-hero-plan-cta { appearance: none; border: 0; background: transparent; color: var(--accent, #BA7517); padding: 0 4px; font: 600 13px/1.35 "Helvetica Neue", Helvetica, Arial, sans-serif; letter-spacing: .05px; cursor: pointer; text-decoration: underline; text-decoration-thickness: 1px; text-underline-offset: 3px; transition: color .16s ease, transform .18s cubic-bezier(.2,.8,.2,1); }
+  .fs-hero-plan-cta:hover { color: var(--accent-hover, #EF9F27); transform: translateY(-1px); }
+  .fs-hero-plan-cta:focus-visible { outline: 2px solid var(--accent, #BA7517); outline-offset: 4px; border-radius: 4px; }
+  @media (max-width: 620px) { .fs-hero-title { font-size: clamp(42px, 12vw, 58px) !important; letter-spacing: -1.5px !important; } }
 </style>
 </helmet>
 
@@ -102,13 +107,8 @@
           <svg viewBox="0 0 20 20" style="width: 18px; height: 18px;" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><circle cx="10" cy="10" r="3.1"></circle><path d="M10 3.4 V5 M10 15 V16.6 M3.4 10 H5 M15 10 H16.6 M5.5 5.5 L6.6 6.6 M13.4 13.4 L14.5 14.5 M14.5 5.5 L13.4 6.6 M6.6 13.4 L5.5 14.5"></path></svg>
         </sc-if>
         <sc-if value="{{ lightMode }}" hint-placeholder-val="{{ true }}">
-          <svg viewBox="0 0 20 20" style="width: 18px; height: 18px;" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><path d="M14.6 11 Q14.3 14.7 10.6 14.8 Q12.9 12.6 12.8 9.3 Q12.7 6.5 10.4 5.1 Q14.9 5.5 14.6 11 Z"></path></svg>
+          <svg viewBox="0 0 20 20" style="width: 22px; height: 22px;" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><path d="M17.5 10.66 A7.5 7.5 0 1 1 9.34 2.5 A5.83 5.83 0 0 0 17.5 10.66 Z"></path></svg>
         </sc-if>
-      </div>
-      <div style="display: flex; flex-direction: column; gap: 3px; cursor: pointer; padding: 6px;">
-        <span style="width: 15px; height: 1.5px; background: #b9b8b2;"></span>
-        <span style="width: 15px; height: 1.5px; background: #b9b8b2;"></span>
-        <span style="width: 15px; height: 1.5px; background: #b9b8b2;"></span>
       </div>
       <sc-if value="{{ signedOut }}" hint-placeholder-val="{{ true }}">
         <button type="button" data-testid="landing-login-top" onClick="{{ openAuth }}" class="fsx-scale" style="border: 0; font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; font-size: 13px; font-weight: 600; color: #2C2C2A; background: #FFFEF9; padding: 7px 16px; border-radius: 999px; cursor: pointer;">Log in</button>
@@ -122,14 +122,14 @@
             <div style="font-size: 11.5px; color: var(--muted, #888780); margin-top: 4px;">{{ planLabel }}</div>
             <div style="height: 1px; background: var(--soft, #e4e2d8); margin: 10px 0 6px;"></div>
             <div class="fs-menuitem" onClick="{{ openAccountDetails }}">Account details</div>
-            <div class="fs-menuitem" onClick="{{ openLumierePreferences }}">Personalize Lumiere</div>
+            <sc-if value="{{ isLumierePlan }}" hint-placeholder-val="{{ false }}"><div class="fs-menuitem" onClick="{{ openLumierePreferences }}">Personalize Lumiere</div></sc-if>
             <div class="fs-menuitem" onClick="{{ openTerms }}">Terms & conditions</div>
             <div style="height: 1px; background: var(--soft, #e4e2d8); margin: 6px 0;"></div>
-            <sc-if value="{{ isWriterPlan }}" hint-placeholder-val="{{ false }}">
+            <sc-if value="{{ isBasicPlan }}" hint-placeholder-val="{{ false }}">
               <div class="fs-menuitem" onClick="{{ upgradeToLumiere }}">Upgrade to FilmScript Pro</div>
             </sc-if>
             <sc-if value="{{ noPlan }}" hint-placeholder-val="{{ true }}">
-              <div class="fs-menuitem" onClick="{{ goLandingFromAccount }}">Choose FilmScript Pro</div>
+              <div class="fs-menuitem" onClick="{{ goLandingFromAccount }}">Choose a plan</div>
             </sc-if>
             <sc-if value="{{ hasPlan }}" hint-placeholder-val="{{ false }}">
               <div class="fs-menuitem" onClick="{{ cancelPlan }}">Plan and billing</div>
@@ -142,22 +142,22 @@
     </div>
   </div>
 
-  <sc-if value="{{ accountDetailsOpen }}" hint-placeholder-val="{{ false }}"><div onClick="{{ closeAccountDetails }}" style="position: fixed; inset: 0; z-index: 80; background: rgba(35,35,34,.28); display: flex; align-items: center; justify-content: center; padding: 24px;"><div class="fs-profile-sheet" onClick="{{ stop }}" style="width: min(520px, 100%); max-height: 88vh; overflow-y: auto; background: var(--surface, #FFFEF9); border: 1.5px solid var(--line, #2C2C2A); border-radius: 20px; padding: 26px; filter: url(#fs-sketch);"><div style="display: flex; align-items: center; gap: 14px;"><div style="width: 46px; height: 46px; border-radius: 50%; background: var(--accent, #BA7517); color: #FFFEF9; display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 17px;">{{ userInitial }}</div><div style="flex: 1;"><div style="font-size: 20px; font-weight: 700; color: var(--ink, #2C2C2A);">Your account</div><div style="font-size: 12.5px; color: var(--muted, #888780);">Connected securely with Google.</div></div><div onClick="{{ closeAccountDetails }}" style="font-size: 22px; color: var(--muted, #888780); cursor: pointer;">×</div></div><div style="margin-top: 24px; display: grid; gap: 9px;"><div style="padding: 14px; border: 1px solid var(--soft, #E4E2D8); border-radius: 13px;"><div style="display: flex; justify-content: space-between;"><div style="font-size: 10px; text-transform: uppercase; letter-spacing: 1.2px; color: var(--muted, #888780);">Name</div><div onClick="{{ saveProfileName }}" style="font-size: 11px; color: var(--accent, #BA7517); font-weight: 700; cursor: pointer;">{{ profileSaveLabel }}</div></div><input value="{{ profileNameDraft }}" onInput="{{ onProfileName }}" aria-label="Name" style="width: 100%; margin-top: 7px; padding: 0; border: none; outline: none; background: transparent; color: var(--ink, #2C2C2A); font-size: 14px; font-family: inherit;"></div><div style="padding: 14px; border: 1px solid var(--soft, #E4E2D8); border-radius: 13px;"><div style="font-size: 10px; text-transform: uppercase; letter-spacing: 1.2px; color: var(--muted, #888780);">Email</div><div style="margin-top: 5px; font-size: 14px; color: var(--ink, #2C2C2A); word-break: break-word;">{{ userEmail }}</div></div></div><div style="margin-top: 18px; padding: 15px; border-radius: 15px; background: var(--bg, #F5F0E8);"><div style="font-size: 10px; text-transform: uppercase; letter-spacing: 1.2px; color: var(--muted, #888780);">Subscription</div><div style="font-size: 17px; font-weight: 700; color: var(--ink, #2C2C2A); margin-top: 7px;">{{ planLabel }}</div><sc-if value="{{ noPlan }}" hint-placeholder-val="{{ true }}"><span onClick="{{ openCheckoutLumiere }}" role="button" tabindex="0" style="display: inline-block; margin-top: 8px; color: var(--accent, #BA7517); font-size: 12px; font-weight: 700; cursor: pointer;">Choose FilmScript Pro →</span></sc-if><sc-if value="{{ hasPlan }}" hint-placeholder-val="{{ false }}"><div style="font-size: 12px; color: var(--accent, #BA7517); margin-top: 5px;">{{ accountStatus }}</div></sc-if></div><div style="margin-top: 22px; text-align: right;"><div onClick="{{ closeAccountDetails }}" style="display: inline-block; padding: 10px 17px; border-radius: 10px; background: var(--ink, #2C2C2A); color: var(--surface, #FFFEF9); font-size: 13px; font-weight: 600; cursor: pointer;">Done</div></div></div></div></sc-if>
-  <sc-if value="{{ termsOpen }}" hint-placeholder-val="{{ false }}"><div onClick="{{ closeTerms }}" style="position: fixed; inset: 0; z-index: 80; background: rgba(35,35,34,.28); display: flex; align-items: center; justify-content: center; padding: 24px;"><div onClick="{{ stop }}" style="width: min(620px, 100%); max-height: 88vh; overflow-y: auto; background: var(--surface, #FFFEF9); border: 1.5px solid var(--line, #2C2C2A); border-radius: 20px; padding: 30px; filter: url(#fs-sketch);"><div style="display: flex; justify-content: space-between;"><div><div style="font-size: 10px; letter-spacing: 1.8px; text-transform: uppercase; color: var(--accent, #BA7517); font-weight: 700;">FilmScript</div><div style="font-size: 25px; font-weight: 700; color: var(--ink, #2C2C2A); margin-top: 7px;">Terms & conditions</div></div><div onClick="{{ closeTerms }}" style="font-size: 22px; color: var(--muted, #888780); cursor: pointer;">×</div></div><div style="margin-top: 24px; display: grid; gap: 17px; color: var(--ink, #2C2C2A); font-size: 13.5px; line-height: 1.6;"><div><b>Your writing stays yours.</b><div style="color: var(--muted, #888780);">You retain ownership of scripts and notes created in FilmScript.</div></div><div><b>Lumiere is an assistant.</b><div style="color: var(--muted, #888780);">It offers suggestions and analysis. You decide what belongs in your work.</div></div><div><b>FilmScript Pro subscriptions.</b><div style="color: var(--muted, #888780);">FilmScript Pro renews monthly through Recurrente and can be canceled from your account menu.</div></div><div><b>Fair use.</b><div style="color: var(--muted, #888780);">Use FilmScript only with material you have permission to use.</div></div></div><div style="margin-top: 26px; text-align: right;"><div onClick="{{ closeTerms }}" style="display: inline-block; padding: 10px 17px; border-radius: 10px; background: var(--ink, #2C2C2A); color: var(--surface, #FFFEF9); font-size: 13px; font-weight: 600; cursor: pointer;">I understand</div></div></div></div></sc-if>
+  <sc-if value="{{ accountDetailsOpen }}" hint-placeholder-val="{{ false }}"><div onClick="{{ closeAccountDetails }}" style="position: fixed; inset: 0; z-index: 80; background: rgba(35,35,34,.28); display: flex; align-items: center; justify-content: center; padding: 24px;"><div class="fs-profile-sheet" onClick="{{ stop }}" style="width: min(520px, 100%); max-height: 88vh; overflow-y: auto; background: var(--surface, #FFFEF9); border: 1.5px solid var(--line, #2C2C2A); border-radius: 20px; padding: 26px; filter: url(#fs-sketch);"><div style="display: flex; align-items: center; gap: 14px;"><div style="width: 46px; height: 46px; border-radius: 50%; background: var(--accent, #BA7517); color: #FFFEF9; display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 17px;">{{ userInitial }}</div><div style="flex: 1;"><div style="font-size: 20px; font-weight: 700; color: var(--ink, #2C2C2A);">Your account</div><div style="font-size: 12.5px; color: var(--muted, #888780);">Connected securely with Google.</div></div><div onClick="{{ closeAccountDetails }}" style="font-size: 22px; color: var(--muted, #888780); cursor: pointer;">×</div></div><div style="margin-top: 24px; display: grid; gap: 9px;"><div style="padding: 14px; border: 1px solid var(--soft, #E4E2D8); border-radius: 13px;"><div style="display: flex; justify-content: space-between;"><div style="font-size: 10px; text-transform: uppercase; letter-spacing: 1.2px; color: var(--muted, #888780);">Name</div><div onClick="{{ saveProfileName }}" style="font-size: 11px; color: var(--accent, #BA7517); font-weight: 700; cursor: pointer;">{{ profileSaveLabel }}</div></div><input value="{{ profileNameDraft }}" onInput="{{ onProfileName }}" aria-label="Name" style="width: 100%; margin-top: 7px; padding: 0; border: none; outline: none; background: transparent; color: var(--ink, #2C2C2A); font-size: 14px; font-family: inherit;"></div><div style="padding: 14px; border: 1px solid var(--soft, #E4E2D8); border-radius: 13px;"><div style="font-size: 10px; text-transform: uppercase; letter-spacing: 1.2px; color: var(--muted, #888780);">Email</div><div style="margin-top: 5px; font-size: 14px; color: var(--ink, #2C2C2A); word-break: break-word;">{{ userEmail }}</div></div></div><div style="margin-top: 18px; padding: 15px; border-radius: 15px; background: var(--bg, #F5F0E8);"><div style="font-size: 10px; text-transform: uppercase; letter-spacing: 1.2px; color: var(--muted, #888780);">Subscription</div><div style="font-size: 17px; font-weight: 700; color: var(--ink, #2C2C2A); margin-top: 7px;">{{ planLabel }}</div><sc-if value="{{ noPlan }}" hint-placeholder-val="{{ true }}"><span onClick="{{ goLandingFromAccount }}" role="button" tabindex="0" style="display: inline-block; margin-top: 8px; color: var(--accent, #BA7517); font-size: 12px; font-weight: 700; cursor: pointer;">Choose a plan →</span></sc-if><sc-if value="{{ hasPlan }}" hint-placeholder-val="{{ false }}"><div style="font-size: 12px; color: var(--muted, #888780); margin-top: 5px;">{{ accountStatus }}</div></sc-if></div><div style="margin-top: 22px; text-align: right;"><div onClick="{{ closeAccountDetails }}" style="display: inline-block; padding: 10px 17px; border-radius: 10px; background: var(--ink, #2C2C2A); color: var(--surface, #FFFEF9); font-size: 13px; font-weight: 600; cursor: pointer;">Done</div></div></div></div></sc-if>
+  <sc-if value="{{ termsOpen }}" hint-placeholder-val="{{ false }}"><div onClick="{{ closeTerms }}" style="position: fixed; inset: 0; z-index: 80; background: rgba(35,35,34,.28); display: flex; align-items: center; justify-content: center; padding: 24px;"><div onClick="{{ stop }}" style="width: min(620px, 100%); max-height: 88vh; overflow-y: auto; background: var(--surface, #FFFEF9); border: 1.5px solid var(--line, #2C2C2A); border-radius: 20px; padding: 30px; filter: url(#fs-sketch);"><div style="display: flex; justify-content: space-between;"><div><div style="font-size: 10px; letter-spacing: 1.8px; text-transform: uppercase; color: var(--accent, #BA7517); font-weight: 700;">FilmScript</div><div style="font-size: 25px; font-weight: 700; color: var(--ink, #2C2C2A); margin-top: 7px;">Terms & conditions</div></div><div onClick="{{ closeTerms }}" style="font-size: 22px; color: var(--muted, #888780); cursor: pointer;">×</div></div><div style="margin-top: 24px; display: grid; gap: 17px; color: var(--ink, #2C2C2A); font-size: 13.5px; line-height: 1.6;"><div><b>Your writing stays yours.</b><div style="color: var(--muted, #888780);">You retain ownership of scripts and notes created in FilmScript.</div></div><div><b>Lumiere is an assistant.</b><div style="color: var(--muted, #888780);">It offers suggestions and analysis. You decide what belongs in your work.</div></div><div><b>Lumiere credits and usage limits.</b><div style="color: var(--muted, #888780);">FilmScript Pro includes 100 Lumiere credits per monthly billing period. A rolling 8-hour session allows 20 credits and each week allows 60; both windows reset automatically. Credits reset with each monthly renewal, do not roll over, and have no cash value. When a window or the monthly allowance is reached, new Lumiere generations pause until the next reset; you can wait for its reset or purchase 80 extra credits for $5. Your scripts and existing production documents stay available. Free and Basic plans include no Lumiere credits.</div></div><div><b>FilmScript Pro subscriptions.</b><div style="color: var(--muted, #888780);">FilmScript Pro renews monthly through Recurrente and can be canceled from your account menu.</div></div><div><b>Fair use.</b><div style="color: var(--muted, #888780);">Use FilmScript only with material you have permission to use.</div></div></div><div style="margin-top: 26px; text-align: right;"><div onClick="{{ closeTerms }}" style="display: inline-block; padding: 10px 17px; border-radius: 10px; background: var(--ink, #2C2C2A); color: var(--surface, #FFFEF9); font-size: 13px; font-weight: 600; cursor: pointer;">I understand</div></div></div></div></sc-if>
 
     <!-- ============ FEATURES (MAIN) ============ -->
   <sc-if value="{{ isLanding }}" hint-placeholder-val="{{ true }}">
   <div ref="{{ landingScrollRef }}" style="flex: 1; min-height: 0; overflow-y: auto;">
 
     <!-- HERO -->
-    <div style="max-width: 800px; margin: 0 auto; padding: 96px 40px 0; text-align: center;">
-      <h1 style="font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; font-weight: 700; font-size: 64px; line-height: 1.05; letter-spacing: -2px; color: var(--ink, #2C2C2A); margin: 0; animation: fs-rise .55s ease both;">Write the script. FilmScript handles the rest.</h1>
+    <div style="max-width: 980px; margin: 0 auto; padding: 96px 40px 0; text-align: center;">
+      <h1 class="fs-hero-title" style="font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; font-weight: 700; font-size: 64px; line-height: 1.05; letter-spacing: -2px; color: var(--ink, #2C2C2A); margin: 0; animation: fs-rise .55s ease both;">Write the script. FilmScript handles the rest.</h1>
       <p style="font-size: 20px; line-height: 1.5; color: var(--muted, #888780); max-width: 600px; margin: 24px auto 0; animation: fs-rise .55s ease both .08s;">A professional screenplay editor with an AI companion named Lumiere. Write your pages, then turn them into breakdowns, stripboards and shot lists. All text, all yours.</p>
       <div class="fs-cta-row" style="display: flex; gap: 16px; margin-top: 34px; align-items: center; justify-content: center; animation: fs-rise .55s ease both .16s;">
         <button type="button" data-testid="landing-primary-hero" onClick="{{ goScripts }}" class="fs-double-outline fs-outline-control fs-outline-control--primary" style="min-width: 154px; min-height: 50px;"><span style="font-size: 15px; font-weight: 600;">{{ landingPrimaryLabel }}</span></button>
         <button type="button" onClick="{{ navPricing }}" class="fs-double-outline fs-outline-control fs-outline-control--secondary" style="min-width: 142px; min-height: 50px;"><span style="font-size: 15px; font-weight: 500;">See pricing</span><span class="fs-control-arrow" aria-hidden="true">›</span></button>
       </div>
-      <div style="font-size: 13px; color: var(--muted, #888780); margin-top: 18px; animation: fs-rise .55s ease both .22s;">FilmScript Pro · $20 a month. Cancel any time.</div>
+      <button type="button" data-testid="landing-plan-cta" onClick="{{ openCheckoutLumiere }}" class="fs-hero-plan-cta" style="margin-top: 18px; animation: fs-rise .55s ease both .22s;">Start writing with FilmScript Pro · $19.99/month</button>
     </div>
 
     <!-- HERO PAGE MOCK -->
@@ -179,12 +179,12 @@
     <div style="max-width: 1040px; margin: 0 auto; padding: 110px 56px 0;">
       <div style="display: grid; grid-template-columns: 1fr 1.05fr; gap: 64px; align-items: center;">
         <div><div style="font-size: 12px; letter-spacing: 1.8px; text-transform: uppercase; color: var(--accent, #BA7517); font-weight: 600;">Step 01 · Write</div><h2 style="font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; font-weight: 700; font-size: 38px; letter-spacing: -1px; color: var(--ink, #2C2C2A); margin: 14px 0 0; line-height: 1.12; max-width: 440px;">A real Hollywood format editor.</h2><p style="font-size: 16.5px; line-height: 1.55; color: var(--muted, #888780); margin: 16px 0 0; max-width: 430px;">Scene headings, action, dialogue and transitions, all on industry standard margins. The page feels like paper and sounds like a typewriter.</p><div style="display: flex; flex-direction: column; gap: 12px; margin-top: 26px;"><div style="display: flex; gap: 10px; align-items: flex-start; font-size: 14px; line-height: 1.5; color: var(--ink, #2C2C2A);"><span style="color: var(--accent, #BA7517); flex: 0 0 auto;">{{ check }}</span><span>Format at one key. Tab cycles the block types, ⌘1 to ⌘6 jumps straight to one.</span></div><div style="display: flex; gap: 10px; align-items: flex-start; font-size: 14px; line-height: 1.5; color: var(--ink, #2C2C2A);"><span style="color: var(--accent, #BA7517); flex: 0 0 auto;">{{ check }}</span><span>Typewriter sound you can mute any time.</span></div><div style="display: flex; gap: 10px; align-items: flex-start; font-size: 14px; line-height: 1.5; color: var(--ink, #2C2C2A);"><span style="color: var(--accent, #BA7517); flex: 0 0 auto;">{{ check }}</span><span>Hand drawn pages, light and dark, WGA checked as you type.</span></div></div></div><div><div style="position: relative; padding: 26px 30px; border: 1.4px solid var(--line, #2C2C2A); border-radius: 18px; background: var(--surface, #FFFEF9); filter: url(#fs-sketch);"><div style="font-family: 'Courier Prime', monospace; font-size: 13px; line-height: 1.8; color: var(--ink, #2C2C2A);">
-            <div style="font-weight: 700;">INT. RAILWAY CAFÉ. RAINY AFTERNOON</div>
-            <div style="margin-top: 10px;">Steam fogs the window. MARA watches the platform. A train sighs in, brakes hissing.</div>
-            <div style="text-align: center; font-weight: 700; margin-top: 10px;">MARA</div>
-            <div style="text-align: center; font-style: italic; opacity: .7;">(barely audible)</div>
-            <div style="max-width: 260px; margin: 0 auto;">He's not coming. He never was. I just liked the waiting.</div>
-            <div style="margin-top: 10px; display: inline-block; border-bottom: 2px solid var(--accent, #BA7517);">She closes the notebook.</div><span style="display: inline-block; width: 2px; height: 15px; background: var(--accent, #BA7517); vertical-align: text-bottom; margin-left: 2px; animation: fs-caret 1.1s step-end infinite;"></span>
+            <div style="font-weight: 700;">INT. WRITING ROOM. DAY</div>
+            <div style="margin-top: 10px;">Start with a blank page. Shape the scene, then let FilmScript handle the format.</div>
+            <div style="text-align: center; font-weight: 700; margin-top: 10px;">ACTION</div>
+            <div style="text-align: center; font-style: italic; opacity: .7;">(your voice)</div>
+            <div style="max-width: 260px; margin: 0 auto;">Write the moment exactly as you see it.</div>
+            <div style="margin-top: 10px; display: inline-block; border-bottom: 2px solid var(--accent, #BA7517);">Your next line starts here.</div><span style="display: inline-block; width: 2px; height: 15px; background: var(--accent, #BA7517); vertical-align: text-bottom; margin-left: 2px; animation: fs-caret 1.1s step-end infinite;"></span>
           </div></div></div>
       </div>
     </div>
@@ -196,9 +196,9 @@
         <div><div style="position: relative; padding: 20px 22px; border: 1.4px solid var(--line, #2C2C2A); border-radius: 18px; background: var(--surface, #FFFEF9); filter: url(#fs-sketch);">
           <div style="display: flex; align-items: center; gap: 9px;"><span style="width: 9px; height: 9px; border-radius: 50%; background: var(--accent-hover, #EF9F27);"></span><span style="font-size: 13px; font-weight: 700; color: var(--ink, #2C2C2A);">Lumiere</span><span style="font-size: 11px; color: var(--muted, #888780);">reading Scene 12</span></div>
           <div style="display: flex; flex-direction: column; gap: 12px; margin-top: 16px;">
-            <div style="align-self: flex-start; max-width: 88%; border: 1.4px solid var(--line, #2C2C2A); border-radius: 16px 17px 16px 4px; padding: 10px 13px; font-size: 12.5px; line-height: 1.55; color: var(--ink, #2C2C2A); filter: url(#fs-sketch);">"The crowd parts around her like water" leans on a familiar image. Mara notices textures, not shapes. What does the crowd sound like to her?</div>
+            <div style="align-self: flex-start; max-width: 88%; border: 1.4px solid var(--line, #2C2C2A); border-radius: 16px 17px 16px 4px; padding: 10px 13px; font-size: 12.5px; line-height: 1.55; color: var(--ink, #2C2C2A); filter: url(#fs-sketch);">This line leans on a familiar image. What sharper detail could make the moment yours?</div>
             <div style="align-self: flex-end; max-width: 80%; background: var(--bg, #F5F0E8); border: 1.4px solid var(--line, #2C2C2A); border-radius: 15px 15px 4px 16px; padding: 10px 13px; font-size: 12.5px; line-height: 1.5; color: var(--ink, #2C2C2A); filter: url(#fs-sketch);">Run a full analysis on act two. Where does the tension sag?</div>
-            <div style="align-self: flex-start; max-width: 88%; border: 1.4px solid var(--line, #2C2C2A); border-radius: 16px 17px 16px 4px; padding: 10px 13px; font-size: 12.5px; line-height: 1.55; color: var(--ink, #2C2C2A); filter: url(#fs-sketch);">Done. Tension climbs to the storm, then flattens for eleven pages while Mara waits. Scenes 44 to 47 repeat the same beat. Full report is on your desk.</div>
+            <div style="align-self: flex-start; max-width: 88%; border: 1.4px solid var(--line, #2C2C2A); border-radius: 16px 17px 16px 4px; padding: 10px 13px; font-size: 12.5px; line-height: 1.55; color: var(--ink, #2C2C2A); filter: url(#fs-sketch);">Done. The report maps pacing, structure and repeated beats, with evidence from your pages.</div>
           </div></div></div><div><div style="font-size: 12px; letter-spacing: 1.8px; text-transform: uppercase; color: var(--accent, #BA7517); font-weight: 600;">Step 02 · Refine</div><h2 style="font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; font-weight: 700; font-size: 38px; letter-spacing: -1px; color: var(--ink, #2C2C2A); margin: 14px 0 0; line-height: 1.12; max-width: 440px;">Lumiere reads. You decide.</h2><p style="font-size: 16.5px; line-height: 1.55; color: var(--muted, #888780); margin: 16px 0 0; max-width: 430px;">An AI companion that never writes a line for you. It reads like a great script editor and hands the pages back sharper.</p><div style="display: flex; flex-direction: column; gap: 12px; margin-top: 26px;"><div style="display: flex; gap: 10px; align-items: flex-start; font-size: 14px; line-height: 1.5; color: var(--ink, #2C2C2A);"><span style="color: var(--accent, #BA7517); flex: 0 0 auto;">{{ check }}</span><span>Cliché detector flags tired phrases the moment they land.</span></div><div style="display: flex; gap: 10px; align-items: flex-start; font-size: 14px; line-height: 1.5; color: var(--ink, #2C2C2A);"><span style="color: var(--accent, #BA7517); flex: 0 0 auto;">{{ check }}</span><span>Script analysis maps structure, pacing and character arcs into a readable report.</span></div><div style="display: flex; gap: 10px; align-items: flex-start; font-size: 14px; line-height: 1.5; color: var(--ink, #2C2C2A);"><span style="color: var(--accent, #BA7517); flex: 0 0 auto;">{{ check }}</span><span>Spotless spelling and grammar, without breaking your flow.</span></div></div></div>
       </div>
     </div>
@@ -209,8 +209,8 @@
       <div style="display: grid; grid-template-columns: 1fr 1.05fr; gap: 64px; align-items: center;">
         <div><div style="font-size: 12px; letter-spacing: 1.8px; text-transform: uppercase; color: var(--accent, #BA7517); font-weight: 600;">Step 03 · Break down</div><h2 style="font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; font-weight: 700; font-size: 38px; letter-spacing: -1px; color: var(--ink, #2C2C2A); margin: 14px 0 0; line-height: 1.12; max-width: 440px;">One click turns a scene into a breakdown sheet.</h2><p style="font-size: 16.5px; line-height: 1.55; color: var(--muted, #888780); margin: 16px 0 0; max-width: 430px;">Lumiere reads every scene and tags the cast, props, wardrobe and sound it finds. You review, adjust, and export clean breakdown sheets ready for production.</p><div style="display: flex; flex-direction: column; gap: 12px; margin-top: 26px;"><div style="display: flex; gap: 10px; align-items: flex-start; font-size: 14px; line-height: 1.5; color: var(--ink, #2C2C2A);"><span style="color: var(--accent, #BA7517); flex: 0 0 auto;">{{ check }}</span><span>Elements tagged by category, scene by scene.</span></div><div style="display: flex; gap: 10px; align-items: flex-start; font-size: 14px; line-height: 1.5; color: var(--ink, #2C2C2A);"><span style="color: var(--accent, #BA7517); flex: 0 0 auto;">{{ check }}</span><span>A first pass drafted for you. Nothing is final until you approve it.</span></div><div style="display: flex; gap: 10px; align-items: flex-start; font-size: 14px; line-height: 1.5; color: var(--ink, #2C2C2A);"><span style="color: var(--accent, #BA7517); flex: 0 0 auto;">{{ check }}</span><span>Breakdown summaries and element lists as plain text documents.</span></div></div></div><div><div style="position: relative; padding: 24px 26px; border: 1.4px solid var(--line, #2C2C2A); border-radius: 18px; background: var(--surface, #FFFEF9); filter: url(#fs-sketch);">
           <div style="font-family: 'Courier Prime', monospace; font-size: 13px; line-height: 1.75; color: var(--ink, #2C2C2A);">
-            <div style="font-weight: 700;">12 &nbsp;INT. RAILWAY CAFÉ. RAINY AFTERNOON</div>
-            <div style="margin-top: 10px;">Steam fogs the window. <span style="background: #BA751722; box-shadow: inset 0 -2px 0 #BA7517; border-radius: 3px; padding: 0 2px;">MARA</span> watches the platform, her <span style="background: #5B7A4A22; box-shadow: inset 0 -2px 0 #5B7A4A; border-radius: 3px; padding: 0 2px;">notebook</span> shut beside a cooling <span style="background: #5B7A4A22; box-shadow: inset 0 -2px 0 #5B7A4A; border-radius: 3px; padding: 0 2px;">cup of tea</span>. A <span style="background: #8A5A8A22; box-shadow: inset 0 -2px 0 #8A5A8A; border-radius: 3px; padding: 0 2px;">train</span> sighs in, <span style="background: #8A5A8A22; box-shadow: inset 0 -2px 0 #8A5A8A; border-radius: 3px; padding: 0 2px;">brakes hissing</span>. She pulls her <span style="background: #4A6B8A22; box-shadow: inset 0 -2px 0 #4A6B8A; border-radius: 3px; padding: 0 2px;">wool coat</span> tighter.</div>
+            <div style="font-weight: 700;">12 &nbsp;INT. WRITING ROOM. DAY</div>
+            <div style="margin-top: 10px;">Write a scene and tag its <span style="background: #BA751722; box-shadow: inset 0 -2px 0 #BA7517; border-radius: 3px; padding: 0 2px;">cast</span>, <span style="background: #5B7A4A22; box-shadow: inset 0 -2px 0 #5B7A4A; border-radius: 3px; padding: 0 2px;">props</span>, <span style="background: #5B7A4A22; box-shadow: inset 0 -2px 0 #5B7A4A; border-radius: 3px; padding: 0 2px;">wardrobe</span> and <span style="background: #8A5A8A22; box-shadow: inset 0 -2px 0 #8A5A8A; border-radius: 3px; padding: 0 2px;">sound</span>. FilmScript keeps every element ready for production.</div>
           </div>
           <div style="height: 1px; background: var(--soft, #e4e2d8); margin: 18px 0 14px;"></div>
           <div style="display: flex; flex-wrap: wrap; gap: 8px;">
@@ -225,12 +225,12 @@
       <div style="display: grid; grid-template-columns: 1fr 1.05fr; gap: 64px; align-items: center;">
         <div><div style="position: relative; padding: 22px; border: 1.4px solid var(--line, #2C2C2A); border-radius: 18px; background: var(--surface, #FFFEF9); filter: url(#fs-sketch);">
           <div style="display: flex; flex-direction: column; gap: 8px;">
-            <div style="display: flex; align-items: center; gap: 12px; background: #F5E9BC; border: 1.3px solid var(--line, #2C2C2A); border-radius: 8px; padding: 9px 14px; font-size: 12px; color: #2C2C2A; filter: url(#fs-sketch);"><span style="font-weight: 700; min-width: 20px;">12</span><span style="font-weight: 600; min-width: 30px;">INT</span><span style="flex: 1;">RAILWAY CAFÉ</span><span style="min-width: 44px; opacity: .75;">DAY</span><span style="min-width: 40px; text-align: right; font-variant-numeric: tabular-nums;">2 3/8</span></div>
-            <div style="display: flex; align-items: center; gap: 12px; background: #DCE8C4; border: 1.3px solid var(--line, #2C2C2A); border-radius: 8px; padding: 9px 14px; font-size: 12px; color: #2C2C2A; filter: url(#fs-sketch);"><span style="font-weight: 700; min-width: 20px;">4</span><span style="font-weight: 600; min-width: 30px;">EXT</span><span style="flex: 1;">PLATFORM</span><span style="min-width: 44px; opacity: .75;">DAY</span><span style="min-width: 40px; text-align: right; font-variant-numeric: tabular-nums;">1 1/8</span></div>
-            <div style="display: flex; align-items: center; gap: 12px; background: #CFE0EE; border: 1.3px solid var(--line, #2C2C2A); border-radius: 8px; padding: 9px 14px; font-size: 12px; color: #2C2C2A; filter: url(#fs-sketch);"><span style="font-weight: 700; min-width: 20px;">27</span><span style="font-weight: 600; min-width: 30px;">INT</span><span style="flex: 1;">MARA'S BEDROOM</span><span style="min-width: 44px; opacity: .75;">NIGHT</span><span style="min-width: 40px; text-align: right; font-variant-numeric: tabular-nums;">5/8</span></div>
+            <div style="display: flex; align-items: center; gap: 12px; background: #F5E9BC; border: 1.3px solid var(--line, #2C2C2A); border-radius: 8px; padding: 9px 14px; font-size: 12px; color: #2C2C2A; filter: url(#fs-sketch);"><span style="font-weight: 700; min-width: 20px;">12</span><span style="font-weight: 600; min-width: 30px;">INT</span><span style="flex: 1;">WRITING ROOM</span><span style="min-width: 44px; opacity: .75;">DAY</span><span style="min-width: 40px; text-align: right; font-variant-numeric: tabular-nums;">2 3/8</span></div>
+            <div style="display: flex; align-items: center; gap: 12px; background: #DCE8C4; border: 1.3px solid var(--line, #2C2C2A); border-radius: 8px; padding: 9px 14px; font-size: 12px; color: #2C2C2A; filter: url(#fs-sketch);"><span style="font-weight: 700; min-width: 20px;">4</span><span style="font-weight: 600; min-width: 30px;">EXT</span><span style="flex: 1;">HALLWAY</span><span style="min-width: 44px; opacity: .75;">DAY</span><span style="min-width: 40px; text-align: right; font-variant-numeric: tabular-nums;">1 1/8</span></div>
+            <div style="display: flex; align-items: center; gap: 12px; background: #CFE0EE; border: 1.3px solid var(--line, #2C2C2A); border-radius: 8px; padding: 9px 14px; font-size: 12px; color: #2C2C2A; filter: url(#fs-sketch);"><span style="font-weight: 700; min-width: 20px;">27</span><span style="font-weight: 600; min-width: 30px;">INT</span><span style="flex: 1;">BEDROOM</span><span style="min-width: 44px; opacity: .75;">NIGHT</span><span style="min-width: 40px; text-align: right; font-variant-numeric: tabular-nums;">5/8</span></div>
             <div style="display: flex; align-items: center; justify-content: space-between; background: var(--chrome, #2C2C2A); color: #FFFEF9; border-radius: 8px; padding: 8px 14px; font-size: 11px; font-weight: 600; letter-spacing: 1.2px;"><span>END OF DAY 1</span><span style="font-weight: 500; letter-spacing: 0; opacity: .8;">4 1/8 pages</span></div>
-            <div style="display: flex; align-items: center; gap: 12px; background: #D9D2E8; border: 1.3px solid var(--line, #2C2C2A); border-radius: 8px; padding: 9px 14px; font-size: 12px; color: #2C2C2A; filter: url(#fs-sketch);"><span style="font-weight: 700; min-width: 20px;">31</span><span style="font-weight: 600; min-width: 30px;">EXT</span><span style="flex: 1;">THE BREAKWATER</span><span style="min-width: 44px; opacity: .75;">NIGHT</span><span style="min-width: 40px; text-align: right; font-variant-numeric: tabular-nums;">1 4/8</span></div>
-            <div style="display: flex; align-items: center; gap: 12px; background: #CFE0EE; border: 1.3px solid var(--line, #2C2C2A); border-radius: 8px; padding: 9px 14px; font-size: 12px; color: #2C2C2A; filter: url(#fs-sketch);"><span style="font-weight: 700; min-width: 20px;">8</span><span style="font-weight: 600; min-width: 30px;">INT</span><span style="flex: 1;">VILLAGE PUB</span><span style="min-width: 44px; opacity: .75;">NIGHT</span><span style="min-width: 40px; text-align: right; font-variant-numeric: tabular-nums;">2 2/8</span></div>
+            <div style="display: flex; align-items: center; gap: 12px; background: #D9D2E8; border: 1.3px solid var(--line, #2C2C2A); border-radius: 8px; padding: 9px 14px; font-size: 12px; color: #2C2C2A; filter: url(#fs-sketch);"><span style="font-weight: 700; min-width: 20px;">31</span><span style="font-weight: 600; min-width: 30px;">EXT</span><span style="flex: 1;">STORAGE ROOM</span><span style="min-width: 44px; opacity: .75;">NIGHT</span><span style="min-width: 40px; text-align: right; font-variant-numeric: tabular-nums;">1 4/8</span></div>
+            <div style="display: flex; align-items: center; gap: 12px; background: #CFE0EE; border: 1.3px solid var(--line, #2C2C2A); border-radius: 8px; padding: 9px 14px; font-size: 12px; color: #2C2C2A; filter: url(#fs-sketch);"><span style="font-weight: 700; min-width: 20px;">8</span><span style="font-weight: 600; min-width: 30px;">INT</span><span style="flex: 1;">OFFICE</span><span style="min-width: 44px; opacity: .75;">NIGHT</span><span style="min-width: 40px; text-align: right; font-variant-numeric: tabular-nums;">2 2/8</span></div>
           </div></div></div><div><div style="font-size: 12px; letter-spacing: 1.8px; text-transform: uppercase; color: var(--accent, #BA7517); font-weight: 600;">Step 04 · Schedule</div><h2 style="font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; font-weight: 700; font-size: 38px; letter-spacing: -1px; color: var(--ink, #2C2C2A); margin: 14px 0 0; line-height: 1.12; max-width: 440px;">Every scene becomes a strip. Drag them into days.</h2><p style="font-size: 16.5px; line-height: 1.55; color: var(--muted, #888780); margin: 16px 0 0; max-width: 430px;">The classic stripboard, kept simple. Strips carry scene number, set, time of day and page count. Move one and the day breaks recalculate.</p><div style="display: flex; flex-direction: column; gap: 12px; margin-top: 26px;"><div style="display: flex; gap: 10px; align-items: flex-start; font-size: 14px; line-height: 1.5; color: var(--ink, #2C2C2A);"><span style="color: var(--accent, #BA7517); flex: 0 0 auto;">{{ check }}</span><span>Colors follow the old convention: day, night, interior, exterior.</span></div><div style="display: flex; gap: 10px; align-items: flex-start; font-size: 14px; line-height: 1.5; color: var(--ink, #2C2C2A);"><span style="color: var(--accent, #BA7517); flex: 0 0 auto;">{{ check }}</span><span>Day breaks total your pages so you never overplan a day.</span></div><div style="display: flex; gap: 10px; align-items: flex-start; font-size: 14px; line-height: 1.5; color: var(--ink, #2C2C2A);"><span style="color: var(--accent, #BA7517); flex: 0 0 auto;">{{ check }}</span><span>Export the board as a one page shooting schedule.</span></div></div></div>
       </div>
     </div>
@@ -241,10 +241,10 @@
       <div style="display: grid; grid-template-columns: 1fr 1.05fr; gap: 64px; align-items: center;">
         <div><div style="font-size: 12px; letter-spacing: 1.8px; text-transform: uppercase; color: var(--accent, #BA7517); font-weight: 600;">Step 05 · Shoot</div><h2 style="font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; font-weight: 700; font-size: 38px; letter-spacing: -1px; color: var(--ink, #2C2C2A); margin: 14px 0 0; line-height: 1.12; max-width: 440px;">Plan every shot before you roll.</h2><p style="font-size: 16.5px; line-height: 1.55; color: var(--muted, #888780); margin: 16px 0 0; max-width: 430px;">Build a shot list per scene with the specs that matter: size, angle, movement and a line of intent. Print it, share it, check it off on the day.</p><div style="display: flex; flex-direction: column; gap: 12px; margin-top: 26px;"><div style="display: flex; gap: 10px; align-items: flex-start; font-size: 14px; line-height: 1.5; color: var(--ink, #2C2C2A);"><span style="color: var(--accent, #BA7517); flex: 0 0 auto;">{{ check }}</span><span>Preset shot sizes and angles keep the list consistent.</span></div><div style="display: flex; gap: 10px; align-items: flex-start; font-size: 14px; line-height: 1.5; color: var(--ink, #2C2C2A);"><span style="color: var(--accent, #BA7517); flex: 0 0 auto;">{{ check }}</span><span>Lumiere suggests coverage from the scene text. You keep what serves the story.</span></div><div style="display: flex; gap: 10px; align-items: flex-start; font-size: 14px; line-height: 1.5; color: var(--ink, #2C2C2A);"><span style="color: var(--accent, #BA7517); flex: 0 0 auto;">{{ check }}</span><span>Exports as a clean text document your crew can read anywhere.</span></div></div></div><div><div style="position: relative; padding: 22px 24px; border: 1.4px solid var(--line, #2C2C2A); border-radius: 18px; background: var(--surface, #FFFEF9); filter: url(#fs-sketch);">
           <div style="display: grid; grid-template-columns: 34px 74px 84px 70px 1fr; gap: 10px; padding: 0 4px 8px; font-size: 10.5px; letter-spacing: 1.2px; text-transform: uppercase; font-weight: 600; color: var(--muted, #888780); border-bottom: 1.3px solid var(--line, #2C2C2A);"><span>Shot</span><span>Size</span><span>Angle</span><span>Move</span><span>Description</span></div>
-          <div style="display: grid; grid-template-columns: 34px 74px 84px 70px 1fr; gap: 10px; padding: 9px 4px; border-bottom: 1px solid var(--soft, #e4e2d8); font-size: 12px; color: var(--ink, #2C2C2A); align-items: baseline;"><span style="font-weight: 700; color: var(--accent, #BA7517);">12A</span><span>Wide</span><span>Eye level</span><span>Static</span><span style="color: var(--muted, #888780);">Mara alone at the window, steam on the glass</span></div>
-          <div style="display: grid; grid-template-columns: 34px 74px 84px 70px 1fr; gap: 10px; padding: 9px 4px; border-bottom: 1px solid var(--soft, #e4e2d8); font-size: 12px; color: var(--ink, #2C2C2A); align-items: baseline;"><span style="font-weight: 700; color: var(--accent, #BA7517);">12B</span><span>Close up</span><span>High</span><span>Dolly in</span><span style="color: var(--muted, #888780);">The notebook stays shut</span></div>
-          <div style="display: grid; grid-template-columns: 34px 74px 84px 70px 1fr; gap: 10px; padding: 9px 4px; border-bottom: 1px solid var(--soft, #e4e2d8); font-size: 12px; color: var(--ink, #2C2C2A); align-items: baseline;"><span style="font-weight: 700; color: var(--accent, #BA7517);">12C</span><span>Medium</span><span>Over shoulder</span><span>Pan</span><span style="color: var(--muted, #888780);">The train arrives beyond the glass</span></div>
-          <div style="display: grid; grid-template-columns: 34px 74px 84px 70px 1fr; gap: 10px; padding: 9px 4px 0; font-size: 12px; color: var(--ink, #2C2C2A);"><span style="font-weight: 700; color: var(--accent, #BA7517);">12D</span><span>Insert</span><span>Top down</span><span>Static</span><span style="color: var(--muted, #888780);">Tea gone cold, untouched</span></div></div></div>
+          <div style="display: grid; grid-template-columns: 34px 74px 84px 70px 1fr; gap: 10px; padding: 9px 4px; border-bottom: 1px solid var(--soft, #e4e2d8); font-size: 12px; color: var(--ink, #2C2C2A); align-items: baseline;"><span style="font-weight: 700; color: var(--accent, #BA7517);">12A</span><span>Wide</span><span>Eye level</span><span>Static</span><span style="color: var(--muted, #888780);">Establish the space and the character's intention</span></div>
+          <div style="display: grid; grid-template-columns: 34px 74px 84px 70px 1fr; gap: 10px; padding: 9px 4px; border-bottom: 1px solid var(--soft, #e4e2d8); font-size: 12px; color: var(--ink, #2C2C2A); align-items: baseline;"><span style="font-weight: 700; color: var(--accent, #BA7517);">12B</span><span>Close up</span><span>High</span><span>Dolly in</span><span style="color: var(--muted, #888780);">Hold on the detail that changes the scene</span></div>
+          <div style="display: grid; grid-template-columns: 34px 74px 84px 70px 1fr; gap: 10px; padding: 9px 4px; border-bottom: 1px solid var(--soft, #e4e2d8); font-size: 12px; color: var(--ink, #2C2C2A); align-items: baseline;"><span style="font-weight: 700; color: var(--accent, #BA7517);">12C</span><span>Medium</span><span>Over shoulder</span><span>Pan</span><span style="color: var(--muted, #888780);">Follow the exchange without losing the room</span></div>
+          <div style="display: grid; grid-template-columns: 34px 74px 84px 70px 1fr; gap: 10px; padding: 9px 4px 0; font-size: 12px; color: var(--ink, #2C2C2A);"><span style="font-weight: 700; color: var(--accent, #BA7517);">12D</span><span>Insert</span><span>Top down</span><span>Static</span><span style="color: var(--muted, #888780);">Capture the prop or production detail that matters</span></div></div></div>
       </div>
     </div>
 
@@ -316,7 +316,7 @@
         </sc-if>
 
         <div style="margin-top: 18px; padding: 13px 15px; border: 1.4px solid var(--line, #2C2C2A); border-radius: 14px; background: var(--bg, #F5F0E8); filter: url(#fs-sketch);">
-          <div style="font-size: 12px; line-height: 1.55; color: var(--muted, #888780);">You will return to FilmScript after payment. FilmScript verifies the checkout securely and unlocks Pro automatically.</div>
+          <div style="font-size: 12px; line-height: 1.55; color: var(--muted, #888780);">You will return to FilmScript after payment. FilmScript verifies the checkout securely and unlocks your selected plan automatically.</div>
         </div>
       </div>
       </sc-if>
@@ -353,7 +353,7 @@ class Component extends DCLogic {
     lumiereOpen: true,
     soundOn: true,
     darkMode: window.filmscriptTheme?.isDark() ?? false,
-    mode: 'sample',
+    mode: 'blank',
     zoom: 1,
     menuOpen: false,
     authOpen: false,
@@ -372,9 +372,7 @@ class Component extends DCLogic {
     profileNameDraft: '',
     profileSaving: false,
     profileSaved: false,
-    chat: [
-      { who: 'l', text: "I've read the railway café scene. Mara's restraint is doing a lot of quiet work. What do you want to push on?" },
-    ],
+    chat: [],
   };
 
   canvasRef = React.createRef();
@@ -440,25 +438,9 @@ class Component extends DCLogic {
   chatRef = React.createRef();
   STORAGE_KEY = 'filmscript_doc_v1';
 
-  SCRIPT_TEXT = [
-    'INT. RAILWAY CAFÉ — RAINY AFTERNOON',
-    'Steam fogs the window. MARA (30s, restless, a notebook she never opens) watches the platform. A train sighs in, brakes hissing.',
-    'MARA (barely audible): He\u2019s not coming. He never was. I just liked the waiting.',
-    'She closes the notebook. For the first time, it stays shut.',
-    'EXT. PLATFORM — CONTINUOUS',
-    'The crowd parts around her like water. A conductor checks his watch. Somewhere a bell.',
-  ].join('\n');
-
-  DEFAULT_DOC = [
-    { type: 'scene', text: 'INT. RAILWAY CAFÉ — RAINY AFTERNOON' },
-    { type: 'action', text: 'Steam fogs the window. MARA (30s, restless, a notebook she never opens) watches the platform. A train sighs in, brakes hissing.' },
-    { type: 'character', text: 'MARA' },
-    { type: 'paren', text: '(barely audible)' },
-    { type: 'dialogue', text: "He's not coming. He never was. I just liked the waiting." },
-    { type: 'action', text: 'She closes the notebook. For the first time, it stays shut.' },
-    { type: 'scene', text: 'EXT. PLATFORM — CONTINUOUS' },
-    { type: 'action', text: 'The crowd parts around her like water. A conductor checks his watch. Somewhere a bell.' },
-  ];
+  // Marketing pages open a clean editor preview; no bundled screenplay is used.
+  SCRIPT_TEXT = '';
+  DEFAULT_DOC = [];
 
   // ---------- hand-drawn geometry ----------
   _rng(seed) {
@@ -548,76 +530,11 @@ class Component extends DCLogic {
     return 'position:absolute;left:-46px;top:0;color:var(--accent,#BA7517);opacity:.65;font-size:11px;';
   }
 
-  // ---------- generate a long invented screenplay ----------
-  _generateScript() {
-    const rnd = this._rng(20260629);
-    const pick = (a) => a[Math.floor(rnd() * a.length)];
-    const intext = ['INT.', 'EXT.', 'INT./EXT.'];
-    const places = [
-      'LIGHTHOUSE — LANTERN ROOM', 'LIGHTHOUSE — SPIRAL STAIR', "KEEPER'S COTTAGE — KITCHEN",
-      'HARBOR ROAD', 'THE BREAKWATER', 'FISHING TRAWLER — DECK', 'VILLAGE PUB — BACK BOOTH',
-      "MARA'S BEDROOM", 'THE CLIFF PATH', 'POST OFFICE', 'CHURCHYARD', 'SUPPLY BOAT — CABIN',
-      'TIDE POOLS', 'THE OLD BOATHOUSE', 'HARBORMASTER\u2019S OFFICE', 'SEA — OPEN WATER',
-    ];
-    const times = ['DAWN', 'DAY', 'DUSK', 'NIGHT', 'CONTINUOUS', 'LATER', 'PRE-DAWN', 'MAGIC HOUR'];
-    const chars = ['MARA', 'THE KEEPER', 'ELIAS', 'HARBORMASTER', 'YOUNG TOM', 'GULL (V.O.)', 'MARA (V.O.)', 'RADIO VOICE'];
-    const actions = [
-      'The lamp turns. A blade of light sweeps the black water and finds nothing.',
-      'Mara wipes salt from the glass. Below, the surf gnaws the rocks like something patient.',
-      'The Keeper climbs, one hand always on the rail, counting the steps he no longer needs to count.',
-      'Rain arrives sideways. The cottage windows rattle in their frames.',
-      'A letter sits unopened on the table, its corner darkened where a thumb keeps returning.',
-      'The trawler pitches. Ropes groan. Somewhere a bell answers a bell.',
-      'She lays the logbook flat and writes the date, then crosses it out.',
-      'Light fails over the headland. The town below blinks awake, window by window.',
-      'He pours two cups of tea and only ever drinks one.',
-      'The radio coughs static, then a voice, then static again.',
-      'Footprints fill with seawater and vanish behind her.',
-      'The flame gutters. For a heartbeat the whole coast goes dark.',
-      'Tom presses his ear to the foghorn housing as if it might confess something.',
-      'A photograph, sun-bleached to ghosts, is tucked back behind the clock.',
-      'The tide draws out farther than it should, baring the wreck no one talks about.',
-    ];
-    const lines = [
-      'You can\u2019t keep a light for someone who isn\u2019t coming back.',
-      'The sea doesn\u2019t take sides. It just takes.',
-      'I counted the flashes every night. Three long, one short. Like a name.',
-      'We don\u2019t leave the lamp. The lamp leaves us, eventually.',
-      'Tell me you saw it too. The boat. Out past the second buoy.',
-      'My father kept this light forty years and it kept him longer.',
-      'There\u2019s a difference between waiting and refusing to let go.',
-      'Storm\u2019s turning. You\u2019ll want to be off the breakwater before it does.',
-      'I wrote it all down so somebody would know we were here.',
-      'You think the dark is the enemy. The dark is just honest.',
-      'If the horn stops, you run. You don\u2019t look back at me.',
-      'Some lights you keep for the living. This one I keep for the rest.',
-      'I\u2019m not frightened of the water. I\u2019m frightened of the quiet after.',
-      'Every keeper leaves a name in the logbook. None of them leave twice.',
-    ];
-    const parens = ['(quietly)', '(beat)', '(not looking up)', '(to herself)', '(sharp)', '(after a moment)', '(barely audible)'];
-    const transitions = ['CUT TO:', 'SMASH CUT TO:', 'DISSOLVE TO:', 'MATCH CUT TO:'];
-
-    const blocks = [{ type: 'fadein', text: 'FADE IN:' }];
-    for (let s = 0; s < 320; s++) {
-      blocks.push({ type: 'scene', text: `${pick(intext)} ${pick(places)} — ${pick(times)}` });
-      const na = 1 + Math.floor(rnd() * 3);
-      for (let a = 0; a < na; a++) blocks.push({ type: 'action', text: pick(actions) });
-      const nd = 1 + Math.floor(rnd() * 4);
-      for (let d = 0; d < nd; d++) {
-        blocks.push({ type: 'character', text: pick(chars) });
-        if (rnd() < 0.4) blocks.push({ type: 'paren', text: pick(parens) });
-        let txt = pick(lines);
-        if (rnd() < 0.4) txt += ' ' + pick(lines);
-        blocks.push({ type: 'dialogue', text: txt });
-        if (rnd() < 0.28) blocks.push({ type: 'action', text: pick(actions) });
-      }
-      if (rnd() < 0.5) blocks.push({ type: 'transition', text: pick(transitions) });
-    }
-    return blocks;
-  }
+  // No bundled screenplay: a new session is always a clean writing surface.
+  _generateScript() { return []; }
 
   _buildPages(rough) {
-    const mode = this.state.mode || 'sample';
+    const mode = this.state.mode || 'blank';
     const key = mode + ':' + rough;
     if (this._pagesKey === key && this._pagesCache) return this._pagesCache;
     const self = this;
@@ -886,12 +803,12 @@ Write Lumiere's next reply only:`;
     const lumiereLocked = !lumiereUnlocked;
     const hasPlan = !!plan;
     const noPlan = !plan;
-    const isWriterPlan = plan === 'writer';
+    const isBasicPlan = plan === 'basic';
     const isLumierePlan = plan === 'lumiere';
-    const planLabel = plan === 'lumiere' ? 'FilmScript Pro · $20 / month' : 'No active plan';
+    const planLabel = plan === 'lumiere' ? 'FilmScript Pro · $19.99 / month' : plan === 'basic' ? 'FilmScript Basic · $12.99 / month' : 'Free';
     const checkoutPlanKey = this.state.checkoutPlan;
-    const checkoutPlanName = checkoutPlanKey === 'lumiere' ? 'FilmScript Pro' : 'Free';
-    const checkoutPlanPrice = '$20 / month';
+    const checkoutPlanName = checkoutPlanKey === 'lumiere' ? 'FilmScript Pro' : checkoutPlanKey === 'basic' ? 'FilmScript Basic' : 'Free';
+    const checkoutPlanPrice = checkoutPlanKey === 'lumiere' ? '$19.99 / month' : '$12.99 / month';
     const checkoutConfirmStep = this.state.checkoutStep !== 'success';
     const checkoutSuccessStep = this.state.checkoutStep === 'success';
     const checkoutHasLink = !!checkoutPlanKey;
@@ -908,17 +825,11 @@ Write Lumiere's next reply only:`;
     ];
 
 
-    const cardData = [
-      { title: 'The Lighthouse Keeper', meta: '150 pages · edited 2h ago' },
-      { title: 'Neon Static', meta: '150 pages · edited yesterday' },
-      { title: 'Saltbound', meta: '150 pages · edited 3d ago' },
-      { title: 'The Quiet Hour', meta: '150 pages · edited 1w ago' },
-      { title: 'Ashfall', meta: '150 pages · edited 2w ago' },
-    ];
+    const cardData = [];
     const cards = cardData.map((c, i) => ({
       ...c,
       thumbPath: this._roughPath(62, 84, 1.5, (i + 1) * 8123 + 17, 8),
-      open: () => this.setState({ screen: 'editor', mode: 'sample' }),
+      open: () => this.setState({ screen: 'editor', mode: 'blank' }),
     }));
 
     const thumbLines = [
@@ -963,7 +874,7 @@ Write Lumiere's next reply only:`;
       input: this.state.input,
       zoom: this.state.zoom,
       zoomPct: Math.round(this.state.zoom * 100) + '%',
-      homeSub: '5 scripts in progress · Last edited: The Lighthouse Keeper, 2h ago',
+      homeSub: 'Start with a blank screenplay and shape it into something yours.',
       cards, thumbLines, messages,
       tools: ['Character analysis', 'Cliché detector', 'Scene suggestions', 'Narrative arc', 'Format checker'].map(label => ({ label, title: 'Run ' + label, onClick: () => this.runTool(label) })),
       check: '✓',
@@ -1037,14 +948,14 @@ Write Lumiere's next reply only:`;
       userName: this.state.profileName || (this.state.user ? this.state.user.name : 'Writer'),
       profileNameDraft: this.state.profileNameDraft,
       profileSaveLabel: this.state.profileSaving ? 'Saving…' : this.state.profileSaved ? 'Saved' : 'Save',
-      accountStatus: plan ? 'Active' : 'No active plan',
+      accountStatus: plan ? 'Active' : 'Free',
       openAuth: () => this.setState({ authOpen: true }),
       closeAuth: () => this.setState({ authOpen: false }),
       stop: (e) => { e.stopPropagation(); },
       googleLogIn: () => { window.location.href = window.filmscriptBilling.googleSignInUrl(); },
       signOut: async () => { try { await window.filmscriptBilling.logout(); } catch (e) {} this.setState({ user: null, plan: null, accountOpen: false }); },
 
-      plan, planLabel, hasPlan, noPlan, isWriterPlan, isLumierePlan,
+      plan, planLabel, hasPlan, noPlan, isBasicPlan, isLumierePlan,
       lumiereUnlocked, lumiereLocked,
       unlockBtnPath: this._roughPath(180, 44, 2, 999, 14),
 
@@ -1074,14 +985,17 @@ Write Lumiere's next reply only:`;
       goLandingFromAccount: () => { window.location.href = 'Pricing.dc.html'; },
 
       chooseLumiere: () => this._startCheckout('lumiere'),
+      chooseBasic: () => this._startCheckout('basic'),
       openCheckoutLumiere: () => this._startCheckout('lumiere'),
+      openCheckoutBasic: () => this._startCheckout('basic'),
 
       checkoutOpen: this.state.checkoutOpen,
       checkoutConfirmStep, checkoutSuccessStep, checkoutPlanName, checkoutPlanPrice, checkoutHasLink,
       openPayLink: async () => {
         try {
-          const result = await window.filmscriptBilling.checkout(this.state.checkoutPlan, this.state.user?.email);
-          window.filmscriptBilling.trackCheckoutRedirected?.(this.state.checkoutPlan);
+          const language = window.filmscriptLanguage?.get?.() || document.documentElement.lang || 'en';
+          const result = await window.filmscriptBilling.checkout(this.state.checkoutPlan, this.state.user?.email, language);
+          window.filmscriptBilling.trackCheckoutRedirected(this.state.checkoutPlan);
           window.location.href = result.checkoutUrl;
         }
         catch (e) { this.setState({ toast: e.message }); }

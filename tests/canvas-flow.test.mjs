@@ -202,8 +202,11 @@ test("Canvas replaces standalone Shot List navigation while keeping the existing
   assert.match(editor, /filmscript:canvas-shotlist/);
   assert.match(workspace, /Shot List/);
   assert.match(workspace, /Build your production library/);
-  assert.match(workspace, /Start building your visual world/);
-  assert.match(workspace, /What is your role in this production\?/);
+  assert.match(workspace, /Start with one visual board/);
+  assert.doesNotMatch(workspace, /What is your role in this production\?/);
+  assert.doesNotMatch(workspace, /data-action="role-settings"/);
+  assert.match(workspace, /data-action="board-fit"/);
+  assert.match(workspace, /data-file="board-image"/);
   assert.match(workspace, /stopBoundary\.contains\(trigger\)/);
   assert.match(workspace, /form\.dataset\.form === 'vault-item'/);
   assert.match(client, /pathFor\(scriptId, '\/quotes'\)/);

@@ -54,10 +54,12 @@ API keys, OAuth secrets, Recurrente credentials and database credentials belong 
 
 The repository contains `vercel.json` and a safe frontend-only build. Only the generated `dist/` directory is published, so the server, database, `.env`, uploads and API keys are excluded.
 
-Set this non-sensitive Vercel build variable:
+Set these non-sensitive Vercel build variables. The ERP variables are optional:
 
 ```text
 API_URL=https://api.your-filmscript-domain.com
+ERP_API_URL=https://erp.your-filmscript-domain.com
+ERP_ENVIRONMENT=live
 ```
 
 Vercel runs:
@@ -66,8 +68,9 @@ Vercel runs:
 npm run build:vercel
 ```
 
-Only `API_URL` is copied into browser code, so it must remain a non-sensitive
-public origin. All credentials stay in AWS Secrets Manager.
+These public origins and the `test` or `live` ERP environment label are copied
+into browser code. Funnel tracking remains disabled when `ERP_API_URL` is
+absent. All credentials stay in AWS Secrets Manager.
 
 ## AWS backend variables
 
@@ -83,6 +86,8 @@ ANTHROPIC_API_KEY=...
 RECURRENTE_SECRET_KEY=...
 RECURRENTE_WEBHOOK_SECRET=...
 RECURRENTE_LUMIERE_PRODUCT_ID=...
+# Optional one-time product; omit to use the inline $5 reset item.
+RECURRENTE_LUMIERE_RESET_PRODUCT_ID=...
 ```
 
 Using sibling custom domains such as `app.example.com` and `api.example.com` keeps the frontend and API same-site. If unrelated domains are used, set `SESSION_COOKIE_SAMESITE=None` and keep `SESSION_COOKIE_SECURE=true`.
