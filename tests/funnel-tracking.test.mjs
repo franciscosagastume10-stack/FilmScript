@@ -62,11 +62,13 @@ function trackerHarness({
 
 test("landing and pricing tracking use anonymous stable IDs and first-touch attribution", () => {
   const localStorage = memoryStorage();
+  const sessionStorage = memoryStorage();
   const landing = trackerHarness({
     pathname: "/Features.dc.html",
     search: "?utm_source=instagram&utm_campaign=launch",
     referrer: "https://search.example/results?q=screenplay",
     localStorage,
+    sessionStorage,
   });
 
   assert.equal(landing.requests.length, 1);
@@ -93,6 +95,7 @@ test("landing and pricing tracking use anonymous stable IDs and first-touch attr
   const pricing = trackerHarness({
     pathname: "/Pricing.dc.html",
     localStorage,
+    sessionStorage,
     uuids: [
       "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
       "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb",
@@ -100,8 +103,16 @@ test("landing and pricing tracking use anonymous stable IDs and first-touch attr
   });
   assert.equal(pricing.requests[0].payload.event_type, "pricing");
   assert.equal(pricing.requests[0].payload.visitor_id, "11111111-1111-4111-8111-111111111111");
-  assert.equal(pricing.requests[0].payload.session_id, "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa");
+  assert.equal(pricing.requests[0].payload.session_id, "22222222-2222-4222-8222-222222222222");
   assert.deepEqual(pricing.requests[0].payload.utm, { utm_source: "instagram", utm_campaign: "launch" });
+});
+
+test("a direct pricing visit starts the funnel once before recording pricing", () => {
+  const direct = trackerHarness({ pathname: "/Pricing.dc.html" });
+  assert.deepEqual(
+    direct.requests.map(({ payload }) => payload.event_type),
+    ["landing", "pricing"],
+  );
 });
 
 test("tracking is a silent no-op when the ERP URL is absent", () => {

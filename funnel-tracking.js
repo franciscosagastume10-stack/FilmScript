@@ -21,6 +21,7 @@
   const uuidPattern = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
   const visitorKey = "filmscript_visitor_id";
   const sessionKey = "filmscript_session_id";
+  const landingSessionKey = "filmscript_landing_tracked_session";
   const attributionKey = "filmscript_first_touch_attribution";
   const utmKeys = ["utm_source", "utm_medium", "utm_campaign", "utm_term", "utm_content"];
 
@@ -138,6 +139,14 @@
   window.filmscriptFunnel = Object.freeze({ context, track });
 
   const page = (window.location.pathname.split("/").pop() || "").toLowerCase();
-  if (/^features\.dc(?:\.html)?$/.test(page)) track("landing");
+  const isMarketingPage = /^(features|pricing)\.dc(?:\.html)?$/.test(page);
+  let landingTracked = false;
+  try {
+    landingTracked = sessionStorage?.getItem(landingSessionKey) === sessionId;
+  } catch {}
+  if (isMarketingPage && !landingTracked) {
+    track("landing");
+    try { sessionStorage?.setItem(landingSessionKey, sessionId); } catch {}
+  }
   if (/^pricing\.dc(?:\.html)?$/.test(page)) track("pricing");
 })();
