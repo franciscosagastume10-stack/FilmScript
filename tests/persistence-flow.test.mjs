@@ -6,6 +6,7 @@ import net from "node:net";
 import os from "node:os";
 import path from "node:path";
 import test from "node:test";
+import { computeCalendar } from "../calendar-model.js";
 
 const ROOT = path.resolve(new URL("..", import.meta.url).pathname);
 
@@ -187,7 +188,27 @@ test("account-owned screenplay interactions survive reloads and a server restart
 
   const accountResponse = await fetch(`${running.url}/api/me`, { headers: { Cookie: ownerCookie } });
   assert.equal(accountResponse.status, 200);
-  assert.deepEqual((await accountResponse.json()).lumierePreferences.films, lumierePreferences.films);
+  const account = await accountResponse.json();
+  assert.deepEqual(account.lumierePreferences.films, lumierePreferences.films);
+  assert.equal(account.profile.completed, false);
+
+  const profileResponse = await fetch(`${running.url}/api/me`, {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json", Cookie: ownerCookie },
+    body: JSON.stringify({ gender: "woman", birthDate: "1990-07-14" }),
+  });
+  assert.equal(profileResponse.status, 200);
+  const savedProfile = await profileResponse.json();
+  assert.equal(savedProfile.profile.gender, "woman");
+  assert.equal(savedProfile.profile.birthDate, "1990-07-14");
+  assert.equal(savedProfile.profile.completed, true);
+
+  const invalidProfileResponse = await fetch(`${running.url}/api/me`, {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json", Cookie: ownerCookie },
+    body: JSON.stringify({ birthDate: "2099-01-01" }),
+  });
+  assert.equal(invalidProfileResponse.status, 422);
 
   // Hold one request body open while another autosave completes. Both fields
   // must survive instead of the later request restoring a stale script copy.
@@ -237,7 +258,13 @@ test("account-owned screenplay interactions survive reloads and a server restart
   const stripboardResponse = await fetch(`${running.url}/api/scripts/${scriptId}/preproduction/stripboard`, {
     method: "PATCH",
     headers: { "Content-Type": "application/json", Cookie: ownerCookie },
-    body: JSON.stringify({ order, sceneTimings: { [firstScene.id]: 75 }, sceneLocations: { [firstScene.id]: shootLocation }, sceneCastIds: { [firstScene.id]: [1, 2] } }),
+    body: JSON.stringify({
+      order,
+      events: [{ id: "sbe_aabbccdd", type: "end_day", afterSceneId: secondScene.id, durationMinutes: 0 }],
+      sceneTimings: { [firstScene.id]: 75 },
+      sceneLocations: { [firstScene.id]: shootLocation },
+      sceneCastIds: { [firstScene.id]: [1, 2] },
+    }),
   });
   assert.equal(stripboardResponse.status, 200);
   const savedStripboard = (await stripboardResponse.json()).project;
@@ -349,7 +376,11 @@ test("account-owned screenplay interactions survive reloads and a server restart
 
   const initialBudgetResponse = await fetch(`${running.url}/api/scripts/${scriptId}/preproduction/budget`, { headers: { Cookie: ownerCookie } });
   assert.equal(initialBudgetResponse.status, 200);
-  const budget = (await initialBudgetResponse.json()).budget;
+  const initialBudgetPayload = await initialBudgetResponse.json();
+  const budget = initialBudgetPayload.budget;
+  assert.equal(initialBudgetPayload.productionSchedule.connected, true);
+  assert.equal(initialBudgetPayload.productionSchedule.source, "script_breakdown_stripboard");
+  assert.equal(initialBudgetPayload.productionSchedule.shootDays, 2);
   budget.metadata.producer = "Budget Owner";
   budget.settings.taxRates.find((rate) => rate.id === "tax_standard").rate = 0.15;
   Object.assign(budget.accounts[0].items[0], {
@@ -359,12 +390,49 @@ test("account-owned screenplay interactions survive reloads and a server restart
     taxRateId: "tax_standard",
     taxMode: "exclusive",
   });
+  budget.accounts[0].items[0].schedule.shoot_1 = 1437.5;
   const budgetSaveResponse = await fetch(`${running.url}/api/scripts/${scriptId}/preproduction/budget`, {
     method: "PATCH",
     headers: { "Content-Type": "application/json", Cookie: ownerCookie },
     body: JSON.stringify({ budget }),
   });
   assert.equal(budgetSaveResponse.status, 200);
+  const savedBudgetPayload = await budgetSaveResponse.json();
+  assert.equal(savedBudgetPayload.productionSchedule.shootDays, 2);
+  assert.equal(savedBudgetPayload.budget.accounts[0].items[0].schedule.shoot_1, 1437.5);
+
+  const initialCalendarResponse = await fetch(`${running.url}/api/scripts/${scriptId}/preproduction/calendar`, { headers: { Cookie: ownerCookie } });
+  assert.equal(initialCalendarResponse.status, 200);
+  const calendar = (await initialCalendarResponse.json()).calendar;
+  assert.ok(calendar.tasks.length >= 40);
+  calendar.settings.projectStart = "2026-08-03";
+  const calendarOwnerTask = calendar.tasks[0];
+  calendarOwnerTask.owner = "Calendar Owner";
+  calendarOwnerTask.progress = 25;
+  calendarOwnerTask.status = "in_progress";
+  const calendarShootTask = calendar.tasks.find((task) => task.kind === "shoot");
+  assert.ok(calendarShootTask);
+  calendarShootTask.durationDays = 4;
+  const calendarSaveResponse = await fetch(`${running.url}/api/scripts/${scriptId}/preproduction/calendar`, {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json", Cookie: ownerCookie },
+    body: JSON.stringify({ calendar }),
+  });
+  assert.equal(calendarSaveResponse.status, 200);
+  const savedCalendar = (await calendarSaveResponse.json()).calendar;
+  const computedCalendar = computeCalendar(savedCalendar, "Editable Cover");
+  assert.equal(savedCalendar.settings.projectStart, "2026-08-03");
+  assert.equal(savedCalendar.tasks.find((task) => task.id === calendarOwnerTask.id).owner, "Calendar Owner");
+  assert.equal(savedCalendar.tasks.find((task) => task.id === calendarShootTask.id).durationDays, 4);
+
+  const calendarConnectedBudgetResponse = await fetch(`${running.url}/api/scripts/${scriptId}/preproduction/budget`, { headers: { Cookie: ownerCookie } });
+  assert.equal(calendarConnectedBudgetResponse.status, 200);
+  const calendarConnectedBudgetPayload = await calendarConnectedBudgetResponse.json();
+  assert.equal(calendarConnectedBudgetPayload.calendarConnected, true);
+  assert.equal(
+    calendarConnectedBudgetPayload.budget.metadata.shootingDates,
+    `${computedCalendar.shootingStart} – ${computedCalendar.shootingEnd}`,
+  );
 
   const receiptBytes = referenceBytes;
   const receiptUploadResponse = await fetch(`${running.url}/api/scripts/${scriptId}/preproduction/budget/receipts`, {
@@ -430,10 +498,22 @@ test("account-owned screenplay interactions survive reloads and a server restart
 
   const reloadedBudgetResponse = await fetch(`${running.url}/api/scripts/${scriptId}/preproduction/budget`, { headers: { Cookie: ownerCookie } });
   assert.equal(reloadedBudgetResponse.status, 200);
-  const reloadedBudget = (await reloadedBudgetResponse.json()).budget;
+  const reloadedBudgetPayload = await reloadedBudgetResponse.json();
+  const reloadedBudget = reloadedBudgetPayload.budget;
   assert.equal(reloadedBudget.metadata.producer, "Budget Owner");
   assert.equal(reloadedBudget.settings.taxRates.find((rate) => rate.id === "tax_standard").rate, 0.15);
   assert.equal(reloadedBudget.accounts[0].items[0].unitCost, 625);
+  assert.equal(reloadedBudget.accounts[0].items[0].schedule.shoot_1, 1437.5);
+  assert.equal(reloadedBudgetPayload.calendarConnected, true);
+  assert.equal(reloadedBudget.metadata.shootingDates, `${computedCalendar.shootingStart} – ${computedCalendar.shootingEnd}`);
+
+  const reloadedCalendarResponse = await fetch(`${running.url}/api/scripts/${scriptId}/preproduction/calendar`, { headers: { Cookie: ownerCookie } });
+  assert.equal(reloadedCalendarResponse.status, 200);
+  const reloadedCalendar = (await reloadedCalendarResponse.json()).calendar;
+  assert.equal(reloadedCalendar.settings.projectStart, "2026-08-03");
+  assert.equal(reloadedCalendar.tasks.find((task) => task.id === calendarOwnerTask.id).owner, "Calendar Owner");
+  assert.equal(reloadedCalendar.tasks.find((task) => task.id === calendarOwnerTask.id).progress, 25);
+  assert.equal(reloadedCalendar.tasks.find((task) => task.id === calendarShootTask.id).durationDays, 4);
 
   const receiptResponse = await fetch(`${running.url}/api/scripts/${scriptId}/preproduction/budget/receipts/${receipt.id}`, { headers: { Cookie: ownerCookie } });
   assert.equal(receiptResponse.status, 200);
@@ -496,6 +576,8 @@ test("account-owned screenplay interactions survive reloads and a server restart
   assert.equal(otherManualSceneResponse.status, 404);
   const otherBudgetResponse = await fetch(`${running.url}/api/scripts/${scriptId}/preproduction/budget`, { headers: { Cookie: otherCookie } });
   assert.equal(otherBudgetResponse.status, 404);
+  const otherCalendarResponse = await fetch(`${running.url}/api/scripts/${scriptId}/preproduction/calendar`, { headers: { Cookie: otherCookie } });
+  assert.equal(otherCalendarResponse.status, 404);
   const otherListResponse = await fetch(`${running.url}/api/scripts`, { headers: { Cookie: otherCookie } });
   assert.deepEqual((await otherListResponse.json()).scripts, []);
   const otherPreferencesResponse = await fetch(`${running.url}/api/me/lumiere-preferences`, { headers: { Cookie: otherCookie } });

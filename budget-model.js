@@ -5,19 +5,44 @@ const PHASES = [
   { id: "other", name: "Other", color: "#8A5A8A" },
 ];
 
-const PERIODS = [
-  ["prep_5", "Prep Week 5"],
-  ["prep_4", "Prep Week 4"],
-  ["prep_3", "Prep Week 3"],
-  ["prep_2", "Prep Week 2"],
-  ["prep_1", "Prep Week 1"],
-  ["shoot", "Shoot"],
-  ["wrap", "Wrap"],
-  ["post_1", "Post Month 1"],
-  ["post_2", "Post Month 2"],
-  ["post_3", "Post Month 3"],
-  ["post_4", "Post Month 4"],
-].map(([id, label]) => ({ id, label }));
+const DEFAULT_TIMELINE = {
+  prepWeeks: 5,
+  shootWeeks: 1,
+  wrapWeeks: 1,
+  postWeeks: 16,
+};
+
+const boundedWeekCount = (value, fallback, maximum) => {
+  const parsed = Math.trunc(Number(value));
+  return Number.isFinite(parsed) ? Math.max(1, Math.min(maximum, parsed)) : fallback;
+};
+
+function buildWeeklyPeriods(value = {}) {
+  const prepWeeks = boundedWeekCount(value.prepWeeks, DEFAULT_TIMELINE.prepWeeks, 12);
+  const shootWeeks = boundedWeekCount(value.shootWeeks, DEFAULT_TIMELINE.shootWeeks, 24);
+  const wrapWeeks = boundedWeekCount(value.wrapWeeks, DEFAULT_TIMELINE.wrapWeeks, 4);
+  const postWeeks = boundedWeekCount(value.postWeeks, DEFAULT_TIMELINE.postWeeks, 32);
+  return [
+    ...Array.from({ length: prepWeeks }, (_, index) => {
+      const week = prepWeeks - index;
+      return { id: `prep_${week}`, label: `Prep Week ${week}`, stage: "prep", week };
+    }),
+    ...Array.from({ length: shootWeeks }, (_, index) => {
+      const week = index + 1;
+      return { id: `shoot_${week}`, label: `Shoot Week ${week}`, stage: "shoot", week };
+    }),
+    ...Array.from({ length: wrapWeeks }, (_, index) => {
+      const week = index + 1;
+      return { id: `wrap_${week}`, label: `Wrap Week ${week}`, stage: "wrap", week };
+    }),
+    ...Array.from({ length: postWeeks }, (_, index) => {
+      const week = index + 1;
+      return { id: `post_${week}`, label: `Post Week ${week}`, stage: "post", week };
+    }),
+  ];
+}
+
+const PERIODS = buildWeeklyPeriods(DEFAULT_TIMELINE);
 
 const ACCOUNT_DEFINITIONS = [
   ["1000", "Project Development", "above_line", [
@@ -288,7 +313,7 @@ function createLineItem(accountCode, definition, index = 0) {
 function createBudgetTemplate(projectTitle = "Untitled screenplay") {
   const now = new Date().toISOString();
   return {
-    version: 1,
+    version: 2,
     projectTitle: cleanText(projectTitle, 160) || "Untitled screenplay",
     metadata: {
       producer: "",
@@ -307,7 +332,8 @@ function createBudgetTemplate(projectTitle = "Untitled screenplay") {
         { id: "tax_standard", name: "VAT", rate: 0.12 },
       ],
     },
-    periods: PERIODS.map((period) => ({ ...period })),
+    timeline: { ...DEFAULT_TIMELINE },
+    periods: buildWeeklyPeriods(DEFAULT_TIMELINE),
     accounts: ACCOUNT_DEFINITIONS.map(([code, name, phaseId, items]) => ({
       code,
       name,
@@ -331,14 +357,81 @@ function normalizeTaxRates(value) {
   return rates;
 }
 
+function highestScheduledWeek(sourceAccounts, stage) {
+  let highest = 0;
+  const pattern = new RegExp(`^${stage}_(\\d+)$`);
+  (Array.isArray(sourceAccounts) ? sourceAccounts : []).forEach((account) => {
+    (Array.isArray(account?.items) ? account.items : []).forEach((item) => {
+      Object.keys(item?.schedule || {}).forEach((periodId) => {
+        const match = periodId.match(pattern);
+        if (match && finite(item.schedule?.[periodId]) > 0) highest = Math.max(highest, Number(match[1]) || 0);
+      });
+    });
+  });
+  return highest;
+}
+
+function highestDefinedWeek(sourcePeriods, stage) {
+  const pattern = new RegExp(`^${stage}_(\\d+)$`);
+  return (Array.isArray(sourcePeriods) ? sourcePeriods : []).reduce((highest, period) => {
+    const match = String(period?.id || "").match(pattern);
+    return match ? Math.max(highest, Number(match[1]) || 0) : highest;
+  }, 0);
+}
+
+function normalizeTimeline(value, sourceAccounts, sourcePeriods) {
+  const hasTimeline = Boolean(value && typeof value === "object" && !Array.isArray(value));
+  const source = hasTimeline ? value : {};
+  const inferredPrep = Math.max(highestDefinedWeek(sourcePeriods, "prep"), highestScheduledWeek(sourceAccounts, "prep"));
+  const inferredShoot = Math.max(highestDefinedWeek(sourcePeriods, "shoot"), highestScheduledWeek(sourceAccounts, "shoot"));
+  const inferredWrap = Math.max(highestDefinedWeek(sourcePeriods, "wrap"), highestScheduledWeek(sourceAccounts, "wrap"));
+  const inferredPost = Math.max(highestDefinedWeek(sourcePeriods, "post"), highestScheduledWeek(sourceAccounts, "post"));
+  const count = (explicit, inferred, fallback, maximum) => {
+    const requested = hasTimeline
+      ? Math.max(0, finite(explicit), inferred)
+      : Math.max(fallback, inferred);
+    return boundedWeekCount(requested || fallback, fallback, maximum);
+  };
+  return {
+    prepWeeks: count(source.prepWeeks, inferredPrep, DEFAULT_TIMELINE.prepWeeks, 12),
+    shootWeeks: count(source.shootWeeks, inferredShoot, DEFAULT_TIMELINE.shootWeeks, 24),
+    wrapWeeks: count(source.wrapWeeks, inferredWrap, DEFAULT_TIMELINE.wrapWeeks, 4),
+    postWeeks: count(source.postWeeks, inferredPost, DEFAULT_TIMELINE.postWeeks, 32),
+  };
+}
+
 function normalizeBudget(value, projectTitle = "Untitled screenplay") {
   const base = createBudgetTemplate(projectTitle);
   if (!value || typeof value !== "object" || Array.isArray(value)) return base;
+  const legacySchedule = Math.trunc(finite(value.version, 1)) < 2;
   const settings = value.settings && typeof value.settings === "object" ? value.settings : {};
   const taxRates = normalizeTaxRates(settings.taxRates || base.settings.taxRates);
   const taxIds = new Set(taxRates.map((rate) => rate.id));
   const baseAccounts = new Map(base.accounts.map((account) => [account.code, account]));
   const sourceAccounts = Array.isArray(value.accounts) ? value.accounts.slice(0, 80) : base.accounts;
+  const timelineSource = legacySchedule
+    ? {
+      ...(value.timeline && typeof value.timeline === "object" && !Array.isArray(value.timeline) ? value.timeline : {}),
+      postWeeks: Math.max(
+        DEFAULT_TIMELINE.postWeeks,
+        finite(value.timeline?.postWeeks),
+        highestDefinedWeek(value.periods, "post") * 4,
+        highestScheduledWeek(sourceAccounts, "post") * 4,
+      ),
+    }
+    : value.timeline;
+  const timeline = normalizeTimeline(timelineSource, sourceAccounts, value.periods);
+  const periods = buildWeeklyPeriods(timeline);
+  const stagePeriods = {
+    shoot: periods.filter((period) => period.stage === "shoot"),
+    wrap: periods.filter((period) => period.stage === "wrap"),
+  };
+  const splitScheduledAmount = (amount, index, count) => {
+    const cents = Math.max(0, Math.round(finite(amount) * 100));
+    const baseCents = Math.floor(cents / Math.max(1, count));
+    const remainder = cents % Math.max(1, count);
+    return (baseCents + (index < remainder ? 1 : 0)) / 100;
+  };
   const accounts = sourceAccounts.map((account, accountIndex) => {
     const code = cleanText(account?.code, 12) || String(1000 + accountIndex * 100);
     const fallback = baseAccounts.get(code);
@@ -352,12 +445,26 @@ function normalizeBudget(value, projectTitle = "Untitled screenplay") {
         const calculation = item?.calculation === "contingency" ? "contingency" : "";
         const taxRateId = taxIds.has(item?.taxRateId) ? item.taxRateId : "tax_exempt";
         const schedule = {};
-        base.periods.forEach((period) => { schedule[period.id] = Math.max(0, finite(item?.schedule?.[period.id])); });
+        periods.forEach((period) => {
+          let scheduledValue = item?.schedule?.[period.id];
+          if (legacySchedule && period.stage === "shoot" && item?.schedule?.shoot != null) {
+            scheduledValue = splitScheduledAmount(item.schedule.shoot, Math.max(0, period.week - 1), stagePeriods.shoot.length);
+          }
+          if (legacySchedule && period.stage === "wrap" && item?.schedule?.wrap != null) {
+            scheduledValue = splitScheduledAmount(item.schedule.wrap, Math.max(0, period.week - 1), stagePeriods.wrap.length);
+          }
+          if (legacySchedule && period.stage === "post") {
+            const month = Math.ceil(period.week / 4);
+            const weekInMonth = (period.week - 1) % 4;
+            scheduledValue = splitScheduledAmount(item?.schedule?.[`post_${month}`], weekInMonth, 4);
+          }
+          schedule[period.id] = Math.max(0, finite(scheduledValue));
+        });
         return {
           id: cleanId(item?.id, `li_${code}_${itemIndex}`),
           code: cleanText(item?.code, 16) || `${code}_${itemIndex + 1}`,
           name: cleanText(item?.name, 180) || "Untitled cost",
-          quantity: calculation ? 0 : Math.max(0, finite(item?.quantity)),
+          quantity: calculation ? 0 : Math.max(0, Math.trunc(finite(item?.quantity))),
           unit: cleanText(item?.unit, 40) || (calculation ? "calculated" : "flat"),
           multiplier: calculation ? 0 : Math.max(0, finite(item?.multiplier, 1)),
           unitCost: calculation ? 0 : Math.max(0, finite(item?.unitCost)),
@@ -403,7 +510,7 @@ function normalizeBudget(value, projectTitle = "Untitled screenplay") {
     ...normalizeReceipt(expense),
   }));
   const normalized = {
-    version: 1,
+    version: 2,
     projectTitle: cleanText(value.projectTitle || projectTitle, 160) || "Untitled screenplay",
     metadata: {
       producer: cleanText(value.metadata?.producer, 120),
@@ -419,7 +526,8 @@ function normalizeBudget(value, projectTitle = "Untitled screenplay") {
       defaultTaxRateId: taxIds.has(settings.defaultTaxRateId) ? settings.defaultTaxRateId : "tax_standard",
       taxRates,
     },
-    periods: base.periods,
+    timeline,
+    periods,
     accounts,
     fundingSources,
     expenses,
@@ -442,7 +550,10 @@ function computeBudget(value, projectTitle = "Untitled screenplay") {
   const budget = normalizeBudget(value, projectTitle);
   const taxRates = new Map(budget.settings.taxRates.map((rate) => [rate.id, rate]));
   const expenseByItem = new Map();
-  budget.expenses.forEach((expense) => expenseByItem.set(expense.lineItemId, rounded((expenseByItem.get(expense.lineItemId) || 0) + expense.amount)));
+  budget.expenses.forEach((expense) => {
+    if (!expense.lineItemId) return;
+    expenseByItem.set(expense.lineItemId, rounded((expenseByItem.get(expense.lineItemId) || 0) + expense.amount));
+  });
   const preliminary = new Map();
   let contingencyBase = 0;
   budget.accounts.forEach((account) => account.items.forEach((item) => {
@@ -454,15 +565,22 @@ function computeBudget(value, projectTitle = "Untitled screenplay") {
   const contingencyAmount = rounded(contingencyBase * budget.settings.contingencyRate);
   const phaseMap = new Map(PHASES.map((phase) => [phase.id, { ...phase, subtotal: 0, tax: 0, total: 0, spent: 0, remaining: 0 }]));
   const scheduleTotals = Object.fromEntries(budget.periods.map((period) => [period.id, 0]));
+  const scheduleCashTotals = Object.fromEntries(budget.periods.map((period) => [period.id, 0]));
+  const scheduleInKindTotals = Object.fromEntries(budget.periods.map((period) => [period.id, 0]));
   const itemMap = new Map();
   let subtotal = 0;
   let tax = 0;
   let total = 0;
-  let spent = 0;
+  let linkedSpent = 0;
   let fixedTotal = 0;
   let variableTotal = 0;
   let cashTotal = 0;
   let inKindTotal = 0;
+  let scheduledTotal = 0;
+  let scheduledCashTotal = 0;
+  let scheduledInKindTotal = 0;
+  let unscheduledCashTotal = 0;
+  let overScheduledCashTotal = 0;
   const accounts = budget.accounts.map((account) => {
     const phase = phaseMap.get(account.phaseId) || phaseMap.get("other");
     const items = account.items.map((item) => {
@@ -472,8 +590,15 @@ function computeBudget(value, projectTitle = "Untitled screenplay") {
       const itemSpent = expenseByItem.get(item.id) || 0;
       const remaining = rounded(result.total - itemSpent);
       const scheduled = rounded(budget.periods.reduce((sum, period) => sum + Math.max(0, finite(item.schedule?.[period.id])), 0));
-      budget.periods.forEach((period) => { scheduleTotals[period.id] = rounded(scheduleTotals[period.id] + Math.max(0, finite(item.schedule?.[period.id]))); });
-      const row = { ...item, accountCode: account.code, accountName: account.name, phaseId: account.phaseId, ...result, spent: itemSpent, remaining, scheduled };
+      const overScheduled = rounded(Math.max(0, scheduled - result.total));
+      const unscheduled = rounded(Math.max(0, result.total - scheduled));
+      budget.periods.forEach((period) => {
+        const periodAmount = Math.max(0, finite(item.schedule?.[period.id]));
+        scheduleTotals[period.id] = rounded(scheduleTotals[period.id] + periodAmount);
+        if (item.fundingKind === "in_kind") scheduleInKindTotals[period.id] = rounded(scheduleInKindTotals[period.id] + periodAmount);
+        else scheduleCashTotals[period.id] = rounded(scheduleCashTotals[period.id] + periodAmount);
+      });
+      const row = { ...item, accountCode: account.code, accountName: account.name, phaseId: account.phaseId, ...result, spent: itemSpent, remaining, scheduled, unscheduled, overScheduled };
       itemMap.set(item.id, row);
       phase.subtotal += result.subtotal;
       phase.tax += result.tax;
@@ -482,11 +607,18 @@ function computeBudget(value, projectTitle = "Untitled screenplay") {
       subtotal += result.subtotal;
       tax += result.tax;
       total += result.total;
-      spent += itemSpent;
+      linkedSpent += itemSpent;
       if (item.costType === "variable") variableTotal += result.total;
       else fixedTotal += result.total;
       if (item.fundingKind === "in_kind") inKindTotal += result.total;
       else cashTotal += result.total;
+      scheduledTotal += scheduled;
+      if (item.fundingKind === "in_kind") scheduledInKindTotal += scheduled;
+      else {
+        scheduledCashTotal += scheduled;
+        unscheduledCashTotal += unscheduled;
+        overScheduledCashTotal += overScheduled;
+      }
       return row;
     });
     return {
@@ -511,24 +643,55 @@ function computeBudget(value, projectTitle = "Untitled screenplay") {
     valueForPhase.share = total > 0 ? valueForPhase.total / total : 0;
     return valueForPhase;
   });
-  let runningSpent = new Map();
+  const runningSpent = new Map();
   const expenseRows = budget.expenses.map((expense) => {
     const item = itemMap.get(expense.lineItemId);
-    const previous = runningSpent.get(expense.lineItemId) || 0;
+    const runningKey = item?.id || expense.id;
+    const previous = runningSpent.get(runningKey) || 0;
     const cumulativeSpent = rounded(previous + expense.amount);
-    runningSpent.set(expense.lineItemId, cumulativeSpent);
+    runningSpent.set(runningKey, cumulativeSpent);
     const budgeted = item?.total || 0;
+    const lineSpentTotal = item ? expenseByItem.get(item.id) || 0 : expense.amount;
+    const isUnbudgeted = !item || budgeted <= 0.005;
+    const variance = rounded(budgeted - cumulativeSpent);
+    const lineBalance = rounded(budgeted - lineSpentTotal);
     return {
       ...expense,
       accountCode: item?.accountCode || "",
-      accountName: item?.accountName || "Unassigned",
+      accountName: item?.accountName || "Unexpected cost",
       lineItemCode: item?.code || "",
-      lineItemName: item?.name || "Unassigned cost",
+      lineItemName: item?.name || "No approved budget line",
+      fundingKind: item?.fundingKind || "cash",
       budgeted,
       cumulativeSpent,
-      variance: rounded(budgeted - cumulativeSpent),
+      lineSpentTotal,
+      variance,
+      lineBalance,
+      isUnbudgeted,
+      isOverBudget: !isUnbudgeted && lineBalance < -0.005,
+      varianceState: isUnbudgeted ? "unbudgeted" : lineBalance < -0.005 ? "over" : "within",
     };
   });
+  const cashSpent = rounded(expenseRows
+    .filter((expense) => expense.fundingKind !== "in_kind")
+    .reduce((sum, expense) => sum + expense.amount, 0));
+  const inKindSpent = rounded(expenseRows
+    .filter((expense) => expense.fundingKind === "in_kind")
+    .reduce((sum, expense) => sum + expense.amount, 0));
+  const spent = rounded(cashSpent + inKindSpent);
+  const budgetedSpent = rounded(expenseRows
+    .filter((expense) => !expense.isUnbudgeted)
+    .reduce((sum, expense) => sum + expense.amount, 0));
+  const unbudgetedSpent = rounded(expenseRows
+    .filter((expense) => expense.isUnbudgeted)
+    .reduce((sum, expense) => sum + expense.amount, 0));
+  const unassignedSpent = rounded(expenseRows
+    .filter((expense) => !expense.lineItemId)
+    .reduce((sum, expense) => sum + expense.amount, 0));
+  const overBudgetItems = Array.from(itemMap.values())
+    .filter((item) => item.total > 0.005 && item.spent > item.total + 0.005);
+  const overBudgetSpent = rounded(overBudgetItems
+    .reduce((sum, item) => sum + Math.max(0, item.spent - item.total), 0));
   const fundingPlanned = rounded(budget.fundingSources.reduce((sum, source) => sum + source.amount, 0));
   const fundingReceived = rounded(budget.fundingSources.reduce((sum, source) => sum + source.paid, 0));
   return {
@@ -538,10 +701,18 @@ function computeBudget(value, projectTitle = "Untitled screenplay") {
     itemMap,
     expenseRows,
     scheduleTotals,
+    scheduleCashTotals,
+    scheduleInKindTotals,
+    scheduledTotal: rounded(scheduledTotal),
+    scheduledCashTotal: rounded(scheduledCashTotal),
+    scheduledInKindTotal: rounded(scheduledInKindTotal),
+    unscheduledCashTotal: rounded(unscheduledCashTotal),
+    overScheduledCashTotal: rounded(overScheduledCashTotal),
     subtotal: rounded(subtotal),
     tax: rounded(tax),
     total: rounded(total),
-    spent: rounded(spent),
+    linkedSpent: rounded(linkedSpent),
+    spent,
     remaining: rounded(total - spent),
     spentShare: total > 0 ? spent / total : 0,
     contingencyBase: rounded(contingencyBase),
@@ -550,6 +721,14 @@ function computeBudget(value, projectTitle = "Untitled screenplay") {
     variableTotal: rounded(variableTotal),
     cashTotal: rounded(cashTotal),
     inKindTotal: rounded(inKindTotal),
+    cashSpent,
+    inKindSpent,
+    budgetedSpent,
+    unbudgetedSpent,
+    unassignedSpent,
+    unbudgetedCount: expenseRows.filter((expense) => expense.isUnbudgeted).length,
+    overBudgetSpent,
+    overBudgetLineCount: overBudgetItems.length,
     fundingPlanned,
     fundingReceived,
     fundingGap: rounded(total - fundingPlanned),
@@ -559,8 +738,10 @@ function computeBudget(value, projectTitle = "Untitled screenplay") {
 
 export {
   ACCOUNT_DEFINITIONS,
+  DEFAULT_TIMELINE,
   PERIODS,
   PHASES,
+  buildWeeklyPeriods,
   computeBudget,
   createBudgetTemplate,
   normalizeBudget,

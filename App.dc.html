@@ -10,16 +10,17 @@
 <script src="./funnel-tracking.js?v=20260716-erp1"></script>
 <script src="./scripts-access-guard.js?v=20260713-auth-guard1"></script>
 <script src="./theme-preference.js?v=20260712-theme1"></script>
-<script src="./language-preference.js?v=20260713-i18n1"></script>
+<script src="./language-preference.js?v=20260716-language-choice1"></script>
 <script src="./ui-sounds.js?v=20260713-profile-option1"></script>
-<script src="./billing-client.js?v=20260717-erp2"></script>
+<script src="./billing-client.js?v=20260716-profile-safe1"></script>
+<script src="./profile-onboarding.js?v=20260716-profile1"></script>
 <script src="./lumiere-client.js?v=20260713-language1"></script>
 <script src="./lumiere-preferences.js?v=20260713-taste1"></script>
 <script src="./pdf-import.js"></script>
 <script src="./scripts-client.js?v=20260710-auth1"></script>
 <script src="./preproduction-client.js?v=20260713-language1"></script>
 <link rel="stylesheet" href="./auth-modal.css?v=20260712-auth2">
-<link rel="stylesheet" href="./filmscript-controls.css?v=20260712-double-outline1">
+<link rel="stylesheet" href="./filmscript-controls.css?v=20260716-typography1">
 </head>
 <body>
 <x-dc>
@@ -96,7 +97,7 @@
     text-align: center;
   }
   .fs-script-transition-kicker { font-size: 9px; font-weight: 650; letter-spacing: 1.55px; text-transform: uppercase; color: var(--accent, #BA7517); animation: fs-script-title-in .18s ease-out both .08s; }
-  .fs-script-transition-title { max-width: 170px; margin-top: 12px; font-size: 18px; font-weight: 700; line-height: 1.22; letter-spacing: -.28px; animation: fs-script-title-in .2s ease-out both .11s; }
+  .fs-script-transition-title { width: 100%; max-width: 170px; min-width: 0; max-height: 72px; overflow: hidden; overflow-wrap: anywhere; word-break: break-word; hyphens: auto; display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 3; margin-top: 12px; font-size: 18px; font-weight: 700; line-height: 1.22; letter-spacing: -.28px; text-align: center; animation: fs-script-title-in .2s ease-out both .11s; }
   .fs-script-transition-underline { width: 74px; height: 2px; margin-top: 15px; border-radius: 2px; background: var(--accent, #BA7517); transform-origin: center; animation: fs-script-stroke-in .21s cubic-bezier(.2,.8,.2,1) both .14s; }
   .fs-script-transition-lines { width: 112px; margin-top: 31px; display: grid; gap: 8px; opacity: .34; animation: fs-script-lines-in .2s ease-out both .17s; }
   .fs-script-transition-lines span { height: 1px; border-radius: 2px; background: var(--ink, #2C2C2A); }
@@ -118,7 +119,7 @@
   .fsx-dim:hover { box-shadow: inset 0 0 0 999px rgba(136,135,128,.09); }
   .fsx-hovbg { transition: background-color .15s ease; }
   .fsx-hovbg:hover { background: var(--surface, #FFFEF9); }
-  .fs-scripts-background { background-size: 112% !important; background-position: calc(50% + var(--fs-parallax-x, 0px)) calc(50% + var(--fs-parallax-y, 0px)) !important; transition: background-position .18s cubic-bezier(.2,.8,.2,1), background-size .4s ease, background-color .3s ease, background-image .3s ease; }
+  .fs-scripts-background { background-size: 116% !important; background-position: calc(50% + var(--fs-parallax-x, 0px)) calc(50% + var(--fs-parallax-y, 0px)) !important; transition: background-position .32s cubic-bezier(.45,0,.55,1), background-size .4s ease, background-color .3s ease, background-image .3s ease; will-change: background-position; }
   @media (prefers-reduced-motion: reduce) { .fs-scripts-background { background-position: center !important; background-size: cover !important; transition: none !important; } }
   .fs-script-card {
     isolation: isolate;
@@ -212,7 +213,7 @@
           <svg viewBox="0 0 20 20" style="width: 18px; height: 18px;" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><circle cx="10" cy="10" r="3.1"></circle><path d="M10 3.4 V5 M10 15 V16.6 M3.4 10 H5 M15 10 H16.6 M5.5 5.5 L6.6 6.6 M13.4 13.4 L14.5 14.5 M14.5 5.5 L13.4 6.6 M6.6 13.4 L5.5 14.5"></path></svg>
         </sc-if>
         <sc-if value="{{ lightMode }}" hint-placeholder-val="{{ true }}">
-          <svg viewBox="0 0 20 20" style="width: 18px; height: 18px;" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><path d="M14.6 11 Q14.3 14.7 10.6 14.8 Q12.9 12.6 12.8 9.3 Q12.7 6.5 10.4 5.1 Q14.9 5.5 14.6 11 Z"></path></svg>
+          <svg viewBox="0 0 20 20" style="width: 22px; height: 22px;" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><path d="M17.5 10.66 A7.5 7.5 0 1 1 9.34 2.5 A5.83 5.83 0 0 0 17.5 10.66 Z"></path></svg>
         </sc-if>
       </div>
       <sc-if value="{{ signedOut }}" hint-placeholder-val="{{ true }}">
@@ -228,14 +229,15 @@
             <div style="height: 1px; background: var(--soft, #e4e2d8); margin: 10px 0 6px;"></div>
             <div class="fs-menuitem" onClick="{{ goScripts }}">My scripts</div>
             <div class="fs-menuitem" onClick="{{ openAccountDetails }}">Account details</div>
-            <div class="fs-menuitem" onClick="{{ openLumierePreferences }}">Personalize Lumiere</div>
+            <div class="fs-menuitem" data-filmscript-open-profile>Personal profile</div>
+            <sc-if value="{{ isLumierePlan }}" hint-placeholder-val="{{ false }}"><div class="fs-menuitem" onClick="{{ openLumierePreferences }}">Personalize Lumiere</div></sc-if>
             <div class="fs-menuitem" onClick="{{ openTerms }}">Terms & conditions</div>
             <div style="height: 1px; background: var(--soft, #e4e2d8); margin: 6px 0;"></div>
-            <sc-if value="{{ isWriterPlan }}" hint-placeholder-val="{{ false }}">
+            <sc-if value="{{ isBasicPlan }}" hint-placeholder-val="{{ false }}">
               <div class="fs-menuitem" onClick="{{ upgradeToLumiere }}">Upgrade to FilmScript Pro</div>
             </sc-if>
             <sc-if value="{{ noPlan }}" hint-placeholder-val="{{ true }}">
-              <div class="fs-menuitem" onClick="{{ goLandingFromAccount }}">Choose FilmScript Pro</div>
+              <div class="fs-menuitem" onClick="{{ goLandingFromAccount }}">Choose a plan</div>
             </sc-if>
             <sc-if value="{{ hasPlan }}" hint-placeholder-val="{{ false }}">
               <div class="fs-menuitem" onClick="{{ cancelPlan }}">Plan and billing</div>
@@ -263,26 +265,26 @@
   </sc-if>
 
   <sc-if value="{{ accountDetailsOpen }}" hint-placeholder-val="{{ false }}">
-  <div onClick="{{ closeAccountDetails }}" style="position: fixed; inset: 0; z-index: 80; background: rgba(35,35,34,.28); display: flex; align-items: center; justify-content: center; padding: 24px;">
-    <div class="fs-profile-sheet" onClick="{{ stop }}" style="width: min(520px, 100%); max-height: 88vh; overflow-y: auto; background: var(--surface, #FFFEF9); border: 1.5px solid var(--line, #2C2C2A); border-radius: 20px; padding: 26px; filter: url(#fs-sketch); box-shadow: 0 18px 55px rgba(35,35,34,.2);">
+  <div data-testid="account-details-overlay" onClick="{{ closeAccountDetails }}" style="position: fixed; inset: 0; z-index: 1200; isolation: isolate; pointer-events: auto; background: rgba(35,35,34,.28); display: flex; align-items: center; justify-content: center; padding: 24px;">
+    <div data-testid="account-details-panel" class="fs-profile-sheet" onClick="{{ stop }}" style="position: relative; z-index: 1; width: min(520px, 100%); max-height: 88vh; overflow-y: auto; background: var(--surface, #FFFEF9); border: 1.5px solid var(--line, #2C2C2A); border-radius: 20px; padding: 26px; filter: url(#fs-sketch); box-shadow: 0 18px 55px rgba(35,35,34,.2);">
       <div style="display: flex; align-items: center; gap: 14px;"><div style="width: 46px; height: 46px; border-radius: 50%; background: var(--accent, #BA7517); color: #FFFEF9; display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 17px;">{{ userInitial }}</div><div style="flex: 1;"><div style="font-size: 20px; font-weight: 700; color: var(--ink, #2C2C2A);">Your account</div><div style="font-size: 12.5px; color: var(--muted, #888780); margin-top: 4px;">Connected securely with Google.</div></div><div onClick="{{ closeAccountDetails }}" style="font-size: 22px; color: var(--muted, #888780); cursor: pointer;">×</div></div>
       <div style="margin-top: 24px; display: grid; gap: 9px;"><div style="padding: 14px; border: 1px solid var(--soft, #E4E2D8); border-radius: 13px;"><div style="display: flex; justify-content: space-between;"><div style="font-size: 10px; text-transform: uppercase; letter-spacing: 1.2px; color: var(--muted, #888780);">Name</div><div onClick="{{ saveProfileName }}" style="font-size: 11px; color: var(--accent, #BA7517); font-weight: 700; cursor: pointer;">{{ profileSaveLabel }}</div></div><input value="{{ profileNameDraft }}" onInput="{{ onProfileName }}" aria-label="Name" style="width: 100%; margin-top: 7px; padding: 0; border: none; outline: none; background: transparent; color: var(--ink, #2C2C2A); font-size: 14px; font-family: inherit;"></div><div style="padding: 14px; border: 1px solid var(--soft, #E4E2D8); border-radius: 13px;"><div style="font-size: 10px; text-transform: uppercase; letter-spacing: 1.2px; color: var(--muted, #888780);">Email</div><div style="margin-top: 5px; font-size: 14px; color: var(--ink, #2C2C2A); word-break: break-word;">{{ userEmail }}</div></div></div>
       <button type="button" class="fs-profile-lumiere" onClick="{{ openLumierePreferences }}"><span style="width: 34px; height: 34px; flex: 0 0 34px; display: grid; place-items: center; border-radius: 10px 11px 9px 10px; color: var(--accent, #BA7517); background: rgba(186,117,23,.1);"><svg viewBox="0 0 24 24" style="width: 18px; height: 18px;" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3.2l.8 2.1 2.2.7 1.9-1.1 1.7 1.7-1.1 2 .6 2.1 2.2.8-.1 2.3-2.2.7-.7 2.2 1.1 1.9-1.7 1.7-1.9-1.1-2.2.6-.8 2.2-2.3-.1-.7-2.2-2.1-.7-2 1.1-1.7-1.7 1.1-1.9-.6-2.2-2.2-.8.1-2.3 2.2-.7.7-2.1-1.1-2 1.7-1.7 2 1.1 2.1-.7.8-2.1z"></path><circle cx="12" cy="12" r="3"></circle></svg></span><span style="min-width: 0; flex: 1;"><span style="display: block; font-size: 13px; font-weight: 650;">Personalize Lumiere</span><span style="display: block; margin-top: 3px; color: var(--muted, #888780); font-size: 11.5px; line-height: 1.4;">Directors, films and the kind of feedback that serves your voice.</span></span><span aria-hidden="true" style="color: var(--accent, #BA7517);">→</span></button>
-      <div style="margin-top: 18px; padding: 15px; border-radius: 15px; background: var(--bg, #F5F0E8);"><div style="font-size: 10px; text-transform: uppercase; letter-spacing: 1.2px; color: var(--muted, #888780);">Subscription</div><div style="font-size: 17px; font-weight: 700; color: var(--ink, #2C2C2A); margin-top: 7px;">{{ planLabel }}</div><sc-if value="{{ noPlan }}" hint-placeholder-val="{{ true }}"><span onClick="{{ openCheckoutLumiere }}" role="button" tabindex="0" style="display: inline-block; margin-top: 8px; color: var(--accent, #BA7517); font-size: 12px; font-weight: 700; cursor: pointer;">Choose FilmScript Pro →</span></sc-if><sc-if value="{{ hasPlan }}" hint-placeholder-val="{{ false }}"><div style="font-size: 12px; color: var(--accent, #BA7517); margin-top: 5px;">{{ accountStatus }}</div></sc-if></div>
+      <div style="margin-top: 18px; padding: 15px; border-radius: 15px; background: var(--bg, #F5F0E8);"><div style="font-size: 10px; text-transform: uppercase; letter-spacing: 1.2px; color: var(--muted, #888780);">Subscription</div><div style="font-size: 17px; font-weight: 700; color: var(--ink, #2C2C2A); margin-top: 7px;">{{ planLabel }}</div><sc-if value="{{ noPlan }}" hint-placeholder-val="{{ true }}"><span onClick="{{ goLandingFromAccount }}" role="button" tabindex="0" style="display: inline-block; margin-top: 8px; color: var(--accent, #BA7517); font-size: 12px; font-weight: 700; cursor: pointer;">Choose a plan →</span></sc-if><sc-if value="{{ hasPlan }}" hint-placeholder-val="{{ false }}"><div style="font-size: 12px; color: var(--accent, #BA7517); margin-top: 5px;">{{ accountStatus }}</div></sc-if></div>
       <div style="margin-top: 22px; text-align: right;"><div onClick="{{ closeAccountDetails }}" style="display: inline-block; padding: 10px 17px; border-radius: 10px; background: var(--ink, #2C2C2A); color: var(--surface, #FFFEF9); font-size: 13px; font-weight: 600; cursor: pointer;">Done</div></div>
     </div>
   </div>
   </sc-if>
-  <sc-if value="{{ termsOpen }}" hint-placeholder-val="{{ false }}"><div onClick="{{ closeTerms }}" style="position: fixed; inset: 0; z-index: 80; background: rgba(35,35,34,.28); display: flex; align-items: center; justify-content: center; padding: 24px;"><div onClick="{{ stop }}" style="width: min(620px, 100%); max-height: 88vh; overflow-y: auto; background: var(--surface, #FFFEF9); border: 1.5px solid var(--line, #2C2C2A); border-radius: 20px; padding: 30px; filter: url(#fs-sketch);"><div style="display: flex; justify-content: space-between;"><div><div style="font-size: 10px; letter-spacing: 1.8px; text-transform: uppercase; color: var(--accent, #BA7517); font-weight: 700;">FilmScript</div><div style="font-size: 25px; font-weight: 700; color: var(--ink, #2C2C2A); margin-top: 7px;">Terms & conditions</div></div><div onClick="{{ closeTerms }}" style="font-size: 22px; color: var(--muted, #888780); cursor: pointer;">×</div></div><div style="margin-top: 24px; display: grid; gap: 17px; color: var(--ink, #2C2C2A); font-size: 13.5px; line-height: 1.6;"><div><b>Your writing stays yours.</b><div style="color: var(--muted, #888780);">You retain ownership of scripts and notes created in FilmScript.</div></div><div><b>Lumiere is an assistant.</b><div style="color: var(--muted, #888780);">It offers suggestions and analysis. You decide what belongs in your work.</div></div><div><b>Subscriptions.</b><div style="color: var(--muted, #888780);">Paid plans renew monthly through Recurrente and can be canceled from your account menu.</div></div><div><b>Fair use.</b><div style="color: var(--muted, #888780);">Use FilmScript only with material you have permission to use.</div></div></div><div style="margin-top: 26px; text-align: right;"><div onClick="{{ closeTerms }}" style="display: inline-block; padding: 10px 17px; border-radius: 10px; background: var(--ink, #2C2C2A); color: var(--surface, #FFFEF9); font-size: 13px; font-weight: 600; cursor: pointer;">I understand</div></div></div></div></sc-if>
+  <sc-if value="{{ termsOpen }}" hint-placeholder-val="{{ false }}"><div onClick="{{ closeTerms }}" style="position: fixed; inset: 0; z-index: 80; background: rgba(35,35,34,.28); display: flex; align-items: center; justify-content: center; padding: 24px;"><div onClick="{{ stop }}" style="width: min(620px, 100%); max-height: 88vh; overflow-y: auto; background: var(--surface, #FFFEF9); border: 1.5px solid var(--line, #2C2C2A); border-radius: 20px; padding: 30px; filter: url(#fs-sketch);"><div style="display: flex; justify-content: space-between;"><div><div style="font-size: 10px; letter-spacing: 1.8px; text-transform: uppercase; color: var(--accent, #BA7517); font-weight: 700;">FilmScript</div><div style="font-size: 25px; font-weight: 700; color: var(--ink, #2C2C2A); margin-top: 7px;">Terms & conditions</div></div><div onClick="{{ closeTerms }}" style="font-size: 22px; color: var(--muted, #888780); cursor: pointer;">×</div></div><div style="margin-top: 24px; display: grid; gap: 17px; color: var(--ink, #2C2C2A); font-size: 13.5px; line-height: 1.6;"><div><b>Your writing stays yours.</b><div style="color: var(--muted, #888780);">You retain ownership of scripts and notes created in FilmScript.</div></div><div><b>Lumiere is an assistant.</b><div style="color: var(--muted, #888780);">It offers suggestions and analysis. You decide what belongs in your work.</div></div><div><b>Lumiere credits and usage limits.</b><div style="color: var(--muted, #888780);">FilmScript Pro includes 100 Lumiere credits per monthly billing period. A rolling 8-hour session allows 20 credits and each week allows 60; both windows reset automatically. Credits reset with each monthly renewal, do not roll over, and have no cash value. When a window or the monthly allowance is reached, new Lumiere generations pause until the next reset; you can wait for its reset or purchase 80 extra credits for $5. Your scripts and existing production documents stay available. Free and Basic plans include no Lumiere credits.</div></div><div><b>Subscriptions.</b><div style="color: var(--muted, #888780);">Paid plans renew monthly through Recurrente and can be canceled from your account menu.</div></div><div><b>Fair use.</b><div style="color: var(--muted, #888780);">Use FilmScript only with material you have permission to use.</div></div></div><div style="margin-top: 26px; text-align: right;"><div onClick="{{ closeTerms }}" style="display: inline-block; padding: 10px 17px; border-radius: 10px; background: var(--ink, #2C2C2A); color: var(--surface, #FFFEF9); font-size: 13px; font-weight: 600; cursor: pointer;">I understand</div></div></div></div></sc-if>
 
   <!-- ============ SCRIPTS DASHBOARD (horizontal, half page) ============ -->
   <sc-if value="{{ isScripts }}" hint-placeholder-val="{{ true }}">
-  <div class="fs-scripts-background" onMouseMove="{{ onScriptsPointer }}" style="--fs-parallax-x: {{ parallaxX }}px; --fs-parallax-y: {{ parallaxY }}px; flex: 1; min-height: 0; display: flex; flex-direction: column; overflow-y: auto; padding: 48px 56px 64px; background-color: var(--bg, #F5F0E8); background-image: {{ scriptsBackgroundImage }}; background-size: cover; background-position: center; background-attachment: fixed; transition: background-color .3s ease, background-image .3s ease;">
+  <div class="fs-scripts-background" onMouseMove="{{ onScriptsPointer }}" onMouseLeave="{{ onScriptsPointerLeave }}" style="--fs-parallax-x: {{ parallaxX }}px; --fs-parallax-y: {{ parallaxY }}px; flex: 1; min-height: 0; display: flex; flex-direction: column; overflow-y: auto; padding: 48px 56px 64px; background-color: var(--bg, #F5F0E8); background-image: {{ scriptsBackgroundImage }}; background-size: cover; background-position: center; background-attachment: fixed; transition: background-color .3s ease, background-image .3s ease;">
 
     <!-- left pane: handwritten greeting + new script -->
     <div style="position: relative; width: min(100%, 1220px); margin: 0 auto; min-height: 155px; padding-right: 386px;">
       <div style="font-size: 10px; letter-spacing: 1.8px; text-transform: uppercase; color: var(--accent, #BA7517); font-weight: 700; margin-bottom: 13px;">Writing desk</div>
-      <div aria-label="{{ greeting }}" style="font-family: 'Courier Prime', ui-monospace, SFMono-Regular, Menlo, monospace; font-weight: 700; font-size: clamp(31px, 3.25vw, 46px); line-height: 1.12; letter-spacing: -.75px; color: var(--ink, #2C2C2A); animation: fs-rise .32s ease both;"><span>{{ greetingTyped }}</span><span class="fs-type-caret" aria-hidden="true">|</span></div>
+      <div aria-label="{{ greeting }}" style="font-family: var(--fs-font-display); font-weight: 900; font-size: clamp(31px, 3.25vw, 46px); line-height: 1.12; letter-spacing: -.75px; color: var(--ink, #2C2C2A); animation: fs-rise .32s ease both;"><span>{{ greetingTyped }}</span><span class="fs-type-caret" aria-hidden="true">|</span></div>
       <div style="font-size: 14px; color: var(--muted, #888780); margin-top: 13px; max-width: 490px; line-height: 1.55; animation: fs-rise .5s ease both .09s;">{{ homeSub }}</div>
       <button type="button" onClick="{{ newScript }}" class="fs-double-outline fs-outline-control fs-outline-control--primary" style="position: absolute; right: 0; top: 28px; width: 176px; height: 44px; animation: fs-rise .5s ease both .16s;">
         <div style="position: relative; height: 100%; display: flex; align-items: center; justify-content: center; gap: 9px; color: #1A1A1A;">
@@ -591,7 +593,7 @@
         <div style="font-size: 13px; line-height: 1.55; color: var(--muted, #888780); max-width: 245px;">Your screenplay and existing production documents remain available to edit and export. An active plan is required only to generate new work with Lumiere.</div>
         <div onClick="{{ openCheckoutLumiere }}" style="position: relative; margin-top: 6px; padding: 12px 20px; cursor: pointer;">
           <svg viewBox="0 0 180 44" preserveAspectRatio="none" style="position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none;"><path d="{{ unlockBtnPath }}" style="fill: var(--accent, #BA7517); stroke: var(--accent, #BA7517);" stroke-width="1.6" stroke-linejoin="round"></path></svg>
-          <span style="position: relative; font-size: 13.5px; font-weight: 600; color: #FFFEF9;">View FilmScript Pro · $20 / month</span>
+          <span style="position: relative; font-size: 13.5px; font-weight: 600; color: #FFFEF9;">View FilmScript Pro · $19.99 / month</span>
         </div>
         <div style="font-size: 10.5px; line-height: 1.45; color: var(--muted, #888780); max-width: 230px;">Canceling never deletes your scripts or existing production documents.</div>
       </div>
@@ -669,7 +671,7 @@
         </sc-if>
 
         <div style="margin-top: 18px; padding: 13px 15px; border: 1.4px solid var(--line, #2C2C2A); border-radius: 14px; background: var(--bg, #F5F0E8); filter: url(#fs-sketch);">
-          <div style="font-size: 12px; line-height: 1.55; color: var(--muted, #888780);">You will return to FilmScript after payment. FilmScript verifies the checkout securely and unlocks Pro automatically.</div>
+          <div style="font-size: 12px; line-height: 1.55; color: var(--muted, #888780);">You will return to FilmScript after payment. FilmScript verifies the checkout securely and unlocks your selected plan automatically.</div>
         </div>
       </div>
       </sc-if>
@@ -706,7 +708,7 @@ class Component extends DCLogic {
     lumiereOpen: true,
     soundOn: true,
     darkMode: window.filmscriptTheme?.isDark() ?? false,
-    mode: 'sample',
+    mode: 'blank',
     zoom: 1,
     menuOpen: false,
     authOpen: false,
@@ -740,9 +742,7 @@ class Component extends DCLogic {
     preproLoading: false,
     paywallOpen: false,
     importNote: '',
-    chat: [
-      { who: 'l', text: "I've read the railway café scene. Mara's restraint is doing a lot of quiet work. What do you want to push on?" },
-    ],
+    chat: [],
   };
 
   canvasRef = React.createRef();
@@ -774,6 +774,7 @@ class Component extends DCLogic {
   componentWillUnmount() {
     if (this._greetingTimer) window.clearInterval(this._greetingTimer);
     if (this._scriptTransitionTimer) window.clearTimeout(this._scriptTransitionTimer);
+    if (this._parallaxFrame) cancelAnimationFrame(this._parallaxFrame);
     if (this._proRequiredHandler) window.removeEventListener('filmscript:pro-required', this._proRequiredHandler);
     if (this._languageHandler) window.removeEventListener('filmscript:language-change', this._languageHandler);
     this._flushChatSave();
@@ -795,7 +796,7 @@ class Component extends DCLogic {
   }
 
   _starterChat() {
-    return [{ who: 'l', text: "I've read the railway café scene. Mara's restraint is doing a lot of quiet work. What do you want to push on?" }];
+    return [];
   }
 
   _queueChatSave(chat) {
@@ -834,31 +835,16 @@ class Component extends DCLogic {
     return this.state.plan === 'lumiere';
   }
 
-  _requireLumierePlan(message = 'FilmScript Pro is required to use Lumiere. Your existing work remains editable and exportable.') {
+  _requireLumierePlan(message = 'FilmScript Pro at $19.99 / month is required to use Lumiere. Your scripts and manual production work remain available to edit and export.') {
     if (this._hasLumiereAccess()) return true;
-    this.setState({ plan: null, paywallOpen: true, lumiereOpen: true, toast: message });
+    this.setState({ paywallOpen: true, lumiereOpen: true, toast: message });
     return false;
   }
 
-  SCRIPT_TEXT = [
-    'INT. RAILWAY CAFÉ — RAINY AFTERNOON',
-    'Steam fogs the window. MARA (30s, restless, a notebook she never opens) watches the platform. A train sighs in, brakes hissing.',
-    'MARA (barely audible): He\u2019s not coming. He never was. I just liked the waiting.',
-    'She closes the notebook. For the first time, it stays shut.',
-    'EXT. PLATFORM — CONTINUOUS',
-    'The crowd parts around her like water. A conductor checks his watch. Somewhere a bell.',
-  ].join('\n');
-
-  DEFAULT_DOC = [
-    { type: 'scene', text: 'INT. RAILWAY CAFÉ — RAINY AFTERNOON' },
-    { type: 'action', text: 'Steam fogs the window. MARA (30s, restless, a notebook she never opens) watches the platform. A train sighs in, brakes hissing.' },
-    { type: 'character', text: 'MARA' },
-    { type: 'paren', text: '(barely audible)' },
-    { type: 'dialogue', text: "He's not coming. He never was. I just liked the waiting." },
-    { type: 'action', text: 'She closes the notebook. For the first time, it stays shut.' },
-    { type: 'scene', text: 'EXT. PLATFORM — CONTINUOUS' },
-    { type: 'action', text: 'The crowd parts around her like water. A conductor checks his watch. Somewhere a bell.' },
-  ];
+  // New sessions are intentionally empty. Only imported, user-owned scripts
+  // are shown in the workspace; no bundled screenplay is used as a fallback.
+  SCRIPT_TEXT = '';
+  DEFAULT_DOC = [];
 
   // ---------- hand-drawn geometry ----------
   _rng(seed) {
@@ -952,76 +938,11 @@ class Component extends DCLogic {
     return 'position:absolute;left:-46px;top:0;color:var(--accent,#BA7517);opacity:.65;font-size:11px;';
   }
 
-  // ---------- generate a long invented screenplay ----------
-  _generateScript() {
-    const rnd = this._rng(20260629);
-    const pick = (a) => a[Math.floor(rnd() * a.length)];
-    const intext = ['INT.', 'EXT.', 'INT./EXT.'];
-    const places = [
-      'LIGHTHOUSE — LANTERN ROOM', 'LIGHTHOUSE — SPIRAL STAIR', "KEEPER'S COTTAGE — KITCHEN",
-      'HARBOR ROAD', 'THE BREAKWATER', 'FISHING TRAWLER — DECK', 'VILLAGE PUB — BACK BOOTH',
-      "MARA'S BEDROOM", 'THE CLIFF PATH', 'POST OFFICE', 'CHURCHYARD', 'SUPPLY BOAT — CABIN',
-      'TIDE POOLS', 'THE OLD BOATHOUSE', 'HARBORMASTER\u2019S OFFICE', 'SEA — OPEN WATER',
-    ];
-    const times = ['DAWN', 'DAY', 'DUSK', 'NIGHT', 'CONTINUOUS', 'LATER', 'PRE-DAWN', 'MAGIC HOUR'];
-    const chars = ['MARA', 'THE KEEPER', 'ELIAS', 'HARBORMASTER', 'YOUNG TOM', 'GULL (V.O.)', 'MARA (V.O.)', 'RADIO VOICE'];
-    const actions = [
-      'The lamp turns. A blade of light sweeps the black water and finds nothing.',
-      'Mara wipes salt from the glass. Below, the surf gnaws the rocks like something patient.',
-      'The Keeper climbs, one hand always on the rail, counting the steps he no longer needs to count.',
-      'Rain arrives sideways. The cottage windows rattle in their frames.',
-      'A letter sits unopened on the table, its corner darkened where a thumb keeps returning.',
-      'The trawler pitches. Ropes groan. Somewhere a bell answers a bell.',
-      'She lays the logbook flat and writes the date, then crosses it out.',
-      'Light fails over the headland. The town below blinks awake, window by window.',
-      'He pours two cups of tea and only ever drinks one.',
-      'The radio coughs static, then a voice, then static again.',
-      'Footprints fill with seawater and vanish behind her.',
-      'The flame gutters. For a heartbeat the whole coast goes dark.',
-      'Tom presses his ear to the foghorn housing as if it might confess something.',
-      'A photograph, sun-bleached to ghosts, is tucked back behind the clock.',
-      'The tide draws out farther than it should, baring the wreck no one talks about.',
-    ];
-    const lines = [
-      'You can\u2019t keep a light for someone who isn\u2019t coming back.',
-      'The sea doesn\u2019t take sides. It just takes.',
-      'I counted the flashes every night. Three long, one short. Like a name.',
-      'We don\u2019t leave the lamp. The lamp leaves us, eventually.',
-      'Tell me you saw it too. The boat. Out past the second buoy.',
-      'My father kept this light forty years and it kept him longer.',
-      'There\u2019s a difference between waiting and refusing to let go.',
-      'Storm\u2019s turning. You\u2019ll want to be off the breakwater before it does.',
-      'I wrote it all down so somebody would know we were here.',
-      'You think the dark is the enemy. The dark is just honest.',
-      'If the horn stops, you run. You don\u2019t look back at me.',
-      'Some lights you keep for the living. This one I keep for the rest.',
-      'I\u2019m not frightened of the water. I\u2019m frightened of the quiet after.',
-      'Every keeper leaves a name in the logbook. None of them leave twice.',
-    ];
-    const parens = ['(quietly)', '(beat)', '(not looking up)', '(to herself)', '(sharp)', '(after a moment)', '(barely audible)'];
-    const transitions = ['CUT TO:', 'SMASH CUT TO:', 'DISSOLVE TO:', 'MATCH CUT TO:'];
-
-    const blocks = [{ type: 'fadein', text: 'FADE IN:' }];
-    for (let s = 0; s < 320; s++) {
-      blocks.push({ type: 'scene', text: `${pick(intext)} ${pick(places)} — ${pick(times)}` });
-      const na = 1 + Math.floor(rnd() * 3);
-      for (let a = 0; a < na; a++) blocks.push({ type: 'action', text: pick(actions) });
-      const nd = 1 + Math.floor(rnd() * 4);
-      for (let d = 0; d < nd; d++) {
-        blocks.push({ type: 'character', text: pick(chars) });
-        if (rnd() < 0.4) blocks.push({ type: 'paren', text: pick(parens) });
-        let txt = pick(lines);
-        if (rnd() < 0.4) txt += ' ' + pick(lines);
-        blocks.push({ type: 'dialogue', text: txt });
-        if (rnd() < 0.28) blocks.push({ type: 'action', text: pick(actions) });
-      }
-      if (rnd() < 0.5) blocks.push({ type: 'transition', text: pick(transitions) });
-    }
-    return blocks;
-  }
+  // No bundled screenplay: a new session is always a clean writing surface.
+  _generateScript() { return []; }
 
   _buildPages(rough) {
-    const mode = this.state.mode || 'sample';
+    const mode = this.state.mode || 'blank';
     const key = mode + ':' + rough + ':' + (this._importedRev || 0);
     if (this._pagesKey === key && this._pagesCache) return this._pagesCache;
     const self = this;
@@ -1231,13 +1152,6 @@ class Component extends DCLogic {
   // ---------- import (.fs / PDF / text) ----------
   // .fs is FilmScript's plain text format: one block per line, "type: text",
   // mirroring the editor's block types. Example:
-  //   title: The Quiet Hour
-  //   scene: INT. RADIO STATION. NIGHT
-  //   action: A single lamp. NOA leans into the microphone.
-  //   character: NOA
-  //   paren: (into the mic)
-  //   dialogue: If you are still awake, this hour is yours.
-  //   transition: CUT TO:
   // Long blocks may wrap: an unprefixed line continues the block above it.
   importScript() {
     window.filmscriptSounds?.play('importScript');
@@ -1300,6 +1214,14 @@ class Component extends DCLogic {
     return true;
   }
 
+  _formatOpeningTitle(title) {
+    const fallback = 'Untitled screenplay';
+    const value = String(title || fallback).trim() || fallback;
+    // PDF filenames often use underscores as word separators. Keep the
+    // stored title untouched, but make the transition card read naturally.
+    return value.replace(/[_]+/g, ' ').replace(/\s+/g, ' ').trim() || fallback;
+  }
+
   _finishScriptTransition(url) {
     const elapsed = Date.now() - (this._scriptTransitionStartedAt || Date.now());
     const delay = Math.max(0, 410 - elapsed);
@@ -1356,13 +1278,19 @@ class Component extends DCLogic {
   onScriptsPointer(event) {
     if (this.state.screen !== 'scripts' || window.matchMedia?.('(prefers-reduced-motion: reduce)').matches) return;
     const rect = event.currentTarget.getBoundingClientRect();
-    const x = ((event.clientX - rect.left) / Math.max(1, rect.width) - 0.5) * -14;
-    const y = ((event.clientY - rect.top) / Math.max(1, rect.height) - 0.5) * -9;
+    const x = ((event.clientX - rect.left) / Math.max(1, rect.width) - 0.5) * -22;
+    const y = ((event.clientY - rect.top) / Math.max(1, rect.height) - 0.5) * -14;
     if (this._parallaxFrame) return;
     this._parallaxFrame = requestAnimationFrame(() => {
       this._parallaxFrame = null;
       this.setState({ parallaxX: Number(x.toFixed(2)), parallaxY: Number(y.toFixed(2)) });
     });
+  }
+
+  onScriptsPointerLeave() {
+    if (this.state.screen !== 'scripts') return;
+    if (this._parallaxFrame) { cancelAnimationFrame(this._parallaxFrame); this._parallaxFrame = null; }
+    this.setState({ parallaxX: 0, parallaxY: 0 });
   }
 
   async deleteStoredScript(event, script) {
@@ -1678,15 +1606,15 @@ Write Lumiere's next reply only:`;
       : { hi: 'Still awake, writer.', sub: 'Inspiration at this hour comes from the shower, one last movie, or a TikTok spiral that got out of hand. Write it down before it escapes.' };
     if (h < 8) return es
       ? { hi: 'Despierto antes que el sol.', sub: 'Primero café, luego páginas. En las horas tranquilas se esconden las buenas escenas.' }
-      : { hi: 'Up before the sun.', sub: 'Coffee first, then pages. The quiet hours are where the good scenes hide.' };
+      : { hi: 'Up before the sun.', sub: 'Coffee first, then pages. Build your next scene at your own pace.' };
     if (h < 12) return es
       ? { hi: 'Buenos días, guionista.', sub: 'Café fresco, páginas nuevas. Tus personajes durmieron aún menos que tú.' }
       : { hi: 'Good morning, writer.', sub: 'Fresh coffee, fresh pages. Your characters slept even less than you did.' };
     if (h < 15) return es
-      ? { hi: 'Buenas tardes, guionista.', sub: 'Una hora perfecta para los segundos actos. El almuerzo puede esperar; el punto medio no.' }
+      ? { hi: 'Buenas tardes, guionista.', sub: 'El café ya hizo su parte. Ahora toca rescatar ese segundo acto antes de que pida vacaciones.' }
       : { hi: 'Good afternoon, writer.', sub: 'A perfect hour for second acts. Lunch can wait, the midpoint cannot.' };
     if (h < 19) return es
-      ? { hi: 'Buenas tardes, guionista.', sub: 'La luz se vuelve dorada. Un buen momento para arreglar ese tercer acto.' }
+      ? { hi: 'Buenas tardes, guionista.', sub: 'La tarde está dorada y ese tercer acto sigue pidiendo auxilio. Vamos a darle una vuelta.' }
       : { hi: 'Good afternoon, writer.', sub: 'The light is turning golden. A fine moment to fix that third act.' };
     if (h < 23) return es
       ? { hi: 'Buenas noches, guionista.', sub: 'Hora estelar. Tus personajes te han esperado todo el día.' }
@@ -1730,12 +1658,12 @@ Write Lumiere's next reply only:`;
     const showFreeCounter = false;
     const hasPlan = !!plan;
     const noPlan = !plan;
-    const isWriterPlan = plan === 'writer';
+    const isBasicPlan = plan === 'basic';
     const isLumierePlan = plan === 'lumiere';
-    const planLabel = plan === 'lumiere' ? 'FilmScript Pro · $20 / month' : 'No active plan';
+    const planLabel = plan === 'lumiere' ? 'FilmScript Pro · $19.99 / month' : plan === 'basic' ? 'FilmScript Basic · $12.99 / month' : 'Free';
     const checkoutPlanKey = this.state.checkoutPlan;
-    const checkoutPlanName = checkoutPlanKey === 'lumiere' ? 'FilmScript Pro' : 'Free';
-    const checkoutPlanPrice = '$20 / month';
+    const checkoutPlanName = checkoutPlanKey === 'lumiere' ? 'FilmScript Pro' : checkoutPlanKey === 'basic' ? 'FilmScript Basic' : 'Free';
+    const checkoutPlanPrice = checkoutPlanKey === 'lumiere' ? '$19.99 / month' : '$12.99 / month';
     const checkoutConfirmStep = this.state.checkoutStep !== 'success';
     const checkoutSuccessStep = this.state.checkoutStep === 'success';
     const checkoutHasLink = !!checkoutPlanKey;
@@ -1768,11 +1696,6 @@ Write Lumiere's next reply only:`;
         rename: (event) => this.renameStoredScript(event, s),
         remove: (event) => this.deleteStoredScript(event, s),
       })),
-      { title: 'The Lighthouse Keeper', meta: '150 pages · edited 2h ago' },
-      { title: 'Neon Static', meta: '150 pages · edited yesterday' },
-      { title: 'Saltbound', meta: '150 pages · edited 3d ago' },
-      { title: 'The Quiet Hour', meta: '150 pages · edited 1w ago' },
-      { title: 'Ashfall', meta: '150 pages · edited 2w ago' },
     ];
     // Keep the field exactly as the writer typed it. Trimming is only for
     // matching, otherwise a trailing space is removed on every render.
@@ -1839,8 +1762,8 @@ Write Lumiere's next reply only:`;
       ],
       darkMode: dark, lightMode: !dark,
       scriptTransitionOpen: this.state.scriptTransitionOpen,
-      openingScriptTitle: this.state.openingScriptTitle || 'Untitled screenplay',
-      openingAriaLabel: `Opening ${this.state.openingScriptTitle || 'screenplay'} in the editor`,
+      openingScriptTitle: this._formatOpeningTitle(this.state.openingScriptTitle),
+      openingAriaLabel: `Opening ${this._formatOpeningTitle(this.state.openingScriptTitle)} in the editor`,
       openingSheetPath: this._roughPath(228, 292, 2.4, 9341, 18),
       scriptsBackgroundImage: dark
         ? "linear-gradient(rgba(18,18,17,.76), rgba(18,18,17,.88)), url('./assets/writer-desk-sketch-dark.png')"
@@ -1885,6 +1808,7 @@ Write Lumiere's next reply only:`;
       goLanding: () => { window.location.href = 'Features.dc.html'; },
       goScripts: () => { this._loadScripts(); this.setState({ screen: 'scripts' }); },
       onScriptsPointer: (event) => this.onScriptsPointer(event),
+      onScriptsPointerLeave: () => this.onScriptsPointerLeave(),
       goEditor: () => this._enterScript('Editor v5.dc.html', 'Untitled screenplay'),
       newScript: () => this.createNewScript(),
       importScript: () => this.importScript(),
@@ -1927,14 +1851,14 @@ Write Lumiere's next reply only:`;
       userName: this.state.profileName || (this.state.user ? this.state.user.name : 'Writer'),
       profileNameDraft: this.state.profileNameDraft,
       profileSaveLabel: this.state.profileSaving ? 'Saving…' : this.state.profileSaved ? 'Saved' : 'Save',
-      accountStatus: plan ? 'Active' : 'No active plan',
+      accountStatus: plan ? 'Active' : 'Free',
       openAuth: () => this.setState({ authOpen: true }),
       closeAuth: () => this.setState({ authOpen: false }),
       stop: (e) => { e.stopPropagation(); },
       googleSignUp: () => { window.location.href = window.filmscriptBilling.googleSignInUrl(); },
       signOut: async () => { try { await window.filmscriptBilling.logout(); } catch (e) {} window.location.href = 'Features.dc.html'; },
 
-      plan, planLabel, hasPlan, noPlan, isWriterPlan, isLumierePlan,
+      plan, planLabel, hasPlan, noPlan, isBasicPlan, isLumierePlan,
       lumiereUnlocked, lumiereLocked, showFreeCounter,
       unlockBtnPath: this._roughPath(180, 44, 2, 999, 14),
 
@@ -1974,7 +1898,7 @@ Write Lumiere's next reply only:`;
       openPayLink: async () => {
         try {
           const result = await window.filmscriptBilling.checkout(this.state.checkoutPlan, this.state.user?.email);
-          window.filmscriptBilling.trackCheckoutRedirected?.(this.state.checkoutPlan);
+          window.filmscriptBilling.trackCheckoutRedirected(this.state.checkoutPlan);
           window.location.href = result.checkoutUrl;
         }
         catch (e) { this.setState({ toast: e.message }); }

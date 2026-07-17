@@ -1,4 +1,54 @@
 /* Shared FilmScript controls: precise content with a subtle hand-drawn double frame. */
+:root {
+  /* SF Pro is the product voice. The system fallbacks keep the same metrics on
+     browsers where Apple’s bundled faces are not exposed by name. */
+  --fs-font-text: "SF Pro Text", -apple-system, BlinkMacSystemFont, "Helvetica Neue", Arial, sans-serif;
+  --fs-font-display: "SF Pro Display", "SF Pro Text", -apple-system, BlinkMacSystemFont, "Helvetica Neue", Arial, sans-serif;
+  --fs-font-mono: "SF Mono", "SFMono-Regular", ui-monospace, Menlo, Monaco, Consolas, monospace;
+}
+
+body,
+button,
+input,
+select,
+textarea {
+  font-family: var(--fs-font-text) !important;
+}
+
+body {
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+}
+
+h1,
+h2,
+h3,
+h4,
+h5,
+h6 {
+  font-family: var(--fs-font-display) !important;
+}
+
+h1, h2 { font-weight: 900 !important; }
+h3 { font-weight: 800 !important; }
+h4, h5, h6 { font-weight: 700 !important; }
+
+/* A few legacy templates carry a family in an inline style. Keep those
+   templates editable while making their rendered UI follow the same system. */
+[style*="Helvetica Neue"] {
+  font-family: var(--fs-font-text) !important;
+}
+
+/* Screenplay pages and technical previews opt into the format-specific mono
+   face explicitly; all application chrome remains SF Pro. */
+[data-fs-page],
+[data-fs-page] *,
+[data-v5-cover],
+[data-v5-cover] * {
+  font-family: "Courier Prime", "Courier New", ui-monospace, monospace;
+}
+
 .fs-double-outline {
   --fs-frame-bg: var(--surface, #FFFEF9);
   --fs-frame-border: var(--line, #2C2C2A);
@@ -7,7 +57,7 @@
   border: 0 !important;
   background: transparent !important;
   filter: none !important;
-  font-family: "Helvetica Neue", Helvetica, Arial, sans-serif;
+  font-family: var(--fs-font-text);
 }
 
 .fs-double-outline::before,
@@ -107,7 +157,7 @@
 .fs-pricing-card {
   --fs-frame-bg: var(--surface, #FFFEF9);
   --fs-frame-border: var(--line, #2C2C2A);
-  font-family: "Helvetica Neue", Helvetica, Arial, sans-serif !important;
+  font-family: var(--fs-font-text) !important;
 }
 
 .fs-pricing-card::before {
@@ -123,13 +173,13 @@
 
 .fs-pricing-card,
 .fs-pricing-card * {
-  font-family: "Helvetica Neue", Helvetica, Arial, sans-serif !important;
+  font-family: var(--fs-font-text) !important;
   filter: none !important;
   text-shadow: none !important;
 }
 
 .fs-price-amount {
-  font-family: "Helvetica Neue", Helvetica, Arial, sans-serif !important;
+  font-family: var(--fs-font-text) !important;
   font-weight: 500 !important;
   letter-spacing: -1.25px !important;
 }

@@ -20,6 +20,11 @@
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ budget }),
     }),
+    importBudget: (scriptId, payload) => request(budgetPath(scriptId, '/import'), {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload || {}),
+    }),
     uploadReceipt: async (scriptId, blob, filename) => {
       const response = await fetch(resolve(budgetPath(scriptId, '/receipts')), {
         method: 'POST',
@@ -35,6 +40,9 @@
       return data;
     },
     receiptUrl: (scriptId, receiptId) => resolve(budgetPath(scriptId, `/receipts/${encodeURIComponent(receiptId)}`)),
-    exportUrl: (scriptId) => resolve(budgetPath(scriptId, '.pdf')),
+    exportUrl: (scriptId, language = 'en') => {
+      const normalizedLanguage = String(language || '').toLowerCase().startsWith('es') ? 'es' : 'en';
+      return resolve(`${budgetPath(scriptId, '.pdf')}?lang=${encodeURIComponent(normalizedLanguage)}`);
+    },
   };
 })();

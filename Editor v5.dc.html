@@ -6,9 +6,10 @@
 <script src="./support.js"></script>
 <script src="./runtime-config.js?v=20260710-auth1"></script>
 <script src="./theme-preference.js?v=20260712-theme1"></script>
-<script src="./language-preference.js?v=20260713-shot-scenes2"></script>
+<script src="./language-preference.js?v=20260716-language-choice1"></script>
 <script src="./ui-sounds.js?v=20260713-budget-count1"></script>
-<script src="./billing-client.js?v=20260712-auth2"></script>
+<script src="./billing-client.js?v=20260716-profile-safe1"></script>
+<script src="./profile-onboarding.js?v=20260716-profile1"></script>
 <script src="./lumiere-client.js?v=20260713-language1"></script>
 <script src="./lumiere-preferences.js?v=20260713-taste1"></script>
 <script src="./writing-idle.js?v=20260713-idle1"></script>
@@ -19,9 +20,12 @@
 <script src="./canvas-client.js?v=20260714-canvas1"></script>
 <script src="./canvas-workspace.js?v=20260714-canvas1"></script>
 <script src="./analysis-client.js?v=20260713-language1"></script>
-    <script type="module" src="./analysis-workspace.js?v=20260714-editorial-focus4"></script>
-<script src="./budget-client.js?v=20260713-budget2"></script>
-<script type="module" src="./budget-workspace.js?v=20260713-budget11"></script>
+    <script type="module" src="./analysis-workspace.js?v=20260716-analysis-manual-start1"></script>
+<script src="./budget-client.js?v=20260716-budgetimport1"></script>
+<script type="module" src="./budget-workspace.js?v=20260716-budgetimport1"></script>
+<script src="./calendar-client.js?v=20260716-calendar1"></script>
+<script type="module" src="./calendar-workspace.js?v=20260716-timeline6"></script>
+<link rel="stylesheet" href="./filmscript-controls.css?v=20260716-typography1">
 </head>
 <body>
 <x-dc>
@@ -107,7 +111,7 @@
   .v5-theme-toggle::before { content: ""; position: absolute; inset: 4px; z-index: -1; border-radius: 50%; background: rgba(255,254,249,.08); opacity: 0; transform: scale(.72); transition: opacity .16s ease, transform .18s cubic-bezier(.2,.8,.2,1), background-color .18s ease; }
   .v5-theme-toggle:hover::before, .v5-theme-toggle:focus-visible::before { opacity: 1; transform: scale(1); }
   .v5-theme-toggle:focus-visible { outline: 2px solid var(--accent, #BA7517); outline-offset: 2px; }
-  .v5-theme-icon { width: 17px; height: 17px; animation: v5-theme-icon-in .2s cubic-bezier(.2,.8,.2,1) both; transition: transform .18s cubic-bezier(.2,.8,.2,1), color .16s ease; }
+  .v5-theme-icon { width: 21px; height: 21px; animation: v5-theme-icon-in .2s cubic-bezier(.2,.8,.2,1) both; transition: transform .18s cubic-bezier(.2,.8,.2,1), color .16s ease; }
   .v5-theme-toggle:hover .v5-theme-icon-sun, .v5-theme-toggle:focus-visible .v5-theme-icon-sun { transform: rotate(13deg) scale(1.05); color: #FFB703; }
   .v5-theme-toggle:hover .v5-theme-icon-moon, .v5-theme-toggle:focus-visible .v5-theme-icon-moon { transform: rotate(-11deg) translate(-1px,-1px) scale(1.04); color: #FFB703; }
   .v5-theme-toggle:active .v5-theme-icon { transform: scale(.9); }
@@ -184,6 +188,9 @@
   .v5-cover-title { max-width: 480px; min-height: 70px; padding: 8px 12px; resize: none; overflow: hidden; font-size: 17px; font-weight: 700; line-height: 1.5; letter-spacing: 2px; text-transform: uppercase; }
   .v5-cover-credit { max-width: 300px; margin-top: 30px; padding: 4px 10px; font-size: 15px; line-height: 1.4; }
   .v5-cover-author { max-width: 340px; margin-top: 4px; padding: 4px 10px; font-size: 15px; line-height: 1.4; }
+  .v5-cover-meta { position: absolute; left: 120px; bottom: 96px; max-width: 460px; text-align: left; }
+  .v5-cover-meta-date { font-size: 13px; color: var(--muted, #888780); }
+  .v5-cover-meta-contact { max-width: 460px; margin-top: 10px; font-size: 13px; line-height: 1.5; color: var(--muted, #888780); }
   .v5-production-header { display: flex; justify-content: space-between; align-items: flex-end; gap: 24px; padding-bottom: 24px; border-bottom: 1px solid var(--hair, #E7E4DA); }
   .v5-production-header-actions { display: flex; align-items: center; justify-content: flex-end; gap: 11px; }
   .v5-production-sync-state { min-height: 34px; display: inline-flex; align-items: center; gap: 8px; padding: 0 11px; border: 1px solid var(--hair, #E7E4DA); border-radius: 999px 950px 999px 930px; background: color-mix(in srgb, var(--surface, #FFFEF9) 88%, transparent); color: var(--muted, #888780); font-size: 10.5px; font-weight: 650; white-space: nowrap; }
@@ -349,8 +356,8 @@
   .v5-strip-location svg { flex: 0 0 auto; width: 13px; height: 13px; opacity: .72; }
   .v5-strip-location-button > span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .v5-strip-location.is-unassigned .v5-strip-location-button { color: color-mix(in srgb, currentColor 64%, var(--accent, #BA7517)); font-weight: 650; }
-  .v5-strip-time { position: relative; display: flex; justify-content: center; }
-  .v5-strip-time-button { min-width: 58px; height: 27px; padding: 0 7px; border: 1px solid rgba(35,35,34,.22); border-radius: 7px 8px 7px 8px; color: inherit; background: rgba(255,255,255,.35); font: 700 10px/1 inherit; font-variant-numeric: tabular-nums; white-space: nowrap; cursor: pointer; transition: background-color .16s ease, transform .16s ease; }
+  .v5-strip-time { position: relative; display: flex; min-width: 0; justify-content: center; overflow: hidden; }
+  .v5-strip-time-button { display: inline-flex; align-items: center; justify-content: center; min-width: 58px; max-width: 100%; height: 27px; overflow: hidden; padding: 0 7px; border: 1px solid rgba(35,35,34,.22); border-radius: 7px 8px 7px 8px; color: inherit; background: rgba(255,255,255,.35); font: 700 10px/1 inherit; font-variant-numeric: tabular-nums; text-overflow: ellipsis; white-space: nowrap; cursor: pointer; transition: background-color .16s ease, transform .16s ease; }
   .v5-strip-time-button:hover { background: rgba(255,255,255,.65); transform: translateY(-1px); }
   .v5-strip-time-button.is-unset { min-width: 72px; border-style: dashed; color: color-mix(in srgb, currentColor 66%, var(--accent, #BA7517)); font-weight: 650; }
   .v5-strip-page, .v5-strip-start { display: flex; align-items: center; justify-content: center; min-width: 0; font-size: 10px; font-weight: 800; font-variant-numeric: tabular-nums; text-align: center; }
@@ -430,7 +437,14 @@
   .v5-strip-break-menu { display: grid; gap: 3px; }
   .v5-strip-break-menu button { padding: 8px 9px; text-align: left; transition: background-color .14s ease; }
   .v5-strip-break-menu button:hover { background: var(--accent-soft, rgba(186,117,23,.11)); }
-  .v5-strip-break { min-height: 31px; display: grid; grid-template-columns: 1fr auto; align-items: center; gap: 14px; padding: 0 13px; border: 1px dashed var(--sheet-line, #B9B3A7); border-radius: 8px 10px 8px 9px; background: color-mix(in srgb, var(--page, #FAF7F2) 78%, var(--accent-soft, rgba(186,117,23,.11))); color: var(--ink, #2C2C2A); }
+  .v5-strip-break { min-height: 34px; display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.2fr) auto auto; align-items: center; gap: 8px; padding: 0 10px; overflow: hidden; border: 1px dashed var(--sheet-line, #B9B3A7); border-radius: 8px 10px 8px 9px; background: color-mix(in srgb, var(--page, #FAF7F2) 78%, var(--accent-soft, rgba(186,117,23,.11))); color: var(--ink, #2C2C2A); }
+  .v5-strip-event { cursor: grab; user-select: none; touch-action: pan-y; transition: filter .16s ease, box-shadow .16s ease, transform .16s ease; }
+  .v5-strip-event:hover, .v5-strip-event:focus-visible { filter: brightness(.99); box-shadow: 0 4px 12px rgba(35,35,34,.1); outline: none; }
+  .v5-strip-event:focus-visible { outline: 2px solid var(--accent, #BA7517); outline-offset: 3px; }
+  .v5-strip-event.v5-strip-dragging { cursor: grabbing; opacity: .86; scale: 1.012; box-shadow: 0 12px 24px rgba(35,35,34,.16); }
+  .v5-strip-event-actions { display: inline-flex; align-items: center; justify-content: flex-end; gap: 4px; min-width: max-content; }
+  .v5-strip-break-time { min-width: 54px; height: 25px; padding-inline: 6px; font-size: 9px; }
+  .v5-strip-divider.v5-strip-event { grid-template-columns: minmax(0,1fr) minmax(0,1.3fr) auto; }
   .v5-shotlist-toolbar { display: flex; align-items: center; gap: 12px; margin: 24px 0 18px; }
   .v5-shotlist-toolbar-copy { min-width: 0; flex: 1; }
   .v5-shotlist-toolbar-actions { display: flex; align-items: center; justify-content: flex-end; flex-wrap: wrap; gap: 8px; }
@@ -617,6 +631,9 @@
   @keyframes v5-format-target { 0% { outline-color: transparent; background-color: transparent; } 25%, 75% { outline-color: var(--accent, #BA7517); background-color: var(--accent-soft, rgba(186,117,23,.11)); } 100% { outline-color: transparent; background-color: transparent; } }
   .v5-format-target { outline: 2px solid transparent; outline-offset: 5px; animation: v5-format-target 1.45s ease both; }
   .v5-editor-workspace, .v5-production-shell { animation: v5-mode-panel-in .2s cubic-bezier(.2,.8,.2,1) both; transform-origin: 50% 32%; }
+  .v5-production-shell-calendar { overflow: auto !important; }
+  .v5-production-shell-calendar > div { width: 100%; min-height: 0; }
+  .v5-production-shell-calendar filmscript-calendar { display: block; width: 100%; height: 100%; min-height: 0; }
   .v5-screenplay-stage { animation: v5-screenplay-up .24s cubic-bezier(.4,0,.2,1) both; }
   [data-fs-page] [data-type="scene"].v5-analysis-focus { z-index: 2; padding: 7px 10px 7px 13px; border-left: 3px solid #C98273; border-radius: 4px 9px 7px 3px; background: color-mix(in srgb, #DFA193 24%, var(--surface, #FFFEF9)); box-shadow: 0 0 0 4px color-mix(in srgb, #DFA193 12%, transparent), 4px 5px 0 color-mix(in srgb, #C98273 15%, transparent); animation: v5-analysis-focus-in .34s cubic-bezier(.2,.8,.2,1) both; }
   [data-fs-page] [data-type="scene"].v5-analysis-focus::after { content: ""; position: absolute; left: 13px; right: 9px; bottom: -5px; height: 2px; border-radius: 99px; background: #C98273; transform-origin: left center; animation: v5-analysis-focus-line .3s .12s cubic-bezier(.2,.8,.2,1) both; }
@@ -649,7 +666,7 @@
           <svg class="v5-theme-icon v5-theme-icon-sun" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><circle cx="10" cy="10" r="3.2"></circle><path d="M10 3.4 V5 M10 15 V16.6 M3.4 10 H5 M15 10 H16.6 M5.4 5.4 L6.5 6.5 M13.5 13.5 L14.6 14.6 M14.6 5.4 L13.5 6.5 M6.5 13.5 L5.4 14.6"></path></svg>
         </sc-if>
         <sc-if value="{{ lightMode }}" hint-placeholder-val="{{ true }}">
-          <svg class="v5-theme-icon v5-theme-icon-moon" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><path d="M14.6 11 Q14.3 14.7 10.6 14.8 Q12.9 12.6 12.8 9.3 Q12.7 6.5 10.4 5.1 Q14.9 5.5 14.6 11 Z"></path></svg>
+          <svg class="v5-theme-icon v5-theme-icon-moon" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><path d="M17.5 10.66 A7.5 7.5 0 1 1 9.34 2.5 A5.83 5.83 0 0 0 17.5 10.66 Z"></path></svg>
         </sc-if>
       </button>
       <div style="position: relative;" data-v5-pop="1">
@@ -663,7 +680,8 @@
           </div>
           <div data-act="a-scripts" class="v5row" style="padding: 8px 11px; font-size: 12.5px; color: var(--ink, #2C2C2A); cursor: pointer; border-radius: 8px; transition: box-shadow .13s ease;">My scripts</div>
           <div data-act="a-account" class="v5row" style="padding: 8px 11px; font-size: 12.5px; color: var(--ink, #2C2C2A); cursor: pointer; border-radius: 8px; transition: box-shadow .13s ease;">Account details</div>
-          <div data-act="a-lumiere" class="v5row" style="padding: 8px 11px; font-size: 12.5px; color: var(--ink, #2C2C2A); cursor: pointer; border-radius: 8px; transition: box-shadow .13s ease;">Personalize Lumiere</div>
+          <div data-filmscript-open-profile class="v5row" style="padding: 8px 11px; font-size: 12.5px; color: var(--ink, #2C2C2A); cursor: pointer; border-radius: 8px; transition: box-shadow .13s ease;">Personal profile</div>
+          <sc-if value="{{ isLumierePlan }}" hint-placeholder-val="{{ false }}"><div data-act="a-lumiere" class="v5row" style="padding: 8px 11px; font-size: 12.5px; color: var(--ink, #2C2C2A); cursor: pointer; border-radius: 8px; transition: box-shadow .13s ease;">Personalize Lumiere</div></sc-if>
           <div data-act="a-pricing" class="v5row" style="padding: 8px 11px; font-size: 12.5px; color: var(--ink, #2C2C2A); cursor: pointer; border-radius: 8px; transition: box-shadow .13s ease;">Plan and billing</div>
           <div data-act="a-theme" class="v5row" style="padding: 8px 11px; font-size: 12.5px; color: var(--ink, #2C2C2A); cursor: pointer; border-radius: 8px; transition: box-shadow .13s ease;">{{ themeLabel }}</div>
           <div data-act="a-signout" class="v5row" style="padding: 8px 11px; font-size: 12.5px; color: var(--muted, #888780); cursor: pointer; border-radius: 8px; transition: box-shadow .13s ease;">Sign out</div>
@@ -674,8 +692,8 @@
   </div>
 
   <sc-if value="{{ accountDetailsOpen }}" hint-placeholder-val="{{ false }}">
-    <div onClick="{{ closeAccountDetails }}" style="position: fixed; inset: 44px 0 0; z-index: 180; display: flex; align-items: flex-start; justify-content: flex-end; padding: 22px 24px; background: rgba(35,35,34,.18); animation: v5-fade .16s ease both;">
-      <div onClick="{{ stopClick }}" style="width: min(380px, calc(100vw - 32px)); max-height: calc(100vh - 90px); overflow: auto; padding: 22px; background: var(--surface, #FFFEF9); color: var(--ink, #2C2C2A); border: 1px solid var(--hair, #E7E4DA); border-radius: 15px 13px 16px 12px; box-shadow: 0 18px 44px rgba(35,35,34,.2); animation: v5-rise .2s cubic-bezier(.2,.8,.2,1) both;">
+    <div data-testid="account-details-overlay" onClick="{{ closeAccountDetails }}" style="position: fixed; inset: 0; z-index: 1200; isolation: isolate; pointer-events: auto; display: flex; align-items: flex-start; justify-content: flex-end; padding: 66px 24px 22px; background: rgba(35,35,34,.18); animation: v5-fade .16s ease both;">
+      <div data-testid="account-details-panel" onClick="{{ stopClick }}" style="position: relative; z-index: 1; width: min(380px, calc(100vw - 32px)); max-height: calc(100vh - 88px); overflow: auto; padding: 22px; background: var(--surface, #FFFEF9); color: var(--ink, #2C2C2A); border: 1px solid var(--hair, #E7E4DA); border-radius: 15px 13px 16px 12px; box-shadow: 0 18px 44px rgba(35,35,34,.2); animation: v5-rise .2s cubic-bezier(.2,.8,.2,1) both;">
         <div style="display: flex; align-items: center; gap: 12px;">
           <div style="width: 42px; height: 42px; border-radius: 50%; background: var(--accent, #BA7517); color: #FFFEF9; display: flex; align-items: center; justify-content: center; font-weight: 700;">{{ userInitial }}</div>
           <div style="min-width: 0; flex: 1;"><div style="font-size: 18px; font-weight: 700;">Account details</div><div style="font-size: 11px; color: var(--muted, #888780); margin-top: 3px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">{{ accountEmail }}</div></div>
@@ -761,8 +779,8 @@
   </sc-if>
 
   <sc-if value="{{ productionMode }}" hint-placeholder-val="false">
-  <div ref="{{ bindProductionScroll }}" class="v5-production-shell" style="flex: 1; min-height: 0; overflow: auto; padding: 38px 48px 64px; background: var(--bg, #F5F0E8);">
-    <div style="max-width: {{ productionMaxWidth }}; margin: 0 auto;">
+  <div ref="{{ bindProductionScroll }}" class="v5-production-shell {{ productionShellClass }}" style="flex: 1; min-height: 0; overflow: auto; padding: {{ productionShellPadding }}; background: var(--bg, #F5F0E8);">
+    <div style="max-width: {{ productionMaxWidth }}; margin: 0 auto; height: {{ productionInnerHeight }};">
       <sc-if value="{{ productionHeaderVisible }}" hint-placeholder-val="true">
       <div class="v5-production-header">
         <div><div style="font-size: 10px; letter-spacing: 1.5px; text-transform: uppercase; color: var(--accent, #BA7517); font-weight: 700;">{{ workModeEyebrow }}</div><div style="font-size: 28px; font-weight: 700; letter-spacing: -.7px; color: var(--ink, #2C2C2A); margin-top: 8px;">{{ workModeTitle }}</div><div style="font-size: 13px; color: var(--muted, #888780); margin-top: 7px;">{{ docTitle }}</div></div>
@@ -772,7 +790,7 @@
         </div>
       </div>
       </sc-if>
-      <sc-if value="{{ productionAccessNotice }}" hint-placeholder-val="false"><div class="v5-access-note" data-testid="production-access-notice"><div style="width: 8px; height: 8px; flex: 0 0 8px; border-radius: 50%; background: var(--accent, #BA7517); box-shadow: 0 0 0 5px var(--accent-soft, rgba(186,117,23,.11));"></div><div class="v5-access-note-copy"><div style="font-size: 9.5px; font-weight: 750; letter-spacing: 1.2px; text-transform: uppercase; color: var(--accent, #BA7517);">FilmScript Pro inactive</div><div style="font-size: 13.5px; font-weight: 700; color: var(--ink, #2C2C2A); margin-top: 4px;">Your existing production work stays yours.</div><div style="font-size: 11.5px; line-height: 1.55; color: var(--muted, #888780); margin-top: 4px;">Keep editing and exporting existing breakdowns, stripboards, shot lists, and budgets. An active plan is required only to generate new work with Lumiere.</div></div><button type="button" class="v5-access-note-action" onClick="{{ goPricing }}">View FilmScript Pro</button></div></sc-if>
+      <sc-if value="{{ productionAccessNotice }}" hint-placeholder-val="false"><div class="v5-access-note" data-testid="production-access-notice"><div style="width: 8px; height: 8px; flex: 0 0 8px; border-radius: 50%; background: var(--accent, #BA7517); box-shadow: 0 0 0 5px var(--accent-soft, rgba(186,117,23,.11));"></div><div class="v5-access-note-copy"><div style="font-size: 9.5px; font-weight: 750; letter-spacing: 1.2px; text-transform: uppercase; color: var(--accent, #BA7517);">FilmScript Pro inactive</div><div style="font-size: 13.5px; font-weight: 700; color: var(--ink, #2C2C2A); margin-top: 4px;">Your existing production work stays yours.</div><div style="font-size: 11.5px; line-height: 1.55; color: var(--muted, #888780); margin-top: 4px;">Keep editing existing breakdowns, stripboards, shot lists, budgets, and calendars, with exports where available. An active plan is required only to generate new work with Lumiere.</div></div><button type="button" class="v5-access-note-action" onClick="{{ goPricing }}">View FilmScript Pro</button></div></sc-if>
       <sc-if value="{{ productionLoading }}" hint-placeholder-val="false"><div style="padding: 72px; text-align: center; color: var(--muted, #888780);">Loading screenplay data…</div></sc-if>
       <sc-if value="{{ productionEmpty }}" hint-placeholder-val="false"><div style="max-width: 600px; margin: 76px auto; text-align: center; padding: 42px; background: var(--surface, #FFFEF9); border: 1px solid var(--hair, #E7E4DA); border-radius: 16px;"><div style="font-size: 24px; font-weight: 700; color: var(--ink, #2C2C2A);">{{ productionEmptyTitle }}</div><div style="font-size: 14px; line-height: 1.6; color: var(--muted, #888780); margin: 14px auto 24px; max-width: 470px;">{{ productionEmptyText }}</div><button type="button" onClick="{{ productionEmptyActionHandler }}" style="display: inline-block; padding: 12px 17px; border: 0; background: var(--accent, #BA7517); border-radius: 10px; color: #1A1A1A; font-family: inherit; font-size: 13px; font-weight: 700; cursor: pointer;">{{ productionEmptyAction }}</button></div></sc-if>
       <sc-if value="{{ productionProgress }}" hint-placeholder-val="false"><div style="margin: 24px 0; padding: 13px 15px; background: var(--surface, #FFFEF9); border: 1px solid var(--hair, #E7E4DA); border-radius: 11px; font-size: 13px; color: var(--ink, #2C2C2A);">{{ productionProgressText }}</div></sc-if>
@@ -903,12 +921,12 @@
 	            </div>
             <sc-for list="{{ stripboardRows }}" as="row" hint-placeholder-count="14">
               <sc-if value="{{ row.isDivider }}" hint-placeholder-val="false">
-                <div class="v5-strip-divider" style="--strip-rotation: {{ row.rotation }}deg; --strip-delay: {{ row.animationDelay }}ms; height: 34px; display: grid; grid-template-columns: 1fr auto; align-items: center; gap: 16px; padding: 0 14px; background: var(--chrome, #232322); color: #FFFEF9; border-radius: 8px 10px 7px 9px; transform: rotate(var(--strip-rotation));">
-                  <span style="font-size: 11px; font-weight: 800; letter-spacing: .9px; text-transform: uppercase;">{{ row.label }}</span><span style="font-size: 10.5px; font-weight: 650; opacity: .82;">{{ row.total }}</span>
+                <div class="v5-strip-divider {{ row.isEvent ? 'v5-strip-event' : '' }}" data-event-id="{{ row.eventId }}" role="listitem" tabindex="0" aria-label="{{ row.eventAriaLabel }}" style="--strip-rotation: {{ row.rotation }}deg; --strip-delay: {{ row.animationDelay }}ms; height: 34px; display: grid; grid-template-columns: minmax(0, 1fr) auto auto; align-items: center; gap: 12px; padding: 0 12px; background: var(--chrome, #232322); color: #FFFEF9; border-radius: 8px 10px 7px 9px; transform: rotate(var(--strip-rotation));">
+                  <span style="min-width: 0; overflow: hidden; font-size: 10.5px; font-weight: 800; letter-spacing: .8px; text-overflow: ellipsis; text-transform: uppercase; white-space: nowrap;">{{ row.label }}</span><span style="min-width: 0; overflow: hidden; font-size: 9.5px; font-weight: 650; opacity: .82; text-overflow: ellipsis; white-space: nowrap;">{{ row.total }}</span><sc-if value="{{ row.isEvent }}" hint-placeholder-val="false"><span class="v5-strip-event-actions"><button type="button" class="v5-strip-move" onClick="{{ row.moveUp }}" disabled="{{ row.moveUpDisabled }}" aria-label="Move {{ row.label }} earlier">↑</button><button type="button" class="v5-strip-move" onClick="{{ row.moveDown }}" disabled="{{ row.moveDownDisabled }}" aria-label="Move {{ row.label }} later">↓</button></span></sc-if>
                 </div>
               </sc-if>
               <sc-if value="{{ row.isBreak }}" hint-placeholder-val="false">
-                <div class="v5-strip-break" style="--strip-delay: {{ row.animationDelay }}ms;"><span style="font-size: 10.5px; font-weight: 800; letter-spacing: .35px; text-transform: uppercase;">{{ row.label }}</span><span style="font-size: 10px; font-weight: 700; color: var(--muted, #888780);">{{ row.total }}</span></div>
+                <div class="v5-strip-break v5-strip-event" data-event-id="{{ row.eventId }}" role="listitem" tabindex="0" aria-label="{{ row.eventAriaLabel }}" style="--strip-delay: {{ row.animationDelay }}ms;"><span class="v5-strip-break-label" style="min-width: 0; overflow: hidden; font-size: 10.5px; font-weight: 800; letter-spacing: .35px; text-overflow: ellipsis; text-transform: uppercase; white-space: nowrap;">{{ row.label }}</span><span class="v5-strip-break-meta" style="min-width: 0; overflow: hidden; font-size: 9.5px; font-weight: 700; color: var(--muted, #888780); text-overflow: ellipsis; white-space: nowrap;">{{ row.total }}</span><button type="button" data-v5-break-trigger class="v5-strip-time-button v5-strip-break-time" onClick="{{ row.openTime }}" aria-label="Edit {{ row.label }} duration" aria-haspopup="dialog" aria-expanded="{{ row.breakOpen }}">{{ row.durationLabel }}</button><span class="v5-strip-event-actions"><button type="button" class="v5-strip-move" onClick="{{ row.moveUp }}" disabled="{{ row.moveUpDisabled }}" aria-label="Move {{ row.label }} earlier">↑</button><button type="button" class="v5-strip-move" onClick="{{ row.moveDown }}" disabled="{{ row.moveDownDisabled }}" aria-label="Move {{ row.label }} later">↓</button></span></div>
               </sc-if>
               <sc-if value="{{ row.isStrip }}" hint-placeholder-val="false">
 	                <div class="v5-strip {{ row.popoverClass }} {{ row.selectedClass }}" data-strip-id="{{ row.sceneId }}" data-testid="{{ row.testId }}" role="listitem" tabindex="0" aria-label="{{ row.ariaLabel }}" style="--strip-rotation: {{ row.rotation }}deg; --strip-delay: {{ row.animationDelay }}ms; min-height: 64px; display: grid; grid-template-columns: {{ row.gridColumns }}; align-items: center; gap: 0; padding: 0 8px; color: {{ row.textColor }}; background: {{ row.bg }}; border: 1px solid {{ row.border }}; border-radius: {{ row.radius }}; transform: rotate(var(--strip-rotation));">
@@ -934,7 +952,7 @@
                     </sc-if>
                   </span>
                   <span class="v5-strip-page">{{ row.pageLength }}</span>
-                  <span class="v5-strip-time"><button type="button" data-v5-time-trigger class="v5-strip-time-button {{ row.timeUnsetClass }}" onClick="{{ row.openTime }}" aria-label="Edit estimated time for scene {{ row.sceneNo }}" aria-haspopup="dialog" aria-expanded="{{ row.timeOpen }}">{{ row.estimatedTimeLabel }}</button></span>
+                  <span class="v5-strip-time"><button type="button" data-v5-time-trigger class="v5-strip-time-button {{ row.timeUnsetClass }}" onClick="{{ row.openTime }}" aria-label="{{ row.estimatedTimeAriaLabel }}" aria-haspopup="dialog" aria-expanded="{{ row.timeOpen }}">{{ row.estimatedTimeLabel }}</button></span>
                   <span class="v5-strip-start {{ row.startTimePendingClass }}">{{ row.startTimeLabel }}</span>
                   <span class="v5-strip-notes" title="No production notes for this scene" aria-label="No production notes"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M7 3h10a2 2 0 0 1 2 2v14l-4-3H7a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2Z"></path><path d="M8.5 8h7M8.5 11.5h5"></path></svg></span>
                 </div>
@@ -1009,6 +1027,9 @@
       <sc-if value="{{ budgetHasData }}" hint-placeholder-val="false">
         <filmscript-budget script-id="{{ activeScriptId }}" project-title="{{ docTitle }}"></filmscript-budget>
       </sc-if>
+      <sc-if value="{{ calendarHasData }}" hint-placeholder-val="false">
+        <filmscript-calendar script-id="{{ activeScriptId }}" project-title="{{ docTitle }}"></filmscript-calendar>
+      </sc-if>
     </div>
   </div>
   </sc-if>
@@ -1016,9 +1037,8 @@
   <sc-if value="{{ stripboardTimePopoverOpen }}" hint-placeholder-val="false">
     <div class="v5-strip-time-popover {{ stripboardTimePopoverPlacement }}" data-v5-time-pop data-testid="stripboard-time-popover" role="dialog" aria-label="Estimated time for scene {{ stripboardTimeSceneNo }}" style="left: {{ stripboardTimePopoverLeft }}px; top: {{ stripboardTimePopoverTop }}px;" onKeyDown="{{ stripboardTimeKeyDown }}">
       <div class="v5-strip-time-heading">
-        <span class="v5-strip-time-kicker">Scene {{ stripboardTimeSceneNo }}</span>
-        <strong class="v5-strip-time-title">Estimated time</strong>
-        <span class="v5-strip-time-copy">Set the scene duration. Every following start time updates instantly.</span>
+        <sc-if value="{{ stripboardTimeIsEvent }}" hint-placeholder-val="false"><span class="v5-strip-time-kicker">{{ stripboardTimeEventLabel }}</span><strong class="v5-strip-time-title">Break duration</strong><span class="v5-strip-time-copy">Set the duration. The Stripboard schedule updates instantly.</span></sc-if>
+        <sc-if value="{{ stripboardTimeIsEvent }}" hint-placeholder-val="true"><span class="v5-strip-time-kicker">Scene {{ stripboardTimeSceneNo }}</span><strong class="v5-strip-time-title">Estimated time</strong><span class="v5-strip-time-copy">Set the scene duration. Every following start time updates instantly.</span></sc-if>
       </div>
       <div class="v5-strip-time-dial" aria-label="Duration clock">
         <div class="v5-strip-time-unit">
@@ -1076,8 +1096,10 @@
               <textarea class="v5-cover-field v5-cover-title" data-testid="cover-title-input" aria-label="Screenplay title" title="Click to edit the screenplay title" placeholder="SCREENPLAY TITLE" rows="2" value="{{ docTitle }}" onInput="{{ onTpTitle }}" spellcheck="false"></textarea>
               <input class="v5-cover-field v5-cover-credit" data-testid="cover-credit-input" aria-label="Title page credit" title="Click to edit the title page credit" placeholder="Written by" value="{{ tpCredit }}" onInput="{{ onTpCredit }}" autocomplete="off" spellcheck="false">
               <input class="v5-cover-field v5-cover-author" data-testid="cover-author-input" aria-label="Screenplay author" title="Click to edit the writer name" placeholder="Writer name" value="{{ tpAuthor }}" onInput="{{ onTpAuthor }}" autocomplete="name" spellcheck="false">
-              <sc-if value="{{ tpDateOn }}" hint-placeholder-val="false"><div style="font-size: 13px; margin-top: 30px; color: var(--muted, #888780);">{{ tpDate }}</div></sc-if>
-              <sc-if value="{{ tpContactOn }}" hint-placeholder-val="false"><div style="font-size: 13px; margin-top: 16px; max-width: 460px; line-height: 1.5; color: var(--muted, #888780);">{{ tpContact }}</div></sc-if>
+            </div>
+            <div class="v5-cover-meta" data-testid="cover-meta">
+              <sc-if value="{{ tpDateOn }}" hint-placeholder-val="false"><div class="v5-cover-meta-date">{{ tpDate }}</div></sc-if>
+              <sc-if value="{{ tpContactOn }}" hint-placeholder-val="false"><div class="v5-cover-meta-contact">{{ tpContact }}</div></sc-if>
             </div>
           </div>
           </sc-if>
@@ -1154,9 +1176,9 @@
       <div style="height: 52px; flex: 0 0 52px; display: flex; align-items: center; gap: 10px; padding: 0 12px 0 18px; border-bottom: 1px solid var(--hair, #E7E4DA); transition: border-color .3s ease;">
         <span style="width: 7px; height: 7px; border-radius: 50%; background: var(--accent, #BA7517); box-shadow: 0 0 0 4px var(--accent-soft, rgba(186,117,23,.12));"></span>
         <span style="font-weight: 700; font-size: 14.5px; letter-spacing: .1px; color: var(--ink, #2C2C2A); flex: 1;">Lumiere</span>
-        <button type="button" class="v5-lumiere-settings" onClick="{{ openLumierePreferences }}" aria-label="Personalize Lumiere" title="Personalize Lumiere">
+        <sc-if value="{{ isLumierePlan }}" hint-placeholder-val="{{ false }}"><button type="button" class="v5-lumiere-settings" onClick="{{ openLumierePreferences }}" aria-label="Personalize Lumiere" title="Personalize Lumiere">
           <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><circle cx="7" cy="12" r="1.35"></circle><circle cx="12" cy="12" r="1.35"></circle><circle cx="17" cy="12" r="1.35"></circle></svg>
-        </button>
+        </button></sc-if>
         <sc-if value="{{ contextLabel }}" hint-placeholder-val="{{ false }}"><span style="font-size: 10px; letter-spacing: 1px; text-transform: uppercase; color: var(--muted, #888780);">{{ contextLabel }}</span></sc-if>
         <button type="button" class="v5-lumiere-toggle" onClick="{{ toggleLumiere }}" aria-label="Hide Lumiere" title="Hide Lumiere">
           <span>Hide</span>
@@ -1204,12 +1226,36 @@
             <svg viewBox="0 0 20 20" style="width: 13px; height: 13px;" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M10 15.5 V4.8"></path><path d="M5.5 9 L10 4.5 L14.5 9"></path></svg>
           </div>
         </div>
+        <sc-if value="{{ creditsEmpty }}" hint-placeholder-val="{{ false }}">
+          <div style="margin: 4px 0 8px; padding: 10px 11px; border: 1px solid var(--accent, #BA7517); border-radius: 10px 9px 11px 9px; background: var(--accent-soft, rgba(186,117,23,.09)); animation: v5-rise .22s ease both;">
+            <div style="font-size: 11.5px; line-height: 1.35; font-weight: 700; color: var(--ink, #2C2C2A);">Too inspired to wait until tomorrow?</div>
+            <div style="font-size: 10.5px; line-height: 1.4; color: var(--muted, #888780); margin-top: 2px;">Reset your Lumiere limits for $5 and keep going. Buy 80 extra credits for the next stretch.</div>
+            <button type="button" data-testid="credits-reset" onClick="{{ startCreditsReset }}" disabled="{{ creditsResetLoading }}" style="margin-top: 8px; padding: 6px 9px; border: 0; border-radius: 7px; background: var(--accent, #BA7517); color: #FFFEF9; font: inherit; font-size: 10.5px; font-weight: 700; cursor: {{ creditsResetLoading ? 'wait' : 'pointer' }}; opacity: {{ creditsResetLoading ? 0.6 : 1 }}; transition: opacity .18s ease, transform .18s ease;">{{ creditsResetLabel }}</button>
+          </div>
+        </sc-if>
         <div style="display: flex; align-items: center; justify-content: center; gap: 7px; padding: 7px 0 6px;">
           <svg viewBox="0 0 22 22" style="width: 18px; height: 18px; transform: rotate(-90deg);">
             <circle cx="11" cy="11" r="8.5" fill="none" stroke="var(--hair, #E7E4DA)" stroke-width="2.6"></circle>
             <circle cx="11" cy="11" r="8.5" fill="none" stroke="{{ creditsColor }}" stroke-width="2.6" stroke-linecap="round" stroke-dasharray="{{ creditsDash }}" style="transition: stroke-dasharray .6s ease, stroke .3s ease;"></circle>
           </svg>
           <span style="font-size: 11.5px; color: var(--muted, #888780);">{{ creditsLabel }}</span>
+        </div>
+        <div data-testid="credits-usage-panel" style="margin: 1px 0 8px; padding: 10px 11px 9px; border: 1px solid var(--hair, #E7E4DA); border-radius: 10px 9px 11px 9px; background: color-mix(in srgb, var(--surface, #FFFEF9) 72%, var(--bg, #F5F0E8)); animation: v5-rise .2s ease both;">
+          <div style="display: flex; align-items: baseline; justify-content: space-between; gap: 8px;">
+            <span style="font-size: 10.5px; letter-spacing: .04em; text-transform: uppercase; font-weight: 700; color: var(--ink, #2C2C2A);">{{ creditsUsageTitle }}</span>
+            <span style="font-size: 10px; color: var(--muted, #888780);">{{ creditsAvailableLabel }}</span>
+          </div>
+          <sc-for list="{{ creditUsageRows }}" as="row" hint-placeholder-count="3">
+            <div style="margin-top: 8px;">
+              <div style="display: flex; align-items: baseline; justify-content: space-between; gap: 8px; font-size: 10px; color: var(--muted, #888780);">
+                <span style="color: var(--ink, #2C2C2A);">{{ row.label }}</span>
+                <span>{{ row.usedLabel }}</span>
+              </div>
+              <div style="height: 4px; margin-top: 4px; border-radius: 99px; overflow: hidden; background: var(--hair, #E7E4DA);"><div style="height: 100%; width: {{ row.pct }}%; border-radius: inherit; background: {{ row.color }}; transition: width .45s ease;"></div></div>
+              <div style="margin-top: 3px; font-size: 9px; color: var(--muted, #888780);">{{ row.resetLabel }}</div>
+            </div>
+          </sc-for>
+          <sc-if value="{{ creditsExtraVisible }}" hint-placeholder-val="{{ false }}"><div style="margin-top: 8px; padding-top: 7px; border-top: 1px dashed var(--hair, #E7E4DA); font-size: 10px; color: var(--accent, #BA7517);">{{ creditsExtraLabel }}</div></sc-if>
         </div>
       </div>
       </sc-if>
@@ -1518,7 +1564,7 @@
         </div>
         <div style="font-size: 15.5px; font-weight: 700; color: var(--ink, #2C2C2A);">Lumiere requires FilmScript Pro</div>
         <div style="font-size: 12.5px; line-height: 1.6; color: var(--muted, #888780); max-width: 245px;">Your screenplay and every existing breakdown, stripboard, shot list, and budget remain available to edit and export. An active plan is required only to generate new work with Lumiere.</div>
-        <div onClick="{{ goPricing }}" style="margin-top: 5px; background: var(--accent, #BA7517); color: #FFFEF9; font-size: 13px; font-weight: 600; padding: 11px 18px; border-radius: 10px; cursor: pointer; transition: filter .15s ease, transform .15s ease;" class="v5lift">View FilmScript Pro · $20 a month</div>
+        <div onClick="{{ goPricing }}" style="margin-top: 5px; background: var(--accent, #BA7517); color: #FFFEF9; font-size: 13px; font-weight: 600; padding: 11px 18px; border-radius: 10px; cursor: pointer; transition: filter .15s ease, transform .15s ease;" class="v5lift">View FilmScript Pro · $19.99 / month</div>
         <div style="font-size: 10.5px; line-height: 1.45; color: var(--muted, #888780); max-width: 230px;">Canceling never deletes your existing production documents.</div>
       </div>
       </sc-if>
@@ -1646,6 +1692,7 @@ class Component extends DCLogic {
     stripboardExporting: false,
     stripboardEntering: false,
     stripboardTimePopoverSceneId: null,
+    stripboardTimePopoverEventId: null,
     stripboardTimeDraft: 60,
     stripboardTimeDraftTouched: false,
     stripboardTimeAnchorLeft: 0,
@@ -1744,26 +1791,67 @@ class Component extends DCLogic {
     paywallOpen: false,
     modal: null,
     toast: '',
-    docTitle: 'The Lighthouse Keeper',
+    docTitle: 'Untitled screenplay',
     tpEnabled: true,
     tpCredit: 'Written by',
-    tpAuthor: 'Winona Hale',
+    tpAuthor: '',
     tpDate: '',
     tpContact: '',
     autoOn: (() => { try { return localStorage.getItem('filmscript_autosave_on') !== '0'; } catch (e) { return true; } })(),
     autoDelay: (() => { try { return parseInt(localStorage.getItem('filmscript_autosave_delay') || '1000', 10) || 1000; } catch (e) { return 1000; } })(),
     dirty: false,
     creditsPct: null,
-    chat: [
-      { who: 'l', text: 'I have read all twelve pages. Scene four holds its breath well, the keeper says almost nothing and the light does the talking. Where do you want to push?' },
-    ],
+    creditsRemaining: null,
+    credits: null,
+    creditsResetLoading: false,
+    chat: [],
   };
 
   _fetchCredits() {
     fetch(window.filmscriptApiUrl ? window.filmscriptApiUrl('/api/credits') : '/api/credits', { credentials: 'include' })
       .then(r => r.json())
-      .then(d => { if (d && typeof d.pct === 'number') this.setState({ creditsPct: d.pct }); })
+      .then(d => {
+        if (d && typeof d.pct === 'number') this.setState({
+          credits: d,
+          creditsPct: d.pct,
+          creditsRemaining: Number.isFinite(Number(d.remaining)) ? Number(d.remaining) : null,
+        });
+      })
       .catch(() => {});
+  }
+
+  async _startCreditsReset() {
+    if (!this._requireLumierePlan()) return;
+    if (this.state.creditsResetLoading) return;
+    this.setState({ creditsResetLoading: true });
+    try {
+      const language = window.filmscriptLanguage?.get?.() || document.documentElement.lang || 'en';
+      const result = await window.filmscriptBilling.createCreditsResetCheckout(language);
+      window.location.href = result.checkoutUrl;
+    } catch (error) {
+      this.setState({ creditsResetLoading: false });
+      this._toast(window.filmscriptLanguage?.t?.(error.message) || error.message || 'Could not open the credit reset checkout.');
+    }
+  }
+
+  async _confirmCreditsResetReturn() {
+    const url = new URL(window.location.href);
+    const status = url.searchParams.get('credits');
+    if (!status) return;
+    const checkoutId = url.searchParams.get('checkoutId') || url.searchParams.get('checkout_id');
+    url.searchParams.delete('credits');
+    url.searchParams.delete('checkoutId');
+    url.searchParams.delete('checkout_id');
+    window.history.replaceState({}, '', url.pathname + url.search + url.hash);
+    if (status !== 'success' || !window.filmscriptBilling?.confirmCreditsReset) return;
+    try {
+      const result = await window.filmscriptBilling.confirmCreditsReset(checkoutId);
+      this._fetchCredits();
+      const message = result.reset ? 'Extra Lumiere credits added. Keep creating.' : 'Payment received. Your extra credits are being verified.';
+      this._toast(window.filmscriptLanguage?.t?.(message) || message);
+    } catch (error) {
+      this._toast(window.filmscriptLanguage?.t?.(error.message) || error.message || 'Could not verify the credit reset yet.');
+    }
   }
 
   _displayDocTitle(title, maxLength = 28) {
@@ -1787,9 +1875,9 @@ class Component extends DCLogic {
     return this.state.plan === 'lumiere';
   }
 
-  _requireLumierePlan(message = 'FilmScript Pro is required to use Lumiere. Your existing work remains editable and exportable.') {
+  _requireLumierePlan(message = 'FilmScript Pro at $19.99 / month is required to use Lumiere. Your scripts and manual production work remain available to edit and export.') {
     if (this._hasLumiereAccess()) return true;
-    this.setState({ plan: null, paywallOpen: true, lumiereOpen: true, lumiereClosing: false });
+    this.setState({ paywallOpen: true, lumiereOpen: true, lumiereClosing: false });
     if (message) this._toast(message);
     return false;
   }
@@ -1919,6 +2007,10 @@ class Component extends DCLogic {
     this._booted = true;
     window.filmscriptSounds?.preloadAll();
     this._fetchCredits();
+    this._creditsRefreshTimer = window.setInterval(() => {
+      if (!this._unmounted) this._fetchCredits();
+    }, 60 * 1000);
+    this._confirmCreditsResetReturn();
     this._refreshBilling();
     this._loadImportedScript().then(() => this._restoreWorkMode());
     this._autoFit = true;
@@ -1933,8 +2025,11 @@ class Component extends DCLogic {
         updates.menuOpen = false;
         updates.accountOpen = false;
       }
-      if (this.state.stripboardTimePopoverSceneId && !closest?.('[data-v5-time-pop], [data-v5-time-trigger]')) {
+      if (this.state.stripboardTimePopoverSceneId && !closest?.('[data-v5-time-pop], [data-v5-time-trigger], [data-v5-break-trigger]')) {
         updates.stripboardTimePopoverSceneId = null;
+      }
+      if (this.state.stripboardTimePopoverEventId && !closest?.('[data-v5-time-pop], [data-v5-time-trigger], [data-v5-break-trigger]')) {
+        updates.stripboardTimePopoverEventId = null;
       }
       if (Object.keys(updates).length) this.setState(updates);
     };
@@ -2094,7 +2189,7 @@ class Component extends DCLogic {
   }
 
   _restoreWorkMode() {
-    const allowedModes = ['editor', 'analysis', 'breakdown', 'stripboard', 'canvas', 'budget'];
+    const allowedModes = ['editor', 'analysis', 'breakdown', 'stripboard', 'canvas', 'budget', 'calendar'];
     let savedMode = 'editor';
     try { savedMode = localStorage.getItem(this._workModeStorageKey()) || 'editor'; } catch (e) {}
     if (savedMode === 'shotlist') return this.switchWorkMode('canvas', { canvasTool: 'shotlist' });
@@ -2105,14 +2200,14 @@ class Component extends DCLogic {
   }
 
   async switchWorkMode(mode, options = {}) {
-    const allowedModes = ['editor', 'analysis', 'breakdown', 'stripboard', 'canvas', 'budget'];
+    const allowedModes = ['editor', 'analysis', 'breakdown', 'stripboard', 'canvas', 'budget', 'calendar'];
     if (!allowedModes.includes(mode)) return;
     const requestedCanvasTool = mode === 'canvas' && options.canvasTool === 'shotlist' ? 'shotlist' : 'home';
     if (mode === this.state.workMode) {
       if (mode === 'canvas' && requestedCanvasTool !== this.state.canvasTool) {
         try { localStorage.setItem(this._canvasToolStorageKey(), requestedCanvasTool); } catch (e) {}
         if (requestedCanvasTool === 'shotlist') return this.openCanvasShotList();
-        this.setState({ canvasTool: 'home', productionLoading: false, stripboardTimePopoverSceneId: null });
+        this.setState({ canvasTool: 'home', productionLoading: false, stripboardTimePopoverSceneId: null, stripboardTimePopoverEventId: null });
       }
       return;
     }
@@ -2122,7 +2217,7 @@ class Component extends DCLogic {
     clearTimeout(this._stripboardEntryTimer);
     if (mode === 'editor') {
       this._playWorkModeSound('editor');
-      this.setState({ workMode: 'editor', stripboardTimePopoverSceneId: null }, () => {
+      this.setState({ workMode: 'editor', stripboardTimePopoverSceneId: null, stripboardTimePopoverEventId: null }, () => {
         this._restartWorkModeMotion();
         if (this._autoFit) requestAnimationFrame(() => this.fillPage(1));
       });
@@ -2140,7 +2235,9 @@ class Component extends DCLogic {
         return;
       }
       this._playWorkModeSound('analysis');
-      this.setState({ workMode: 'analysis', stripboardTimePopoverSceneId: null });
+      this.setState({ workMode: 'analysis', stripboardTimePopoverSceneId: null, stripboardTimePopoverEventId: null }, () => {
+        this._restartWorkModeMotion();
+      });
       return;
     }
     if (mode === 'canvas' && requestedCanvasTool === 'home') {
@@ -2149,7 +2246,17 @@ class Component extends DCLogic {
         return;
       }
       this._playWorkModeSound('canvas');
-      this.setState({ workMode: 'canvas', canvasTool: 'home', productionLoading: false, stripboardTimePopoverSceneId: null }, () => this._restartWorkModeMotion());
+      this.setState({ workMode: 'canvas', canvasTool: 'home', productionLoading: false, stripboardTimePopoverSceneId: null, stripboardTimePopoverEventId: null }, () => this._restartWorkModeMotion());
+      return;
+    }
+    if (mode === 'budget' || mode === 'calendar') {
+      const available = mode === 'budget' ? window.filmscriptBudget : window.filmscriptCalendar;
+      if (!available) {
+        this._toast(`${mode === 'budget' ? 'Budget' : 'Calendar'} is not available right now.`);
+        return;
+      }
+      this._playWorkModeSound(mode);
+      this.setState({ workMode: mode, productionLoading: false, stripboardTimePopoverSceneId: null, stripboardTimePopoverEventId: null }, () => this._restartWorkModeMotion());
       return;
     }
     if (!window.filmscriptPreproduction) {
@@ -2160,7 +2267,7 @@ class Component extends DCLogic {
     const productionMode = mode === 'canvas' ? 'shotlist' : mode;
     if (mode === 'canvas') this._playWorkModeSound(productionMode);
     else this._playWorkModeSound(mode);
-    this.setState({ workMode: mode, canvasTool: mode === 'canvas' ? 'shotlist' : this.state.canvasTool, productionLoading: true, stripboardEntering: false, stripboardTimePopoverSceneId: null }, () => this._restartWorkModeMotion());
+    this.setState({ workMode: mode, canvasTool: mode === 'canvas' ? 'shotlist' : this.state.canvasTool, productionLoading: true, stripboardEntering: false, stripboardTimePopoverSceneId: null, stripboardTimePopoverEventId: null }, () => this._restartWorkModeMotion());
     try {
       const result = await window.filmscriptPreproduction.get(scriptId);
       const stripboardEntering = this.state.workMode === 'stripboard';
@@ -2183,7 +2290,7 @@ class Component extends DCLogic {
     const scriptId = this.state.activeScriptId || this._activeScriptId;
     if (!scriptId || !window.filmscriptPreproduction) return;
     this._playWorkModeSound('shotlist');
-    this.setState({ canvasTool: 'shotlist', productionLoading: true, stripboardTimePopoverSceneId: null });
+    this.setState({ canvasTool: 'shotlist', productionLoading: true, stripboardTimePopoverSceneId: null, stripboardTimePopoverEventId: null });
     try {
       const result = await window.filmscriptPreproduction.get(scriptId);
       this.setState({ productionProject: result.project || null, productionLoading: false }, () => this._pollProduction());
@@ -2195,7 +2302,7 @@ class Component extends DCLogic {
 
   openCanvasHome() {
     try { localStorage.setItem(this._canvasToolStorageKey(), 'home'); } catch (e) {}
-    this.setState({ canvasTool: 'home', productionLoading: false, stripboardTimePopoverSceneId: null });
+    this.setState({ canvasTool: 'home', productionLoading: false, stripboardTimePopoverSceneId: null, stripboardTimePopoverEventId: null });
   }
 
   openAnalysisScene(sceneNumber) {
@@ -2523,13 +2630,17 @@ class Component extends DCLogic {
   _startStripboardDrag(event) {
     if (event.button !== 0 || event.isPrimary === false || event.target.closest?.('button, a, input, textarea, select, [data-v5-cast-id]')) return;
     const board = this._stripboardBoard;
-    const strip = event.target.closest?.('[data-strip-id]');
+    const strip = event.target.closest?.('[data-strip-id], [data-event-id]');
     if (!board || !strip || !board.contains(strip)) return;
     this._finishStripboardDrag(null, true);
     const sceneId = strip.getAttribute('data-strip-id');
-    if (!sceneId) return;
+    const eventId = strip.getAttribute('data-event-id');
+    if (!sceneId && !eventId) return;
     this._stripboardDrag = {
-      sceneId,
+      sceneId: sceneId || '',
+      eventId: eventId || '',
+      itemKind: eventId ? 'event' : 'scene',
+      itemId: eventId || sceneId,
       strip,
       pointerId: event.pointerId,
       startX: event.clientX,
@@ -2567,10 +2678,10 @@ class Component extends DCLogic {
     this._autoScrollStripboard(event.clientY);
 
     const board = this._stripboardBoard;
-    const available = Array.from(board?.querySelectorAll('[data-strip-id]') || []).filter((candidate) => candidate !== drag.strip);
+    const available = Array.from(board?.querySelectorAll('[data-strip-id], [data-event-id]') || []).filter((candidate) => candidate !== drag.strip && (candidate.getAttribute('data-strip-id') || candidate.getAttribute('data-event-id')));
     let target = document.elementsFromPoint(event.clientX, event.clientY)
-      .map((element) => element.closest?.('[data-strip-id]'))
-      .find((candidate) => candidate && candidate !== drag.strip && board?.contains(candidate));
+      .map((element) => element.closest?.('[data-strip-id], [data-event-id]'))
+      .find((candidate) => candidate && candidate !== drag.strip && (candidate.getAttribute('data-strip-id') || candidate.getAttribute('data-event-id')) && board?.contains(candidate));
     if (!target && available.length) {
       target = available.reduce((nearest, candidate) => {
         const rect = candidate.getBoundingClientRect();
@@ -2589,7 +2700,7 @@ class Component extends DCLogic {
     if (drag.targetEl === target && drag.placement === placement) return;
     if (drag.targetEl) drag.targetEl.classList.remove('v5-strip-drop-before', 'v5-strip-drop-after');
     drag.targetEl = target || null;
-    drag.targetId = target?.getAttribute('data-strip-id') || null;
+    drag.targetId = target?.getAttribute('data-strip-id') || target?.getAttribute('data-event-id') || null;
     drag.placement = placement;
     if (target) target.classList.add(placement === 'after' ? 'v5-strip-drop-after' : 'v5-strip-drop-before');
   }
@@ -2610,7 +2721,7 @@ class Component extends DCLogic {
     if (drag.active && event?.preventDefault) event.preventDefault();
     const targetId = drag.targetId;
     const placement = drag.placement;
-    const shouldMove = drag.active && !cancelled && targetId && targetId !== drag.sceneId;
+    const shouldMove = drag.active && !cancelled && targetId && targetId !== drag.itemId;
     if (drag.targetEl) drag.targetEl.classList.remove('v5-strip-drop-before', 'v5-strip-drop-after');
     drag.strip.classList.remove('v5-strip-dragging');
     drag.strip.style.translate = '';
@@ -2625,17 +2736,25 @@ class Component extends DCLogic {
     this._stripboardPointerUp = null;
     this._stripboardPointerCancel = null;
     this._stripboardEscape = null;
-    if (shouldMove) this._placeStripboardScene(drag.sceneId, targetId, placement);
+    if (shouldMove) {
+      const targetKind = drag.targetEl?.hasAttribute('data-event-id') ? 'event' : 'scene';
+      if (drag.itemKind === 'event') this._placeStripboardEvent(drag.eventId, targetId, targetKind, placement);
+      else this._placeStripboardScene(drag.sceneId, targetId, placement);
+    }
   }
 
   _handleStripboardKeyDown(event) {
     if (!event.altKey || !['ArrowUp', 'ArrowDown'].includes(event.key)) return;
-    const strip = event.target.closest?.('[data-strip-id]');
+    const strip = event.target.closest?.('[data-strip-id], [data-event-id]');
     if (!strip || !this._stripboardBoard?.contains(strip)) return;
     event.preventDefault();
     const sceneId = strip.getAttribute('data-strip-id');
-    this._moveStripboardScene(sceneId, event.key === 'ArrowUp' ? -1 : 1);
-    setTimeout(() => this._stripboardBoard?.querySelector(`[data-strip-id="${sceneId}"]`)?.focus({ preventScroll: true }), 0);
+    const eventId = strip.getAttribute('data-event-id');
+    const direction = event.key === 'ArrowUp' ? -1 : 1;
+    if (eventId) this._moveStripboardEvent(eventId, direction);
+    else this._moveStripboardScene(sceneId, direction);
+    const selector = eventId ? `[data-event-id="${eventId}"]` : `[data-strip-id="${sceneId}"]`;
+    setTimeout(() => this._stripboardBoard?.querySelector(selector)?.focus({ preventScroll: true }), 0);
   }
 
   _stripboardOrder(project = this.state.productionProject) {
@@ -2728,6 +2847,53 @@ class Component extends DCLogic {
     this._saveStripboardPatch({ order });
   }
 
+  _stripboardItemSequence(project = this.state.productionProject) {
+    const order = this._stripboardOrder(project);
+    const events = Array.isArray(project?.stripboardEvents) ? project.stripboardEvents : [];
+    const eventsByScene = new Map();
+    events.forEach((entry) => {
+      if (!entry?.id || !entry.afterSceneId) return;
+      const list = eventsByScene.get(entry.afterSceneId) || [];
+      list.push(entry);
+      eventsByScene.set(entry.afterSceneId, list);
+    });
+    return order.flatMap((sceneId) => [
+      { kind: 'scene', id: sceneId },
+      ...(eventsByScene.get(sceneId) || []).map((entry) => ({ kind: 'event', id: entry.id })),
+    ]);
+  }
+
+  _placeStripboardEvent(eventId, targetId, targetKind = 'scene', placement = 'before') {
+    if (!eventId || !targetId || eventId === targetId) return;
+    const project = this.state.productionProject;
+    const sequence = this._stripboardItemSequence(project);
+    const sourceIndex = sequence.findIndex((entry) => entry.kind === 'event' && entry.id === eventId);
+    if (sourceIndex < 0) return;
+    const source = sequence.splice(sourceIndex, 1)[0];
+    let targetIndex = sequence.findIndex((entry) => entry.kind === targetKind && entry.id === targetId);
+    if (targetIndex < 0) return;
+    if (placement === 'after') targetIndex += 1;
+    sequence.splice(Math.max(0, targetIndex), 0, source);
+    const order = sequence.filter((entry) => entry.kind === 'scene').map((entry) => entry.id);
+    const eventsById = new Map((Array.isArray(project?.stripboardEvents) ? project.stripboardEvents : []).map((entry) => [entry.id, { ...entry }]));
+    let previousSceneId = order[0] || '';
+    sequence.forEach((entry) => {
+      if (entry.kind === 'scene') previousSceneId = entry.id;
+      else if (eventsById.has(entry.id) && previousSceneId) eventsById.get(entry.id).afterSceneId = previousSceneId;
+    });
+    const events = sequence.filter((entry) => entry.kind === 'event').map((entry) => eventsById.get(entry.id)).filter(Boolean);
+    this._saveStripboardPatch({ order, events });
+  }
+
+  _moveStripboardEvent(eventId, direction) {
+    const sequence = this._stripboardItemSequence();
+    const index = sequence.findIndex((entry) => entry.kind === 'event' && entry.id === eventId);
+    const target = index + (Number(direction) < 0 ? -1 : 1);
+    if (index < 0 || target < 0 || target >= sequence.length) return;
+    const targetEntry = sequence[target];
+    this._placeStripboardEvent(eventId, targetEntry.id, targetEntry.kind, Number(direction) < 0 ? 'before' : 'after');
+  }
+
   _normalizeStripboardTime(value, fallback = 60) {
     const numeric = Number(value);
     return Number.isFinite(numeric) && numeric >= 1
@@ -2750,6 +2916,32 @@ class Component extends DCLogic {
     const top = rect ? (placement === 'above' ? rect.top - 10 : rect.bottom + 10) : 100;
     this.setState({
       stripboardTimePopoverSceneId: sceneId,
+      stripboardTimePopoverEventId: null,
+      stripboardTimeDraft: this._normalizeStripboardTime(minutes, 60),
+      stripboardTimeDraftTouched: false,
+      stripboardTimeAnchorLeft: Math.round(left),
+      stripboardTimeAnchorTop: Math.round(top),
+      stripboardTimePlacement: placement,
+      stripboardLocationPopoverSceneId: null,
+    });
+  }
+
+  openStripboardEventTime(eventId, minutes, event) {
+    const rect = event?.currentTarget?.getBoundingClientRect?.();
+    const popoverWidth = 286;
+    const popoverHeight = 330;
+    const viewportWidth = window.innerWidth || 1200;
+    const viewportHeight = window.innerHeight || 800;
+    const left = rect
+      ? Math.max(popoverWidth / 2 + 12, Math.min(viewportWidth - popoverWidth / 2 - 12, rect.left + rect.width / 2))
+      : viewportWidth / 2;
+    const spaceAbove = rect ? rect.top - 56 : 0;
+    const spaceBelow = rect ? viewportHeight - rect.bottom - 12 : 0;
+    const placement = rect && (spaceAbove >= popoverHeight || spaceAbove > spaceBelow) ? 'above' : 'below';
+    const top = rect ? (placement === 'above' ? rect.top - 10 : rect.bottom + 10) : 100;
+    this.setState({
+      stripboardTimePopoverSceneId: null,
+      stripboardTimePopoverEventId: eventId,
       stripboardTimeDraft: this._normalizeStripboardTime(minutes, 60),
       stripboardTimeDraftTouched: false,
       stripboardTimeAnchorLeft: Math.round(left),
@@ -2778,13 +2970,31 @@ class Component extends DCLogic {
     const numeric = Number(this.state.stripboardTimeDraft);
     if (!Number.isFinite(numeric) || numeric < 1) return;
     const minutes = Math.max(1, Math.min(720, Math.round(numeric)));
-    this.setState({ stripboardTimePopoverSceneId: null });
+    this.setState({ stripboardTimePopoverSceneId: null, stripboardTimePopoverEventId: null });
     this._saveStripboardPatch({ sceneTimings: { [sceneId]: minutes } });
   }
 
   clearStripboardTime(sceneId) {
-    this.setState({ stripboardTimePopoverSceneId: null });
+    this.setState({ stripboardTimePopoverSceneId: null, stripboardTimePopoverEventId: null });
     this._saveStripboardPatch({ sceneTimings: { [sceneId]: null } });
+  }
+
+  saveStripboardEventTime(eventId) {
+    const numeric = Number(this.state.stripboardTimeDraft);
+    if (!eventId || !Number.isFinite(numeric) || numeric < 1) return;
+    const minutes = Math.max(1, Math.min(480, Math.round(numeric)));
+    const events = (Array.isArray(this.state.productionProject?.stripboardEvents) ? this.state.productionProject.stripboardEvents : [])
+      .map((entry) => entry.id === eventId ? { ...entry, durationMinutes: minutes } : entry);
+    this.setState({ stripboardTimePopoverSceneId: null, stripboardTimePopoverEventId: null });
+    this._saveStripboardPatch({ events });
+  }
+
+  clearStripboardEventTime(eventId) {
+    if (!eventId) return;
+    const events = (Array.isArray(this.state.productionProject?.stripboardEvents) ? this.state.productionProject.stripboardEvents : [])
+      .map((entry) => entry.id === eventId ? { ...entry, durationMinutes: 0 } : entry);
+    this.setState({ stripboardTimePopoverSceneId: null, stripboardTimePopoverEventId: null });
+    this._saveStripboardPatch({ events });
   }
 
   openStripboardLocation(sceneId, location) {
@@ -2792,6 +3002,7 @@ class Component extends DCLogic {
       stripboardLocationPopoverSceneId: sceneId,
       stripboardLocationDraft: location === 'Assign' || location === 'Unassigned' ? '' : String(location || ''),
       stripboardTimePopoverSceneId: null,
+      stripboardTimePopoverEventId: null,
     });
   }
 
@@ -2845,6 +3056,7 @@ class Component extends DCLogic {
       stripboardBulkCastIds: type === 'cast' ? [] : state.stripboardBulkCastIds,
       stripboardLocationPopoverSceneId: null,
       stripboardTimePopoverSceneId: null,
+      stripboardTimePopoverEventId: null,
     }));
   }
 
@@ -2907,7 +3119,7 @@ class Component extends DCLogic {
 
   toggleStripboardStartTime() {
     const startTime = this.state.productionProject?.stripboardSettings?.startTime || '09:00';
-    this.setState((state) => ({ stripboardStartTimeOpen: !state.stripboardStartTimeOpen, stripboardStartTimeDraft: startTime, stripboardBreakMenuOpen: false, stripboardTimePopoverSceneId: null, stripboardLocationPopoverSceneId: null }));
+    this.setState((state) => ({ stripboardStartTimeOpen: !state.stripboardStartTimeOpen, stripboardStartTimeDraft: startTime, stripboardBreakMenuOpen: false, stripboardTimePopoverSceneId: null, stripboardTimePopoverEventId: null, stripboardLocationPopoverSceneId: null }));
   }
 
   saveStripboardStartTime() {
@@ -2922,7 +3134,7 @@ class Component extends DCLogic {
     const defaults = { lunch: 60, move_company: 30, end_day: 0 };
     const events = Array.isArray(this.state.productionProject?.stripboardEvents) ? this.state.productionProject.stripboardEvents : [];
     const id = `sbe_${Math.random().toString(16).slice(2, 18)}`;
-    this.setState({ stripboardBreakMenuOpen: false, stripboardTimePopoverSceneId: null, stripboardLocationPopoverSceneId: null });
+    this.setState({ stripboardBreakMenuOpen: false, stripboardTimePopoverSceneId: null, stripboardTimePopoverEventId: null, stripboardLocationPopoverSceneId: null });
     this._saveStripboardPatch({ events: [...events, { id, type, afterSceneId: order[order.length - 1], durationMinutes: defaults[type] || 0 }] });
   }
 
@@ -3295,79 +3507,9 @@ class Component extends DCLogic {
     }, 1400);
   }
 
-  // ---------- deterministic content ----------
-  _rng(seed) {
-    let s = seed % 2147483647;
-    if (s <= 0) s += 2147483646;
-    return () => { s = (s * 16807) % 2147483647; return (s - 1) / 2147483646; };
-  }
-
-  _generateScript() {
-    const rnd = this._rng(20260708);
-    const pick = (a) => a[Math.floor(rnd() * a.length)];
-    const intext = ['INT.', 'EXT.', 'INT./EXT.'];
-    const places = [
-      'LIGHTHOUSE — LANTERN ROOM', 'LIGHTHOUSE — SPIRAL STAIR', "KEEPER'S COTTAGE — KITCHEN",
-      'HARBOR ROAD', 'THE BREAKWATER', 'FISHING TRAWLER — DECK', 'VILLAGE PUB — BACK BOOTH',
-      "MARA'S BEDROOM", 'THE CLIFF PATH', 'POST OFFICE', 'CHURCHYARD', 'SUPPLY BOAT — CABIN',
-      'TIDE POOLS', 'THE OLD BOATHOUSE', 'SEA — OPEN WATER',
-    ];
-    const times = ['DAWN', 'DAY', 'DUSK', 'NIGHT', 'CONTINUOUS', 'LATER', 'PRE-DAWN', 'MAGIC HOUR'];
-    const chars = ['MARA', 'THE KEEPER', 'ELIAS', 'HARBORMASTER', 'YOUNG TOM', 'MARA (V.O.)', 'RADIO VOICE'];
-    const actions = [
-      'The lamp turns. A blade of light sweeps the black water and finds nothing.',
-      'Mara wipes salt from the glass. Below, the surf gnaws the rocks like something patient.',
-      'The Keeper climbs, one hand always on the rail, counting the steps he no longer needs to count.',
-      'Rain arrives sideways. The cottage windows rattle in their frames.',
-      'A letter sits unopened on the table, its corner darkened where a thumb keeps returning.',
-      'The trawler pitches. Ropes groan. Somewhere a bell answers a bell.',
-      'She lays the logbook flat and writes the date, then crosses it out.',
-      'Light fails over the headland. The town below blinks awake, window by window.',
-      'He pours two cups of tea and only ever drinks one.',
-      'The radio coughs static, then a voice, then static again.',
-      'Footprints fill with seawater and vanish behind her.',
-      'The flame gutters. For a heartbeat the whole coast goes dark.',
-      'Tom presses his ear to the foghorn housing as if it might confess something.',
-      'A photograph, sun-bleached to ghosts, is tucked back behind the clock.',
-      'The tide draws out farther than it should, baring the wreck no one talks about.',
-    ];
-    const lines = [
-      'You can\u2019t keep a light for someone who isn\u2019t coming back.',
-      'The sea doesn\u2019t take sides. It just takes.',
-      'I counted the flashes every night. Three long, one short. Like a name.',
-      'We don\u2019t leave the lamp. The lamp leaves us, eventually.',
-      'Tell me you saw it too. The boat. Out past the second buoy.',
-      'My father kept this light forty years and it kept him longer.',
-      'There\u2019s a difference between waiting and refusing to let go.',
-      'Storm\u2019s turning. You\u2019ll want to be off the breakwater before it does.',
-      'I wrote it all down so somebody would know we were here.',
-      'You think the dark is the enemy. The dark is just honest.',
-      'If the horn stops, you run. You don\u2019t look back at me.',
-      'Some lights you keep for the living. This one I keep for the rest.',
-      'I\u2019m not frightened of the water. I\u2019m frightened of the quiet after.',
-      'Every keeper leaves a name in the logbook. None of them leave twice.',
-    ];
-    const parens = ['(quietly)', '(beat)', '(not looking up)', '(to herself)', '(sharp)', '(after a moment)', '(barely audible)'];
-    const transitions = ['CUT TO:', 'DISSOLVE TO:', 'MATCH CUT TO:'];
-
-    const blocks = [{ type: 'fadein', text: 'FADE IN:' }];
-    for (let s = 0; s < 46; s++) {
-      blocks.push({ type: 'scene', text: `${pick(intext)} ${pick(places)} — ${pick(times)}` });
-      const na = 1 + Math.floor(rnd() * 3);
-      for (let a = 0; a < na; a++) blocks.push({ type: 'action', text: pick(actions) });
-      const nd = 1 + Math.floor(rnd() * 3);
-      for (let d = 0; d < nd; d++) {
-        blocks.push({ type: 'character', text: pick(chars) });
-        if (rnd() < 0.4) blocks.push({ type: 'paren', text: pick(parens) });
-        let txt = pick(lines);
-        if (rnd() < 0.35) txt += ' ' + pick(lines);
-        blocks.push({ type: 'dialogue', text: txt });
-        if (rnd() < 0.25) blocks.push({ type: 'action', text: pick(actions) });
-      }
-      if (rnd() < 0.4) blocks.push({ type: 'transition', text: pick(transitions) });
-    }
-    return blocks;
-  }
+  // New editor sessions start clean. User-owned or imported blocks are loaded
+    // from the account API and never replaced with bundled content.
+  _emptyDraftBlocks() { return []; }
 
   // ---------- screenplay block styles (industry margins at 96dpi) ----------
   _esc(s) { return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;'); }
@@ -3395,7 +3537,7 @@ class Component extends DCLogic {
   _buildPages() {
     if (this._pagesCache) return this._pagesCache;
     const self = this;
-    const blocks = this._importedBlocks || this._generateScript();
+    const blocks = this._importedBlocks || this._emptyDraftBlocks();
     const coverTypes = new Set(['title', 'title_credit', 'title_author', 'title_date', 'title_contact']);
     const PAGE_MAX = this._importedBlocks ? 80 : 12;
     const CW = { dialogue: 35, paren: 24, action: 60 };
@@ -3413,10 +3555,7 @@ class Component extends DCLogic {
     if (pageBlocks.length < PAGE_MAX && cur.length) pageBlocks.push(cur);
     if (!pageBlocks.length) pageBlocks.push([{ type: 'action', text: '' }]);
     const pages = pageBlocks.slice(0, PAGE_MAX);
-    if (!this._importedBlocks) {
-      const last = pages[pages.length - 1];
-      last.push({ type: 'transition', text: 'FADE OUT.' });
-    }
+    if (!this._importedBlocks && pages.length) pages[pages.length - 1].push({ type: 'transition', text: 'FADE OUT.' });
 
     let sceneNo = 0;
     this._scenes = [];
@@ -4087,9 +4226,10 @@ class Component extends DCLogic {
     const pages = Array.from(document.querySelectorAll('[data-fs-page]'));
     let body = '';
     if (this.state.tpEnabled) {
-      body += '<div class="pg tp"><div class="tpwrap"><div class="tpt">' + this._esc(this.state.docTitle) + '</div>'
+      body += '<div class="pg tp"><div class="tpwrap"><div class="tpcenter"><div class="tpt">' + this._esc(this.state.docTitle) + '</div>'
         + (String(this.state.tpCredit || '').trim() ? '<div class="tpb">' + this._esc(this.state.tpCredit) + '</div>' : '')
         + (String(this.state.tpAuthor || '').trim() ? '<div class="tpa">' + this._esc(this.state.tpAuthor) + '</div>' : '')
+        + '</div></div><div class="tpmeta">'
         + (String(this.state.tpDate || '').trim() ? '<div class="tpd">' + this._esc(this.state.tpDate) + '</div>' : '')
         + (String(this.state.tpContact || '').trim() ? '<div class="tpc">' + this._esc(this.state.tpContact) + '</div>' : '')
         + '</div></div>';
@@ -4104,10 +4244,10 @@ class Component extends DCLogic {
       + '<style>@page { size: A4; margin: 0; } * { box-sizing: border-box; --ink: #000; --accent: #000; --muted: #333; }'
       + " body { width: 210mm; margin: 0; font-family: 'Courier Prime', Courier, monospace; color: #000; -webkit-print-color-adjust: exact; print-color-adjust: exact; }"
       + ' .pg { width: 210mm; height: 297mm; padding: 25.4mm 25.4mm 25.4mm 38.1mm; page-break-after: always; position: relative; font-size: 16px; line-height: 20px; overflow: hidden; } .pg:last-child { page-break-after: auto; }'
-      + ' .pg::after { content: "FILMSCRIPT"; position: absolute; left: 0; right: 0; bottom: .3in; text-align: center; font-family: Helvetica, Arial, sans-serif; font-size: 7px; font-weight: 700; letter-spacing: 1.4px; color: #AAA69D; }'
-      + ' .tp .tpwrap { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; }'
+      + ' .pg::after { content: "FILMSCRIPT"; position: absolute; left: 0; right: 0; bottom: .3in; text-align: center; font-family: \'SF Pro Text\', -apple-system, BlinkMacSystemFont, \'Helvetica Neue\', Arial, sans-serif; font-size: 7px; font-weight: 700; letter-spacing: 1.4px; color: #AAA69D; }'
+      + ' .tp .tpwrap { position: absolute; inset: 0; } .tp .tpcenter { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; } .tp .tpmeta { position: absolute; left: 25.4mm; bottom: 25.4mm; max-width: 5in; text-align: left; }'
       + ' .tpt { text-transform: uppercase; letter-spacing: 2px; font-weight: 700; font-size: 17px; max-width: 5in; line-height: 1.5; }'
-      + ' .tpb { margin-top: 46px; } .tpa { margin-top: 22px; } .tpd { margin-top: 30px; color: #333; font-size: 13px; } .tpc { margin-top: 16px; color: #333; font-size: 13px; max-width: 5in; line-height: 1.5; }'
+      + ' .tpb { margin-top: 46px; } .tpa { margin-top: 22px; } .tpd { color: #333; font-size: 13px; } .tpc { margin-top: 10px; color: #333; font-size: 13px; max-width: 5in; line-height: 1.5; }'
       + '</style></head><body>' + body + '</body></html>';
     const f = document.createElement('iframe');
     f.style.cssText = 'position:fixed;right:0;bottom:0;width:0;height:0;border:0;visibility:hidden;';
@@ -4316,10 +4456,18 @@ class Component extends DCLogic {
   }
 
   openScenePicker() {
-    const locations = [...new Set((this._scenes || []).map((scene) => String(scene.slug || '').replace(/^(INT\.?\/EXT\.?|EXT\.?\/INT\.?|INT\.?|EXT\.?)\s*/i, '').replace(/\s+-\s+(MADRUGADA|MAÑANA|TARDE|ATARDECER|NOCHE).*$/i, '').trim()).filter(Boolean))];
+    const language = window.filmscriptLanguage?.get?.() || document.documentElement.lang || 'en';
+    const spanish = String(language).toLowerCase().startsWith('es');
+    const locations = [...new Set((this._scenes || []).map((scene) => String(scene.slug || '')
+      .replace(/^(INT\.?\/EXT\.?|EXT\.?\/INT\.?|INT\.?|EXT\.?)\s*/i, '')
+      .replace(/\s+-\s+(MADRUGADA|MAÑANA|TARDE|ATARDECER|NOCHE|D[IÍ]A|DAWN|MORNING|AFTERNOON|SUNSET|NIGHT|DAY).*$/i, '')
+      .trim()).filter(Boolean))];
     if (this.state.characterPickerOpen) this.closeCharacterPicker();
     this.setFormat('scene');
-    const times = ['MADRUGADA', 'MAÑANA', 'TARDE', 'ATARDECER', 'NOCHE'].map((label) => ({ label, apply: () => this.applySceneHeading(this.state.scenePickerPrefix, this.state.scenePickerLocation, label) }));
+    const times = (spanish
+      ? ['MADRUGADA', 'MAÑANA', 'TARDE', 'ATARDECER', 'NOCHE']
+      : ['DAWN', 'MORNING', 'AFTERNOON', 'SUNSET', 'NIGHT'])
+      .map((label) => ({ label, apply: () => this.applySceneHeading(this.state.scenePickerPrefix, this.state.scenePickerLocation, label) }));
     this.setState({ scenePickerOpen: true, scenePickerLocations: locations.map((label) => ({ label, apply: () => { this.setState({ scenePickerLocation: label }); } })), scenePickerTimes: times, scenePickerLocation: '', scenePickerPrefix: 'INT.' });
   }
 
@@ -4368,10 +4516,12 @@ class Component extends DCLogic {
     this.applyCharacterName(name);
   }
 
-  applySceneHeading(prefix, location = this.state.scenePickerLocation || 'LOCATION', time = 'MAÑANA') {
+  applySceneHeading(prefix, location = this.state.scenePickerLocation || 'LOCATION', time = null) {
     const block = this._currentBlock();
     if (!block) return;
-    block.textContent = `${prefix} ${location.trim() || 'LOCATION'} - ${time}`;
+    const language = window.filmscriptLanguage?.get?.() || document.documentElement.lang || 'en';
+    const defaultTime = String(language).toLowerCase().startsWith('es') ? 'MAÑANA' : 'MORNING';
+    block.textContent = `${prefix} ${location.trim() || 'LOCATION'} - ${time || defaultTime}`;
     this._applyType(block, 'scene');
     this.setState({ scenePickerOpen: false });
     this.renumberAll(true);
@@ -5406,7 +5556,8 @@ Write Lumiere's next reply only:`;
       });
       this._fetchCredits();
     } catch (e) {
-      this.setState(s => ({ chat: [...s.chat, { who: 'l', text: 'I lost the connection to the projection room for a moment. Ask me again?' }], loading: false }), () => {
+      const message = String(e?.message || '').trim() || 'I lost the connection to the projection room for a moment. Ask me again?';
+      this.setState(s => ({ chat: [...s.chat, { who: 'l', text: message }], loading: false }), () => {
         this._scrollChat();
         this._queueChatSave(this.state.chat);
       });
@@ -5467,6 +5618,7 @@ Write Lumiere's next reply only:`;
     clearTimeout(this._stripboardSavedTimer);
     clearTimeout(this._stripboardEntryTimer);
     clearTimeout(this._analysisFocusTimer);
+    clearInterval(this._creditsRefreshTimer);
     this._clearBreakdownReferenceHighlight();
   }
 
@@ -5499,7 +5651,7 @@ Write Lumiere's next reply only:`;
       ...productionScenesRaw.map((scene) => ({ ...scene, manual: false })),
       ...manualShotScenesRaw.map((scene) => ({ ...scene, manual: true })),
     ];
-    const activeProductionAnalysis = shotListMode ? productionProject?.shotAnalysis : workMode === 'budget' || (workMode === 'canvas' && !shotListMode) ? null : productionProject?.analysis;
+    const activeProductionAnalysis = shotListMode ? productionProject?.shotAnalysis : workMode === 'budget' || workMode === 'calendar' || (workMode === 'canvas' && !shotListMode) ? null : productionProject?.analysis;
     const analysisStatus = activeProductionAnalysis?.status || 'idle';
     const productionProgress = analysisStatus === 'queued' || analysisStatus === 'running';
     const hasBreakdown = productionScenesRaw.some(scene => !!scene.breakdown && scene.breakdown.generated !== false);
@@ -5509,7 +5661,7 @@ Write Lumiere's next reply only:`;
         ? hasBreakdown
         : workMode === 'canvas'
           ? shotListMode ? !!productionProject : true
-          : workMode === 'budget'
+          : workMode === 'budget' || workMode === 'calendar'
             ? true
           : false;
     const breakdownSceneIndex = Math.max(0, Math.min(this.state.breakdownSceneIndex || 0, Math.max(0, productionScenesRaw.length - 1)));
@@ -5632,11 +5784,11 @@ Write Lumiere's next reply only:`;
     const headingWithoutNumber = breakdownHeading.replace(/\s+\d+\s*$/, '').trim();
     const intExtMatch = headingWithoutNumber.match(/^(INT\.?\s*\/\s*EXT\.?|INT\.?\/EXT\.?|INT\.?|EXT\.?)/i);
     const breakdownIntExt = intExtMatch ? intExtMatch[0].replace(/\s+/g, '').toUpperCase() : 'Not set';
-    const dayNightMatch = headingWithoutNumber.match(/\b(NOCHE|D[IÍ]A|AMANECER|MAÑANA|TARDE|ATARDECER)\b/i);
+    const dayNightMatch = headingWithoutNumber.match(/\b(NIGHT|DAY|DAWN|MORNING|AFTERNOON|SUNSET|NOCHE|D[IÍ]A|AMANECER|MAÑANA|TARDE|ATARDECER)\b/i);
     const breakdownDayNight = dayNightMatch ? dayNightMatch[0].toUpperCase() : 'Not set';
     const breakdownSet = headingWithoutNumber
       .replace(/^(INT\.?\s*\/\s*EXT\.?|INT\.?\/EXT\.?|INT\.?|EXT\.?)\s*[-.]?\s*/i, '')
-      .replace(/\s+-\s+(NOCHE|D[IÍ]A|AMANECER|MAÑANA|TARDE|ATARDECER).*$/i, '')
+      .replace(/\s+-\s+(NIGHT|DAY|DAWN|MORNING|AFTERNOON|SUNSET|NOCHE|D[IÍ]A|AMANECER|MAÑANA|TARDE|ATARDECER).*$/i, '')
       .trim() || 'Not set';
     const locationElement = normalizedElements.find(element => element.normalizedCategory === 'locations');
     const stripLocation = breakdownScene.strip?.location && breakdownScene.strip.location !== 'Unassigned' ? breakdownScene.strip.location : '';
@@ -5684,6 +5836,29 @@ Write Lumiere's next reply only:`;
       if (!rest) return String(whole);
       return `${whole} ${rest}/8`;
     };
+    const formatDuration = (minutes) => {
+      const numeric = Number(minutes);
+      if (!Number.isFinite(numeric)) return 'Not set';
+      const hours = Math.floor(numeric / 60);
+      const remainder = numeric % 60;
+      if (!hours) return `${remainder}m`;
+      return remainder ? `${hours}h ${remainder}m` : `${hours}h`;
+    };
+    const shootingTask = (productionProject?.calendar?.tasks || []).find((task) => task.kind === 'shoot' || task.phaseId === 'production');
+    const shootingStartDate = shootingTask?.startDate || '';
+    const formatShootDate = (date) => {
+      if (!date) return '';
+      const parsed = new Date(`${date}T00:00:00Z`);
+      if (Number.isNaN(parsed.getTime())) return '';
+      return new Intl.DateTimeFormat('en-US', { month: 'short', day: 'numeric', timeZone: 'UTC' }).format(parsed);
+    };
+    const shootingDayDate = (day) => {
+      if (!shootingStartDate) return '';
+      const parsed = new Date(`${shootingStartDate}T00:00:00Z`);
+      if (Number.isNaN(parsed.getTime())) return '';
+      parsed.setUTCDate(parsed.getUTCDate() + Math.max(0, Number(day) - 1));
+      return parsed.toISOString().slice(0, 10);
+    };
     const sceneNumberById = new Map(productionScenesRaw.map((scene, index) => [scene.id, index + 1]));
     const stripboardSavedOrder = Array.isArray(productionProject?.stripboardOrder) ? productionProject.stripboardOrder : [];
     const stripboardOrder = [
@@ -5718,12 +5893,18 @@ Write Lumiere's next reply only:`;
       const headingWithoutNumber = heading.replace(/\s+\d+\s*$/, '').trim();
       const intExtMatch = headingWithoutNumber.match(/^(INT\.?\s*\/\s*EXT\.?|INT\.?\/EXT\.?|INT\.?|EXT\.?)/i);
       const intExt = intExtMatch ? intExtMatch[0].replace(/\./g, '').replace(/\s+/g, '').toUpperCase() : 'N/A';
-      const timeMatch = headingWithoutNumber.match(/\b(NOCHE|D[IÍ]A|AMANECER|MAÑANA|TARDE|ATARDECER)\b/i);
+      const timeMatch = headingWithoutNumber.match(/\b(NIGHT|DAY|DAWN|MORNING|AFTERNOON|SUNSET|NOCHE|D[IÍ]A|AMANECER|MAÑANA|TARDE|ATARDECER)\b/i);
       const timeRaw = timeMatch ? timeMatch[0].toUpperCase() : '';
-      const dayNight = timeRaw === 'NOCHE' ? 'NIGHT' : timeRaw === 'AMANECER' ? 'DAWN' : timeRaw ? 'DAY' : 'N/A';
+      const dayNight = ['NIGHT', 'NOCHE'].includes(timeRaw)
+        ? 'NIGHT'
+        : ['DAWN', 'SUNSET', 'AMANECER', 'ATARDECER'].includes(timeRaw)
+          ? 'DAWN'
+          : timeRaw
+            ? 'DAY'
+            : 'N/A';
       const parsedSet = headingWithoutNumber
         .replace(/^(INT\.?\s*\/\s*EXT\.?|INT\.?\/EXT\.?|INT\.?|EXT\.?)\s*[-.]?\s*/i, '')
-        .replace(/\s*-\s*(NOCHE|D[IÍ]A|AMANECER|MAÑANA|TARDE|ATARDECER).*$/i, '')
+        .replace(/\s*-\s*(NIGHT|DAY|DAWN|MORNING|AFTERNOON|SUNSET|NOCHE|D[IÍ]A|AMANECER|MAÑANA|TARDE|ATARDECER).*$/i, '')
         .trim();
       const savedLocation = scene.strip?.location && scene.strip.location !== 'Unassigned' ? scene.strip.location : '';
       const shootLocation = savedLocation || 'Assign';
@@ -5746,14 +5927,7 @@ Write Lumiere's next reply only:`;
         : hasSavedEstimate
           ? Math.max(1, Math.min(720, Math.round(savedMinutesRaw)))
           : null;
-      const formatDuration = (minutes) => {
-        if (!Number.isFinite(minutes)) return 'Est. time…';
-        const hours = Math.floor(minutes / 60);
-        const remainder = minutes % 60;
-        if (!hours) return `${remainder}m`;
-        return remainder ? `${hours}h ${remainder}m` : `${hours}h`;
-      };
-      const estimatedTimeLabel = formatDuration(estimatedMinutes);
+      const estimatedTimeLabel = Number.isFinite(estimatedMinutes) ? formatDuration(estimatedMinutes) : 'Set time';
       const synopsis = String(scene.breakdown?.synopsis || scene.text || '').replace(/\s+/g, ' ').trim() || 'No scene description yet.';
       return {
         isStrip: true,
@@ -5783,6 +5957,7 @@ Write Lumiere's next reply only:`;
         eighths,
         estimatedMinutes,
         estimatedTimeLabel,
+        estimatedTimeAriaLabel: hasSavedEstimate ? `Edit estimated time for scene ${sceneNo}` : 'Est. time…',
         timeUnsetClass: estimatedMinutes == null ? 'is-unset' : '',
         timeSaved: hasSavedEstimate,
         shootDay: scene.strip?.day,
@@ -5861,6 +6036,8 @@ Write Lumiere's next reply only:`;
       const list = eventsByScene.get(event.afterSceneId) || [];
       list.push(event); eventsByScene.set(event.afterSceneId, list);
     });
+    const itemSequence = this._stripboardItemSequence(productionProject);
+    const itemIndexById = new Map(itemSequence.map((entry, index) => [entry.id, index]));
     const stripboardRows = [];
     let currentMinutes = defaultStartMinutes; let shootingDay = 1; let dayEighths = 0; let scheduleKnown = true;
     stripScenes.forEach((strip, index) => {
@@ -5876,16 +6053,40 @@ Write Lumiere's next reply only:`;
       (eventsByScene.get(strip.sceneId) || []).forEach((event) => {
         const type = String(event.type || '');
         if (type === 'end_day') {
-          stripboardRows.push({ isStrip: false, isDivider: true, isBreak: false, label: `End of day ${shootingDay}`, total: `${formatEighths(dayEighths)} pages`, rotation: shootingDay % 2 ? .04 : -.04 });
+          const endTime = scheduleKnown ? formatClock(currentMinutes) : 'Time pending';
+          const shootDate = formatShootDate(shootingDayDate(shootingDay));
+          stripboardRows.push({
+            isStrip: false, isDivider: true, isBreak: false, isEvent: true, eventId: event.id, eventType: type,
+            label: `End of day ${shootingDay}`, total: `${shootDate ? `${shootDate} · ` : ''}${endTime} · ${formatEighths(dayEighths)} pages`,
+            rotation: shootingDay % 2 ? .04 : -.04, itemIndex: itemIndexById.get(event.id) ?? -1,
+            eventAriaLabel: `End of day ${shootingDay}. Finishes at ${endTime}. Drag to move.`,
+            moveUpDisabled: (itemIndexById.get(event.id) ?? 0) <= 0,
+            moveDownDisabled: (itemIndexById.get(event.id) ?? 0) >= itemSequence.length - 1,
+            moveUp: () => this._moveStripboardEvent(event.id, -1), moveDown: () => this._moveStripboardEvent(event.id, 1),
+          });
           shootingDay += 1; currentMinutes = defaultStartMinutes; dayEighths = 0; scheduleKnown = true;
           return;
         }
         const duration = Math.max(0, Number(event.durationMinutes) || (type === 'lunch' ? 60 : 30));
-        stripboardRows.push({ isStrip: false, isDivider: false, isBreak: true, label: type === 'lunch' ? 'Lunch' : 'Move company', total: `${duration} min` });
+        const breakStart = scheduleKnown ? formatClock(currentMinutes) : 'Pending';
         if (scheduleKnown) currentMinutes += duration;
+        const breakEnd = scheduleKnown ? formatClock(currentMinutes) : 'Pending';
+        stripboardRows.push({
+          isStrip: false, isDivider: false, isBreak: true, isEvent: true, eventId: event.id, eventType: type,
+          label: type === 'lunch' ? 'Lunch' : 'Move company', total: `${duration} min · ${breakStart}–${breakEnd}`,
+          duration, durationLabel: `${duration} min`, eventAriaLabel: `${type === 'lunch' ? 'Lunch' : 'Move company'}, ${duration} minutes, ${breakStart} to ${breakEnd}. Drag to move.`,
+          itemIndex: itemIndexById.get(event.id) ?? -1,
+          moveUpDisabled: (itemIndexById.get(event.id) ?? 0) <= 0,
+          moveDownDisabled: (itemIndexById.get(event.id) ?? 0) >= itemSequence.length - 1,
+          moveUp: () => this._moveStripboardEvent(event.id, -1), moveDown: () => this._moveStripboardEvent(event.id, 1),
+          breakOpen: this.state.stripboardTimePopoverEventId === event.id,
+          openTime: (targetEvent) => this.openStripboardEventTime(event.id, duration, targetEvent),
+        });
       });
       if (index === stripScenes.length - 1 && (!eventsByScene.get(strip.sceneId) || !eventsByScene.get(strip.sceneId).some((event) => event.type === 'end_day'))) {
-        stripboardRows.push({ isStrip: false, isDivider: true, isBreak: false, label: `End of day ${shootingDay}`, total: `${formatEighths(dayEighths)} pages`, rotation: shootingDay % 2 ? .04 : -.04 });
+        const endTime = scheduleKnown ? formatClock(currentMinutes) : 'Time pending';
+        const shootDate = formatShootDate(shootingDayDate(shootingDay));
+        stripboardRows.push({ isStrip: false, isDivider: true, isBreak: false, isEvent: false, label: `End of day ${shootingDay}`, total: `${shootDate ? `${shootDate} · ` : ''}${endTime} · ${formatEighths(dayEighths)} pages`, rotation: shootingDay % 2 ? .04 : -.04 });
       }
     });
     stripboardRows.forEach((row, index) => { row.animationDelay = Math.min(index, 16) * 24; });
@@ -5908,6 +6109,8 @@ Write Lumiere's next reply only:`;
       { label: 'EXT NIGHT', ...stripPalette.extNight },
     ];
     const activeStripboardTime = stripScenes.find((scene) => scene.sceneId === this.state.stripboardTimePopoverSceneId) || null;
+    const activeStripboardEvent = (Array.isArray(productionProject?.stripboardEvents) ? productionProject.stripboardEvents : [])
+      .find((entry) => entry.id === this.state.stripboardTimePopoverEventId) || null;
     const stripboardTimeDraftNumeric = Number(this.state.stripboardTimeDraft);
     const stripboardTimeDraftValid = Number.isFinite(stripboardTimeDraftNumeric) && stripboardTimeDraftNumeric >= 1;
     const stripboardTimeDialMinutes = stripboardTimeDraftValid
@@ -6064,7 +6267,7 @@ Write Lumiere's next reply only:`;
       },
     };
     const productionEmptyMode = shotListMode ? 'shotlist' : workMode;
-    const modeTitles = { analysis: 'Analysis', breakdown: 'Script Breakdown', stripboard: 'Stripboard', canvas: shotListMode ? 'Shot List' : 'Canvas', budget: 'Budget' };
+    const modeTitles = { analysis: 'Analysis', breakdown: 'Script Breakdown', stripboard: 'Stripboard', canvas: shotListMode ? 'Shot List' : 'Canvas', budget: 'Budget', calendar: 'Calendar' };
     const productionScenes = productionScenesRaw.map((scene, sceneIndex) => {
       const status = scene.status === 'needs_review' ? 'Needs review' : scene.status === 'outdated' ? 'Outdated' : 'Synced';
       const sceneTitle = scene.title || `Scene ${sceneIndex + 1}`;
@@ -6100,6 +6303,8 @@ Write Lumiere's next reply only:`;
     const productionProgressText = activeProductionAnalysis?.message || `Analyzing scene ${Math.min(completedScenes + 1, totalScenes)} of ${totalScenes}`;
     const productionSyncLabel = workMode === 'budget'
       ? 'Budget saves automatically'
+      : workMode === 'calendar'
+      ? 'Calendar saves automatically'
       : shotListMode
       ? `${shotListSceneSource.length} scene${shotListSceneSource.length === 1 ? '' : 's'} · ${cameraReviewCount} need camera plans`
       : workMode === 'canvas'
@@ -6107,7 +6312,7 @@ Write Lumiere's next reply only:`;
       : `${productionScenesRaw.length} scene${productionScenesRaw.length === 1 ? '' : 's'} · ${reviewCount} need review`;
     const productionIsCurrent = shotListMode
       ? shotListSceneSource.length > 0 && cameraReviewCount === 0 && !productionProgress
-      : workMode === 'canvas'
+      : workMode === 'canvas' || workMode === 'budget' || workMode === 'calendar'
       ? true
       : productionScenesRaw.length > 0 && reviewCount === 0 && !productionProgress;
     const productionSyncState = productionProgress
@@ -6127,6 +6332,7 @@ Write Lumiere's next reply only:`;
 
     const plan = this.state.plan || null;
     const onLumierePlan = plan === 'lumiere';
+    const isLumierePlan = onLumierePlan;
     const paywall = !onLumierePlan;
     const writingIdleNudge = workMode === 'editor' && this.state.writingIdleNudge;
     const writingIdleContext = writingIdleNudge ? this._writingSceneContext() : null;
@@ -6277,6 +6483,7 @@ Write Lumiere's next reply only:`;
         { id: 'stripboard', label: 'Stripboard' },
         { id: 'canvas', label: 'Canvas' },
         { id: 'budget', label: 'Budget' },
+        { id: 'calendar', label: 'Calendar' },
       ].map(mode => ({
         ...mode,
         active: workMode === mode.id,
@@ -6286,10 +6493,13 @@ Write Lumiere's next reply only:`;
       analysisMode: workMode === 'analysis',
       productionMode: workMode !== 'editor' && workMode !== 'analysis',
       productionAccessNotice: workMode !== 'editor' && workMode !== 'analysis' && !(workMode === 'canvas' && !shotListMode) && !onLumierePlan,
-      productionHeaderVisible: workMode !== 'budget' && !(workMode === 'canvas' && !shotListMode),
-      workModeEyebrow: workMode === 'budget' ? 'Connected production' : workMode === 'canvas' ? 'Canvas' : 'Connected preproduction',
+      productionHeaderVisible: workMode !== 'budget' && workMode !== 'calendar' && !(workMode === 'canvas' && !shotListMode),
+      workModeEyebrow: workMode === 'budget' || workMode === 'calendar' ? 'Connected production' : workMode === 'canvas' ? 'Canvas' : 'Connected preproduction',
       workModeTitle: modeTitles[workMode] || 'Editor',
-      productionMaxWidth: workMode === 'canvas' && !shotListMode ? '1480px' : '1120px',
+      productionMaxWidth: workMode === 'calendar' ? 'none' : (workMode === 'canvas' && !shotListMode) ? '1480px' : '1120px',
+      productionShellClass: workMode === 'calendar' ? 'v5-production-shell-calendar' : '',
+      productionShellPadding: workMode === 'calendar' ? '12px 14px 24px' : '38px 48px 64px',
+      productionInnerHeight: workMode === 'calendar' ? '100%' : 'auto',
       productionSyncLabel,
       productionSyncState,
       productionSyncAria: `${productionSyncState}. ${productionSyncLabel}`,
@@ -6314,15 +6524,18 @@ Write Lumiere's next reply only:`;
       stripboardMotionClass: this.state.stripboardEntering ? 'v5-stripboard-entering' : '',
       shotListHasData: shotListMode && productionHasData,
       budgetHasData: workMode === 'budget',
+      calendarHasData: workMode === 'calendar',
       activeScriptId: this.state.activeScriptId || this._activeScriptId || '',
       stripboardRows,
       stripboardHeaderGrid,
       stripboardLegend,
-      stripboardTimePopoverOpen: workMode === 'stripboard' && Boolean(activeStripboardTime),
+      stripboardTimePopoverOpen: workMode === 'stripboard' && Boolean(activeStripboardTime || activeStripboardEvent),
       stripboardTimePopoverPlacement: this.state.stripboardTimePlacement === 'below' ? 'is-below' : 'is-above',
       stripboardTimePopoverLeft: this.state.stripboardTimeAnchorLeft,
       stripboardTimePopoverTop: this.state.stripboardTimeAnchorTop,
       stripboardTimeSceneNo: activeStripboardTime?.sceneNo || '',
+      stripboardTimeEventLabel: activeStripboardEvent?.type === 'lunch' ? 'Lunch' : activeStripboardEvent?.type === 'move_company' ? 'Move company' : '',
+      stripboardTimeIsEvent: Boolean(activeStripboardEvent),
       stripboardTimeHoursDisplay,
       stripboardTimeMinutesDisplay,
       stripboardTimeExactValue: this.state.stripboardTimeDraft,
@@ -6331,18 +6544,19 @@ Write Lumiere's next reply only:`;
       stripboardTimeHourDown: () => this.adjustStripboardTimeHours(-1),
       stripboardTimeMinuteUp: () => this.adjustStripboardTimeMinutes(1),
       stripboardTimeMinuteDown: () => this.adjustStripboardTimeMinutes(-1),
-      stripboardTimeHasSavedEstimate: Boolean(activeStripboardTime?.timeSaved),
+      stripboardTimeHasSavedEstimate: Boolean(activeStripboardEvent || activeStripboardTime?.timeSaved),
       stripboardTimeSaveDisabled: !stripboardTimeDraftValid,
-      stripboardTimeCancel: () => this.setState({ stripboardTimePopoverSceneId: null }),
-      stripboardTimeClear: () => activeStripboardTime && this.clearStripboardTime(activeStripboardTime.sceneId),
-      stripboardTimeSave: () => activeStripboardTime && this.saveStripboardTime(activeStripboardTime.sceneId),
+      stripboardTimeCancel: () => this.setState({ stripboardTimePopoverSceneId: null, stripboardTimePopoverEventId: null }),
+      stripboardTimeClear: () => activeStripboardEvent ? this.clearStripboardEventTime(activeStripboardEvent.id) : activeStripboardTime && this.clearStripboardTime(activeStripboardTime.sceneId),
+      stripboardTimeSave: () => activeStripboardEvent ? this.saveStripboardEventTime(activeStripboardEvent.id) : activeStripboardTime && this.saveStripboardTime(activeStripboardTime.sceneId),
       stripboardTimeKeyDown: (event) => {
         if (event.key === 'Escape') {
           event.preventDefault();
-          this.setState({ stripboardTimePopoverSceneId: null });
+          this.setState({ stripboardTimePopoverSceneId: null, stripboardTimePopoverEventId: null });
         } else if (event.key === 'Enter' && event.target?.matches?.('input') && stripboardTimeDraftValid) {
           event.preventDefault();
-          if (activeStripboardTime) this.saveStripboardTime(activeStripboardTime.sceneId);
+          if (activeStripboardEvent) this.saveStripboardEventTime(activeStripboardEvent.id);
+          else if (activeStripboardTime) this.saveStripboardTime(activeStripboardTime.sceneId);
         }
       },
       stripboardBulkActive: stripboardSelectionCount > 0,
@@ -6407,7 +6621,7 @@ Write Lumiere's next reply only:`;
       stripboardStartTimeCancel: () => this.setState({ stripboardStartTimeOpen: false }),
       stripboardStartTimeSave: () => this.saveStripboardStartTime(),
       stripboardBreakMenuOpen: this.state.stripboardBreakMenuOpen,
-      stripboardBreakToggle: () => this.setState((state) => ({ stripboardBreakMenuOpen: !state.stripboardBreakMenuOpen, stripboardStartTimeOpen: false, stripboardTimePopoverSceneId: null, stripboardLocationPopoverSceneId: null })),
+      stripboardBreakToggle: () => this.setState((state) => ({ stripboardBreakMenuOpen: !state.stripboardBreakMenuOpen, stripboardStartTimeOpen: false, stripboardTimePopoverSceneId: null, stripboardTimePopoverEventId: null, stripboardLocationPopoverSceneId: null })),
       stripboardAddLunch: () => this.addStripboardBreak('lunch'),
       stripboardAddMoveCompany: () => this.addStripboardBreak('move_company'),
       stripboardAddEndDay: () => this.addStripboardBreak('end_day'),
@@ -6573,7 +6787,63 @@ Write Lumiere's next reply only:`;
         if (pct <= 25) return '#D68910';
         return accent;
       })(),
-      creditsLabel: this.state.creditsPct == null ? 'Checking credits' : Math.round(this.state.creditsPct) + '% credits left',
+      creditsLabel: (() => {
+        const language = String(window.filmscriptLanguage?.get?.() || document.documentElement.lang || 'en').toLowerCase();
+        const spanish = language.startsWith('es');
+        if (this.state.credits == null) return spanish ? 'Verificando créditos' : 'Checking credits';
+        const value = Math.max(0, Number(this.state.credits.remaining) || 0);
+        return spanish ? `${value} créditos disponibles` : `${value} credits available`;
+      })(),
+      creditsUsageTitle: String(window.filmscriptLanguage?.get?.() || document.documentElement.lang || 'en').toLowerCase().startsWith('es') ? 'Uso de Lumiere' : 'Lumiere usage',
+      creditsAvailableLabel: (() => {
+        const language = String(window.filmscriptLanguage?.get?.() || document.documentElement.lang || 'en').toLowerCase();
+        const spanish = language.startsWith('es');
+        if (this.state.credits == null) return spanish ? 'Cargando…' : 'Loading…';
+        const value = Math.max(0, Number(this.state.credits.remaining) || 0);
+        return spanish ? `${value} disponibles` : `${value} available`;
+      })(),
+      creditUsageRows: (() => {
+        const language = String(window.filmscriptLanguage?.get?.() || document.documentElement.lang || 'en').toLowerCase();
+        const spanish = language.startsWith('es');
+        const credits = this.state.credits || {};
+        const formatReset = (iso, resetInMs) => {
+          if (!iso) return spanish ? 'Comienza al usar Lumiere' : 'Starts on first use';
+          const date = new Date(iso);
+          const dateLabel = Number.isNaN(date.getTime()) ? '' : new Intl.DateTimeFormat(spanish ? 'es-GT' : 'en-US', { day: 'numeric', month: 'short', hour: 'numeric', minute: '2-digit' }).format(date);
+          const hours = Math.max(0, Math.ceil((Number(resetInMs) || 0) / 3600000));
+          return spanish ? `Se reinicia ${dateLabel} · ${hours} h` : `Resets ${dateLabel} · ${hours}h`;
+        };
+        const source = [
+          { key: 'session', label: spanish ? 'Sesión · 8 h' : 'Session · 8h', value: credits.session, color: '#BA7517' },
+          { key: 'week', label: spanish ? 'Esta semana' : 'This week', value: credits.week, color: '#5D7C4B' },
+          { key: 'month', label: spanish ? 'Este mes' : 'This month', value: credits.month, color: '#536F91' },
+        ];
+        return source.map(row => {
+          const value = row.value || {};
+          const limit = Math.max(0, Number(value.limit) || 0);
+          const used = Math.max(0, Number(value.used) || 0);
+          const pct = Math.max(0, Math.min(100, Number.isFinite(Number(value.pct)) ? Number(value.pct) : (limit ? ((limit - used) / limit) * 100 : 0)));
+          return {
+            label: row.label,
+            usedLabel: `${used} / ${limit}`,
+            pct: pct.toFixed(2),
+            color: row.color,
+            resetLabel: formatReset(value.resetAt, value.resetInMs),
+          };
+        });
+      })(),
+      creditsExtraVisible: Number(this.state.credits?.extraCredits || 0) > 0,
+      creditsExtraLabel: (() => {
+        const language = String(window.filmscriptLanguage?.get?.() || document.documentElement.lang || 'en').toLowerCase();
+        const spanish = language.startsWith('es');
+        const extra = Math.max(0, Number(this.state.credits?.extraCredits) || 0);
+        return spanish ? `Recarga: ${extra} créditos extra` : `Top-up: ${extra} extra credits`;
+      })(),
+      creditsEmpty: this.state.creditsRemaining != null
+        ? this.state.creditsRemaining <= 0
+        : this.state.creditsPct != null && this.state.creditsPct <= 0,
+      creditsResetLabel: this.state.creditsResetLoading ? 'Opening top-up…' : 'Buy extra credits · $5',
+      startCreditsReset: () => this._startCreditsReset(),
       messages,
       loading: this.state.loading,
       input: this.state.input,
@@ -6779,7 +7049,8 @@ Write Lumiere's next reply only:`;
       userInitial: (this.state.user?.name || this.state.user?.email || 'Writer').trim().charAt(0).toUpperCase() || 'W',
       accountName: this.state.user?.name || 'Writer',
       accountEmail: this.state.user?.email || 'Google account',
-      accountPlan: onLumierePlan ? 'FilmScript Pro · $20 a month' : 'No active plan · Lumiere unavailable',
+      accountPlan: plan === 'lumiere' ? 'FilmScript Pro · $19.99 / month' : plan === 'basic' ? 'FilmScript Basic · $12.99 / month' : 'Free · Lumiere unavailable',
+      isLumierePlan,
       themeLabel: dark ? 'Light theme' : 'Dark theme',
       toggleAccount: () => this.setState(s => ({ accountOpen: !s.accountOpen, menuOpen: false })),
       closeAccountDetails: () => this.setState({ accountDetailsOpen: false }),

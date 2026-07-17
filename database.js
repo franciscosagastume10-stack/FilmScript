@@ -38,6 +38,9 @@ sqlite.exec(`
     name TEXT,
     picture_url TEXT,
     lumiere_preferences_json TEXT NOT NULL DEFAULT '{}',
+    gender TEXT,
+    birth_date TEXT,
+    profile_completed_at TEXT,
     email_verified INTEGER NOT NULL DEFAULT 0,
     created_at TEXT NOT NULL,
     updated_at TEXT NOT NULL
@@ -146,6 +149,15 @@ const userColumns = new Set(sqlite.prepare("PRAGMA table_info(users)").all().map
 if (!userColumns.has("lumiere_preferences_json")) {
   sqlite.exec("ALTER TABLE users ADD COLUMN lumiere_preferences_json TEXT NOT NULL DEFAULT '{}'");
 }
+if (!userColumns.has("gender")) {
+  sqlite.exec("ALTER TABLE users ADD COLUMN gender TEXT");
+}
+if (!userColumns.has("birth_date")) {
+  sqlite.exec("ALTER TABLE users ADD COLUMN birth_date TEXT");
+}
+if (!userColumns.has("profile_completed_at")) {
+  sqlite.exec("ALTER TABLE users ADD COLUMN profile_completed_at TEXT");
+}
 const checkoutColumns = new Set(sqlite.prepare("PRAGMA table_info(checkouts)").all().map((column) => column.name));
 if (!checkoutColumns.has("product_id")) {
   sqlite.exec("ALTER TABLE checkouts ADD COLUMN product_id TEXT");
@@ -169,13 +181,17 @@ function ensureUserRow(id, user = {}) {
   if (!id) return null;
   const timestamp = user.updatedAt || user.createdAt || nowIso();
   sqlite.prepare(`
-    INSERT INTO users (id, google_sub, email, name, picture_url, email_verified, created_at, updated_at)
-    VALUES (@id, @googleSub, @email, @name, @picture, @emailVerified, @createdAt, @updatedAt)
+    INSERT INTO users (id, google_sub, email, name, picture_url, lumiere_preferences_json, gender, birth_date, profile_completed_at, email_verified, created_at, updated_at)
+    VALUES (@id, @googleSub, @email, @name, @picture, @lumierePreferences, @gender, @birthDate, @profileCompletedAt, @emailVerified, @createdAt, @updatedAt)
     ON CONFLICT(id) DO UPDATE SET
       google_sub = COALESCE(excluded.google_sub, users.google_sub),
       email = COALESCE(excluded.email, users.email),
       name = COALESCE(excluded.name, users.name),
       picture_url = COALESCE(excluded.picture_url, users.picture_url),
+      lumiere_preferences_json = CASE WHEN excluded.lumiere_preferences_json = '{}' THEN users.lumiere_preferences_json ELSE excluded.lumiere_preferences_json END,
+      gender = COALESCE(excluded.gender, users.gender),
+      birth_date = COALESCE(excluded.birth_date, users.birth_date),
+      profile_completed_at = COALESCE(excluded.profile_completed_at, users.profile_completed_at),
       email_verified = MAX(users.email_verified, excluded.email_verified),
       updated_at = excluded.updated_at
   `).run({
@@ -184,6 +200,10 @@ function ensureUserRow(id, user = {}) {
     email: user.email || null,
     name: user.name || null,
     picture: user.picture || user.pictureUrl || null,
+    lumierePreferences: user.lumierePreferences ? stringify(user.lumierePreferences) : "{}",
+    gender: user.gender || null,
+    birthDate: user.birthDate || null,
+    profileCompletedAt: user.profileCompletedAt || null,
     emailVerified: user.emailVerified === false ? 0 : user.googleSub ? 1 : 0,
     createdAt: user.createdAt || timestamp,
     updatedAt: timestamp,
@@ -340,10 +360,16 @@ function claimLegacyLocalDataForSingleGoogleUser() {
 }
 
 claimLegacyLocalDataForSingleGoogleUser();
-sqlite.prepare("INSERT OR REPLACE INTO schema_meta (key, value) VALUES ('schema_version', '6')").run();
+sqlite.prepare("INSERT OR REPLACE INTO schema_meta (key, value) VALUES ('schema_version', '8')").run();
 
 function rowToUser(row) {
   if (!row) return null;
+  const gender = row.gender === "man" || row.gender === "woman" || row.gender === "unspecified"
+    ? row.gender
+    : null;
+  const birthDate = typeof row.birth_date === "string" && /^\d{4}-\d{2}-\d{2}$/.test(row.birth_date)
+    ? row.birth_date
+    : null;
   return {
     id: row.id,
     googleSub: row.google_sub || null,
@@ -351,6 +377,10 @@ function rowToUser(row) {
     name: row.name || null,
     picture: row.picture_url || null,
     lumierePreferences: parseJson(row.lumiere_preferences_json, {}),
+    gender,
+    birthDate,
+    profileCompletedAt: row.profile_completed_at || null,
+    profileComplete: Boolean(row.profile_completed_at || (gender && birthDate)),
     emailVerified: !!row.email_verified,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
@@ -542,6 +572,18 @@ function saveCreditsSnapshot(value) {
     .run(stringify(value));
 }
 
+// Per-account Lumiere allowance. This lives in app_settings so existing
+// installations can adopt monthly credits without a schema migration.
+function loadLumiereCreditsSnapshot() {
+  const row = sqlite.prepare("SELECT value_json FROM app_settings WHERE key = 'lumiere_credits'").get();
+  return parseJson(row?.value_json, {});
+}
+
+function saveLumiereCreditsSnapshot(value) {
+  sqlite.prepare("INSERT OR REPLACE INTO app_settings (key, value_json) VALUES ('lumiere_credits', ?)")
+    .run(stringify(value));
+}
+
 function saveBudgetReceipt({ id, scriptId, userId, filename, mimeType, data }) {
   const bytes = Buffer.isBuffer(data) ? data : Buffer.from(data || []);
   sqlite.prepare(`
@@ -699,6 +741,60 @@ function updateUserName(userId, name) {
   return getUser(userId);
 }
 
+const PROFILE_GENDERS = new Set(["man", "woman", "unspecified"]);
+
+function profileError(message) {
+  const error = new Error(message);
+  error.status = 422;
+  return error;
+}
+
+function normalizeProfileGender(value) {
+  if (value === undefined) return undefined;
+  if (value === null || String(value).trim() === "") return null;
+  const normalized = String(value).trim().toLowerCase();
+  if (!PROFILE_GENDERS.has(normalized)) {
+    throw profileError("Choose man, woman, or prefer not to say.");
+  }
+  return normalized;
+}
+
+function normalizeBirthDate(value) {
+  if (value === undefined) return undefined;
+  if (value === null || String(value).trim() === "") return null;
+  const normalized = String(value).trim();
+  const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(normalized);
+  if (!match) throw profileError("Birthday must use a valid date.");
+  const year = Number(match[1]);
+  const month = Number(match[2]);
+  const day = Number(match[3]);
+  const candidate = new Date(Date.UTC(year, month - 1, day));
+  const today = new Date().toISOString().slice(0, 10);
+  if (year < 1900 || candidate.toISOString().slice(0, 10) !== normalized || normalized > today) {
+    throw profileError("Birthday must be a real date between 1900 and today.");
+  }
+  return normalized;
+}
+
+function updateUserProfile(userId, profile = {}) {
+  const current = getUser(userId);
+  if (!current) return null;
+  const nextGender = Object.prototype.hasOwnProperty.call(profile, "gender")
+    ? normalizeProfileGender(profile.gender)
+    : current.gender;
+  const nextBirthDate = Object.prototype.hasOwnProperty.call(profile, "birthDate")
+    ? normalizeBirthDate(profile.birthDate)
+    : current.birthDate;
+  const complete = Boolean(nextGender && nextBirthDate);
+  const completedAt = complete ? (current.profileCompletedAt || nowIso()) : null;
+  sqlite.prepare(`
+    UPDATE users
+    SET gender = ?, birth_date = ?, profile_completed_at = ?, updated_at = ?
+    WHERE id = ?
+  `).run(nextGender, nextBirthDate, completedAt, nowIso(), userId);
+  return getUser(userId);
+}
+
 function updateUserLumierePreferences(userId, preferences) {
   sqlite.prepare("UPDATE users SET lumiere_preferences_json = ?, updated_at = ? WHERE id = ?")
     .run(stringify(preferences || {}), nowIso(), userId);
@@ -708,7 +804,7 @@ function updateUserLumierePreferences(userId, preferences) {
 function databaseHealth() {
   const scripts = sqlite.prepare("SELECT COUNT(*) AS count FROM scripts").get().count;
   const users = sqlite.prepare("SELECT COUNT(*) AS count FROM users").get().count;
-  return { ok: true, adapter: "sqlite", path: DATABASE_PATH, schemaVersion: 7, users, scripts };
+  return { ok: true, adapter: "sqlite", path: DATABASE_PATH, schemaVersion: 8, users, scripts };
 }
 
 export {
@@ -727,14 +823,17 @@ export {
   getUser,
   loadBillingSnapshot,
   loadCreditsSnapshot,
+  loadLumiereCreditsSnapshot,
   loadPreproductionSnapshot,
   loadScriptsSnapshot,
   saveBillingSnapshot,
   saveBudgetReceipt,
   saveCanvasWorkspace,
   saveCreditsSnapshot,
+  saveLumiereCreditsSnapshot,
   savePreproductionSnapshot,
   saveScriptsSnapshot,
   updateUserLumierePreferences,
   updateUserName,
+  updateUserProfile,
 };

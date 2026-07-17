@@ -37,6 +37,69 @@ test("Plan and billing uses a concise section heading without repeating the plan
   assert.doesNotMatch(subscription, /<h1>FilmScript Pro<\/h1>/);
 });
 
+test("Lumiere exhaustion exposes a verified five-dollar reset path", async () => {
+  const [editor, billing, server] = await Promise.all([
+    fs.readFile(path.join(ROOT, "Editor v5.dc.html"), "utf8"),
+    fs.readFile(path.join(ROOT, "billing-client.js"), "utf8"),
+    fs.readFile(path.join(ROOT, "server.js"), "utf8"),
+  ]);
+  assert.match(editor, /Too inspired to wait until tomorrow\?/);
+  assert.match(editor, /Reset your Lumiere limits for \$5 and keep going\./);
+  assert.match(editor, /creditsEmpty/);
+  assert.match(editor, /createCreditsResetCheckout/);
+  assert.match(billing, /\/api\/credits\/checkout/);
+  assert.match(billing, /\/api\/credits\/confirm/);
+  assert.match(server, /amount_in_cents: LUMIERE_RESET_AMOUNT_CENTS/);
+  assert.match(server, /lumiere_credits_exhausted/);
+  assert.match(server, /plan === "credits_reset"/);
+});
+
+test("Lumiere credits expose rolling session, weekly, monthly and paid top-up windows", async () => {
+  const [editor, language, server] = await Promise.all([
+    fs.readFile(path.join(ROOT, "Editor v5.dc.html"), "utf8"),
+    fs.readFile(path.join(ROOT, "language-preference.js"), "utf8"),
+    fs.readFile(path.join(ROOT, "server.js"), "utf8"),
+  ]);
+  assert.match(server, /LUMIERE_CREDIT_SESSION_LIMIT = 20/);
+  assert.match(server, /LUMIERE_CREDIT_WEEKLY_LIMIT = 60/);
+  assert.match(server, /LUMIERE_CREDIT_SESSION_MS = 8 \* 60 \* 60 \* 1000/);
+  assert.match(server, /LUMIERE_PAID_CREDIT_AMOUNT = 80/);
+  assert.match(server, /extraCredits/);
+  assert.match(server, /blockedBy/);
+  assert.match(editor, /data-testid="credits-usage-panel"/);
+  assert.match(editor, /creditUsageRows/);
+  assert.match(editor, /Session · 8h/);
+  assert.match(editor, /This week/);
+  assert.match(editor, /This month/);
+  assert.match(editor, /Buy extra credits · \$5/);
+  assert.match(language, /'Lumiere usage': 'Uso de Lumiere'/);
+});
+
+test("Scene heading picker follows the interface language", async () => {
+  const editor = await fs.readFile(path.join(ROOT, "Editor v5.dc.html"), "utf8");
+  assert.match(editor, /window\.filmscriptLanguage\?\.get\?\.\(\)/);
+  assert.match(editor, /\['DAWN', 'MORNING', 'AFTERNOON', 'SUNSET', 'NIGHT'\]/);
+  assert.match(editor, /\['MADRUGADA', 'MAÑANA', 'TARDE', 'ATARDECER', 'NOCHE'\]/);
+  assert.match(editor, /\bNIGHT\|DAY\|DAWN\|MORNING\|AFTERNOON\|SUNSET/);
+  assert.match(editor, /defaultTime = String\(language\)\.toLowerCase\(\)\.startsWith\('es'\) \? 'MAÑANA' : 'MORNING'/);
+});
+
+test("Account details stays in the foreground above editor chrome", async () => {
+  const [editor, scripts] = await Promise.all([
+    fs.readFile(path.join(ROOT, "Editor v5.dc.html"), "utf8"),
+    fs.readFile(path.join(ROOT, "App.dc.html"), "utf8"),
+  ]);
+
+  for (const source of [editor, scripts]) {
+    assert.match(source, /data-testid="account-details-overlay"/);
+    assert.match(source, /z-index:\s*1200/);
+    assert.match(source, /isolation:\s*isolate/);
+    assert.match(source, /data-testid="account-details-panel"[^>]+style="[^\"]*z-index:\s*1/);
+  }
+  assert.match(editor, /inset: 0; z-index: 1200; isolation: isolate/);
+  assert.match(editor, /padding: 66px 24px 22px/);
+});
+
 test("subscription cancellation uses distinct close and profile-menu sounds", async () => {
   const [subscription, sounds, cancelAsset] = await Promise.all([
     fs.readFile(path.join(ROOT, "Subscription.dc.html"), "utf8"),
@@ -59,6 +122,14 @@ test("the editor cover exposes directly editable title and writing credits", asy
   assert.match(editor, /data-testid="cover-credit-input"[^>]+onInput="\{\{ onTpCredit \}\}"/);
   assert.match(editor, /data-testid="cover-author-input"[^>]+onInput="\{\{ onTpAuthor \}\}"/);
   assert.match(editor, /\.v5-cover-field:focus\s*\{[^}]*var\(--accent/);
+});
+
+test("the screenplay cover anchors date and contact at the lower left", async () => {
+  const editor = await fs.readFile(path.join(ROOT, "Editor v5.dc.html"), "utf8");
+  assert.match(editor, /class="v5-cover-meta" data-testid="cover-meta"/);
+  assert.match(editor, /\.v5-cover-meta \{ position: absolute; left: 120px; bottom: 96px;/);
+  assert.match(editor, /<div class="tpmeta">/);
+  assert.match(editor, /\.tp \.tpmeta \{ position: absolute; left: 25\.4mm; bottom: 25\.4mm;/);
 });
 
 test("New script creates a blank account-owned screenplay instead of opening demo content", async () => {
@@ -348,10 +419,14 @@ test("budget tables align labels, financial values, and actions by column", asyn
   assert.match(budget, /class="summary-table"/);
   assert.match(budget, /\.summary-table thead th:nth-child\(n\+3\),\.summary-table tbody td:nth-child\(n\+3\)\{text-align:right\}/);
   assert.match(budget, /\.breakdown-table th:nth-child\(13\).*text-align:center/);
+  assert.match(budget, /\.breakdown-table th:nth-child\(12\).*min-width:126px;width:126px/);
+  assert.match(budget, /\.breakdown-table td:nth-child\(12\).*white-space:nowrap/);
   assert.match(budget, /\.funding-table th:nth-child\(3\).*text-align:right/);
   assert.match(budget, /\.expense-table th:nth-child\(n\+6\).*text-align:right/);
   assert.match(budget, /\.tax-table th:nth-child\(2\).*text-align:right/);
   assert.match(budget, /input\[type="number"\]\{text-align:right/);
+  assert.match(budget, /-webkit-appearance:none!important;appearance:textfield/);
+  assert.match(budget, /::-webkit-inner-spin-button.*display:none!important/);
 });
 
 test("budget motion is snappy, intentional, and reduced-motion safe", async () => {
@@ -363,6 +438,63 @@ test("budget motion is snappy, intentional, and reduced-motion safe", async () =
   assert.match(budget, /\.view\{animation:none\}\.view\.is-entering\{animation:budgetViewIn \.18s/);
   assert.match(budget, /\.modal-backdrop\.is-entering\{animation:budgetBackdropIn \.14s/);
   assert.match(budget, /@media\(prefers-reduced-motion:reduce\).*animation:none!important/);
+});
+
+test("budget exposes a weekly Cash Flow connected to Breakdown schedules and Stripboard context", async () => {
+  const [budget, model, server, pdf] = await Promise.all([
+    fs.readFile(path.join(ROOT, "budget-workspace.js"), "utf8"),
+    fs.readFile(path.join(ROOT, "budget-model.js"), "utf8"),
+    fs.readFile(path.join(ROOT, "server.js"), "utf8"),
+    fs.readFile(path.join(ROOT, "budget_pdf.py"), "utf8"),
+  ]);
+
+  assert.match(budget, /\['cashflow', 'Cash Flow'\]/);
+  assert.match(budget, /if \(this\.view === 'cashflow'\) content = this\.renderCashFlow\(computed\)/);
+  assert.match(budget, /Script Breakdown → Stripboard → Budget Schedule/);
+  assert.match(budget, /Weekly Cash Ledger/);
+  assert.match(budget, /data-action="auto-schedule"/);
+  assert.match(budget, /data-action="clear-schedule"/);
+  assert.match(budget, /Connect Production Calendar dates to compare actual payments by week/);
+  assert.match(model, /scheduleCashTotals/);
+  assert.match(model, /scheduleInKindTotals/);
+  assert.match(model, /unscheduledCashTotal/);
+  assert.match(server, /source: "script_breakdown_stripboard"/);
+  assert.match(server, /shootWeekDetails/);
+  assert.match(pdf, /heading\(labels\["weeklyTiming"\], labels\["cashFlow"\]/);
+  assert.match(pdf, /WEEKLY CASH LEDGER/);
+  assert.doesNotMatch(pdf, /PLANNED CASH FLOW/);
+});
+
+test("budget export follows the selected FilmScript language", async () => {
+  const [client, workspace, server, pdf] = await Promise.all([
+    fs.readFile(path.join(ROOT, "budget-client.js"), "utf8"),
+    fs.readFile(path.join(ROOT, "budget-workspace.js"), "utf8"),
+    fs.readFile(path.join(ROOT, "server.js"), "utf8"),
+    fs.readFile(path.join(ROOT, "budget_pdf.py"), "utf8"),
+  ]);
+
+  assert.match(client, /exportUrl: \(scriptId, language = 'en'\)/);
+  assert.match(client, /lang=\$\{encodeURIComponent\(normalizedLanguage\)\}/);
+  assert.match(workspace, /filmscriptLanguage\?\.get\?\.\(\) \|\| document\.documentElement\.lang/);
+  assert.match(workspace, /exportUrl\(this\.scriptId, language\)/);
+  assert.match(server, /searchParams\.get\("lang"\)/);
+  assert.match(server, /budgetPdfPayload\(script, budget, productionSchedule, language\)/);
+  assert.match(server, /language: normalizeLumiereLanguage\(language\)/);
+  assert.match(pdf, /TRANSLATIONS =/);
+  assert.match(pdf, /"budget": "Presupuesto"/);
+  assert.match(pdf, /"budgetBreakdown": "Desglose del presupuesto"/);
+  assert.match(pdf, /translations\(payload\.get\("language"\)\)/);
+});
+
+test("budget navigation leads with Quick View, Breakdown, then Summary", async () => {
+  const budget = await fs.readFile(path.join(ROOT, "budget-workspace.js"), "utf8");
+  const quick = budget.indexOf("['quick', 'Quick View']");
+  const breakdown = budget.indexOf("['breakdown', 'Breakdown']");
+  const summary = budget.indexOf("['summary', 'Summary']");
+  const finance = budget.indexOf("['finance', 'Finance']");
+  const expenses = budget.indexOf("['expenses', 'Expenses']");
+  const settings = budget.indexOf("['settings', 'Settings']");
+  assert.ok(quick >= 0 && quick < breakdown && breakdown < summary && summary < finance && finance < expenses && expenses < settings);
 });
 
 test("budget prioritizes active data and presents empty states without empty tables", async () => {
@@ -446,6 +578,20 @@ test("Analysis uses one Lumiere insights contract with screenplay evidence and p
   assert.match(analysis, /data-mode="breakdown"/);
   assert.match(analysis, /data-mode="stripboard"/);
   assert.match(analysis, /data-mode="shotlist"/);
+  assert.match(analysis, /localStoryFlow\(metrics\)/);
+  assert.match(analysis, /preview: !modelFlowPoints\.length/);
+  assert.match(analysis, /live draft signal from scene rhythm/i);
+  assert.match(analysis, /this\.analysisStarting = false/);
+  assert.match(analysis, /analysis-progress-track/);
+  assert.match(analysis, /data-action="start-quick"/);
+  assert.match(analysis, /const waitingForUser = this\.analysis\.hasEnoughContent/);
+  assert.match(analysis, /load\(\{ startAnalysis: true \}\)/);
+  assert.doesNotMatch(editor, /Mount the Analysis element first[\s\S]*refreshFromEditor/);
+  assert.match(analysis, /data-observation-id/);
+  assert.match(analysis, /observationId: target\.dataset\.observationId/);
+  assert.match(server, /artisticDecisionKey/);
+  assert.match(server, /matchesArtisticDecision/);
+  assert.match(server, /writerMemory: analysis\.feedback\?\.artisticDecisions \|\| \[\]/);
   assert.match(editor, /filmscript:analysis-open-mode/);
   assert.match(editor, /jumpScene\(number, \{ analysisFocus: true \}\)/);
   assert.match(editor, /v5-analysis-focus/);

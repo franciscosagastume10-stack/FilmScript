@@ -209,6 +209,24 @@ test("account Analysis persists feedback, stays owner-scoped, and exports the cu
   assert.equal(feedbackResponse.status, 200);
   assert.equal((await feedbackResponse.json()).analysis.feedback.intendedGenre, "Thriller");
 
+  const decisionResponse = await fetch(`${url}/api/scripts/${scriptId}/analysis`, {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json", Cookie: ownerCookie },
+    body: JSON.stringify({
+      action: "artisticDecision",
+      key: "Ambiguous ending",
+      observationId: "att_example",
+      observationTitle: "Ambiguous ending",
+      decision: "The ambiguity is intentional for this screenplay.",
+      sceneId: analysis.sceneIds[0],
+      sceneIds: [analysis.sceneIds[0]],
+    }),
+  });
+  assert.equal(decisionResponse.status, 200);
+  const decisionAnalysis = (await decisionResponse.json()).analysis;
+  assert.equal(decisionAnalysis.feedback.artisticDecisions[0].observationId, "att_example");
+  assert.equal(decisionAnalysis.feedback.artisticDecisions[0].observationTitle, "Ambiguous ending");
+
   const reloadedResponse = await fetch(`${url}/api/scripts/${scriptId}/analysis`, { headers: { Cookie: ownerCookie } });
   assert.equal((await reloadedResponse.json()).analysis.feedback.intendedGenre, "Thriller");
 

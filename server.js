@@ -5,6 +5,8 @@ import crypto from "node:crypto";
 import { spawn } from "node:child_process";
 import { fileURLToPath } from "node:url";
 import Anthropic from "@anthropic-ai/sdk";
+import XLSX from "xlsx";
+import mammoth from "mammoth";
 import {
   connectGoogleIdentity,
   consumeOauthState,
@@ -19,18 +21,23 @@ import {
   getUser,
   loadBillingSnapshot,
   loadCreditsSnapshot,
+  loadLumiereCreditsSnapshot,
   loadPreproductionSnapshot,
   loadScriptsSnapshot,
   saveBillingSnapshot,
   saveBudgetReceipt,
   saveCanvasWorkspace,
   saveCreditsSnapshot,
+  saveLumiereCreditsSnapshot,
   savePreproductionSnapshot,
   saveScriptsSnapshot,
   updateUserLumierePreferences,
   updateUserName,
+  updateUserProfile,
 } from "./database.js";
 import { computeBudget, normalizeBudget } from "./budget-model.js";
+import { applyBudgetImport, buildBudgetImportCatalog, normalizeBudgetImportProposal } from "./budget-import-model.js";
+import { computeCalendar, normalizeCalendar } from "./calendar-model.js";
 import { buildAnalysisSnapshot, hashText, normalizeEmotionalArc } from "./analysis-model.js";
 import { referenceStorage } from "./reference-storage.js";
 import {
@@ -49,6 +56,29 @@ const ROOT = path.dirname(fileURLToPath(import.meta.url));
 const PORT = Number(process.env.PORT || 4173);
 const client = new Anthropic();
 
+function anthropicFailureMessage(error) {
+  const status = Number(error?.status || error?.statusCode || 0);
+  const message = String(error?.message || '').toLowerCase();
+  if (message.includes('not configured') || message.includes('not set') || message.includes('missing api key')) {
+    return 'Lumiere is not configured on this server. Set ANTHROPIC_API_KEY in app/.env and restart FilmScript.';
+  }
+  if (status === 401 || status === 403 || message.includes('authentication_error') || message.includes('api key is invalid') || message.includes('invalid x-api-key')) {
+    return 'Lumiere is unavailable because the Anthropic API key is invalid or expired. Update ANTHROPIC_API_KEY in app/.env and restart FilmScript.';
+  }
+  if (status === 429 || message.includes('rate limit')) {
+    return 'Lumiere is temporarily rate-limited by Anthropic. Wait a moment and try again.';
+  }
+  if (status >= 500 || message.includes('overloaded') || message.includes('connection')) {
+    return 'Lumiere is temporarily unavailable. Anthropic did not accept the request; try again in a moment.';
+  }
+  return error?.message || 'Lumiere could not complete this request.';
+}
+
+function anthropicFailureStatus(error) {
+  const status = Number(error?.status || error?.statusCode || 0);
+  return status === 401 || status === 403 ? 503 : (status >= 400 && status < 600 ? status : 500);
+}
+
 // Credit tracking: the Anthropic API has no balance endpoint for standard keys,
 // so spend is accumulated from each response's usage data against the budget.
 const PDF_EXTRACTOR = path.join(ROOT, "pdf_extract.py");
@@ -66,10 +96,21 @@ const HAIKU_RATES = {
   cacheWrite: 1.25 / 1e6,
   cacheRead: 0.1 / 1e6,
 };
+const LUMIERE_CREDIT_LIMIT = 100;
+// Lumiere uses three independent guardrails, similar to a rolling ChatGPT
+// allowance: a focused 8-hour session, a weekly cadence and the monthly plan
+// allowance. The values are intentionally centralized so plans can tune them
+// without rewriting the accounting logic.
+const LUMIERE_CREDIT_SESSION_LIMIT = 20;
+const LUMIERE_CREDIT_WEEKLY_LIMIT = 60;
+const LUMIERE_CREDIT_SESSION_MS = 8 * 60 * 60 * 1000;
+const LUMIERE_PAID_CREDIT_AMOUNT = 80;
+const LUMIERE_RESET_AMOUNT_CENTS = 500;
 
 const activePreproductionJobs = new Set();
 const activeShotListJobs = new Set();
 const activeScriptAnalysisJobs = new Set();
+const budgetImportProposals = new Map();
 const billingVerificationCache = new Map();
 const activeBillingVerifications = new Map();
 const BILLING_VERIFICATION_TTL_MS = 30_000;
@@ -151,7 +192,7 @@ function buildLumierePersonalizationSystem(userId) {
     avoidInFeedback: preferences.avoidances,
     offerIdeasBeyondReferences: preferences.surpriseMe,
   };
-  return `You are Lumière inside FilmScript. Use the writer's creative taste profile only as a secondary lens for subjective editorial feedback, brainstorming, title ideas, character work, tone, and visual storytelling.
+  return `You are Lumiere inside FilmScript. Use the writer's creative taste profile only as a secondary lens for subjective editorial feedback, brainstorming, title ideas, character work, tone, and visual storytelling.
 
 The screenplay and the writer's current request always outrank this profile. Never force a preference onto the material. Ignore the profile for objective tasks such as spelling, grammar, screenplay formatting, factual extraction, production breakdowns, budgets, and strict JSON schemas unless the user explicitly asks otherwise.
 
@@ -173,7 +214,7 @@ function lumiereLanguageInstruction(language) {
     : 'LANGUAGE: Respond in English. Keep JSON property names, IDs, enum values, category names, and screenplay excerpts exactly as required by the schema.';
 }
 
-const BREAKDOWN_SYSTEM_PROMPT = `You are Lumière, a professional script breakdown assistant for film production.
+const BREAKDOWN_SYSTEM_PROMPT = `You are Lumiere, a professional script breakdown assistant for film production.
 
 Analyze only the supplied screenplay scene and extract the elements explicitly required or strongly implied for production.
 
@@ -216,7 +257,7 @@ Return only valid JSON with this exact shape:
 
 Return an empty elements array when the scene contains no qualifying elements.`;
 
-const BREAKDOWN_UPDATE_SYSTEM_PROMPT = `You are Lumière, updating an existing script breakdown after a scene has changed.
+const BREAKDOWN_UPDATE_SYSTEM_PROMPT = `You are Lumiere, updating an existing script breakdown after a scene has changed.
 
 You will receive the previous version of the scene, the updated version of the scene, and the existing breakdown.
 
@@ -244,7 +285,7 @@ Use this shape inside remove and unchanged:
 {"category":"props","name":"element name"}.
 Warnings must be short strings.`;
 
-const SHOTLIST_SYSTEM_PROMPT = `You are Lumière, a professional shot list assistant for film production.
+const SHOTLIST_SYSTEM_PROMPT = `You are Lumiere, a professional shot list assistant for film production.
 
 Create a practical camera plan for only the supplied screenplay scene. Cover the explicit action and dialogue clearly. You may propose visual coverage, but you must not invent story events, characters, props, locations, or actions that are not in the scene.
 
@@ -287,7 +328,7 @@ function plannedShotMinutes(shots) {
   return (Array.isArray(shots) ? shots : []).reduce((total, shot) => total + effectiveShotMinutes(shot), 0);
 }
 
-const SCRIPT_ANALYSIS_SYSTEM_PROMPT = `You are Lumière, the central screenplay insights system inside FilmScript.
+const SCRIPT_ANALYSIS_SYSTEM_PROMPT = `You are Lumiere, the central screenplay insights system inside FilmScript.
 
 Read only the structured screenplay scenes supplied by FilmScript. Behave like a concise creative collaborator who has read the screenplay, not an analytics dashboard. Never invent scenes, characters, events, page numbers, dialogue, production requirements, or story beats. Do not rewrite the screenplay and do not impose one writing formula.
 
@@ -360,7 +401,192 @@ function recordUsage(usage) {
   return credits;
 }
 
-function creditsSummary() {
+function lumiereCreditPeriod(date = new Date()) {
+  return date.toISOString().slice(0, 7);
+}
+
+function lumiereWeekStart(date = new Date()) {
+  const value = new Date(date);
+  if (Number.isNaN(value.getTime())) return new Date();
+  const day = value.getUTCDay();
+  const mondayOffset = (day + 6) % 7;
+  value.setUTCHours(0, 0, 0, 0);
+  value.setUTCDate(value.getUTCDate() - mondayOffset);
+  return value;
+}
+
+function lumiereWeekKey(date = new Date()) {
+  return lumiereWeekStart(date).toISOString().slice(0, 10);
+}
+
+function lumiereMonthResetAt(date = new Date()) {
+  const value = new Date(date);
+  return new Date(Date.UTC(value.getUTCFullYear(), value.getUTCMonth() + 1, 1));
+}
+
+function lumiereWeekResetAt(date = new Date()) {
+  const start = lumiereWeekStart(date);
+  return new Date(start.getTime() + 7 * 24 * 60 * 60 * 1000);
+}
+
+function clampCreditCount(value, limit = Number.MAX_SAFE_INTEGER) {
+  return Math.max(0, Math.min(limit, Number(value) || 0));
+}
+
+function lumiereCreditsFor(userId) {
+  const key = String(userId || "").trim();
+  if (!key) return null;
+  const snapshot = loadLumiereCreditsSnapshot();
+  const now = new Date();
+  const period = lumiereCreditPeriod(now);
+  const weekKey = lumiereWeekKey(now);
+  const existing = snapshot[key] && typeof snapshot[key] === "object" ? snapshot[key] : null;
+  const before = existing ? JSON.stringify(existing) : null;
+  const monthIsCurrent = existing?.period === period;
+  const weekIsCurrent = existing?.week?.key === weekKey;
+  const parsedSessionStart = Date.parse(existing?.session?.startedAt || "");
+  const sessionIsCurrent = Number.isFinite(parsedSessionStart)
+    && now.getTime() - parsedSessionStart < LUMIERE_CREDIT_SESSION_MS;
+  const state = {
+    period,
+    limit: LUMIERE_CREDIT_LIMIT,
+    // `used` remains the monthly alias for compatibility with existing data.
+    used: monthIsCurrent ? clampCreditCount(existing?.used, LUMIERE_CREDIT_LIMIT) : 0,
+    lastResetAt: existing?.lastResetAt || null,
+    paidResets: Math.max(0, Number(existing?.paidResets) || 0),
+    extraCredits: Math.max(0, Number(existing?.extraCredits) || 0),
+    extraCreditsPurchased: Math.max(0, Number(existing?.extraCreditsPurchased) || 0),
+    week: {
+      key: weekKey,
+      limit: LUMIERE_CREDIT_WEEKLY_LIMIT,
+      used: weekIsCurrent ? clampCreditCount(existing?.week?.used, LUMIERE_CREDIT_WEEKLY_LIMIT) : 0,
+    },
+    session: {
+      startedAt: sessionIsCurrent ? new Date(parsedSessionStart).toISOString() : null,
+      limit: LUMIERE_CREDIT_SESSION_LIMIT,
+      used: sessionIsCurrent ? clampCreditCount(existing?.session?.used, LUMIERE_CREDIT_SESSION_LIMIT) : 0,
+    },
+  };
+  if (before !== JSON.stringify(state)) {
+    snapshot[key] = state;
+    saveLumiereCreditsSnapshot(snapshot);
+  }
+  return state;
+}
+
+function lumiereCreditAvailability(state) {
+  if (!state) return { regularRemaining: 0, extraRemaining: 0, available: 0, blockedBy: "month" };
+  const monthRemaining = Math.max(0, state.limit - state.used);
+  const weekRemaining = Math.max(0, state.week.limit - state.week.used);
+  const sessionRemaining = Math.max(0, state.session.limit - state.session.used);
+  const regularRemaining = Math.min(monthRemaining, weekRemaining, sessionRemaining);
+  const extraRemaining = Math.max(0, Number(state.extraCredits) || 0);
+  let blockedBy = null;
+  if (regularRemaining <= 0 && extraRemaining <= 0) {
+    if (sessionRemaining <= 0) blockedBy = "session";
+    else if (weekRemaining <= 0) blockedBy = "week";
+    else blockedBy = "month";
+  }
+  return {
+    monthRemaining,
+    weekRemaining,
+    sessionRemaining,
+    regularRemaining,
+    extraRemaining,
+    available: regularRemaining + extraRemaining,
+    blockedBy,
+  };
+}
+
+function hasLumiereCredits(userId, amount = 1) {
+  const state = lumiereCreditsFor(userId);
+  const requested = Math.max(1, Number(amount) || 1);
+  return !!state && lumiereCreditAvailability(state).available >= requested;
+}
+
+function consumeLumiereCredit(userId, amount = 1) {
+  const state = lumiereCreditsFor(userId);
+  if (!state) return null;
+  const requested = Math.max(1, Number(amount) || 1);
+  const availability = lumiereCreditAvailability(state);
+  const regularUsed = Math.min(requested, availability.regularRemaining);
+  const extraUsed = Math.max(0, requested - regularUsed);
+  if (regularUsed > 0) {
+    state.used = Math.min(state.limit, state.used + regularUsed);
+    state.week.used = Math.min(state.week.limit, state.week.used + regularUsed);
+    state.session.used = Math.min(state.session.limit, state.session.used + regularUsed);
+    if (!state.session.startedAt) state.session.startedAt = new Date().toISOString();
+  }
+  if (extraUsed > 0) {
+    state.extraCredits = Math.max(0, state.extraCredits - extraUsed);
+  }
+  const snapshot = loadLumiereCreditsSnapshot();
+  snapshot[userId] = state;
+  saveLumiereCreditsSnapshot(snapshot);
+  return state;
+}
+
+function resetLumiereCredits(userId) {
+  const state = lumiereCreditsFor(userId);
+  if (!state) return null;
+  // The $5 checkout adds a small extra-credit pack. It never rewinds the
+  // audit trail or the rolling windows, so the usage report remains truthful.
+  state.extraCredits = Math.max(0, Number(state.extraCredits) || 0) + LUMIERE_PAID_CREDIT_AMOUNT;
+  state.extraCreditsPurchased = Math.max(0, Number(state.extraCreditsPurchased) || 0) + LUMIERE_PAID_CREDIT_AMOUNT;
+  state.lastResetAt = new Date().toISOString();
+  state.paidResets += 1;
+  const snapshot = loadLumiereCreditsSnapshot();
+  snapshot[userId] = state;
+  saveLumiereCreditsSnapshot(snapshot);
+  return state;
+}
+
+function creditsSummary(userId = null) {
+  if (userId) {
+    const state = lumiereCreditsFor(userId);
+    const availability = lumiereCreditAvailability(state);
+    const now = new Date();
+    const sessionResetAt = state.session.startedAt
+      ? new Date(Date.parse(state.session.startedAt) + LUMIERE_CREDIT_SESSION_MS)
+      : null;
+    const weekResetAt = lumiereWeekResetAt(now);
+    const monthResetAt = lumiereMonthResetAt(now);
+    const availabilityPct = (state.limit + availability.extraRemaining)
+      ? (availability.available / (state.limit + availability.extraRemaining)) * 100
+      : 0;
+    const window = (used, limit, resetAt) => ({
+      used,
+      limit,
+      remaining: Math.max(0, limit - used),
+      pct: limit ? Number((((limit - used) / limit) * 100).toFixed(2)) : 0,
+      resetAt: resetAt ? resetAt.toISOString() : null,
+      resetInMs: resetAt ? Math.max(0, resetAt.getTime() - now.getTime()) : null,
+    });
+    return {
+      budget: state.limit,
+      spent: state.used,
+      pct: Number(availabilityPct.toFixed(2)),
+      limit: state.limit,
+      used: state.used,
+      remaining: availability.available,
+      period: state.period,
+      paidResets: state.paidResets,
+      extraCredits: availability.extraRemaining,
+      extraCreditsPurchased: state.extraCreditsPurchased,
+      blockedBy: availability.blockedBy,
+      session: window(state.session.used, state.session.limit, sessionResetAt),
+      week: { ...window(state.week.used, state.week.limit, weekResetAt), key: state.week.key },
+      month: { ...window(state.used, state.limit, monthResetAt), key: state.period },
+      policy: {
+        sessionHours: 8,
+        sessionLimit: LUMIERE_CREDIT_SESSION_LIMIT,
+        weeklyLimit: LUMIERE_CREDIT_WEEKLY_LIMIT,
+        monthlyLimit: LUMIERE_CREDIT_LIMIT,
+        paidPack: LUMIERE_PAID_CREDIT_AMOUNT,
+      },
+      resetAvailable: true,
+    };
+  }
   const { budget, spent } = loadCredits();
   const pct = Math.max(0, Math.min(100, ((budget - spent) / budget) * 100));
   return { budget, spent: Number(spent.toFixed(6)), pct: Number(pct.toFixed(2)) };
@@ -1110,15 +1336,21 @@ function stripboardPdfPayload(script, project) {
     totalEighths += strip.eighths;
     (eventsByScene.get(strip.sceneId) || []).forEach((event) => {
       if (event.type === "end_day") {
-        rows.push({ type: "divider", label: `End of day ${day}`, total: `${formatPageEighths(totalEighths)} pages` });
+        const endTime = scheduleKnown ? formatClock(currentMinutes) : "Time pending";
+        rows.push({ type: "divider", label: `End of day ${day}`, total: `${endTime} · ${formatPageEighths(totalEighths)} pages` });
         day += 1; currentMinutes = startMinutes; totalEighths = 0; scheduleKnown = true;
       } else {
         const duration = event.durationMinutes || (event.type === "lunch" ? 60 : 30);
-        rows.push({ type: "break", label: event.type === "lunch" ? "Lunch" : "Move company", total: `${duration} min` });
+        const breakStart = scheduleKnown ? formatClock(currentMinutes) : "Pending";
         if (scheduleKnown) currentMinutes += duration;
+        const breakEnd = scheduleKnown ? formatClock(currentMinutes) : "Pending";
+        rows.push({ type: "break", label: event.type === "lunch" ? "Lunch" : "Move company", total: `${duration} min · ${breakStart}–${breakEnd}` });
       }
     });
-    if (index === strips.length - 1 && !(eventsByScene.get(strip.sceneId) || []).some((event) => event.type === "end_day")) rows.push({ type: "divider", label: `End of day ${day}`, total: `${formatPageEighths(totalEighths)} pages` });
+    if (index === strips.length - 1 && !(eventsByScene.get(strip.sceneId) || []).some((event) => event.type === "end_day")) {
+      const endTime = scheduleKnown ? formatClock(currentMinutes) : "Time pending";
+      rows.push({ type: "divider", label: `End of day ${day}`, total: `${endTime} · ${formatPageEighths(totalEighths)} pages` });
+    }
   });
   return { title: script.title || "Untitled Screenplay", rows };
 }
@@ -1237,16 +1469,95 @@ async function handleShotListPdf(req, res, scriptId) {
   res.end(pdf);
 }
 
+function calendarShootingDates(project, script) {
+  if (!project?.calendar) return "";
+  const computed = computeCalendar(project.calendar, script.title || "Untitled screenplay");
+  if (!computed.shootingStart) return "";
+  return computed.shootingStart === computed.shootingEnd
+    ? computed.shootingStart
+    : `${computed.shootingStart} – ${computed.shootingEnd}`;
+}
+
+function budgetProductionSchedule(project, script) {
+  const scenes = orderedProjectScenes(project);
+  const sceneIds = scenes.map((scene) => scene.id);
+  const eventsByScene = new Map();
+  cleanStripboardEvents(project?.stripboardEvents, sceneIds).forEach((event) => {
+    const events = eventsByScene.get(event.afterSceneId) || [];
+    events.push(event);
+    eventsByScene.set(event.afterSceneId, events);
+  });
+  const calendar = project?.calendar
+    ? computeCalendar(project.calendar, script.title || "Untitled screenplay")
+    : null;
+  const workDaysPerWeek = Math.max(1, Math.min(7, calendar?.calendar?.settings?.workweek?.length || 6));
+  let shootDay = 1;
+  const sceneDays = {};
+  scenes.forEach((scene) => {
+    sceneDays[scene.id] = shootDay;
+    (eventsByScene.get(scene.id) || []).forEach((event) => {
+      if (event.type === "end_day") shootDay += 1;
+    });
+  });
+  const shootDays = scenes.length ? Math.max(...Object.values(sceneDays)) : 0;
+  const calendarShootTask = calendar?.tasks?.find((task) => task.kind === "shoot")
+    || calendar?.tasks?.find((task) => task.phaseId === "production");
+  const calendarShootWeeks = calendarShootTask
+    ? Math.max(1, Math.ceil(Math.max(1, Number(calendarShootTask.durationDays) || 1) / workDaysPerWeek))
+    : 1;
+  const shootWeeks = Math.max(1, Math.ceil(Math.max(1, shootDays) / workDaysPerWeek), calendarShootWeeks);
+  const shootWeekDetails = Array.from({ length: shootWeeks }, (_, index) => {
+    const week = index + 1;
+    const startDay = index * workDaysPerWeek + 1;
+    const endDay = shootDays ? Math.min(shootDays, week * workDaysPerWeek) : week * workDaysPerWeek;
+    return {
+      week,
+      startDay,
+      endDay,
+      sceneCount: Object.values(sceneDays).filter((day) => Math.ceil(day / workDaysPerWeek) === week).length,
+    };
+  });
+  return {
+    connected: scenes.length > 0,
+    source: "script_breakdown_stripboard",
+    sceneCount: scenes.length,
+    breakdownSceneCount: scenes.filter((scene) => scene.breakdown && scene.breakdown.generated !== false).length,
+    shootDays,
+    shootWeeks,
+    shootStartDate: calendar?.shootingStart || "",
+    shootEndDate: calendar?.shootingEnd || "",
+    workDaysPerWeek,
+    calendarConnected: Boolean(calendar),
+    sceneDays,
+    shootWeekDetails,
+  };
+}
+
 function ensureBudget(project, script) {
-  project.budget = normalizeBudget(project.budget, script.title || "Untitled screenplay");
+  const productionSchedule = budgetProductionSchedule(project, script);
+  const sourceBudget = project.budget && typeof project.budget === "object" && !Array.isArray(project.budget)
+    ? project.budget
+    : {};
+  const sourceTimeline = sourceBudget.timeline && typeof sourceBudget.timeline === "object" && !Array.isArray(sourceBudget.timeline)
+    ? sourceBudget.timeline
+    : {};
+  project.budget = normalizeBudget({
+    ...sourceBudget,
+    timeline: {
+      ...sourceTimeline,
+      shootWeeks: Math.max(1, Number(sourceTimeline.shootWeeks) || 1, productionSchedule.shootWeeks),
+    },
+  }, script.title || "Untitled screenplay");
   project.budget.projectTitle = script.title || project.budget.projectTitle;
+  const shootingDates = calendarShootingDates(project, script);
+  if (project.calendar) project.budget.metadata.shootingDates = shootingDates;
   return project.budget;
 }
 
-function budgetPdfPayload(script, budget) {
+function budgetPdfPayload(script, budget, productionSchedule = {}, language = "en") {
   const calculated = computeBudget(budget, script.title || "Untitled screenplay");
   const { itemMap, ...computed } = calculated;
-  return { title: script.title || "Untitled screenplay", budget: calculated.budget, computed };
+  return { title: script.title || "Untitled screenplay", budget: calculated.budget, computed, productionSchedule, language: normalizeLumiereLanguage(language) };
 }
 
 async function handleBudget(req, res, scriptId) {
@@ -1258,20 +1569,241 @@ async function handleBudget(req, res, scriptId) {
   const project = db.projects[scriptId] = syncProject(script, db.projects[scriptId]);
   if (req.method === "GET") {
     const budget = ensureBudget(project, script);
+    const productionSchedule = budgetProductionSchedule(project, script);
     project.updatedAt = new Date().toISOString();
     savePreproduction(db);
-    return json(res, 200, { budget });
+    return json(res, 200, { budget, productionSchedule, calendarConnected: Boolean(project.calendar) });
   }
   if (req.method === "PATCH") {
     let body;
     try { body = JSON.parse((await readBodyBuffer(req, 2 * 1024 * 1024)).toString("utf8")); }
     catch (error) { return json(res, error.status || 400, { error: error.status === 413 ? "budget is too large" : "invalid request body" }); }
-    project.budget = normalizeBudget(body?.budget, script.title || "Untitled screenplay");
-    project.budget.projectTitle = script.title || project.budget.projectTitle;
+    project.budget = body?.budget;
+    ensureBudget(project, script);
     project.budget.updatedAt = new Date().toISOString();
     project.updatedAt = project.budget.updatedAt;
     savePreproduction(db);
-    return json(res, 200, { ok: true, budget: project.budget });
+    return json(res, 200, {
+      ok: true,
+      budget: project.budget,
+      productionSchedule: budgetProductionSchedule(project, script),
+      calendarConnected: Boolean(project.calendar),
+    });
+  }
+  return json(res, 405, { error: "method not allowed" });
+}
+
+const BUDGET_IMPORT_MAX_BYTES = 10 * 1024 * 1024;
+const BUDGET_IMPORT_MAX_TEXT = 120000;
+
+function budgetImportSourceType(filename = "", mimeType = "") {
+  const extension = path.extname(String(filename || "")).toLowerCase();
+  const mime = String(mimeType || "").toLowerCase();
+  if (extension === ".pdf" || mime === "application/pdf") return "pdf";
+  if (extension === ".docx" || mime.includes("wordprocessingml.document")) return "docx";
+  if ([".xlsx", ".xls", ".csv", ".tsv"].includes(extension)
+    || mime.includes("spreadsheet") || mime.includes("excel") || mime === "text/csv") return "excel";
+  return "text";
+}
+
+function googleDocsExportUrl(value) {
+  let url;
+  try { url = new URL(String(value || "")); } catch { throw Object.assign(new Error("Enter a valid Google Docs URL."), { status: 400 }); }
+  if (url.protocol !== "https:" || url.hostname !== "docs.google.com") {
+    throw Object.assign(new Error("Only shared Google Docs links are supported."), { status: 400 });
+  }
+  const match = url.pathname.match(/\/document\/(?:u\/\d+\/)?d\/([a-zA-Z0-9_-]+)/);
+  if (!match) throw Object.assign(new Error("That Google Docs link does not contain a document ID."), { status: 400 });
+  return `https://docs.google.com/document/d/${match[1]}/export?format=txt`;
+}
+
+async function readGoogleDocText(value) {
+  const response = await fetch(googleDocsExportUrl(value), { redirect: "follow" });
+  if (!response.ok) {
+    const status = response.status === 401 || response.status === 403 ? 422 : 502;
+    throw Object.assign(new Error(response.status === 401 || response.status === 403
+      ? "This Google Doc is private. Share it as anyone with the link and try again."
+      : "Google Docs could not be reached right now."), { status });
+  }
+  const contentType = String(response.headers.get("content-type") || "").toLowerCase();
+  if (contentType.includes("text/html")) throw Object.assign(new Error("This Google Doc is private. Share it as anyone with the link and try again."), { status: 422 });
+  const length = Number(response.headers.get("content-length") || 0);
+  if (length > BUDGET_IMPORT_MAX_BYTES) throw Object.assign(new Error("The Google Doc is too large to import."), { status: 413 });
+  const buffer = Buffer.from(await response.arrayBuffer());
+  if (buffer.length > BUDGET_IMPORT_MAX_BYTES) throw Object.assign(new Error("The Google Doc is too large to import."), { status: 413 });
+  return buffer.toString("utf8");
+}
+
+function spreadsheetText(buffer, filename) {
+  let workbook;
+  try { workbook = XLSX.read(buffer, { type: "buffer", cellDates: true, dense: true }); }
+  catch (error) { throw Object.assign(new Error(`Could not read ${filename || "the spreadsheet"}.`), { status: 422, cause: error }); }
+  const sections = [];
+  for (const sheetName of workbook.SheetNames.slice(0, 30)) {
+    const sheet = workbook.Sheets[sheetName];
+    const rows = XLSX.utils.sheet_to_json(sheet, { header: 1, raw: false, defval: "" });
+    const lines = rows.slice(0, 4000).map((row) => Array.isArray(row)
+      ? row.map((cell) => String(cell ?? "").replace(/\t/g, " ").replace(/\r?\n/g, " ").trim()).join("\t")
+      : String(row || "")).filter((line) => line.replace(/\t/g, "").trim());
+    if (lines.length) sections.push(`SHEET: ${sheetName}\n${lines.join("\n")}`);
+  }
+  return sections.join("\n\n");
+}
+
+async function extractBudgetImportSource(payload) {
+  const sourceType = String(payload?.sourceType || "").trim().toLowerCase();
+  if (sourceType === "google_docs" || payload?.url) {
+    const text = await readGoogleDocText(payload.url);
+    return { sourceType: "google_docs", filename: "Google Docs", mimeType: "text/plain", text };
+  }
+  const filename = safeFilename(payload?.filename || "budget-import.txt").slice(0, 180) || "budget-import.txt";
+  const mimeType = String(payload?.mimeType || "").toLowerCase();
+  const encoded = String(payload?.dataBase64 || "").replace(/^data:[^;]+;base64,/, "");
+  if (!encoded) throw Object.assign(new Error("Choose a file or paste a Google Docs link."), { status: 400 });
+  let buffer;
+  try { buffer = Buffer.from(encoded, "base64"); } catch { throw Object.assign(new Error("The uploaded file is not valid."), { status: 400 }); }
+  if (!buffer.length) throw Object.assign(new Error("The uploaded file is empty."), { status: 400 });
+  if (buffer.length > BUDGET_IMPORT_MAX_BYTES) throw Object.assign(new Error("Files must be 10 MB or smaller."), { status: 413 });
+  const detectedType = budgetImportSourceType(filename, mimeType);
+  let text;
+  if (detectedType === "pdf") {
+    const extracted = await extractPdfData(buffer);
+    text = extracted?.text || "";
+  } else if (detectedType === "excel") {
+    text = spreadsheetText(buffer, filename);
+  } else if (detectedType === "docx") {
+    try { text = (await mammoth.extractRawText({ buffer })).value || ""; }
+    catch (error) { throw Object.assign(new Error(`Could not read ${filename || "the document"}.`), { status: 422, cause: error }); }
+  } else {
+    text = buffer.toString("utf8");
+  }
+  return { sourceType: detectedType, filename, mimeType: mimeType || "text/plain", text };
+}
+
+function budgetImportSystemPrompt(budget, source, language) {
+  const periods = budget.periods.map((period) => ({ id: period.id, label: period.label, stage: period.stage }));
+  return [
+    "You are Lumiere, FilmScript's production budget import assistant.",
+    lumiereLanguageInstruction(language),
+    "Read the source document and map every unambiguous cost into the existing Budget Breakdown accounts and line items.",
+    "Return JSON only. Never include markdown fences, commentary, or invented costs.",
+    "Use the exact account code and line item code from the catalog when there is a match. If no match exists, create a concise imported account code/name and use phaseId above_line, production, postproduction, or other.",
+    "Keep amounts in the source currency; do not convert them. quantity must be an integer. Use multiplier for times/days and unitCost for the price of one unit. If the source only gives a total, use quantity 1 and unitCost equal to that total.",
+    "Use taxRateId as an existing tax id or a tax name/percentage. Use an empty schedule when timing is not explicit. Only use period ids from the supplied period list.",
+    "Put paid/unbudgeted rows in expenses, funding commitments in fundingSources, and put a short explanation in warnings when a row was ambiguous.",
+    "JSON schema: {\"summary\":\"...\",\"metadata\":{\"producer\":\"\",\"director\":\"\",\"format\":\"\",\"locations\":\"\",\"shootingDates\":\"\"},\"taxRates\":[{\"id\":\"\",\"name\":\"\",\"rate\":0}],\"accounts\":[{\"code\":\"\",\"name\":\"\",\"phaseId\":\"production\",\"items\":[{\"code\":\"\",\"name\":\"\",\"quantity\":1,\"unit\":\"day\",\"multiplier\":1,\"unitCost\":0,\"taxRateId\":\"tax_exempt\",\"taxMode\":\"exclusive\",\"costType\":\"fixed\",\"fundingKind\":\"cash\",\"schedule\":{\"period_id\":0},\"sourceText\":\"\",\"confidence\":0.0}]}],\"fundingSources\":[],\"expenses\":[],\"warnings\":[]}",
+    `Existing catalog: ${JSON.stringify(buildBudgetImportCatalog(budget))}`,
+    `Schedule periods: ${JSON.stringify(periods)}`,
+    `Source type: ${source.sourceType}`,
+  ].join("\n\n");
+}
+
+async function analyzeBudgetImport(userId, budget, source, language) {
+  if (!process.env.ANTHROPIC_API_KEY) throw Object.assign(new Error("Lumiere is not configured on this server yet."), { status: 503 });
+  if (!hasLumiereCredits(userId)) throw Object.assign(new Error("Lumiere credits are empty. Reset your limits for $5 to continue."), { status: 402 });
+  const response = await client.messages.create({
+    model: "claude-haiku-4-5",
+    max_tokens: 6500,
+    system: budgetImportSystemPrompt(budget, source, language),
+    messages: [{ role: "user", content: `SOURCE DOCUMENT:\n${source.text.slice(0, BUDGET_IMPORT_MAX_TEXT)}` }],
+  });
+  recordUsage(response.usage);
+  consumeLumiereCredit(userId);
+  const raw = response.content.filter((block) => block.type === "text").map((block) => block.text).join("");
+  const parsed = parseBreakdownJson(raw);
+  return normalizeBudgetImportProposal({ ...parsed, source: { filename: source.filename, type: source.sourceType } }, budget);
+}
+
+async function handleBudgetImport(req, res, scriptId) {
+  const sid = sessionId(req, res);
+  if (!sid) return googleRequired(res);
+  const script = loadScripts().scripts[scriptId];
+  if (!script || script.userId !== sid) return json(res, 404, { error: "script not found" });
+  if (!hasActiveLumierePlan(sid)) return lumierePlanRequired(res);
+  let payload;
+  try { payload = JSON.parse((await readBodyBuffer(req, 15 * 1024 * 1024)).toString("utf8")); }
+  catch (error) { return json(res, error.status || 400, { error: error.status === 413 ? "import payload is too large" : "invalid request body" }); }
+  for (const [proposalId, entry] of budgetImportProposals) if (entry.expiresAt < Date.now()) budgetImportProposals.delete(proposalId);
+  const db = loadPreproduction();
+  const project = db.projects[scriptId] = syncProject(script, db.projects[scriptId]);
+  const budget = ensureBudget(project, script);
+  if (payload?.commit) {
+    const entry = budgetImportProposals.get(String(payload.proposalId || ""));
+    if (!entry || entry.userId !== sid || entry.scriptId !== scriptId) return json(res, 404, { error: "import preview expired" });
+    const merged = applyBudgetImport(budget, entry.proposal, script.title || "Untitled screenplay");
+    project.budget = merged;
+    ensureBudget(project, script);
+    project.budget.updatedAt = new Date().toISOString();
+    project.updatedAt = project.budget.updatedAt;
+    savePreproduction(db);
+    budgetImportProposals.delete(String(payload.proposalId));
+    const computed = computeBudget(project.budget, script.title || "Untitled screenplay");
+    return json(res, 200, { ok: true, budget: project.budget, computed: { total: computed.total, spent: computed.spent, scheduledTotal: computed.scheduledTotal }, imported: entry.counts });
+  }
+  let source;
+  try { source = await extractBudgetImportSource(payload || {}); }
+  catch (error) { return json(res, error.status || 422, { error: error.message || "Could not read the import source." }); }
+  const sourceText = String(source.text || "").replace(/\u0000/g, "").trim();
+  if (!sourceText) return json(res, 422, { error: "No readable budget data was found in that source." });
+  if (sourceText.length > BUDGET_IMPORT_MAX_TEXT) source.text = sourceText.slice(0, BUDGET_IMPORT_MAX_TEXT);
+  try {
+    const proposal = await analyzeBudgetImport(sid, budget, source, String(payload.language || "en").toLowerCase().startsWith("es") ? "es" : "en");
+    const proposalId = `bimp_${crypto.randomBytes(12).toString("hex")}`;
+    const merged = applyBudgetImport(budget, proposal, script.title || "Untitled screenplay");
+    const computed = computeBudget(merged, script.title || "Untitled screenplay");
+    const counts = {
+      accounts: proposal.accounts.length,
+      items: proposal.accounts.reduce((sum, account) => sum + account.items.length, 0),
+      fundingSources: proposal.fundingSources.length,
+      expenses: proposal.expenses.length,
+    };
+    budgetImportProposals.set(proposalId, { userId: sid, scriptId, proposal, counts, expiresAt: Date.now() + 10 * 60 * 1000 });
+    return json(res, 200, {
+      ok: true,
+      proposalId,
+      proposal,
+      counts,
+      source: { type: source.sourceType, filename: source.filename, lineCount: source.text.split(/\r?\n/).length, preview: source.text.slice(0, 1800) },
+      computedPreview: { total: computed.total, spent: computed.spent, scheduledTotal: computed.scheduledTotal, currencyCode: merged.settings.currencyCode, currencySymbol: merged.settings.currencySymbol },
+      expiresInMs: 10 * 60 * 1000,
+    });
+  } catch (error) {
+    console.error("Budget import error:", error.status || "", error.message);
+    return json(res, anthropicFailureStatus(error), { error: "lumiere_unavailable", message: anthropicFailureMessage(error) });
+  }
+}
+
+function ensureCalendar(project, script) {
+  project.calendar = normalizeCalendar(project.calendar, script.title || "Untitled screenplay");
+  project.calendar.projectTitle = script.title || project.calendar.projectTitle;
+  return project.calendar;
+}
+
+async function handleCalendar(req, res, scriptId) {
+  const sid = sessionId(req, res);
+  if (!sid) return googleRequired(res);
+  const script = loadScripts().scripts[scriptId];
+  if (!script || script.userId !== sid) return json(res, 404, { error: "script not found" });
+  const db = loadPreproduction();
+  const project = db.projects[scriptId] = syncProject(script, db.projects[scriptId]);
+  if (req.method === "GET") {
+    const calendar = ensureCalendar(project, script);
+    if (project.budget) ensureBudget(project, script);
+    project.updatedAt = new Date().toISOString();
+    savePreproduction(db);
+    return json(res, 200, { calendar });
+  }
+  if (req.method === "PATCH") {
+    let body;
+    try { body = JSON.parse((await readBodyBuffer(req, 2 * 1024 * 1024)).toString("utf8")); }
+    catch (error) { return json(res, error.status || 400, { error: error.status === 413 ? "calendar is too large" : "invalid request body" }); }
+    project.calendar = normalizeCalendar(body?.calendar, script.title || "Untitled screenplay");
+    project.calendar.projectTitle = script.title || project.calendar.projectTitle;
+    project.calendar.updatedAt = new Date().toISOString();
+    if (project.budget) ensureBudget(project, script);
+    project.updatedAt = project.calendar.updatedAt;
+    savePreproduction(db);
+    return json(res, 200, { ok: true, calendar: project.calendar });
   }
   return json(res, 405, { error: "method not allowed" });
 }
@@ -1319,8 +1851,11 @@ async function handleBudgetPdf(req, res, scriptId) {
   const db = loadPreproduction();
   const project = db.projects[scriptId] = syncProject(script, db.projects[scriptId]);
   const budget = ensureBudget(project, script);
+  const productionSchedule = budgetProductionSchedule(project, script);
   savePreproduction(db);
-  const pdf = await renderBudgetPdf(budgetPdfPayload(script, budget));
+  const requestUrl = new URL(req.url, "http://localhost");
+  const language = normalizeLumiereLanguage(requestUrl.searchParams.get("lang") || "en");
+  const pdf = await renderBudgetPdf(budgetPdfPayload(script, budget, productionSchedule, language));
   const filename = `${safeFilename(script.title || "FilmScript Budget").replace(/\.[^.]+$/, "")}-budget.pdf`;
   res.writeHead(200, { "Content-Type": "application/pdf", "Content-Disposition": `attachment; filename="${filename.replace(/[^a-zA-Z0-9._ -]/g, "")}"`, "Content-Length": pdf.length });
   res.end(pdf);
@@ -1623,6 +2158,17 @@ async function generateShotLists(scriptId, sid, onlySceneId = null, language = '
       });
       return;
     }
+    if (!hasLumiereCredits(sid)) {
+      mutatePreproductionProject(scriptId, sid, (freshProject) => {
+        freshProject.shotAnalysis = {
+          status: "interrupted",
+          total: pending.length,
+          completed: index,
+          message: "Lumiere credits are empty. Reset your limits for $5 to continue.",
+        };
+      });
+      return;
+    }
     mutatePreproductionProject(scriptId, sid, (freshProject) => {
       freshProject.shotAnalysis = { status: "running", total: pending.length, completed: index, message: `Planning shots for scene ${sceneIndex + 1} of ${all.length}` };
     });
@@ -1635,6 +2181,7 @@ async function generateShotLists(scriptId, sid, onlySceneId = null, language = '
         messages: [{ role: "user", content: `Scene ID: ${scene.id}\nScene heading: ${scene.title}\nProduction time available from Stripboard: ${sceneBudgetMinutes == null ? "Not set" : `${sceneBudgetMinutes} minutes`}\n\nSCENE:\n${scene.text}` }],
       });
       recordUsage(response.usage);
+      consumeLumiereCredit(sid);
       const raw = response.content.filter((block) => block.type === "text").map((block) => block.text).join("");
       let generatedShots = validateShotList(parseBreakdownJson(raw), scene);
       if (sceneBudgetMinutes != null && generatedShots.length) {
@@ -1721,6 +2268,17 @@ async function analyzeProject(scriptId, sid, language = 'en') {
       });
       return;
     }
+    if (!hasLumiereCredits(sid)) {
+      mutatePreproductionProject(scriptId, sid, (freshProject) => {
+        freshProject.analysis = {
+          status: "interrupted",
+          total: pending.length,
+          completed: i,
+          message: "Lumiere credits are empty. Reset your limits for $5 to continue.",
+        };
+      });
+      return;
+    }
     mutatePreproductionProject(scriptId, sid, (freshProject) => {
       freshProject.analysis = { status: "running", total: pending.length, completed: i, message: `Analyzing scene ${index + 1} of ${all.length}` };
     });
@@ -1740,6 +2298,7 @@ async function analyzeProject(scriptId, sid, language = 'en') {
             messages: [{ role: "user", content: JSON.stringify({ scene: scene.text, metadata: { sceneId: scene.id, sceneNumber: index + 1, sceneHeading: scene.title } }) }],
           });
       recordUsage(result.usage);
+      consumeLumiereCredit(sid);
       const raw = result.content.filter((block) => block.type === "text").map((block) => block.text).join("");
       const payload = parseBreakdownJson(raw);
       mutatePreproductionProject(scriptId, sid, (freshProject) => {
@@ -2070,10 +2629,30 @@ function sanitizeScriptAnalysisDeepForDisplay(deep, sceneIndex) {
   };
 }
 
+function artisticDecisionKey(value) {
+  return analysisString(value, 160).toLowerCase().replace(/[^a-z0-9]+/g, "_").replace(/^_|_$/g, "");
+}
+
+function matchesArtisticDecision(item, decisions) {
+  if (!item || !Array.isArray(decisions) || !decisions.length) return false;
+  const itemId = analysisString(item.id, 180);
+  const itemTitle = analysisString(item.title || item.label, 160);
+  const itemKey = artisticDecisionKey(itemTitle);
+  return decisions.some((decision) => {
+    if (!decision || decision.status === "rejected") return false;
+    const observationId = analysisString(decision.observationId, 180);
+    if (observationId && itemId && (observationId === itemId || itemId === `ins_${observationId}` || observationId === itemId.replace(/^ins_/, ""))) return true;
+    const decisionKey = artisticDecisionKey(decision.observationKey || decision.observationTitle || decision.key);
+    return Boolean(decisionKey && itemKey && decisionKey === itemKey);
+  });
+}
+
 function mergeScriptAnalysisFeedback(deep, feedback, sceneIndex) {
   if (!deep) return null;
   const sceneById = new Map((sceneIndex || []).map((scene) => [scene.id, scene]));
   const momentFeedback = feedback?.moments || {};
+  const artisticDecisions = Array.isArray(feedback?.artisticDecisions) ? feedback.artisticDecisions : [];
+  const keepEvidence = (items) => (Array.isArray(items) ? items : []).filter((item) => !matchesArtisticDecision(item, artisticDecisions));
   const moments = (deep.moments || []).map((moment) => {
     const correction = momentFeedback[moment.key] || momentFeedback[moment.id] || {};
     const correctedScene = sceneById.get(correction.sceneId) || sceneById.get(moment.sceneId);
@@ -2085,22 +2664,56 @@ function mergeScriptAnalysisFeedback(deep, feedback, sceneIndex) {
       status: correction.status || "suggested",
       userCorrected: !!correction.sceneId,
     };
-  });
+  }).filter((moment) => !matchesArtisticDecision(moment, artisticDecisions));
   const structure = deep.structure ? {
     ...deep.structure,
     label: feedback?.structure?.label || deep.structure.label,
     userConfirmed: feedback?.structure?.status === "confirmed",
     userOverride: !!feedback?.structure?.label,
   } : null;
+  const overview = {
+    ...(deep.overview || {}),
+    working: keepEvidence(deep.overview?.working),
+    needsAttention: keepEvidence(deep.overview?.needsAttention),
+    productionImpact: keepEvidence(deep.overview?.productionImpact),
+  };
+  const sceneIssues = keepEvidence(deep.sceneIssues);
+  const keyMoments = keepEvidence(deep.keyMoments);
+  const storyClarity = deep.storyClarity
+    ? { ...deep.storyClarity, points: keepEvidence(deep.storyClarity.points) }
+    : deep.storyClarity;
+  const storyFlow = deep.storyFlow ? {
+    ...deep.storyFlow,
+    points: keepEvidence(deep.storyFlow.points),
+    takeaway: matchesArtisticDecision(deep.storyFlow.takeaway, artisticDecisions) ? null : deep.storyFlow.takeaway,
+  } : deep.storyFlow;
+  const productionOverview = deep.productionOverview
+    ? { ...deep.productionOverview, complexScenes: keepEvidence(deep.productionOverview.complexScenes) }
+    : deep.productionOverview;
+  const suggestions = keepEvidence(deep.suggestions);
+  const insight = matchesArtisticDecision(deep.insight, artisticDecisions) ? null : deep.insight;
+  const statusSummary = deep.statusSummary ? { ...deep.statusSummary } : deep.statusSummary;
+  if (statusSummary?.label === "Needs Attention" && !overview.needsAttention.length && !sceneIssues.length && !overview.productionImpact.length) {
+    statusSummary.label = "Production Ready";
+    statusSummary.reason = "No remaining material issue was identified after applying the writer's artistic decisions.";
+  }
   return {
     ...deep,
+    statusSummary,
+    overview,
+    storyClarity,
+    storyFlow,
+    sceneIssues,
+    keyMoments,
+    productionOverview,
+    suggestions,
     structure,
     moments,
     genreTone: { ...deep.genreTone, intendedGenre: feedback?.intendedGenre || "" },
-    insight: deep.insight ? {
-      ...deep.insight,
-      dismissed: feedback?.dismissedInsightId === deep.insight.id,
-      saved: (feedback?.savedNotes || []).some((note) => note.insightId === deep.insight.id),
+    insight: insight ? {
+      ...insight,
+      dismissed: feedback?.dismissedInsightId === insight.id,
+      saved: (feedback?.savedNotes || []).some((note) => note.insightId === insight.id),
     } : null,
   };
 }
@@ -2167,11 +2780,12 @@ async function runScriptAnalysis(scriptId, sid, targetHash, requestedLanguage = 
   let { analysis, snapshot } = syncScriptAnalysis(project, script);
   if (snapshot.contentHash !== targetHash || !snapshot.hasEnoughContent) { savePreproduction(db); return; }
   analysis.status = "running";
-  analysis.statusMessage = "Lumière is finding the story priorities and production impact";
+  analysis.statusMessage = "Lumiere is finding the story priorities and production impact";
   analysis.targetHash = targetHash;
   savePreproduction(db);
 
   try {
+    if (!process.env.ANTHROPIC_API_KEY) throw Object.assign(new Error('Anthropic API key is not configured.'), { status: 503 });
     const requestContent = JSON.stringify({
       projectId: snapshot.projectId,
       scriptId: snapshot.scriptId,
@@ -2183,6 +2797,12 @@ async function runScriptAnalysis(scriptId, sid, targetHash, requestedLanguage = 
       writerMemory: analysis.feedback?.artisticDecisions || [],
       requestedLanguage: normalizeLumiereLanguage(requestedLanguage),
     });
+    if (!hasLumiereCredits(sid)) {
+      analysis.status = "interrupted";
+      analysis.statusMessage = "Lumiere credits are empty. Reset your limits for $5 to continue.";
+      savePreproduction(db);
+      return;
+    }
     let response = await client.messages.create({
       model: "claude-haiku-4-5",
       max_tokens: 12000,
@@ -2190,11 +2810,18 @@ async function runScriptAnalysis(scriptId, sid, targetHash, requestedLanguage = 
       messages: [{ role: "user", content: requestContent }],
     });
     recordUsage(response.usage);
+    consumeLumiereCredit(sid);
     let raw = response.content.filter((block) => block.type === "text").map((block) => block.text).join("");
     let payload;
     try {
       payload = parseBreakdownJson(raw);
     } catch (firstError) {
+      if (!hasLumiereCredits(sid)) {
+        analysis.status = "interrupted";
+        analysis.statusMessage = "Lumiere credits are empty. Reset your limits for $5 to continue.";
+        savePreproduction(db);
+        return;
+      }
       response = await client.messages.create({
         model: "claude-haiku-4-5",
         max_tokens: 16000,
@@ -2202,6 +2829,7 @@ async function runScriptAnalysis(scriptId, sid, targetHash, requestedLanguage = 
         messages: [{ role: "user", content: requestContent }],
       });
       recordUsage(response.usage);
+      consumeLumiereCredit(sid);
       raw = response.content.filter((block) => block.type === "text").map((block) => block.text).join("");
       payload = parseBreakdownJson(raw);
     }
@@ -2222,7 +2850,7 @@ async function runScriptAnalysis(scriptId, sid, targetHash, requestedLanguage = 
       current.analysis.deepUpdatedAt = deep.generatedAt;
     } else {
       current.analysis.status = "stale";
-      current.analysis.statusMessage = "The screenplay changed while Lumière was reading it";
+      current.analysis.statusMessage = "The screenplay changed while Lumiere was reading it";
     }
     savePreproduction(db);
   } catch (error) {
@@ -2233,7 +2861,7 @@ async function runScriptAnalysis(scriptId, sid, targetHash, requestedLanguage = 
     project = db.projects[scriptId] = syncProject(currentScript, db.projects[scriptId]);
     const current = syncScriptAnalysis(project, currentScript);
     current.analysis.status = current.analysis.deep ? "stale" : "error";
-    current.analysis.statusMessage = "Lumière could not finish this pass. Your previous analysis was preserved.";
+    current.analysis.statusMessage = anthropicFailureMessage(error);
     current.analysis.targetHash = "";
     savePreproduction(db);
   }
@@ -2263,9 +2891,15 @@ async function handleScriptAnalysis(req, res, scriptId) {
     try { analysisOptions = JSON.parse(await readBody(req) || "{}"); } catch { analysisOptions = {}; }
     if (!hasActiveLumierePlan(sid)) return lumierePlanRequired(res);
     const requestedLanguage = normalizeLumiereLanguage(analysisOptions.language);
+    if (!process.env.ANTHROPIC_API_KEY) {
+      analysis.status = analysis.deep ? "stale" : "error";
+      analysis.statusMessage = "Lumiere is not configured on this server. Set ANTHROPIC_API_KEY in app/.env and restart FilmScript.";
+      savePreproduction(db);
+      return json(res, 503, { error: "anthropic_not_configured", message: analysis.statusMessage, analysis: publicScriptAnalysis(analysis) });
+    }
     if (!analysis.hasEnoughContent) {
       analysis.status = "insufficient";
-      analysis.statusMessage = "Write a few scenes and Lumière will begin analyzing your screenplay.";
+      analysis.statusMessage = "Write a few scenes and Lumiere will begin analyzing your screenplay.";
       savePreproduction(db);
       return json(res, 200, { analysis: publicScriptAnalysis(analysis) });
     }
@@ -2280,7 +2914,7 @@ async function handleScriptAnalysis(req, res, scriptId) {
       analysis.feedback.deepDirection = analysisOptions.answers && typeof analysisOptions.answers === "object" ? analysisOptions.answers : {};
       analysis.feedback.requestedLanguage = requestedLanguage;
       analysis.status = "queued";
-      analysis.statusMessage = "Preparing the current screenplay for Lumière";
+    analysis.statusMessage = "Preparing the current screenplay for Lumiere";
       analysis.targetHash = analysis.contentHash;
       savePreproduction(db);
       activeScriptAnalysisJobs.add(scriptId);
@@ -2325,9 +2959,21 @@ async function handleScriptAnalysis(req, res, scriptId) {
       const decision = analysisString(body.decision || body.text, 700);
       if (!decision) return json(res, 400, { error: "artistic decision text required" });
       const sceneIds = Array.isArray(body.sceneIds) ? body.sceneIds.filter((id) => analysis.sceneIds.includes(id)).slice(0, 20) : (analysis.sceneIds.includes(body.sceneId) ? [body.sceneId] : []);
-      const key = analysisString(body.key || decision, 120).toLowerCase().replace(/[^a-z0-9]+/g, "_").replace(/^_|_$/g, "");
+      const observationId = analysisString(body.observationId, 180);
+      const observationTitle = analysisString(body.observationTitle, 160);
+      const key = artisticDecisionKey(body.key || observationTitle || decision);
       const existing = feedback.artisticDecisions.find((item) => item.key === key);
-      const record = { id: existing?.id || `decision_${crypto.randomBytes(8).toString("hex")}`, key: key || `decision_${Date.now()}`, decision, sceneIds, status: "accepted", updatedAt: new Date().toISOString() };
+      const record = {
+        id: existing?.id || `decision_${crypto.randomBytes(8).toString("hex")}`,
+        key: key || `decision_${Date.now()}`,
+        observationId,
+        observationKey: artisticDecisionKey(body.key || observationTitle),
+        observationTitle,
+        decision,
+        sceneIds,
+        status: "accepted",
+        updatedAt: new Date().toISOString(),
+      };
       feedback.artisticDecisions = [...feedback.artisticDecisions.filter((item) => item.key !== record.key), record].slice(-100);
     } else return json(res, 400, { error: "unknown analysis action" });
     analysis.feedback = feedback;
@@ -2418,7 +3064,7 @@ function hasActiveLumierePlan(userId) {
 function lumierePlanRequired(res) {
   return json(res, 403, {
     error: "filmscript_pro_required",
-    message: "FilmScript Pro is required to use Lumiere. Your scripts and existing production documents remain available to edit and export.",
+    message: "FilmScript Pro at $19.99 / month is required to use Lumiere. Your scripts and manual production documents remain available to edit and export.",
   });
 }
 
@@ -2642,14 +3288,7 @@ async function recurrenteRequest(url, options = {}) {
   return data;
 }
 
-function planConfig() {
-  return {
-    name: "FilmScript Pro",
-    productId: process.env.RECURRENTE_LUMIERE_PRODUCT_ID,
-    amount: Number(process.env.RECURRENTE_LUMIERE_AMOUNT_CENTS || 2000),
-  };
-}
-
+const BILLING_PLAN_KEYS = Object.freeze(["basic", "lumiere"]);
 const CHECKOUT_TRACKING_UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 const CHECKOUT_ATTRIBUTION_LIMITS = Object.freeze({
   utm_source: 160,
@@ -2696,12 +3335,44 @@ function checkoutTracking(body) {
     if (!Object.keys(attribution).length) attribution = null;
     if (attribution && JSON.stringify(attribution).length > 4096) return { error: "invalid attribution" };
   }
-
   return {
     visitorId: visitor.value,
     sessionId: session.value,
     attribution,
   };
+}
+
+function planConfig(plan = "lumiere") {
+  const key = String(plan || "").trim().toLowerCase();
+  if (key === "basic") {
+    return {
+      key: "basic",
+      name: "FilmScript Basic",
+      productId: process.env.RECURRENTE_BASIC_PRODUCT_ID || "",
+      amount: Number(process.env.RECURRENTE_BASIC_AMOUNT_CENTS || 1299),
+      price: "$12.99 / month",
+    };
+  }
+  if (key === "lumiere" || !key) {
+    return {
+      key: "lumiere",
+      name: "FilmScript Pro",
+      productId: process.env.RECURRENTE_LUMIERE_PRODUCT_ID || "",
+      amount: Number(process.env.RECURRENTE_LUMIERE_AMOUNT_CENTS || 1999),
+      price: "$19.99 / month",
+    };
+  }
+  return null;
+}
+
+function planFromProductId(productId) {
+  const normalized = String(productId || "").trim();
+  if (!normalized) return null;
+  return BILLING_PLAN_KEYS.find((key) => String(planConfig(key)?.productId || "").trim() === normalized) || null;
+}
+
+function recurrentePlanPrice(plan) {
+  return planConfig(plan)?.price || "$0 / month";
 }
 
 // Only states that currently grant product access belong here. Recurrente
@@ -2747,10 +3418,11 @@ function recurrenteSubscriptionProductId(subscription) {
     || null;
 }
 
-function recurrenteSubscriptionMatchesConfiguredProduct(subscription) {
-  const configuredProductId = String(planConfig().productId || "").trim();
-  if (!configuredProductId) return false;
-  return recurrenteSubscriptionProductId(subscription) === configuredProductId;
+function recurrenteSubscriptionMatchesConfiguredProduct(subscription, expectedPlan = null) {
+  const productId = recurrenteSubscriptionProductId(subscription);
+  const plan = expectedPlan ? planConfig(expectedPlan) : null;
+  if (plan) return !!plan.productId && productId === plan.productId;
+  return !!planFromProductId(productId);
 }
 
 function recurrenteCheckoutSubscriptionId(checkout) {
@@ -2810,11 +3482,10 @@ async function synchronizeRecurrenteSubscriptionNow(userId) {
   }
 
   let localSubscription = user.subscription;
-  const configuredProductId = String(planConfig().productId || "").trim();
   const localCheckouts = Object.values(db.checkouts)
     .filter((checkout) => checkout.userId === userId
-      && checkout.plan === "lumiere"
-      && checkout.productId === configuredProductId
+      && BILLING_PLAN_KEYS.includes(checkout.plan)
+      && recurrenteSubscriptionMatchesConfiguredProduct({ product_id: checkout.productId })
       && checkout.status !== "canceled")
     .sort((a, b) => Date.parse(b.createdAt || 0) - Date.parse(a.createdAt || 0));
   const localCheckoutIds = new Set(localCheckouts.map((checkout) => checkout.id));
@@ -2849,7 +3520,7 @@ async function synchronizeRecurrenteSubscriptionNow(userId) {
       const payload = await recurrenteRequest(`/subscriptions/${encodeURIComponent(localSubscription.subscriptionId)}`);
       const linked = payload?.data || payload;
       if (linked?.id
-        && recurrenteSubscriptionMatchesConfiguredProduct(linked)
+        && recurrenteSubscriptionMatchesConfiguredProduct(linked, localSubscription?.plan)
         && (linked.id === localSubscription.subscriptionId || recurrenteSubscriptionBelongsTo(linked, email))) candidates.push(linked);
     } catch (error) {
       if (error.status !== 404) throw error;
@@ -2900,8 +3571,12 @@ async function synchronizeRecurrenteSubscriptionNow(userId) {
   const providerStatus = recurrenteSubscriptionStatus(selected);
   const active = RECURRENTE_ACTIVE_SUBSCRIPTION_STATUSES.has(providerStatus);
   const checkoutId = recurrenteSubscriptionCheckoutId(selected) || localSubscription?.checkoutId || null;
+  const selectedPlan = planFromProductId(recurrenteSubscriptionProductId(selected));
+  if (!selectedPlan) {
+    return { verified: true, active: false, provider: "recurrente", status: "unsupported_product", subscription: selected, checkedAt };
+  }
   user.subscription = {
-    plan: "lumiere",
+    plan: selectedPlan,
     status: active ? "active" : providerStatus,
     checkoutId,
     subscriptionId: selected.id,
@@ -2940,10 +3615,13 @@ async function subscriptionManagementState(userId) {
   const db = loadBilling();
   const user = db.users[userId];
   const localSubscription = user?.subscription;
+  const currentPlan = localSubscription?.plan || "lumiere";
+  const currentConfig = planConfig(currentPlan) || planConfig("lumiere");
   const base = {
     environment: recurrenteEnvironment(),
-    planName: "FilmScript Pro",
-    price: "$20 / month",
+    plan: currentPlan,
+    planName: currentConfig.name,
+    price: currentConfig.price,
   };
   if (!localSubscription || localSubscription.status !== "active") {
     return {
@@ -3054,9 +3732,9 @@ async function applyVerifiedCheckout(db, checkoutId, fallbackUserId = null, chec
   const metadata = checkout.metadata || {};
   const userId = local?.userId || metadata.app_user_id || fallbackUserId;
   const plan = local?.plan || metadata.plan;
-  const configuredProductId = String(planConfig().productId || "").trim();
+  const cfg = planConfig(plan);
   const checkoutProductId = local?.productId || metadata.product_id || null;
-  if (!userId || plan !== "lumiere" || !configuredProductId || checkoutProductId !== configuredProductId) return false;
+  if (!userId || !cfg?.productId || checkoutProductId !== cfg.productId) return false;
   const user = db.users[userId] ||= { id: userId, email: local?.email || null, subscription: null };
   const subscriptionId = recurrenteCheckoutSubscriptionId(checkout);
   user.subscription = {
@@ -3070,6 +3748,129 @@ async function applyVerifiedCheckout(db, checkoutId, fallbackUserId = null, chec
   saveBilling(db);
   billingVerificationCache.delete(userId);
   return true;
+}
+
+async function applyVerifiedCreditReset(db, checkoutId, fallbackUserId = null, checkoutPayload = null) {
+  const local = db.checkouts[checkoutId];
+  if (local?.status === "canceled") return false;
+  const checkout = recurrenteCheckout(checkoutPayload || await recurrenteRequest(`/checkouts/${encodeURIComponent(checkoutId)}`));
+  if (String(checkout.status || "").toLowerCase() !== "paid") return false;
+  const metadata = checkout.metadata || {};
+  const isReset = local?.plan === "credits_reset" || metadata.type === "lumiere_credit_reset";
+  if (!isReset) return false;
+  const userId = local?.userId || metadata.app_user_id || fallbackUserId;
+  if (!userId) return false;
+  if (local?.status === "paid") return true;
+  resetLumiereCredits(userId);
+  if (local) local.status = "paid";
+  saveBilling(db);
+  return true;
+}
+
+async function handleCreditCheckout(req, res) {
+  const sid = sessionId(req, res);
+  if (!sid) return googleRequired(res);
+  if (!hasActiveLumierePlan(sid)) return lumierePlanRequired(res);
+  let body = {};
+  try {
+    const raw = await readBody(req);
+    body = raw ? JSON.parse(raw) : {};
+  } catch {
+    return json(res, 400, { error: "invalid request body" });
+  }
+  if (!recurrenteReady()) return json(res, 503, { error: "recurrente_not_configured", message: "Credit resets are not configured right now." });
+  const language = String(body.language || "").trim().toLowerCase().startsWith("es") ? "es" : "en";
+  const account = getUser(sid);
+  const email = String(account?.email || "").trim().toLowerCase();
+  if (!account?.googleSub || !email) return googleRequired(res);
+  const resetProductId = String(process.env.RECURRENTE_LUMIERE_RESET_PRODUCT_ID || "").trim();
+  const item = resetProductId
+    ? { product_id: resetProductId, quantity: 1 }
+    : {
+        name: "Lumiere credit reset",
+        amount_in_cents: LUMIERE_RESET_AMOUNT_CENTS,
+        currency: process.env.RECURRENTE_CURRENCY || "USD",
+        charge_type: "one_time",
+        quantity: 1,
+      };
+  const successUrl = new URL(`${publicAppUrl()}/App.dc.html`);
+  successUrl.searchParams.set("credits", "success");
+  successUrl.searchParams.set("lang", language);
+  const cancelUrl = new URL(`${publicAppUrl()}/App.dc.html`);
+  cancelUrl.searchParams.set("credits", "cancelled");
+  cancelUrl.searchParams.set("lang", language);
+  const checkout = await recurrenteRequest("/checkouts", {
+    method: "POST",
+    body: JSON.stringify({
+      items: [item],
+      success_url: successUrl.toString(),
+      cancel_url: cancelUrl.toString(),
+      metadata: {
+        app_user_id: sid,
+        type: "lumiere_credit_reset",
+        plan: "credits_reset",
+        product_id: resetProductId || "inline_lumiere_credit_reset",
+        language,
+      },
+    }),
+  });
+  const db = loadBilling();
+  db.checkouts[checkout.id] = {
+    id: checkout.id,
+    userId: sid,
+    email,
+    plan: "credits_reset",
+    productId: resetProductId || "inline_lumiere_credit_reset",
+    status: "pending",
+    createdAt: new Date().toISOString(),
+  };
+  db.users[sid] ||= { id: sid, email, subscription: null };
+  db.users[sid].email = email;
+  saveBilling(db);
+  let checkoutUrl = checkout.checkout_url;
+  try {
+    const localizedUrl = new URL(checkoutUrl);
+    if (language === "es") {
+      localizedUrl.searchParams.set("lang", "es");
+      localizedUrl.searchParams.set("locale", "es");
+      checkoutUrl = localizedUrl.toString();
+    }
+  } catch {}
+  return json(res, 201, { checkoutId: checkout.id, checkoutUrl, amount: 5, currency: process.env.RECURRENTE_CURRENCY || "USD" });
+}
+
+async function handleCreditsConfirm(req, res) {
+  const sid = sessionId(req, res);
+  if (!sid) return googleRequired(res);
+  let body = {};
+  try {
+    const raw = await readBody(req);
+    body = raw ? JSON.parse(raw) : {};
+  } catch {
+    return json(res, 400, { error: "invalid request body" });
+  }
+  const checkoutId = String(body.checkoutId || "").trim();
+  if (checkoutId && !/^ch_[a-zA-Z0-9]+$/.test(checkoutId)) return json(res, 400, { error: "invalid checkout id" });
+  const db = loadBilling();
+  const candidates = checkoutId
+    ? [db.checkouts[checkoutId]]
+    : Object.values(db.checkouts)
+      .filter((checkout) => checkout?.userId === sid && checkout.plan === "credits_reset" && checkout.status !== "canceled")
+      .sort((a, b) => Date.parse(b.createdAt || 0) - Date.parse(a.createdAt || 0));
+  if (checkoutId && (!candidates[0] || candidates[0].userId !== sid || candidates[0].plan !== "credits_reset")) {
+    return json(res, 404, { error: "checkout not found" });
+  }
+  let reset = false;
+  for (const local of candidates) {
+    if (!local) continue;
+    try {
+      reset = await applyVerifiedCreditReset(db, local.id, sid);
+      if (reset) break;
+    } catch (error) {
+      if (error.status !== 404) throw error;
+    }
+  }
+  return json(res, 200, { ok: true, reset, credits: creditsSummary(sid) });
 }
 
 function verifyWebhookSignature(rawBody, headers) {
@@ -3095,14 +3896,15 @@ function verifyWebhookSignature(rawBody, headers) {
 async function handleCheckout(req, res) {
   let body;
   try { body = JSON.parse(await readBody(req)); } catch { return json(res, 400, { error: "invalid request body" }); }
-  const plan = body.plan;
-  if (plan !== 'lumiere') return json(res, 400, { error: "only FilmScript Pro is available" });
+  const plan = String(body.plan || "").trim().toLowerCase();
+  const language = String(body.language || "").trim().toLowerCase().startsWith("es") ? "es" : "en";
+  const cfg = planConfig(plan);
+  if (!cfg || !BILLING_PLAN_KEYS.includes(plan)) return json(res, 400, { error: "unsupported_plan", message: "Choose FilmScript Basic or FilmScript Pro." });
   const tracking = checkoutTracking(body);
   if (tracking.error) return json(res, 400, { error: tracking.error });
   const sid = sessionId(req, res);
   if (!sid) return googleRequired(res);
-  const cfg = planConfig();
-  if (!cfg.productId) return json(res, 503, { error: "recurrente_product_not_configured", message: "FilmScript Pro is not available right now." });
+  if (!cfg.productId) return json(res, 503, { error: "recurrente_product_not_configured", message: `${cfg.name} is not configured right now.` });
   const account = getUser(sid);
   const email = String(account?.email || "").trim().toLowerCase();
   if (!account?.googleSub || !email) return googleRequired(res);
@@ -3113,18 +3915,24 @@ async function handleCheckout(req, res) {
     console.error("Recurrente pre-checkout verification failed:", error.message);
     return json(res, error.status || 502, { error: "recurrente_unavailable", message: "FilmScript could not verify your plan. Try again in a moment." });
   }
-  if (current.active) {
-    return json(res, 409, { error: "subscription_already_active", message: "FilmScript Pro is already active for this Google account." });
+  if (current.active && current.subscription?.plan === plan) {
+    return json(res, 409, { error: "subscription_already_active", message: String(cfg.name) + " is already active for this Google account." });
   }
   const item = { product_id: cfg.productId, quantity: 1 };
-  const metadata = { app_user_id: sid, plan, product_id: cfg.productId };
+  const successUrl = new URL(`${publicAppUrl()}/Pricing.dc.html`);
+  successUrl.searchParams.set("payment", "success");
+  successUrl.searchParams.set("lang", language);
+  const cancelUrl = new URL(`${publicAppUrl()}/Pricing.dc.html`);
+  cancelUrl.searchParams.set("payment", "cancelled");
+  cancelUrl.searchParams.set("lang", language);
+  const metadata = { app_user_id: sid, plan, product_id: cfg.productId, language };
   if (tracking.visitorId) metadata.visitor_id = tracking.visitorId;
   if (tracking.sessionId) metadata.session_id = tracking.sessionId;
   if (tracking.attribution) metadata.attribution = JSON.stringify(tracking.attribution);
   const checkout = await recurrenteRequest("/checkouts", { method: "POST", body: JSON.stringify({
     items: [item],
-    success_url: `${publicAppUrl()}/Pricing.dc.html?payment=success`,
-    cancel_url: `${publicAppUrl()}/Pricing.dc.html?payment=cancelled`,
+    success_url: successUrl.toString(),
+    cancel_url: cancelUrl.toString(),
     metadata,
   }) });
   const db = loadBilling();
@@ -3133,7 +3941,18 @@ async function handleCheckout(req, res) {
   db.users[sid].email = email;
   saveBilling(db);
   billingVerificationCache.delete(sid);
-  json(res, 201, { checkoutId: checkout.id, checkoutUrl: checkout.checkout_url });
+  let checkoutUrl = checkout.checkout_url;
+  try {
+    const localizedUrl = new URL(checkoutUrl);
+    if (language === "es") {
+      // Preserve the user's FilmScript language on the hosted payment link.
+      // Recurrente may ignore these optional hints on older checkout sessions.
+      localizedUrl.searchParams.set("lang", "es");
+      localizedUrl.searchParams.set("locale", "es");
+      checkoutUrl = localizedUrl.toString();
+    }
+  } catch {}
+  json(res, 201, { checkoutId: checkout.id, checkoutUrl });
 }
 
 async function handleRecurrenteWebhook(req, res) {
@@ -3156,6 +3975,7 @@ async function handleRecurrenteWebhook(req, res) {
       if (!recurrenteSubscriptionMatchesConfiguredProduct(subscription)) {
         return json(res, 200, { received: true, ignored: true });
       }
+      const subscriptionPlan = planFromProductId(recurrenteSubscriptionProductId(subscription));
       const linkedCheckoutId = recurrenteSubscriptionCheckoutId(subscription) || checkoutId;
       const userId = billingUserIdForProviderEvent(db, {
         checkoutId: linkedCheckoutId,
@@ -3165,7 +3985,7 @@ async function handleRecurrenteWebhook(req, res) {
       if (userId) {
         const status = recurrenteSubscriptionStatus(subscription);
         db.users[userId].subscription = {
-          plan: "lumiere",
+          plan: subscriptionPlan,
           status: RECURRENTE_ACTIVE_SUBSCRIPTION_STATUSES.has(status) ? "active" : status,
           checkoutId: linkedCheckoutId || db.users[userId]?.subscription?.checkoutId || null,
           subscriptionId,
@@ -3179,7 +3999,11 @@ async function handleRecurrenteWebhook(req, res) {
       return json(res, 502, { error: "subscription verification failed" });
     }
   } else if (checkoutId && successEvents.includes(eventType)) {
-    try { await applyVerifiedCheckout(db, checkoutId); } catch (error) { console.error("Recurrente verification error:", error.message); return json(res, 502, { error: "payment verification failed" }); }
+    try {
+      const local = db.checkouts[checkoutId];
+      if (local?.plan === "credits_reset") await applyVerifiedCreditReset(db, checkoutId);
+      else await applyVerifiedCheckout(db, checkoutId);
+    } catch (error) { console.error("Recurrente verification error:", error.message); return json(res, 502, { error: "payment verification failed" }); }
   } else if (inactiveEvents.includes(eventType)) {
     const userId = billingUserIdForProviderEvent(db, { checkoutId, subscriptionId, email: recurrenteEventEmail(event) });
     const local = checkoutId ? db.checkouts[checkoutId] : null;
@@ -3245,6 +4069,9 @@ async function handleBillingSync(req, res) {
 function accountPayload(userId, verification = null) {
   const user = userId ? getUser(userId) : null;
   const subscription = userId ? getSubscription(userId) : null;
+  const active = subscription?.status === "active";
+  const tier = active ? subscription.plan : "free";
+  const config = active ? planConfig(subscription.plan) : null;
   return {
     authenticated: !!user?.googleSub,
     provider: user?.googleSub ? "google" : null,
@@ -3252,8 +4079,16 @@ function accountPayload(userId, verification = null) {
     name: user?.name || null,
     email: user?.email || null,
     picture: user?.picture || null,
+    profile: user ? {
+      gender: user.gender || null,
+      birthDate: user.birthDate || null,
+      completed: Boolean(user.profileComplete),
+    } : null,
     lumierePreferences: user ? normalizeLumierePreferences(user.lumierePreferences) : null,
-    plan: subscription?.status === "active" ? subscription.plan : null,
+    plan: active ? subscription.plan : null,
+    tier,
+    planName: config?.name || "Free",
+    price: config?.price || "$0 / month",
     status: subscription?.status || null,
     billing: user ? {
       provider: "recurrente",
@@ -3287,10 +4122,25 @@ async function handleProfileUpdate(req, res) {
   if (!sid) return googleRequired(res);
   let body;
   try { body = JSON.parse(await readBody(req)); } catch { return json(res, 400, { error: "invalid request body" }); }
-  const name = String(body.name || "").replace(/\s+/g, " ").trim();
-  if (name.length < 2 || name.length > 80) return json(res, 422, { error: "Name must contain between 2 and 80 characters." });
-  updateUserName(sid, name);
-  json(res, 200, accountPayload(sid));
+  try {
+    if (Object.prototype.hasOwnProperty.call(body, "name")) {
+      const name = String(body.name || "").replace(/\s+/g, " ").trim();
+      const hasProfileFields = Object.prototype.hasOwnProperty.call(body, "gender") || Object.prototype.hasOwnProperty.call(body, "birthDate");
+      // Older onboarding builds submitted an empty name alongside the profile
+      // fields even though the onboarding sheet does not edit a name. Treat it
+      // as unchanged; explicit name edits still use the normal validation.
+      if (name || !hasProfileFields) {
+        if (name.length < 2 || name.length > 80) return json(res, 422, { error: "Name must contain between 2 and 80 characters." });
+        updateUserName(sid, name);
+      }
+    }
+    if (Object.prototype.hasOwnProperty.call(body, "gender") || Object.prototype.hasOwnProperty.call(body, "birthDate")) {
+      updateUserProfile(sid, body);
+    }
+    return json(res, 200, accountPayload(sid));
+  } catch (error) {
+    return json(res, error.status || 422, { error: error.message || "Could not update profile." });
+  }
 }
 
 async function handleLumierePreferences(req, res) {
@@ -3347,7 +4197,9 @@ async function handleGoogleCallback(req, res, requestUrl) {
     const profile = await profileResponse.json();
     if (!profileResponse.ok || !profile.email || profile.email_verified === false) throw new Error("Google did not return a verified email address");
     connectGoogleIdentity(pending.sessionId, profile);
-    redirect(res, withQuery(pending.returnTo, "signin", "success"));
+    // A successful OAuth flow must always land in the authenticated workspace.
+    // Never leave the user on the public Features/Pricing landing page.
+    redirect(res, withQuery("/App.dc.html", "signin", "success"));
   } catch (error) {
     console.error("Google OAuth error:", error.message);
     redirect(res, withQuery(pending.returnTo, "signin", "error"));
@@ -3718,12 +4570,12 @@ async function handleCancelSubscription(req, res) {
     const db = loadBilling();
     const user = db.users[sid];
     if (!user?.subscription || user.subscription.status !== "active" || user.subscription.subscriptionId) {
-      return json(res, 409, { error: "no_active_subscription", message: "There is no active FilmScript Pro plan to cancel." });
+      return json(res, 409, { error: "no_active_subscription", message: "There is no active FilmScript plan to cancel." });
     }
     user.subscription.status = "canceled";
     user.subscription.updatedAt = new Date().toISOString();
     Object.values(db.checkouts).forEach((checkout) => {
-      if (checkout.userId === sid && checkout.productId === planConfig().productId) checkout.status = "canceled";
+      if (checkout.userId === sid && BILLING_PLAN_KEYS.some((key) => checkout.productId === planConfig(key)?.productId)) checkout.status = "canceled";
     });
     saveBilling(db);
     billingVerificationCache.delete(sid);
@@ -3731,7 +4583,7 @@ async function handleCancelSubscription(req, res) {
       ok: true,
       plan: null,
       provider: "recurrente",
-      message: "FilmScript Pro was canceled.",
+      message: String(planConfig(user.subscription?.plan)?.name || "FilmScript") + " was canceled.",
     });
   }
   let verification;
@@ -3744,7 +4596,7 @@ async function handleCancelSubscription(req, res) {
   const db = loadBilling();
   const user = db.users[sid];
   if (!user?.subscription || user.subscription.status !== "active") {
-    return json(res, 409, { error: "no_active_subscription", message: "There is no active FilmScript Pro plan to cancel." });
+    return json(res, 409, { error: "no_active_subscription", message: "There is no active FilmScript plan to cancel." });
   }
   const subscriptionId = user.subscription.subscriptionId || verification.subscription?.id || null;
   if (!subscriptionId) {
@@ -3777,7 +4629,7 @@ async function handleCancelSubscription(req, res) {
     alreadyCanceled: RECURRENTE_CANCELED_SUBSCRIPTION_STATUSES.has(remoteStatus),
     message: RECURRENTE_CANCELED_SUBSCRIPTION_STATUSES.has(remoteStatus)
       ? "The subscription was already canceled in Recurrente."
-      : "FilmScript Pro was canceled through Recurrente.",
+      : String(planConfig(user.subscription?.plan)?.name || "FilmScript") + " was canceled through Recurrente.",
   });
 }
 
@@ -3818,6 +4670,13 @@ async function handleLumiere(req, res) {
     res.end(JSON.stringify({ error: "invalid request body" }));
     return;
   }
+  if (!hasLumiereCredits(sid)) {
+    return json(res, 402, {
+      error: "lumiere_credits_exhausted",
+      message: "Lumiere credits are empty. Reset your limits for $5 to keep going.",
+      credits: creditsSummary(sid),
+    });
+  }
   try {
     // Prompt caching: the frontend sends one string with the static
     // instructions + full script before "CONVERSATION SO FAR:". Splitting
@@ -3847,16 +4706,18 @@ async function handleLumiere(req, res) {
       messages: prepared,
     });
     recordUsage(response.usage);
+    consumeLumiereCredit(sid);
     const reply = response.content
       .filter((b) => b.type === "text")
       .map((b) => b.text)
       .join("");
     res.writeHead(200, { "Content-Type": "application/json" });
-    res.end(JSON.stringify({ reply, credits: creditsSummary() }));
+    res.end(JSON.stringify({ reply, credits: creditsSummary(sid) }));
   } catch (err) {
     console.error("Lumiere API error:", err.status || "", err.message);
-    res.writeHead(err.status || 500, { "Content-Type": "application/json" });
-    res.end(JSON.stringify({ error: err.message }));
+    const message = anthropicFailureMessage(err);
+    res.writeHead(anthropicFailureStatus(err), { "Content-Type": "application/json" });
+    res.end(JSON.stringify({ error: "anthropic_unavailable", message }));
   }
 }
 
@@ -3868,7 +4729,7 @@ function serveStatic(req, res) {
     || urlPath.startsWith("/.env")
     || urlPath.startsWith("/data/")
     || urlPath.startsWith("/node_modules/")
-    || ["/server.js", "/database.js", "/canvas-model.js", "/canvas-storage.js", "/package.json", "/package-lock.json", "/credits.json", "/billing.json", "/scripts.json", "/preproduction.json", "/pdf_extract.py", "/breakdown_pdf.py", "/stripboard_pdf.py", "/shotlist_pdf.py", "/budget_pdf.py", "/analysis_pdf.py", "/canvas_quote_pdf.py"].includes(urlPath)) {
+    || ["/server.js", "/database.js", "/canvas-model.js", "/canvas-storage.js", "/budget-import-model.js", "/package.json", "/package-lock.json", "/credits.json", "/billing.json", "/scripts.json", "/preproduction.json", "/pdf_extract.py", "/breakdown_pdf.py", "/stripboard_pdf.py", "/shotlist_pdf.py", "/budget_pdf.py", "/analysis_pdf.py", "/canvas_quote_pdf.py"].includes(urlPath)) {
     res.writeHead(404);
     res.end("Not found");
     return;
@@ -3972,14 +4833,22 @@ export function requestHandler(req, res) {
       handleBudgetReceipt(req, res, parts[3], parts[7]);
     } else if (req.method === "POST" && /^\/api\/scripts\/scr_[a-f0-9]+\/preproduction\/budget\/receipts$/.test(pathname)) {
       handleBudgetReceiptUpload(req, res, pathname.split("/")[3]).catch((err) => json(res, err.status || 500, { error: err.message }));
+    } else if (req.method === "POST" && /^\/api\/scripts\/scr_[a-f0-9]+\/preproduction\/budget\/import$/.test(pathname)) {
+      handleBudgetImport(req, res, pathname.split("/")[3]).catch((err) => json(res, err.status || 500, { error: err.message }));
     } else if (req.method === "GET" && /^\/api\/scripts\/scr_[a-f0-9]+\/preproduction\/budget\.pdf$/.test(pathname)) {
       handleBudgetPdf(req, res, pathname.split("/")[3]).catch((err) => json(res, err.status || 500, { error: err.message }));
     } else if ((req.method === "GET" || req.method === "PATCH") && /^\/api\/scripts\/scr_[a-f0-9]+\/preproduction\/budget$/.test(pathname)) {
       handleBudget(req, res, pathname.split("/")[3]).catch((err) => json(res, err.status || 500, { error: err.message }));
+    } else if ((req.method === "GET" || req.method === "PATCH") && /^\/api\/scripts\/scr_[a-f0-9]+\/preproduction\/calendar$/.test(pathname)) {
+      handleCalendar(req, res, pathname.split("/")[3]).catch((err) => json(res, err.status || 500, { error: err.message }));
     } else if ((req.method === "GET" || req.method === "POST") && /^\/api\/scripts\/scr_[a-f0-9]+\/preproduction$/.test(pathname)) {
       handlePreproduction(req, res, pathname.split("/")[3]).catch((err) => json(res, err.status || 500, { error: err.message }));
     } else if (req.method === "POST" && req.url === "/api/checkout") {
       handleCheckout(req, res).catch((err) => json(res, err.status || 500, { error: err.message }));
+    } else if (req.method === "POST" && req.url === "/api/credits/checkout") {
+      handleCreditCheckout(req, res).catch((err) => json(res, err.status || 500, { error: err.message }));
+    } else if (req.method === "POST" && req.url === "/api/credits/confirm") {
+      handleCreditsConfirm(req, res).catch((err) => json(res, err.status || 500, { error: err.message }));
     } else if (req.method === "POST" && req.url === "/api/webhooks/recurrente") {
       handleRecurrenteWebhook(req, res).catch((err) => json(res, err.status || 500, { error: err.message }));
     } else if (req.method === "POST" && req.url === "/api/billing/sync") {
@@ -4000,9 +4869,10 @@ export function requestHandler(req, res) {
       const health = databaseHealth();
       json(res, 200, { ok: health.ok, database: health.adapter, schemaVersion: health.schemaVersion });
     } else if (req.method === "GET" && pathname === "/api/credits") {
-      if (!sessionId(req, res)) return googleRequired(res);
+      const sid = sessionId(req, res);
+      if (!sid) return googleRequired(res);
       res.writeHead(200, { "Content-Type": "application/json" });
-      res.end(JSON.stringify(creditsSummary()));
+      res.end(JSON.stringify(creditsSummary(sid)));
     } else if ((req.method === "GET" || req.method === "HEAD") && pathname === "/App.dc.html" && !sessionId(req, res, false)) {
       redirect(res, "/Features.dc.html");
     } else if (req.method === "GET" || req.method === "HEAD") {

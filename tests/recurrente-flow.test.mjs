@@ -11,6 +11,7 @@ import test from "node:test";
 const ROOT = path.resolve(new URL("..", import.meta.url).pathname);
 const PRODUCT_ID = "prod_filmscript_pro_test";
 const CHECKOUT_ID = "ch_filmscripttest";
+const RESET_CHECKOUT_ID = "ch_filmscriptreset";
 const SUBSCRIPTION_ID = "su_filmscripttest";
 const EMAIL = "writer@example.com";
 const VISITOR_ID = "11111111-1111-4111-8111-111111111111";
@@ -54,13 +55,21 @@ const waitForServer = async (url, child) => {
 test("Google account checkout activates and cancels the matching Recurrente subscription", async (t) => {
   const dataDir = await fs.mkdtemp(path.join(os.tmpdir(), "filmscript-recurrente-test-"));
   let checkoutCreated = false;
+  let resetCheckoutCreated = false;
   let subscriptionStatus = "active";
   let checkoutRequest = null;
+  let resetCheckoutRequest = null;
 
   const recurrente = http.createServer(async (req, res) => {
     assert.equal(req.headers["x-secret-key"], "sk_test_integration");
     if (req.method === "POST" && req.url === "/api/checkouts") {
-      checkoutRequest = await readJson(req);
+      const payload = await readJson(req);
+      if (payload.metadata?.type === "lumiere_credit_reset") {
+        resetCheckoutRequest = payload;
+        resetCheckoutCreated = true;
+        return send(res, 201, { id: RESET_CHECKOUT_ID, checkout_url: `https://checkout.example/${RESET_CHECKOUT_ID}` });
+      }
+      checkoutRequest = payload;
       checkoutCreated = true;
       return send(res, 201, { id: CHECKOUT_ID, checkout_url: `https://checkout.example/${CHECKOUT_ID}` });
     }
@@ -69,6 +78,13 @@ test("Google account checkout activates and cancels the matching Recurrente subs
         id: CHECKOUT_ID,
         status: "paid",
         metadata: { app_user_id: checkoutRequest?.metadata?.app_user_id, plan: "lumiere", product_id: PRODUCT_ID },
+      });
+    }
+    if (req.method === "GET" && req.url === `/api/checkouts/${RESET_CHECKOUT_ID}`) {
+      return send(res, 200, {
+        id: RESET_CHECKOUT_ID,
+        status: "paid",
+        metadata: { app_user_id: resetCheckoutRequest?.metadata?.app_user_id, type: "lumiere_credit_reset", plan: "credits_reset" },
       });
     }
     if (req.method === "GET" && req.url?.startsWith("/api/subscriptions?")) {
@@ -156,13 +172,15 @@ test("Google account checkout activates and cancels the matching Recurrente subs
     body: JSON.stringify({ plan: "lumiere", visitorId: "not-a-uuid" }),
   });
   assert.equal(invalidTrackingResponse.status, 400);
+  assert.equal((await invalidTrackingResponse.json()).error, "invalid visitor id");
   assert.equal(checkoutRequest, null);
 
   const attribution = {
     utm_source: "newsletter",
     utm_campaign: "launch",
-    landing_path: "/Pricing.dc.html",
-    captured_at: "2026-07-16T18:00:00.000Z",
+    referrer: "https://filmscript.test/Features.dc.html",
+    landing_path: "/Features.dc.html",
+    captured_at: "2026-07-16T12:00:00.000Z",
   };
   const checkoutResponse = await fetch(`${appUrl}/api/checkout`, {
     method: "POST",
@@ -170,6 +188,7 @@ test("Google account checkout activates and cancels the matching Recurrente subs
     body: JSON.stringify({
       plan: "lumiere",
       email: "attacker@example.com",
+      language: "es",
       visitorId: VISITOR_ID,
       sessionId: TRACKING_SESSION_ID,
       attribution,
@@ -179,9 +198,16 @@ test("Google account checkout activates and cancels the matching Recurrente subs
   assert.deepEqual(checkoutRequest.items, [{ product_id: PRODUCT_ID, quantity: 1 }]);
   assert.equal(checkoutRequest.metadata.product_id, PRODUCT_ID);
   assert.equal(checkoutRequest.metadata.app_user_id, identity.userId);
+  assert.equal(checkoutRequest.metadata.language, "es");
   assert.equal(checkoutRequest.metadata.visitor_id, VISITOR_ID);
   assert.equal(checkoutRequest.metadata.session_id, TRACKING_SESSION_ID);
   assert.deepEqual(JSON.parse(checkoutRequest.metadata.attribution), attribution);
+  assert.equal(new URL(checkoutRequest.success_url).searchParams.get("lang"), "es");
+  assert.equal(new URL(checkoutRequest.cancel_url).searchParams.get("lang"), "es");
+  const checkoutPayload = await checkoutResponse.json();
+  assert.deepEqual(Object.keys(checkoutPayload).sort(), ["checkoutId", "checkoutUrl"]);
+  assert.equal(new URL(checkoutPayload.checkoutUrl).searchParams.get("lang"), "es");
+  assert.equal(new URL(checkoutPayload.checkoutUrl).searchParams.get("locale"), "es");
 
   const webhookEvent = JSON.stringify({
     id: SUBSCRIPTION_ID,
@@ -214,6 +240,42 @@ test("Google account checkout activates and cancels the matching Recurrente subs
   const synced = await syncResponse.json();
   assert.equal(synced.plan, "lumiere");
   assert.equal(synced.billing.subscriptionLinked, true);
+
+  const resetCheckoutResponse = await fetch(`${appUrl}/api/credits/checkout`, {
+    method: "POST",
+    headers,
+    body: JSON.stringify({ language: "es" }),
+  });
+  assert.equal(resetCheckoutResponse.status, 201);
+  assert.deepEqual(resetCheckoutRequest.items, [{
+    name: "Lumiere credit reset",
+    amount_in_cents: 500,
+    currency: "USD",
+    charge_type: "one_time",
+    quantity: 1,
+  }]);
+  assert.equal(resetCheckoutRequest.metadata.type, "lumiere_credit_reset");
+  assert.equal(resetCheckoutRequest.metadata.app_user_id, identity.userId);
+  const resetCheckoutPayload = await resetCheckoutResponse.json();
+  assert.equal(new URL(resetCheckoutPayload.checkoutUrl).searchParams.get("lang"), "es");
+
+  const resetConfirmResponse = await fetch(`${appUrl}/api/credits/confirm`, {
+    method: "POST",
+    headers,
+    body: JSON.stringify({ checkoutId: RESET_CHECKOUT_ID }),
+  });
+  assert.equal(resetConfirmResponse.status, 200);
+  const resetConfirm = await resetConfirmResponse.json();
+  assert.equal(resetConfirm.reset, true);
+  assert.equal(resetConfirm.credits.remaining, 100);
+  const secondResetConfirm = await fetch(`${appUrl}/api/credits/confirm`, {
+    method: "POST",
+    headers,
+    body: JSON.stringify({ checkoutId: RESET_CHECKOUT_ID }),
+  });
+  const secondReset = await secondResetConfirm.json();
+  assert.equal(secondReset.reset, true);
+  assert.equal(secondReset.credits.paidResets, 1);
 
   const manageResponse = await fetch(`${appUrl}/api/subscription/manage`, { headers });
   assert.equal(manageResponse.status, 200);

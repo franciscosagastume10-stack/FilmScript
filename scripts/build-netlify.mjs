@@ -5,6 +5,9 @@ import { fileURLToPath } from "node:url";
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const output = path.join(root, "dist");
 const frontendFiles = [
+  "erp.html",
+  "erp-shell.css",
+  "erp-shell.js",
   "App.dc.html",
   "Editor v5.dc.html",
   "Features.dc.html",
@@ -20,6 +23,7 @@ const frontendFiles = [
   "character-name-tools.js",
   "funnel-tracking.js",
   "billing-client.js",
+  "profile-onboarding.js",
   "lumiere-client.js",
   "lumiere-preferences.js",
   "pdf-import.js",
@@ -33,6 +37,9 @@ const frontendFiles = [
   "budget-model.js",
   "budget-client.js",
   "budget-workspace.js",
+  "calendar-model.js",
+  "calendar-client.js",
+  "calendar-workspace.js",
   "auth-modal.css",
   "filmscript-controls.css",
 ];
@@ -53,6 +60,10 @@ fs.writeFileSync(
   path.join(output, "runtime-config.js"),
   `window.FILMSCRIPT_CONFIG = { apiUrl: ${JSON.stringify(apiUrl)}, erpApiUrl: ${JSON.stringify(erpApiUrl)}, erpEnvironment: ${JSON.stringify(erpEnvironment)} };\n${sourceConfig}`,
 );
+// Sites accepts both Wrangler config extensions; keep a JSON copy so the
+// static asset binding is discovered consistently by the production adapter.
+const wranglerConfig = path.join(output, "wrangler.jsonc");
+if (fs.existsSync(wranglerConfig)) fs.copyFileSync(wranglerConfig, path.join(output, "wrangler.json"));
 
 console.log(`FilmScript frontend built in ${output}`);
 console.log(`API URL: ${apiUrl || "same origin (set API_URL for Netlify)"}`);
