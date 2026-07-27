@@ -146,6 +146,7 @@ class FilmScriptCalendar extends HTMLElement {
       const result = await window.filmscriptCalendar.get(this.scriptId);
       this.calendar = normalizeCalendar(result.calendar, this.projectTitle);
       this.loading = false;
+      this.saveStatus = result.storage === "local" ? "Saved on this device" : "";
       this.render();
     } catch (error) {
       this.loading = false;
@@ -167,7 +168,7 @@ class FilmScriptCalendar extends HTMLElement {
         const result = await window.filmscriptCalendar.save(this.scriptId, this.calendar);
         if (revision !== this._saveRevision) return;
         this.calendar = normalizeCalendar(result.calendar, this.projectTitle);
-        this.saveStatus = "Saved";
+        this.saveStatus = result.storage === "local" ? "Saved on this device" : "Saved";
         this.error = "";
         this.render();
         window.dispatchEvent(new CustomEvent("filmscript:calendar-updated", {
