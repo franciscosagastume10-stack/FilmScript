@@ -3,6 +3,13 @@
   "framework": null,
   "buildCommand": "npm run build:vercel",
   "outputDirectory": "dist",
+  "redirects": [
+    {
+      "source": "/",
+      "destination": "/Features.dc.html",
+      "permanent": false
+    }
+  ],
   "headers": [
     {
       "source": "/(.*)",
