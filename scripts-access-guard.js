@@ -26,7 +26,8 @@
       });
       if (!response.ok) return redirectToLanding();
       const account = await response.json().catch(() => null);
-      if (!account?.authenticated || account.provider !== 'google' || !account.email) {
+      const localPreview = account?.preview === true || account?.provider === 'preview';
+      if (!account?.authenticated || (!localPreview && account.provider !== 'google') || !account.email) {
         return redirectToLanding();
       }
       reveal();

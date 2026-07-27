@@ -52,7 +52,7 @@ const startServer = async (dataDir) => {
       PUBLIC_APP_URL: url,
       CORS_ORIGINS: url,
       FILMSCRIPT_DATA_DIR: dataDir,
-      ANTHROPIC_API_KEY: "test-key",
+      OPENROUTER_API_KEY: "test-key",
       PDF_PYTHON: pdfPython,
     },
     stdio: ["ignore", "pipe", "pipe"],
@@ -245,6 +245,19 @@ test("account-owned screenplay interactions survive reloads and a server restart
   const project = (await projectResponse.json()).project;
   assert.equal(project.scenes.length, 2);
   const [firstScene, secondScene] = project.scenes;
+
+  const manualBreakdownResponse = await fetch(`${running.url}/api/scripts/${scriptId}/preproduction/manual-breakdown`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json", Cookie: ownerCookie },
+    body: "{}",
+  });
+  assert.equal(manualBreakdownResponse.status, 200);
+  const manualBreakdown = await manualBreakdownResponse.json();
+  assert.equal(manualBreakdown.created, 2);
+  assert.ok(manualBreakdown.project.scenes.every((scene) => scene.breakdown?.source === "manual"));
+  assert.ok(manualBreakdown.project.scenes.every((scene) => scene.breakdown?.generated === "manual"));
+  assert.equal(manualBreakdown.project.scenes[0].breakdownForm.cells.props, "");
+  assert.equal(manualBreakdown.project.scenes[0].breakdownForm.metadata.sceneDescription, "");
 
   const breakdownResponse = await fetch(`${running.url}/api/scripts/${scriptId}/preproduction/scenes/${firstScene.id}`, {
     method: "PATCH",

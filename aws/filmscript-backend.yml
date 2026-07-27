@@ -281,8 +281,8 @@ Resources:
             - Name: RECURRENTE_CURRENCY
               Value: USD
           Secrets:
-            - Name: ANTHROPIC_API_KEY
-              ValueFrom: !Sub "${SecretsArn}:ANTHROPIC_API_KEY::"
+            - Name: OPENROUTER_API_KEY
+              ValueFrom: !Sub "${SecretsArn}:OPENROUTER_API_KEY::"
             - Name: GOOGLE_CLIENT_ID
               ValueFrom: !Sub "${SecretsArn}:GOOGLE_CLIENT_ID::"
             - Name: GOOGLE_CLIENT_SECRET

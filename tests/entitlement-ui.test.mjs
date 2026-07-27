@@ -30,6 +30,38 @@ test("preproduction access copy is English and explains post-cancellation owners
   assert.match(subscription, /editable and exportable/);
 });
 
+test("Breakdown begins with a clear manual-or-Lumiere choice", async () => {
+  const [editor, client, server] = await Promise.all([
+    fs.readFile(path.join(ROOT, "Editor v5.dc.html"), "utf8"),
+    fs.readFile(path.join(ROOT, "preproduction-client.js"), "utf8"),
+    fs.readFile(path.join(ROOT, "server.js"), "utf8"),
+  ]);
+
+  assert.match(editor, /Build the breakdown your way\./);
+  assert.match(editor, /Start manual breakdown/);
+  assert.match(editor, /Analyze with Lumiere/);
+  assert.match(editor, /startManualBreakdown/);
+  assert.match(editor, /breakdownStartVisible/);
+  assert.match(editor, /v5-breakdown-start-card/);
+  assert.match(client, /createManualBreakdown/);
+  assert.match(server, /handleManualBreakdown/);
+  assert.match(server, /generated: 'manual'/);
+  assert.match(server, /source: 'manual'/);
+  assert.match(editor, /Generate with Lumiere/);
+  assert.match(editor, /generateManualBreakdownWithLumiere/);
+  assert.match(client, /includeManual === true/);
+  assert.match(server, /preserveManualBreakdownForm/);
+  assert.match(server, /sceneNeedsBreakdown\(scene, \{ includeManual \}\)/);
+});
+
+test("local preview renews only its own Lumiere session after a server restart", async () => {
+  const server = await fs.readFile(path.join(ROOT, "server.js"), "utf8");
+  assert.match(server, /PREVIEW_LUMIERE_SESSION_STARTED_AT/);
+  assert.match(server, /previewCredits\.session = \{/);
+  assert.match(server, /credits\[PREVIEW_USER_ID\] = previewCredits/);
+  assert.match(server, /Restarting the local preview should make it possible to verify the real/);
+});
+
 test("Plan and billing uses a concise section heading without repeating the plan name", async () => {
   const subscription = await fs.readFile(path.join(ROOT, "Subscription.dc.html"), "utf8");
   assert.match(subscription, /<div class="eyebrow">Membership<\/div>/);
@@ -60,8 +92,9 @@ test("Lumiere credits expose rolling session, weekly, monthly and paid top-up wi
     fs.readFile(path.join(ROOT, "language-preference.js"), "utf8"),
     fs.readFile(path.join(ROOT, "server.js"), "utf8"),
   ]);
-  assert.match(server, /LUMIERE_CREDIT_SESSION_LIMIT = 20/);
-  assert.match(server, /LUMIERE_CREDIT_WEEKLY_LIMIT = 60/);
+  assert.match(server, /free: Object\.freeze\(\{ session: 3, week: 9, month: 12 \}\)/);
+  assert.match(server, /basic: Object\.freeze\(\{ session: 45, week: 135, month: 300 \}\)/);
+  assert.match(server, /lumiere: Object\.freeze\(\{ session: 100, week: 300, month: 600 \}\)/);
   assert.match(server, /LUMIERE_CREDIT_SESSION_MS = 8 \* 60 \* 60 \* 1000/);
   assert.match(server, /LUMIERE_PAID_CREDIT_AMOUNT = 80/);
   assert.match(server, /extraCredits/);
@@ -253,9 +286,50 @@ test("Breakdown categories keep distinct colors and open their exact screenplay 
   assert.match(editor, /data-breakdown-reference/);
   assert.match(editor, /v5-breakdown-reference-fallback/);
   assert.match(editor, /_breakdownReferenceColor\(categoryKey\)/);
+  assert.match(editor, /const matchesByKey = new Map\(\)/);
+  assert.match(editor, /_dedupeBreakdownFieldValue\(section, value\)/);
+  assert.doesNotMatch(editor, /<sc-if value="\{\{ entry\.linkable \}\}"/);
+  assert.match(editor, /entryClass: `v5-breakdown-entry\$\{linkable \? ' v5-breakdown-entry-link' : ' is-static'\}`/);
+  assert.match(server, /function dedupeBreakdownElements\(value\)/);
+  assert.match(server, /elements: dedupeBreakdownElements\(elements\)/);
   assert.match(server, /"greenery"/);
   assert.match(server, /"music"/);
   assert.match(server, /Every returned element must remain grounded in an exact source excerpt/);
+});
+
+test("Breakdown canonicalizes repeated production items before display, export, or budgeting", async () => {
+  const [editor, server] = await Promise.all([
+    fs.readFile(path.join(ROOT, "Editor v5.dc.html"), "utf8"),
+    fs.readFile(path.join(ROOT, "server.js"), "utf8"),
+  ]);
+  assert.match(editor, /const breakdownNameKey = \(value\)/);
+  assert.match(editor, /existing\.quantity = options\.numbered \? 1 : Math\.max/);
+  assert.match(editor, /vehicles: 'vehicles_animals'/);
+  assert.match(server, /function breakdownElementNameKey\(value\)/);
+  assert.match(server, /function breakdownComparisonCategory\(value\)/);
+  assert.match(server, /existing\.quantity = isCast \? 1 : Math\.max\(existingQuantity, nextQuantity\)/);
+});
+
+test("Lumiere structured work requests JSON and safely recovers a missed array comma", async () => {
+  const server = await fs.readFile(path.join(ROOT, "server.js"), "utf8");
+  assert.match(server, /jsonMode = false/);
+  assert.match(server, /response_format: \{ type: "json_object" \}/);
+  assert.match(server, /jsonMode: true/);
+
+  const start = server.indexOf("function extractStructuredJson(raw)");
+  const end = server.indexOf("\nfunction normalizeEvidence", start);
+  assert.notEqual(start, -1);
+  assert.notEqual(end, -1);
+  const sandbox = {};
+  vm.runInNewContext(`${server.slice(start, end)}\nglobalThis.parse = parseBreakdownJson;`, sandbox);
+  assert.deepEqual(
+    JSON.parse(JSON.stringify(sandbox.parse('{"elements":[{"name":"Camera"} {"name":"Slate"}]}'))),
+    { elements: [{ name: "Camera" }, { name: "Slate" }] },
+  );
+  assert.throws(
+    () => sandbox.parse('{"elements":[{"name":"Camera"}'),
+    /Lumiere returned incomplete structured data/,
+  );
 });
 
 test("Breakdown refresh exposes red or green sync state and asks Lumiere only for changed scenes", async () => {
@@ -375,6 +449,8 @@ test("Stripboard carries the cast IDs assigned by Breakdown", async () => {
   assert.match(editor, /startTimeLabel = scheduleKnown \? formatClock/);
   assert.match(editor, /Estimated time/);
   assert.match(editor, /Est\. time…/);
+  assert.match(editor, /const sceneNo = sceneNumberById\.get\(scene\.id\) \|\| sceneIndex \+ 1;/);
+  assert.match(editor, /estimatedTimeAriaLabel: hasSavedEstimate \? `Edit estimated time for scene \$\{sceneNo\}` : 'Est\. time…'/);
   assert.match(editor, /data-testid="stripboard-time-popover"/);
   assert.match(editor, /aria-label="Increase minutes by 15"/);
   assert.match(editor, /Exact duration/);
@@ -583,6 +659,12 @@ test("Analysis uses one Lumiere insights contract with screenplay evidence and p
   assert.match(analysis, /live draft signal from scene rhythm/i);
   assert.match(analysis, /this\.analysisStarting = false/);
   assert.match(analysis, /analysis-progress-track/);
+  assert.match(analysis, /filmscript:analysis-background/);
+  assert.match(server, /background: true/);
+  assert.match(server, /pollAfterMs: 1200/);
+  assert.match(editor, /analysisBackgroundVisible/);
+  assert.match(editor, /_scheduleAnalysisBackgroundPoll/);
+  assert.match(editor, /Lumiere is analyzing/);
   assert.match(analysis, /data-action="start-quick"/);
   assert.match(analysis, /const waitingForUser = this\.analysis\.hasEnoughContent/);
   assert.match(analysis, /load\(\{ startAnalysis: true \}\)/);
@@ -599,6 +681,29 @@ test("Analysis uses one Lumiere insights contract with screenplay evidence and p
   assert.match(pdf, /Story Clarity/);
   assert.match(pdf, /Production Overview/);
   assert.doesNotMatch(pdf, /Dialogue \/ Action/);
+});
+
+test("every Lumiere surface uses the shared OpenRouter-backed proxy", async () => {
+  const [client, editor, app, features, pricing, server] = await Promise.all([
+    fs.readFile(path.join(ROOT, "lumiere-client.js"), "utf8"),
+    fs.readFile(path.join(ROOT, "Editor v5.dc.html"), "utf8"),
+    fs.readFile(path.join(ROOT, "App.dc.html"), "utf8"),
+    fs.readFile(path.join(ROOT, "Features.dc.html"), "utf8"),
+    fs.readFile(path.join(ROOT, "Pricing.dc.html"), "utf8"),
+    fs.readFile(path.join(ROOT, "server.js"), "utf8"),
+  ]);
+
+  assert.match(client, /window\.lumiere/);
+  assert.match(client, /resolve\("\/api\/lumiere"\)/);
+  assert.match(client, /OpenRouter credential never leaves the FilmScript server/);
+  assert.doesNotMatch(client, /window\.claude/);
+  for (const surface of [editor, app, features, pricing]) {
+    assert.match(surface, /window\.lumiere\.complete/);
+    assert.doesNotMatch(surface, /window\.claude\.complete/);
+  }
+  assert.match(server, /const OPENROUTER_API_URL = "https:\/\/openrouter\.ai\/api\/v1\/chat\/completions"/);
+  assert.match(server, /async function requestLumiere/);
+  assert.match(server, /provider: "openrouter"/);
 });
 
 test("Stripboard and Shot List entry sounds stay coordinated with motion-safe work modes", async () => {

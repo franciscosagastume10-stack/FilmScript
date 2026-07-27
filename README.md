@@ -39,6 +39,27 @@ npm run dev
 
 Open `http://localhost:4173`.
 
+### Local Preview (Codex)
+
+When Google OAuth is only available in AWS, use the isolated preview workspace
+to inspect and edit the current app locally without logging in:
+
+```bash
+npm run preview
+```
+
+Then open `http://localhost:4173/App.dc.html`. The preview creates a stable
+local account and a connected 12-page sample screenplay, `The Last Take`, at
+`scr_f1f5e6c7a9b0d1e2f3a4`. It includes populated Breakdown, Stripboard,
+Calendar, Budget and Expense data, using the same Editor, Analysis, Shot List,
+Canvas and Budget API routes used by the app. Its SQLite database lives in
+`app/data-preview/`, so it cannot alter normal local data or AWS data. Stop it
+with `Ctrl-C`.
+
+This workflow is intentionally local-only. Edits stay in the workspace until
+you explicitly ask to publish the latest version to GitHub; no push or deploy
+is performed automatically.
+
 ## Verification
 
 ```bash

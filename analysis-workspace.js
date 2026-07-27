@@ -118,6 +118,38 @@ class FilmScriptAnalysis extends HTMLElement {
   get projectTitle() { return this.getAttribute('project-title') || 'Untitled screenplay'; }
   get proActive() { return this.getAttribute('pro-active') === 'true'; }
 
+  // The server owns the analysis job, so this component can disappear when the
+  // writer returns to the script without cancelling the reading. The editor
+  // shell listens for this small status signal and keeps polling in the
+  // background until the job reaches a terminal state.
+  publishBackgroundStatus() {
+    if (!this.scriptId) return;
+    const status = this.analysisStarting ? 'starting' : String(this.analysis?.status || 'idle');
+    const active = ['starting', 'queued', 'running'].includes(status);
+    const spanish = window.filmscriptLanguage?.get?.() === 'es';
+    const label = active
+      ? (spanish ? 'Lumiere está analizando' : 'Lumiere is analyzing')
+      : status === 'complete'
+        ? (spanish ? 'Análisis listo' : 'Analysis ready')
+        : status === 'stale'
+          ? (spanish ? 'El guion cambió durante el análisis' : 'The screenplay changed during analysis')
+          : status === 'error' || status === 'interrupted'
+            ? (spanish ? 'El análisis necesita atención' : 'Analysis needs attention')
+            : '';
+    const detail = {
+      scriptId: this.scriptId,
+      status,
+      active,
+      label,
+      message: this.analysis?.statusMessage || '',
+      updatedAt: this.analysis?.updatedAt || new Date().toISOString(),
+    };
+    const key = [detail.scriptId, detail.status, detail.message, detail.updatedAt].join('|');
+    if (key === this._backgroundStatusKey) return;
+    this._backgroundStatusKey = key;
+    window.dispatchEvent(new CustomEvent('filmscript:analysis-background', { detail }));
+  }
+
   collectLiveBlocks() {
     const pages = Array.from(document.querySelectorAll('[data-fs-page]'));
     const blocks = [];
@@ -760,6 +792,7 @@ class FilmScriptAnalysis extends HTMLElement {
   }
 
   render() {
+    this.publishBackgroundStatus();
     const style = `<style>
       :host{--fs-font-text:"SF Pro Text",-apple-system,BlinkMacSystemFont,"Helvetica Neue",Arial,sans-serif;--fs-font-display:"SF Pro Display","SF Pro Text",-apple-system,BlinkMacSystemFont,"Helvetica Neue",Arial,sans-serif}
       :host,:host *{font-family:var(--fs-font-text)!important}

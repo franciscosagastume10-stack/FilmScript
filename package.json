@@ -4,6 +4,7 @@
   "type": "module",
   "scripts": {
     "dev": "node --env-file=.env server.js",
+    "preview": "./scripts/preview-server.sh",
     "start": "node server.js",
     "build:netlify": "node scripts/build-netlify.mjs",
     "build:vercel": "node scripts/build-netlify.mjs",
@@ -15,7 +16,6 @@
     "node": ">=22 <25"
   },
   "dependencies": {
-    "@anthropic-ai/sdk": "^0.39.0",
     "@aws-sdk/client-s3": "^3.1087.0",
     "better-sqlite3": "^12.11.1",
     "mammoth": "^1.12.0",

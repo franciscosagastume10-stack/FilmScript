@@ -4,7 +4,6 @@ import path from "node:path";
 import crypto from "node:crypto";
 import { spawn } from "node:child_process";
 import { fileURLToPath } from "node:url";
-import Anthropic from "@anthropic-ai/sdk";
 import XLSX from "xlsx";
 import mammoth from "mammoth";
 import {
@@ -35,9 +34,9 @@ import {
   updateUserName,
   updateUserProfile,
 } from "./database.js";
-import { computeBudget, normalizeBudget } from "./budget-model.js";
+import { computeBudget, createBudgetTemplate, normalizeBudget } from "./budget-model.js";
 import { applyBudgetImport, buildBudgetImportCatalog, normalizeBudgetImportProposal } from "./budget-import-model.js";
-import { computeCalendar, normalizeCalendar } from "./calendar-model.js";
+import { computeCalendar, createCalendarTemplate, normalizeCalendar } from "./calendar-model.js";
 import { buildAnalysisSnapshot, hashText, normalizeEmotionalArc } from "./analysis-model.js";
 import { referenceStorage } from "./reference-storage.js";
 import {
@@ -54,33 +53,109 @@ import { canvasStorage } from "./canvas-storage.js";
 
 const ROOT = path.dirname(fileURLToPath(import.meta.url));
 const PORT = Number(process.env.PORT || 4173);
-const client = new Anthropic();
+const OPENROUTER_API_URL = "https://openrouter.ai/api/v1/chat/completions";
+// Keep the model choice at the server boundary. Lumiere chat can be routed by
+// OpenRouter, while the two structured production passes use predictable,
+// high-quality models so their JSON contracts stay stable.
+const OPENROUTER_CHAT_MODEL = String(process.env.OPENROUTER_CHAT_MODEL || process.env.OPENROUTER_MODEL || "openrouter/auto").trim() || "openrouter/auto";
+const OPENROUTER_ANALYSIS_MODEL = String(process.env.OPENROUTER_ANALYSIS_MODEL || "openai/gpt-5.6-sol").trim() || "openai/gpt-5.6-sol";
+const OPENROUTER_BREAKDOWN_MODEL = String(process.env.OPENROUTER_BREAKDOWN_MODEL || "openai/gpt-5.6-terra").trim() || "openai/gpt-5.6-terra";
+// Imports use OpenRouter's cost-aware router by default. This keeps a large
+// spreadsheet import usable on a low balance while screenplay breakdowns
+// continue using the explicitly configured Terra model.
+const OPENROUTER_IMPORT_MODEL = String(process.env.OPENROUTER_IMPORT_MODEL || "openrouter/auto").trim() || "openrouter/auto";
+// Backwards-compatible alias for status messages and older integrations.
+const OPENROUTER_MODEL = OPENROUTER_CHAT_MODEL;
 
-function anthropicFailureMessage(error) {
+function lumiereFailureMessage(error) {
   const status = Number(error?.status || error?.statusCode || 0);
   const message = String(error?.message || '').toLowerCase();
   if (message.includes('not configured') || message.includes('not set') || message.includes('missing api key')) {
-    return 'Lumiere is not configured on this server. Set ANTHROPIC_API_KEY in app/.env and restart FilmScript.';
+    return 'Lumiere is not configured on this server. Set OPENROUTER_API_KEY in app/.env and restart FilmScript.';
   }
-  if (status === 401 || status === 403 || message.includes('authentication_error') || message.includes('api key is invalid') || message.includes('invalid x-api-key')) {
-    return 'Lumiere is unavailable because the Anthropic API key is invalid or expired. Update ANTHROPIC_API_KEY in app/.env and restart FilmScript.';
+  if (status === 401 || status === 403 || message.includes('authentication') || message.includes('api key is invalid') || message.includes('invalid api key')) {
+    return 'Lumiere is unavailable because the OpenRouter API key is invalid or expired. Update OPENROUTER_API_KEY in app/.env and restart FilmScript.';
+  }
+  if (status === 402 || message.includes('insufficient credits') || message.includes('insufficient balance')) {
+    if (message.includes('prompt tokens limit exceeded') || message.includes('fewer max_tokens')) {
+      return 'Lumiere needs a smaller import pass. Try importing the detailed budget sheets separately.';
+    }
+    return 'Lumiere is temporarily unavailable because the OpenRouter balance needs attention.';
   }
   if (status === 429 || message.includes('rate limit')) {
-    return 'Lumiere is temporarily rate-limited by Anthropic. Wait a moment and try again.';
+    return 'Lumiere is temporarily rate-limited by OpenRouter. Wait a moment and try again.';
   }
   if (status >= 500 || message.includes('overloaded') || message.includes('connection')) {
-    return 'Lumiere is temporarily unavailable. Anthropic did not accept the request; try again in a moment.';
+    return 'Lumiere is temporarily unavailable. OpenRouter did not accept the request; try again in a moment.';
   }
   return error?.message || 'Lumiere could not complete this request.';
 }
 
-function anthropicFailureStatus(error) {
+function lumiereFailureStatus(error) {
   const status = Number(error?.status || error?.statusCode || 0);
   return status === 401 || status === 403 ? 503 : (status >= 400 && status < 600 ? status : 500);
 }
 
-// Credit tracking: the Anthropic API has no balance endpoint for standard keys,
-// so spend is accumulated from each response's usage data against the budget.
+function openRouterText(content) {
+  if (typeof content === "string") return content;
+  if (!Array.isArray(content)) return "";
+  return content.map((part) => typeof part === "string" ? part : String(part?.text || part?.content || "")).join("");
+}
+
+function openRouterMessages(messages) {
+  return (Array.isArray(messages) ? messages : []).flatMap((message) => {
+    const role = ["system", "user", "assistant"].includes(message?.role) ? message.role : "user";
+    const content = openRouterText(message?.content);
+    return content ? [{ role, content }] : [];
+  });
+}
+
+async function requestLumiere({ system = "", messages = [], maxTokens = 1024, jsonMode = false, model = OPENROUTER_CHAT_MODEL }) {
+  const apiKey = String(process.env.OPENROUTER_API_KEY || "").trim();
+  if (!apiKey) throw Object.assign(new Error("OpenRouter API key is not configured."), { status: 503 });
+  const requestMessages = [
+    ...(String(system || "").trim() ? [{ role: "system", content: String(system).trim() }] : []),
+    ...openRouterMessages(messages),
+  ];
+  const response = await fetch(OPENROUTER_API_URL, {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${apiKey}`,
+      "Content-Type": "application/json",
+      "HTTP-Referer": process.env.PUBLIC_APP_URL || `http://localhost:${PORT}`,
+      "X-OpenRouter-Title": "FilmScript",
+    },
+    body: JSON.stringify({
+      model: String(model || OPENROUTER_CHAT_MODEL).trim() || OPENROUTER_CHAT_MODEL,
+      messages: requestMessages,
+      max_tokens: Math.max(64, Math.round(Number(maxTokens) || 1024)),
+      // OpenRouter will route structured FilmScript work to a model that can
+      // honour this contract. Chat remains natural-language by default.
+      ...(jsonMode ? { response_format: { type: "json_object" } } : {}),
+    }),
+  });
+  const payload = await response.json().catch(() => ({}));
+  if (!response.ok) {
+    throw Object.assign(new Error(String(payload?.error?.message || payload?.message || `OpenRouter request failed (${response.status}).`)), {
+      status: response.status,
+      code: payload?.error?.code,
+    });
+  }
+  const text = openRouterText(payload?.choices?.[0]?.message?.content);
+  if (!text.trim()) throw Object.assign(new Error("OpenRouter returned an empty response."), { status: 502 });
+  return {
+    model: String(payload?.model || model || OPENROUTER_CHAT_MODEL),
+    content: [{ type: "text", text }],
+    usage: {
+      input_tokens: Number(payload?.usage?.prompt_tokens ?? payload?.usage?.input_tokens ?? 0),
+      output_tokens: Number(payload?.usage?.completion_tokens ?? payload?.usage?.output_tokens ?? 0),
+      cost: Number(payload?.usage?.cost ?? payload?.cost ?? 0),
+    },
+  };
+}
+
+// OpenRouter may return the exact request cost in usage.cost. When a provider
+// omits it, FilmScript keeps feature credits separate from provider billing.
 const PDF_EXTRACTOR = path.join(ROOT, "pdf_extract.py");
 const BREAKDOWN_PDF_RENDERER = path.join(ROOT, "breakdown_pdf.py");
 const STRIPBOARD_PDF_RENDERER = path.join(ROOT, "stripboard_pdf.py");
@@ -90,19 +165,30 @@ const ANALYSIS_PDF_RENDERER = path.join(ROOT, "analysis_pdf.py");
 const CANVAS_QUOTE_PDF_RENDERER = path.join(ROOT, "canvas_quote_pdf.py");
 const RECURRENTE_API = (process.env.RECURRENTE_API_URL || "https://app.recurrente.com/api").replace(/\/$/, "");
 const SESSION_COOKIE = "filmscript_sid";
-const HAIKU_RATES = {
-  input: 1 / 1e6,
-  output: 5 / 1e6,
-  cacheWrite: 1.25 / 1e6,
-  cacheRead: 0.1 / 1e6,
-};
-const LUMIERE_CREDIT_LIMIT = 100;
+// Preview mode is intentionally local-only. The fixed ids make the preview
+// URL stable, which is useful for opening the same workspace from Codex while
+// keeping the preview database completely separate from AWS/local accounts.
+const PREVIEW_USER_ID = "usr_filmscript_preview";
+const PREVIEW_GOOGLE_SUB = "preview-local";
+const PREVIEW_SCRIPT_ID = "scr_f1f5e6c7a9b0d1e2f3a4";
+const PREVIEW_WORKSPACE_VERSION = 3;
+// Preview mode is a local product sandbox. It receives a fresh 8-hour
+// Lumiere window each time the local server starts, while production users
+// always retain the normal subscription credit policy.
+const PREVIEW_LUMIERE_SESSION_STARTED_AT = new Date().toISOString();
 // Lumiere uses three independent guardrails, similar to a rolling ChatGPT
 // allowance: a focused 8-hour session, a weekly cadence and the monthly plan
-// allowance. The values are intentionally centralized so plans can tune them
-// without rewriting the accounting logic.
-const LUMIERE_CREDIT_SESSION_LIMIT = 20;
-const LUMIERE_CREDIT_WEEKLY_LIMIT = 60;
+// allowance. The values are centralized so pricing can change without
+// rewriting the accounting logic. The preview server bypasses these limits
+// until the product is ready for plan enforcement.
+const LUMIERE_PLAN_LIMITS = Object.freeze({
+  free: Object.freeze({ session: 3, week: 9, month: 12 }),
+  basic: Object.freeze({ session: 45, week: 135, month: 300 }),
+  lumiere: Object.freeze({ session: 100, week: 300, month: 600 }),
+});
+const LUMIERE_CREDIT_LIMIT = LUMIERE_PLAN_LIMITS.lumiere.month;
+const LUMIERE_CREDIT_SESSION_LIMIT = LUMIERE_PLAN_LIMITS.lumiere.session;
+const LUMIERE_CREDIT_WEEKLY_LIMIT = LUMIERE_PLAN_LIMITS.lumiere.week;
 const LUMIERE_CREDIT_SESSION_MS = 8 * 60 * 60 * 1000;
 const LUMIERE_PAID_CREDIT_AMOUNT = 80;
 const LUMIERE_RESET_AMOUNT_CENTS = 500;
@@ -114,7 +200,7 @@ const budgetImportProposals = new Map();
 const billingVerificationCache = new Map();
 const activeBillingVerifications = new Map();
 const BILLING_VERIFICATION_TTL_MS = 30_000;
-const BREAKDOWN_EXTRACTION_VERSION = 3;
+const BREAKDOWN_EXTRACTION_VERSION = 4;
 const CAST_NUMBERING_VERSION = 1;
 const SCRIPT_ANALYSIS_REVISION = 4;
 const BREAKDOWN_CATEGORIES = new Set([
@@ -392,11 +478,8 @@ function loadCredits() {
 
 function recordUsage(usage) {
   const credits = loadCredits();
-  credits.spent +=
-    (usage.input_tokens || 0) * HAIKU_RATES.input +
-    (usage.output_tokens || 0) * HAIKU_RATES.output +
-    (usage.cache_creation_input_tokens || 0) * HAIKU_RATES.cacheWrite +
-    (usage.cache_read_input_tokens || 0) * HAIKU_RATES.cacheRead;
+  const exactCost = Number(usage?.cost);
+  if (Number.isFinite(exactCost) && exactCost > 0) credits.spent += exactCost;
   saveCreditsSnapshot(credits);
   return credits;
 }
@@ -433,6 +516,16 @@ function clampCreditCount(value, limit = Number.MAX_SAFE_INTEGER) {
   return Math.max(0, Math.min(limit, Number(value) || 0));
 }
 
+function lumierePlanKey(userId) {
+  const subscription = userId ? getSubscription(userId) : null;
+  if (subscription?.status === "active" && LUMIERE_PLAN_LIMITS[subscription.plan]) return subscription.plan;
+  return "free";
+}
+
+function previewUnlimitedCredits(userId) {
+  return String(userId || "") === PREVIEW_USER_ID && process.env.FILMSCRIPT_PREVIEW_MODE === "true";
+}
+
 function lumiereCreditsFor(userId) {
   const key = String(userId || "").trim();
   if (!key) return null;
@@ -440,6 +533,9 @@ function lumiereCreditsFor(userId) {
   const now = new Date();
   const period = lumiereCreditPeriod(now);
   const weekKey = lumiereWeekKey(now);
+  const plan = lumierePlanKey(key);
+  const unlimited = previewUnlimitedCredits(key);
+  const planLimits = LUMIERE_PLAN_LIMITS[plan] || LUMIERE_PLAN_LIMITS.free;
   const existing = snapshot[key] && typeof snapshot[key] === "object" ? snapshot[key] : null;
   const before = existing ? JSON.stringify(existing) : null;
   const monthIsCurrent = existing?.period === period;
@@ -448,23 +544,25 @@ function lumiereCreditsFor(userId) {
   const sessionIsCurrent = Number.isFinite(parsedSessionStart)
     && now.getTime() - parsedSessionStart < LUMIERE_CREDIT_SESSION_MS;
   const state = {
+    plan,
+    unlimited,
     period,
-    limit: LUMIERE_CREDIT_LIMIT,
+    limit: unlimited ? null : planLimits.month,
     // `used` remains the monthly alias for compatibility with existing data.
-    used: monthIsCurrent ? clampCreditCount(existing?.used, LUMIERE_CREDIT_LIMIT) : 0,
+    used: unlimited ? 0 : monthIsCurrent ? clampCreditCount(existing?.used, planLimits.month) : 0,
     lastResetAt: existing?.lastResetAt || null,
     paidResets: Math.max(0, Number(existing?.paidResets) || 0),
     extraCredits: Math.max(0, Number(existing?.extraCredits) || 0),
     extraCreditsPurchased: Math.max(0, Number(existing?.extraCreditsPurchased) || 0),
     week: {
       key: weekKey,
-      limit: LUMIERE_CREDIT_WEEKLY_LIMIT,
-      used: weekIsCurrent ? clampCreditCount(existing?.week?.used, LUMIERE_CREDIT_WEEKLY_LIMIT) : 0,
+      limit: unlimited ? null : planLimits.week,
+      used: unlimited ? 0 : weekIsCurrent ? clampCreditCount(existing?.week?.used, planLimits.week) : 0,
     },
     session: {
       startedAt: sessionIsCurrent ? new Date(parsedSessionStart).toISOString() : null,
-      limit: LUMIERE_CREDIT_SESSION_LIMIT,
-      used: sessionIsCurrent ? clampCreditCount(existing?.session?.used, LUMIERE_CREDIT_SESSION_LIMIT) : 0,
+      limit: unlimited ? null : planLimits.session,
+      used: unlimited ? 0 : sessionIsCurrent ? clampCreditCount(existing?.session?.used, planLimits.session) : 0,
     },
   };
   if (before !== JSON.stringify(state)) {
@@ -476,6 +574,18 @@ function lumiereCreditsFor(userId) {
 
 function lumiereCreditAvailability(state) {
   if (!state) return { regularRemaining: 0, extraRemaining: 0, available: 0, blockedBy: "month" };
+  if (state.unlimited) {
+    return {
+      monthRemaining: null,
+      weekRemaining: null,
+      sessionRemaining: null,
+      regularRemaining: Number.MAX_SAFE_INTEGER,
+      extraRemaining: 0,
+      available: Number.MAX_SAFE_INTEGER,
+      blockedBy: null,
+      unlimited: true,
+    };
+  }
   const monthRemaining = Math.max(0, state.limit - state.used);
   const weekRemaining = Math.max(0, state.week.limit - state.week.used);
   const sessionRemaining = Math.max(0, state.session.limit - state.session.used);
@@ -507,6 +617,7 @@ function hasLumiereCredits(userId, amount = 1) {
 function consumeLumiereCredit(userId, amount = 1) {
   const state = lumiereCreditsFor(userId);
   if (!state) return null;
+  if (state.unlimited) return state;
   const requested = Math.max(1, Number(amount) || 1);
   const availability = lumiereCreditAvailability(state);
   const regularUsed = Math.min(requested, availability.regularRemaining);
@@ -551,24 +662,28 @@ function creditsSummary(userId = null) {
       : null;
     const weekResetAt = lumiereWeekResetAt(now);
     const monthResetAt = lumiereMonthResetAt(now);
-    const availabilityPct = (state.limit + availability.extraRemaining)
+    const availabilityPct = state.unlimited
+      ? 100
+      : (state.limit + availability.extraRemaining)
       ? (availability.available / (state.limit + availability.extraRemaining)) * 100
       : 0;
     const window = (used, limit, resetAt) => ({
       used,
       limit,
-      remaining: Math.max(0, limit - used),
-      pct: limit ? Number((((limit - used) / limit) * 100).toFixed(2)) : 0,
+      remaining: limit == null ? null : Math.max(0, limit - used),
+      pct: limit == null ? 100 : Number((((limit - used) / limit) * 100).toFixed(2)),
       resetAt: resetAt ? resetAt.toISOString() : null,
       resetInMs: resetAt ? Math.max(0, resetAt.getTime() - now.getTime()) : null,
     });
     return {
+      plan: state.plan,
+      unlimited: state.unlimited === true,
       budget: state.limit,
       spent: state.used,
       pct: Number(availabilityPct.toFixed(2)),
       limit: state.limit,
       used: state.used,
-      remaining: availability.available,
+      remaining: state.unlimited ? null : availability.available,
       period: state.period,
       paidResets: state.paidResets,
       extraCredits: availability.extraRemaining,
@@ -579,9 +694,9 @@ function creditsSummary(userId = null) {
       month: { ...window(state.used, state.limit, monthResetAt), key: state.period },
       policy: {
         sessionHours: 8,
-        sessionLimit: LUMIERE_CREDIT_SESSION_LIMIT,
-        weeklyLimit: LUMIERE_CREDIT_WEEKLY_LIMIT,
-        monthlyLimit: LUMIERE_CREDIT_LIMIT,
+        sessionLimit: state.session.limit,
+        weeklyLimit: state.week.limit,
+        monthlyLimit: state.limit,
         paidPack: LUMIERE_PAID_CREDIT_AMOUNT,
       },
       resetAvailable: true,
@@ -610,6 +725,263 @@ function saveScripts(db) {
 
 function loadPreproduction() { return loadPreproductionSnapshot(); }
 function savePreproduction(db) { savePreproductionSnapshot(db); }
+
+function isLocalHostname(value) {
+  const host = String(value || "").trim().toLowerCase().replace(/^\[/, "").replace(/\]$/, "");
+  return host === "localhost" || host === "127.0.0.1" || host === "::1";
+}
+
+function previewModeEnabled(req = null) {
+  if (process.env.FILMSCRIPT_PREVIEW_MODE !== "true") return false;
+  const requestHost = req?.headers?.host ? String(req.headers.host).split(":")[0] : "";
+  if (requestHost) return isLocalHostname(requestHost);
+  try { return isLocalHostname(new URL(publicAppUrl()).hostname); } catch { return false; }
+}
+
+function previewScript() {
+  const timestamp = new Date().toISOString();
+  const scenes = [
+    ["INT. EDITING ROOM - MORNING", "MAYA studies the cut while LEO labels a hard drive. A practical lamp warms the room.", "MAYA", "We have one honest version left."],
+    ["EXT. BACK LOT - MORNING", "The crew builds a small street corner. LEO checks the camera package beside a picture vehicle.", "LEO", "Let's make the frame feel lived in."],
+    ["INT. PRODUCTION OFFICE - DAY", "MAYA reviews the schedule with SAM, the first assistant director. Coffee, call sheets and radios cover the table.", "SAM", "We protect the last setup, no matter what."],
+    ["EXT. CITY STREET - AFTERNOON", "A light rain starts as MAYA directs two background performers across the street. The sound mixer rolls.", "MAYA", "And... action."],
+    ["INT. SOUNDSTAGE - AFTERNOON", "LEO adjusts the key light while the wardrobe team fixes a loose button on MAYA's jacket.", "LEO", "Hold that shadow. It is the scene."],
+    ["EXT. ROOFTOP - GOLDEN HOUR", "The city turns amber. A drone case, sandbags and a small monitor sit beside the final setup.", "SAM", "Picture is up."],
+    ["INT. SCREENING ROOM - NIGHT", "The rough cut plays for the team. No one speaks until the last frame fades.", "MAYA", "Now we know what the film wants."],
+    ["EXT. ALLEY - NIGHT", "A controlled rain effect runs through the alley. LEO checks the prop phone before the take.", "LEO", "One more, then we wrap this corner."],
+    ["INT. EDITING ROOM - LATER", "MAYA and LEO sync production sound and mark the cleanest take in the project.", "MAYA", "This is the one we keep."],
+    ["EXT. BACK LOT - DAWN", "The crew loads cases into the van. SAM checks the end-of-day list while the first light reaches the set.", "SAM", "Every department is clear."],
+    ["INT. SCREENING ROOM - MORNING", "The finished image rolls with color and sound. MAYA watches the audience lean forward.", "LEO", "It finally breathes."],
+    ["EXT. ROOFTOP - SUNSET", "The team steps outside with the last production still. The city glows behind them as the film closes.", "MAYA", "That is our picture."],
+  ];
+  const blocks = [
+    { type: "title", text: "The Last Take" },
+    { type: "title_author", text: "FilmScript Preview" },
+  ];
+  scenes.forEach(([heading, action, character, dialogue], index) => {
+    blocks.push({ type: "scene", text: heading });
+    blocks.push({ type: "action", text: action });
+    blocks.push({ type: "character", text: character });
+    blocks.push({ type: "dialogue", text: dialogue });
+    if (index < scenes.length - 1) blocks.push({ type: "pagebreak", text: "" });
+  });
+  const text = blocks.filter((block) => block.text).map((block) => block.text).join("\n");
+  return {
+    id: PREVIEW_SCRIPT_ID,
+    userId: PREVIEW_USER_ID,
+    title: "The Last Take",
+    filename: "filmscript-preview.fdx",
+    source: "preview",
+    previewSeedVersion: PREVIEW_WORKSPACE_VERSION,
+    text,
+    blocks,
+    chat: [],
+    titleRoom: {},
+    characterNames: {},
+    createdAt: timestamp,
+    updatedAt: timestamp,
+  };
+}
+
+function previewBreakdown(scene, index) {
+  const cast = Array.from(new Set((scene.knownCastNames || []).filter(Boolean)));
+  const primaryCast = cast[0] || (index % 2 ? "LEO" : "MAYA");
+  const locations = ["Editing room", "Back lot", "Production office", "City street", "Soundstage", "Rooftop", "Screening room", "Alley"];
+  const location = locations[index % locations.length];
+  const elements = [
+    { category: "cast", name: primaryCast, castNumber: index % 3 + 1, quantity: 1, sourceExcerpt: primaryCast },
+    { category: "locations", name: location, quantity: 1, sourceExcerpt: location },
+    { category: "equipment", name: index % 2 ? "Camera package" : "Production monitor", quantity: 1, sourceExcerpt: index % 2 ? "camera" : "monitor" },
+    { category: "props", name: index % 2 ? "Prop phone" : "Hard drive", quantity: 1, sourceExcerpt: index % 2 ? "prop phone" : "hard drive" },
+    { category: "sound", name: "Production sound", quantity: 1, sourceExcerpt: "sound" },
+  ];
+  if (index % 3 === 0) elements.push({ category: "wardrobe", name: "Hero wardrobe", quantity: 1, sourceExcerpt: "jacket" });
+  return {
+    sceneId: scene.id,
+    sceneHeading: scene.title,
+    synopsis: scene.text.split("\n").slice(1).join(" ").trim(),
+    elements,
+    productionNotes: index % 2 === 0 ? ["Protect the final setup and keep the room quiet between takes."] : [],
+    safetyNotes: index === 7 ? ["Wet floor: place a safety mat before rolling."] : [],
+    generated: true,
+  };
+}
+
+function previewBudget(projectTitle) {
+  let budget = createBudgetTemplate(projectTitle);
+  budget.metadata = {
+    producer: "FilmScript Preview",
+    director: "Maya Chen",
+    format: "Short film · 12 pages",
+    locations: "Guatemala City",
+    shootingDates: "Jul 20–23, 2026",
+  };
+  budget.settings.contingencyRate = 0.08;
+  budget.timeline = { prepWeeks: 4, shootWeeks: 1, wrapWeeks: 1, postWeeks: 8 };
+  budget = normalizeBudget(budget, projectTitle);
+  const itemByCode = new Map(budget.accounts.flatMap((account) => account.items.map((item) => [item.code, item])));
+  const values = {
+    "1001": [1, 1800, "prep_1"], "1003": [3, 450, "prep_2"], "1201": [1, 6500, "prep_1"],
+    "1301": [1, 5000, "prep_2"], "1401": [1, 4200, "shoot_1"], "1402": [1, 3200, "shoot_1"],
+    "1407": [2, 650, "shoot_1"], "1601": [4, 1350, "shoot_1"], "1603": [1, 3600, "shoot_1"],
+    "1801": [1, 5200, "shoot_1"], "1802": [1, 2600, "shoot_1"], "1901": [1, 9800, "shoot_1"],
+    "2001": [1, 3900, "shoot_1"], "2003": [1, 2700, "shoot_1"], "2101": [1, 3200, "shoot_1"],
+    "2201": [1, 4800, "shoot_1"], "2301": [1, 2100, "shoot_1"], "2401": [1, 1800, "shoot_1"],
+    "2701": [1, 2800, "prep_3"], "2704": [1, 3500, "shoot_1"], "2901": [4, 520, "shoot_1"],
+    "3001": [1, 4200, "shoot_1"], "3005": [4, 380, "shoot_1"], "3201": [1, 9000, "post_1"],
+    "3302": [1, 4600, "post_3"], "3401": [1, 5200, "post_2"], "3404": [1, 3900, "post_4"],
+    "3501": [1, 3200, "post_5"], "3801": [1, 2600, "prep_4"],
+  };
+  Object.entries(values).forEach(([code, [quantity, unitCost, period]]) => {
+    const item = itemByCode.get(code);
+    if (!item) return;
+    item.quantity = quantity;
+    item.unitCost = unitCost;
+    item.taxRateId = ["1001", "1201", "1301", "1401", "1402", "1603", "1801", "1802", "2001", "2101", "2201", "2701", "3201", "3302", "3401", "3404", "3501"].includes(code) ? "tax_standard" : "tax_exempt";
+    item.schedule = { [period]: quantity * unitCost };
+  });
+  const expenses = [
+    ["exp_preview_01", "1003", "2026-07-07", "Zona 4 Scout", "Location scout transport", 900],
+    ["exp_preview_02", "1901", "2026-07-20", "CineRent GT", "Camera package deposit", 4900],
+    ["exp_preview_03", "2901", "2026-07-21", "Comedor Central", "Crew catering · day 1", 2080],
+    ["exp_preview_04", "3005", "2026-07-22", "Gasolinera Vista", "Production van fuel", 760],
+  ];
+  budget.expenses = expenses.map(([id, code, paymentDate, vendor, concept, amount]) => ({
+    id, lineItemId: itemByCode.get(code)?.id || "", paymentNumber: id.replace("exp_preview_", "PAY-"), paymentDate, vendor, concept, amount, notes: "Preview expense", receiptId: "", receiptName: "", receiptType: "", receiptSize: 0,
+  }));
+  budget.fundingSources = [
+    { id: "fund_preview_01", name: "Producer contribution", type: "cash", amount: 42000, paid: 42000, status: "Received", paymentDate: "2026-07-01", notes: "Preview financing", receiptId: "", receiptName: "", receiptType: "", receiptSize: 0 },
+    { id: "fund_preview_02", name: "Cultural grant", type: "partner", amount: 38000, paid: 20000, status: "Partially paid", paymentDate: "2026-07-15", notes: "Preview financing", receiptId: "", receiptName: "", receiptType: "", receiptSize: 0 },
+  ];
+  return normalizeBudget(budget, projectTitle);
+}
+
+function budgetHasReferenceData(budget) {
+  if (!budget || typeof budget !== "object") return false;
+  const hasCost = (budget.accounts || []).some((account) => (account.items || []).some((item) => {
+    const quantity = Number(item.quantity) || 0;
+    const multiplier = Number(item.multiplier) || 1;
+    const unitCost = Number(item.unitCost) || 0;
+    return quantity > 0 && multiplier > 0 && unitCost > 0;
+  }));
+  return hasCost || (budget.expenses || []).length > 0 || (budget.fundingSources || []).length > 0;
+}
+
+function seedPreviewReferenceBudgets(scripts, preproduction) {
+  let changed = false;
+  for (const script of Object.values(scripts?.scripts || {})) {
+    // Keep the local preview useful when testing an imported screenplay: a
+    // blank imported budget gets a realistic reference dataset, while any
+    // budget the user has already started remains untouched.
+    if (script?.userId !== PREVIEW_USER_ID || script?.source !== "pdf") continue;
+    const project = preproduction.projects?.[script.id];
+    if (!project || budgetHasReferenceData(project.budget)) continue;
+    const reference = previewBudget(script.title || "Reference production");
+    reference.referenceData = true;
+    reference.metadata = {
+      ...reference.metadata,
+      producer: "FilmScript Reference",
+      format: reference.metadata?.format || "Short film · 12 pages",
+    };
+    project.budget = reference;
+    project.previewReferenceBudgetVersion = 1;
+    changed = true;
+  }
+  if (changed) savePreproduction(preproduction);
+}
+
+function previewPreproductionProject(script) {
+  const project = syncProject(script, null);
+  project.previewSeedVersion = PREVIEW_WORKSPACE_VERSION;
+  project.previewScriptVersion = script.previewSeedVersion || PREVIEW_WORKSPACE_VERSION;
+  project.calendar = createCalendarTemplate(script.title, new Date("2026-07-20T12:00:00Z"));
+  project.calendar.tasks = project.calendar.tasks.map((task) => task.id === "cal_principal_photography"
+    ? { ...task, name: "Main shoot", durationDays: 3, notes: "Three-day principal photography block." }
+    : task);
+  project.budget = previewBudget(script.title);
+  const sceneEntries = Object.values(project.scenes || {});
+  project.scenes = Object.fromEntries(sceneEntries.map((scene, index) => [scene.id, {
+    ...scene,
+    status: "synced",
+    breakdown: previewBreakdown(scene, index),
+    strip: { day: Math.floor(index / 3) + 1, location: ["Studio 1", "Zona 4 street", "Rooftop 7"][index % 3], eighths: Math.max(1, Math.min(8, Math.ceil((index % 4 + 1) * 1.5))), estimatedMinutes: 55 + (index % 3) * 20 },
+  }]));
+  project.stripboardOrder = sceneEntries.map((scene) => scene.id);
+  project.stripboardSettings = { startTime: "08:30" };
+  project.stripboardEvents = [1, 4, 7].map((index, eventIndex) => ({ id: `sbe_${String(eventIndex + 1).padStart(16, "0")}`, type: "end_day", afterSceneId: sceneEntries[index]?.id, durationMinutes: 0 })).filter((event) => event.afterSceneId);
+  project.shootLocations = ["Studio 1", "Zona 4 street", "Rooftop 7"];
+  project.castOrder = [{ number: 1, name: "MAYA" }, { number: 2, name: "LEO" }, { number: 3, name: "SAM" }];
+  return project;
+}
+
+function ensureLocalPreviewWorkspace() {
+  if (!previewModeEnabled()) return;
+  const timestamp = new Date().toISOString();
+  const billing = loadBilling();
+  const existingUser = billing.users?.[PREVIEW_USER_ID] || {};
+  billing.users = billing.users || {};
+  billing.users[PREVIEW_USER_ID] = {
+    ...existingUser,
+    id: PREVIEW_USER_ID,
+    googleSub: PREVIEW_GOOGLE_SUB,
+    email: "preview@filmscript.local",
+    name: "FilmScript Preview",
+    picture: null,
+    gender: "unspecified",
+    birthDate: "1990-01-01",
+    profileCompletedAt: existingUser.profileCompletedAt || timestamp,
+    emailVerified: true,
+    createdAt: existingUser.createdAt || timestamp,
+    updatedAt: timestamp,
+    subscription: {
+      ...(existingUser.subscription || {}),
+      plan: "lumiere",
+      status: "active",
+      updatedAt: timestamp,
+    },
+  };
+  saveBilling(billing);
+
+  const scripts = loadScripts();
+  const current = scripts.scripts?.[PREVIEW_SCRIPT_ID];
+  if (!current || current.userId !== PREVIEW_USER_ID || current.previewSeedVersion !== PREVIEW_WORKSPACE_VERSION) {
+    scripts.scripts = scripts.scripts || {};
+    scripts.scripts[PREVIEW_SCRIPT_ID] = previewScript();
+    saveScripts(scripts);
+  }
+
+  const preview = loadScripts().scripts[PREVIEW_SCRIPT_ID];
+  if (preview) {
+    const preproduction = loadPreproduction();
+    const currentProject = preproduction.projects?.[PREVIEW_SCRIPT_ID];
+    if (!currentProject
+      || currentProject.previewSeedVersion !== PREVIEW_WORKSPACE_VERSION
+      || currentProject.previewScriptVersion !== (preview.previewSeedVersion || PREVIEW_WORKSPACE_VERSION)) {
+      preproduction.projects = preproduction.projects || {};
+      preproduction.projects[PREVIEW_SCRIPT_ID] = previewPreproductionProject(preview);
+      savePreproduction(preproduction);
+    }
+  }
+
+  seedPreviewReferenceBudgets(loadScripts(), loadPreproduction());
+
+  // The preview session is deliberately separate from production accounts.
+  // Restarting the local preview should make it possible to verify the real
+  // OpenRouter connection again, even after a previous local test exhausted
+  // its 8-hour session allowance.
+  const previewCredits = lumiereCreditsFor(PREVIEW_USER_ID);
+  if (previewCredits?.session?.startedAt !== PREVIEW_LUMIERE_SESSION_STARTED_AT) {
+    previewCredits.session = {
+      startedAt: PREVIEW_LUMIERE_SESSION_STARTED_AT,
+      limit: LUMIERE_CREDIT_SESSION_LIMIT,
+      used: 0,
+    };
+    const credits = loadLumiereCreditsSnapshot();
+    credits[PREVIEW_USER_ID] = previewCredits;
+    saveLumiereCreditsSnapshot(credits);
+  }
+}
+
 function mutatePreproductionProject(scriptId, userId, mutator) {
   const script = loadScripts().scripts[scriptId];
   if (!script || script.userId !== userId) return null;
@@ -771,6 +1143,19 @@ function syncProject(script, project) {
     manualShotScenes: cleanManualShotScenes(project?.manualShotScenes),
     updatedAt: new Date().toISOString(),
   };
+  // Older analyses may contain the same item more than once when it was
+  // detected from more than one line of screenplay evidence. Normalize every
+  // loaded scene as well as new analyses so the editor, Stripboard and PDFs
+  // all share one source of truth.
+  Object.values(syncedProject.scenes).forEach((scene) => {
+    if (!scene.breakdown || scene.breakdown.generated === false) return;
+    scene.breakdown = {
+      ...scene.breakdown,
+      elements: dedupeBreakdownElements(scene.breakdown.elements),
+      productionNotes: cleanBreakdownNotes(scene.breakdown.productionNotes),
+      safetyNotes: cleanBreakdownNotes(scene.breakdown.safetyNotes),
+    };
+  });
   if (Number(syncedProject.breakdownExtractionVersion || 0) < BREAKDOWN_EXTRACTION_VERSION) {
     Object.values(syncedProject.scenes).forEach((scene) => {
       if (scene.breakdown && scene.breakdown.generated !== false) scene.breakdown = ensureExplicitCast(scene.breakdown, scene);
@@ -794,13 +1179,125 @@ function summarizeProject(project) {
   };
 }
 
-function parseBreakdownJson(raw) {
+function extractStructuredJson(raw) {
   const text = String(raw || "").trim().replace(/^```(?:json)?\s*/i, "").replace(/\s*```$/i, "").trim();
-  try { return JSON.parse(text); } catch {
-    const start = text.indexOf("{");
-    const end = text.lastIndexOf("}");
-    if (start < 0 || end <= start) throw new Error("breakdown response is not valid JSON");
-    return JSON.parse(text.slice(start, end + 1));
+  const start = text.search(/[\[{]/);
+  if (start < 0) return text;
+  const stack = [];
+  let quoted = false;
+  let escaped = false;
+  for (let index = start; index < text.length; index += 1) {
+    const character = text[index];
+    if (quoted) {
+      if (escaped) escaped = false;
+      else if (character === "\\") escaped = true;
+      else if (character === '"') quoted = false;
+      continue;
+    }
+    if (character === '"') { quoted = true; continue; }
+    if (character === "{" || character === "[") stack.push(character);
+    if (character === "}" || character === "]") {
+      const opening = stack.pop();
+      if ((character === "}" && opening !== "{") || (character === "]" && opening !== "[")) break;
+      if (!stack.length) return text.slice(start, index + 1);
+    }
+  }
+  return text.slice(start);
+}
+
+// The OpenRouter JSON contract prevents malformed output. This small recovery
+// path also preserves a useful response from a provider that missed a comma
+// between adjacent array/object values, without ever evaluating model output.
+function repairStructuredJsonDelimiters(value) {
+  let repaired = "";
+  let quoted = false;
+  let escaped = false;
+  let previous = "";
+  for (const character of String(value || "")) {
+    if (quoted) {
+      repaired += character;
+      if (escaped) escaped = false;
+      else if (character === "\\") escaped = true;
+      else if (character === '"') { quoted = false; previous = '"'; }
+      continue;
+    }
+    if (character === '"' || character === "{" || character === "[") {
+      if (previous === '"' || previous === "}" || previous === "]") repaired += ",";
+      repaired += character;
+      if (character === '"') quoted = true;
+      previous = character;
+      continue;
+    }
+    repaired += character;
+    if (!/\s/.test(character)) previous = character;
+  }
+  return repaired.replace(/,\s*([}\]])/g, "$1");
+}
+
+// Some cost-aware OpenRouter providers stop a long JSON completion at their
+// output ceiling. Preserve every complete account/item that came before the
+// cut instead of turning the whole import into an error. We only ever parse a
+// prefix that ends outside a quoted string and close the containers that are
+// already open; no model text is evaluated as JavaScript.
+function recoverTruncatedStructuredJson(value) {
+  const text = String(value || "");
+  const candidates = [];
+  let quoted = false;
+  let escaped = false;
+  for (let index = 0; index < text.length; index += 1) {
+    const character = text[index];
+    if (quoted) {
+      if (escaped) escaped = false;
+      else if (character === "\\") escaped = true;
+      else if (character === '"') quoted = false;
+      continue;
+    }
+    if (character === '"') { quoted = true; continue; }
+    if (character === '}' || character === ']') candidates.push(index + 1);
+  }
+  for (let candidateIndex = candidates.length - 1; candidateIndex >= 0; candidateIndex -= 1) {
+    const prefix = text.slice(0, candidates[candidateIndex]).replace(/,\s*$/, "");
+    const stack = [];
+    quoted = false;
+    escaped = false;
+    let valid = true;
+    for (const character of prefix) {
+      if (quoted) {
+        if (escaped) escaped = false;
+        else if (character === "\\") escaped = true;
+        else if (character === '"') quoted = false;
+        continue;
+      }
+      if (character === '"') { quoted = true; continue; }
+      if (character === '{' || character === '[') stack.push(character);
+      else if (character === '}' || character === ']') {
+        const opening = stack.pop();
+        if ((character === '}' && opening !== '{') || (character === ']' && opening !== '[')) { valid = false; break; }
+      }
+    }
+    if (!valid || quoted) continue;
+    const closing = stack.reverse().map((opening) => opening === '{' ? '}' : ']').join('');
+    try { return JSON.parse(`${prefix}${closing}`); } catch { /* try the next complete boundary */ }
+  }
+  return null;
+}
+
+function parseBreakdownJson(raw, options = {}) {
+  const text = extractStructuredJson(raw);
+  try { return JSON.parse(text); }
+  catch (initialError) {
+    try { return JSON.parse(repairStructuredJsonDelimiters(text)); }
+    catch (delimiterError) {
+      if (options.allowTruncated) {
+        const recovered = recoverTruncatedStructuredJson(text);
+        if (recovered && typeof recovered === "object") return recovered;
+      }
+      const error = new Error("Lumiere returned incomplete structured data. Nothing was saved; please try again.");
+      error.code = "lumiere_invalid_json";
+      error.cause = initialError;
+      error.delimiterCause = delimiterError;
+      throw error;
+    }
   }
 }
 
@@ -810,7 +1307,16 @@ function normalizeEvidence(value) {
 
 function cleanBreakdownNotes(value) {
   if (!Array.isArray(value)) return [];
-  return value.map((note) => typeof note === "string" ? note.trim() : "").filter(Boolean).slice(0, 50);
+  const seen = new Set();
+  return value
+    .map((note) => typeof note === "string" ? note.trim() : "")
+    .filter((note) => {
+      const key = normalizeEvidence(note);
+      if (!key || seen.has(key)) return false;
+      seen.add(key);
+      return true;
+    })
+    .slice(0, 50);
 }
 
 const CAST_NAME_STOPWORDS = new Set([
@@ -993,7 +1499,7 @@ function ensureExplicitCast(breakdown, scene) {
       existingCast.add(key);
     }
   });
-  return { ...breakdown, elements };
+  return { ...breakdown, elements: dedupeBreakdownElements(elements) };
 }
 
 function validateBreakdown(payload, scene) {
@@ -1020,7 +1526,7 @@ function validateBreakdown(payload, scene) {
     sceneId: scene.id,
     sceneHeading: scene.title,
     synopsis: String(payload.synopsis || "").trim().slice(0, 500),
-    elements,
+    elements: dedupeBreakdownElements(elements),
     productionNotes: cleanBreakdownNotes(payload.productionNotes),
     safetyNotes: cleanBreakdownNotes(payload.safetyNotes),
     generated: true,
@@ -1032,6 +1538,73 @@ function normalizeBreakdownCategory(value) {
   return ({ characters: "cast", character: "cast", makeup: "makeup_hair", effects: "special_effects", safety: "safety_notes", safety_note: "safety_notes", production_note: "production_notes" })[category] || category;
 }
 
+// Lumiere can describe one production item in slightly different ways on
+// separate passes ("a camera" and "Camera", for example).  Keep the label as
+// written for the user, but use a stable production identity when comparing it.
+function breakdownElementNameKey(value) {
+  return normalizeEvidence(value)
+    .replace(/^[\d]+\s*(?:x|×)\s*/i, "")
+    .replace(/^(?:x\s*)?[\d]+\s+/, "")
+    .replace(/^(?:the|a|an|el|la|los|las|un|una|unos|unas)\s+/, "")
+    .replace(/[.,;:!?]+$/g, "")
+    .trim();
+}
+
+// These categories share one visual Breakdown cell, so their comparison keys
+// must match as well. The original category remains on the saved element.
+function breakdownComparisonCategory(value) {
+  const category = normalizeBreakdownCategory(value);
+  return ({
+    visual_effects: "special_effects",
+    safety_notes: "production_notes",
+    animals: "vehicles",
+  })[category] || category;
+}
+
+function breakdownElementKey(element) {
+  const category = breakdownComparisonCategory(element?.category);
+  const name = breakdownElementNameKey(element?.name);
+  return category && name ? `${category}|${name}` : "";
+}
+
+function dedupeBreakdownElements(value) {
+  const unique = new Map();
+  const result = [];
+
+  (Array.isArray(value) ? value : []).forEach((entry) => {
+    if (!entry || typeof entry !== "object" || Array.isArray(entry)) return;
+    const element = { ...entry, category: normalizeBreakdownCategory(entry.category) };
+    const key = breakdownElementKey(element);
+    if (!key) {
+      result.push(element);
+      return;
+    }
+    const existing = unique.get(key);
+    if (!existing) {
+      unique.set(key, element);
+      result.push(element);
+      return;
+    }
+
+    const isCast = element.category === "cast";
+    const existingQuantity = Math.max(1, Math.round(Number(existing.quantity) || 1));
+    const nextQuantity = Math.max(1, Math.round(Number(element.quantity) || 1));
+    // Repeated model findings are not separate physical items. Retain the
+    // strongest quantity instead of adding it again and inflating the budget.
+    existing.quantity = isCast ? 1 : Math.max(existingQuantity, nextQuantity);
+    existing.confidence = Math.max(Number(existing.confidence) || 0, Number(element.confidence) || 0);
+    if (String(element.description || "").trim().length > String(existing.description || "").trim().length) {
+      existing.description = String(element.description || "").trim();
+    }
+    if (!String(existing.sourceExcerpt || "").trim() && String(element.sourceExcerpt || "").trim()) {
+      existing.sourceExcerpt = String(element.sourceExcerpt || "").trim();
+    }
+    existing.userEdited = existing.userEdited === true || element.userEdited === true;
+  });
+
+  return result;
+}
+
 function patchTarget(value) {
   if (typeof value === "string") return { category: "", name: value.trim() };
   const source = value?.target || value?.match || value || {};
@@ -1039,16 +1612,16 @@ function patchTarget(value) {
 }
 
 function findBreakdownElement(elements, target) {
-  const targetName = normalizeEvidence(target.name);
-  const targetCategory = normalizeBreakdownCategory(target.category);
+  const targetName = breakdownElementNameKey(target.name);
+  const targetCategory = breakdownComparisonCategory(target.category);
   if (!targetName) return -1;
-  return elements.findIndex((element) => normalizeEvidence(element.name) === targetName && (!targetCategory || normalizeBreakdownCategory(element.category) === targetCategory));
+  return elements.findIndex((element) => breakdownElementNameKey(element.name) === targetName && (!targetCategory || breakdownComparisonCategory(element.category) === targetCategory));
 }
 
 function applyBreakdownPatch(scene, payload) {
   if (!payload || typeof payload !== "object" || Array.isArray(payload)) throw new Error("invalid breakdown patch");
   const existing = scene.breakdown || { sceneId: scene.id, sceneHeading: scene.title, synopsis: "", elements: [], productionNotes: [], safetyNotes: [], generated: true };
-  const elements = (Array.isArray(existing.elements) ? existing.elements : []).map((element) => ({ ...element }));
+  const elements = dedupeBreakdownElements(existing.elements);
   const warnings = cleanBreakdownNotes(payload.warnings);
   const appliedAdd = [];
   const appliedUpdate = [];
@@ -1097,7 +1670,7 @@ function applyBreakdownPatch(scene, payload) {
   });
 
   return {
-    breakdown: { ...existing, sceneId: scene.id, sceneHeading: scene.title, elements, generated: true },
+    breakdown: { ...existing, sceneId: scene.id, sceneHeading: scene.title, elements: dedupeBreakdownElements(elements), generated: true },
     patch: {
       add: appliedAdd,
       update: appliedUpdate,
@@ -1128,7 +1701,7 @@ function headingBreakdownMetadata(title) {
 }
 
 function breakdownEntries(scene, categories, options = {}) {
-  const elements = Array.isArray(scene.breakdown?.elements) ? scene.breakdown.elements : [];
+  const elements = dedupeBreakdownElements(scene.breakdown?.elements);
   const matches = elements.filter((element) =>
     categories.includes(normalizeBreakdownCategory(element.category)) &&
     (!options.numbered || (!element.castSuppressed && Number.isFinite(Number(element.castNumber)))))
@@ -1594,7 +2167,10 @@ async function handleBudget(req, res, scriptId) {
 }
 
 const BUDGET_IMPORT_MAX_BYTES = 10 * 1024 * 1024;
-const BUDGET_IMPORT_MAX_TEXT = 120000;
+// Keep import prompts within the context and credit limits of the selected
+// OpenRouter model. Spreadsheet extraction is prioritized by production sheet
+// so the useful rows survive even when a workbook contains formatted blanks.
+const BUDGET_IMPORT_MAX_TEXT = 30000;
 
 function budgetImportSourceType(filename = "", mimeType = "") {
   const extension = path.extname(String(filename || "")).toLowerCase();
@@ -1639,13 +2215,21 @@ function spreadsheetText(buffer, filename) {
   try { workbook = XLSX.read(buffer, { type: "buffer", cellDates: true, dense: true }); }
   catch (error) { throw Object.assign(new Error(`Could not read ${filename || "the spreadsheet"}.`), { status: 422, cause: error }); }
   const sections = [];
-  for (const sheetName of workbook.SheetNames.slice(0, 30)) {
+  const preferredNames = ["Resumen de Presupuesto", "Presupuesto desglosado", "Reporte de Gastos", "Esquema financiero"];
+  const orderedSheetNames = [...preferredNames.filter((name) => workbook.SheetNames.includes(name)), ...workbook.SheetNames.filter((name) => !preferredNames.includes(name))].slice(0, 30);
+  let characters = 0;
+  for (const sheetName of orderedSheetNames) {
     const sheet = workbook.Sheets[sheetName];
     const rows = XLSX.utils.sheet_to_json(sheet, { header: 1, raw: false, defval: "" });
     const lines = rows.slice(0, 4000).map((row) => Array.isArray(row)
       ? row.map((cell) => String(cell ?? "").replace(/\t/g, " ").replace(/\r?\n/g, " ").trim()).join("\t")
       : String(row || "")).filter((line) => line.replace(/\t/g, "").trim());
-    if (lines.length) sections.push(`SHEET: ${sheetName}\n${lines.join("\n")}`);
+    if (!lines.length) continue;
+    const remaining = BUDGET_IMPORT_MAX_TEXT - characters;
+    if (remaining <= 0) break;
+    const section = `SHEET: ${sheetName}\n${lines.join("\n")}`;
+    sections.push(section.slice(0, remaining));
+    characters += Math.min(section.length, remaining);
   }
   return sections.join("\n\n");
 }
@@ -1682,6 +2266,18 @@ async function extractBudgetImportSource(payload) {
 
 function budgetImportSystemPrompt(budget, source, language) {
   const periods = budget.periods.map((period) => ({ id: period.id, label: period.label, stage: period.stage }));
+  const activeCodes = new Set((budget.accounts || []).flatMap((account) => (account.items || [])
+    .filter((item) => (Number(item.quantity) || 0) > 0 && (Number(item.unitCost) || 0) > 0)
+    .map((item) => String(item.code))));
+  const hasActiveLines = activeCodes.size > 0;
+  const catalog = buildBudgetImportCatalog(budget).map((account) => ({
+    code: account.code,
+    name: account.name,
+    phaseId: account.phaseId,
+    items: account.items
+      .filter((item) => !hasActiveLines || activeCodes.has(String(item.code)))
+      .slice(0, hasActiveLines ? 80 : 6),
+  })).filter((account) => account.items.length || !hasActiveLines);
   return [
     "You are Lumiere, FilmScript's production budget import assistant.",
     lumiereLanguageInstruction(language),
@@ -1691,26 +2287,48 @@ function budgetImportSystemPrompt(budget, source, language) {
     "Keep amounts in the source currency; do not convert them. quantity must be an integer. Use multiplier for times/days and unitCost for the price of one unit. If the source only gives a total, use quantity 1 and unitCost equal to that total.",
     "Use taxRateId as an existing tax id or a tax name/percentage. Use an empty schedule when timing is not explicit. Only use period ids from the supplied period list.",
     "Put paid/unbudgeted rows in expenses, funding commitments in fundingSources, and put a short explanation in warnings when a row was ambiguous.",
-    "JSON schema: {\"summary\":\"...\",\"metadata\":{\"producer\":\"\",\"director\":\"\",\"format\":\"\",\"locations\":\"\",\"shootingDates\":\"\"},\"taxRates\":[{\"id\":\"\",\"name\":\"\",\"rate\":0}],\"accounts\":[{\"code\":\"\",\"name\":\"\",\"phaseId\":\"production\",\"items\":[{\"code\":\"\",\"name\":\"\",\"quantity\":1,\"unit\":\"day\",\"multiplier\":1,\"unitCost\":0,\"taxRateId\":\"tax_exempt\",\"taxMode\":\"exclusive\",\"costType\":\"fixed\",\"fundingKind\":\"cash\",\"schedule\":{\"period_id\":0},\"sourceText\":\"\",\"confidence\":0.0}]}],\"fundingSources\":[],\"expenses\":[],\"warnings\":[]}",
-    `Existing catalog: ${JSON.stringify(buildBudgetImportCatalog(budget))}`,
+    "Keep the JSON extremely compact so it fits a short response. Include only rows with a real amount or explicit payment; do not repeat zero-value catalog rows. Do not include sourceText, confidence, taxMode, costType, fundingKind, invoiceNumber, or empty arrays/objects. Return at most 60 cost items, prioritizing rows with amounts.",
+    "For schedule, use an object whose keys are the supplied period ids and whose values are planned amounts, for example {\"prep_1\":300}; omit it when timing is not explicit.",
+    "JSON schema: {\"summary\":\"...\",\"metadata\":{\"producer\":\"\",\"director\":\"\",\"format\":\"\",\"locations\":\"\",\"shootingDates\":\"\"},\"taxRates\":[{\"id\":\"\",\"name\":\"\",\"rate\":0}],\"accounts\":[{\"code\":\"\",\"name\":\"\",\"phaseId\":\"production\",\"items\":[{\"code\":\"\",\"name\":\"\",\"quantity\":1,\"unit\":\"day\",\"multiplier\":1,\"unitCost\":0,\"taxRateId\":\"tax_exempt\",\"schedule\":{\"prep_1\":0}}]}],\"fundingSources\":[],\"expenses\":[],\"warnings\":[]}",
+    `Existing catalog (active lines first): ${JSON.stringify(catalog)}`,
     `Schedule periods: ${JSON.stringify(periods)}`,
     `Source type: ${source.sourceType}`,
   ].join("\n\n");
 }
 
 async function analyzeBudgetImport(userId, budget, source, language) {
-  if (!process.env.ANTHROPIC_API_KEY) throw Object.assign(new Error("Lumiere is not configured on this server yet."), { status: 503 });
+  if (!process.env.OPENROUTER_API_KEY) throw Object.assign(new Error("Lumiere is not configured on this server yet."), { status: 503 });
   if (!hasLumiereCredits(userId)) throw Object.assign(new Error("Lumiere credits are empty. Reset your limits for $5 to continue."), { status: 402 });
-  const response = await client.messages.create({
-    model: "claude-haiku-4-5",
-    max_tokens: 6500,
+  const request = {
+    // Optional fields may be omitted by the model and are filled by the
+    // normalizer below. The cost-aware import router can afford a larger
+    // completion than the premium Terra model, which prevents truncated JSON
+    // on workbooks with several production departments.
+    maxTokens: Math.max(1800, Math.min(6500, Math.round(Number(process.env.OPENROUTER_BUDGET_IMPORT_MAX_TOKENS) || 5000))),
+    model: OPENROUTER_IMPORT_MODEL,
+    jsonMode: true,
     system: budgetImportSystemPrompt(budget, source, language),
     messages: [{ role: "user", content: `SOURCE DOCUMENT:\n${source.text.slice(0, BUDGET_IMPORT_MAX_TEXT)}` }],
-  });
+  };
+  let response;
+  try {
+    response = await requestLumiere(request);
+  } catch (error) {
+    // A low OpenRouter balance can reject a large completion even when the
+    // router has an affordable provider available. Retry once with a compact
+    // completion before showing a balance error to the user.
+    if (Number(error?.status || 0) !== 402 && Number(error?.status || 0) !== 502) throw error;
+    response = await requestLumiere({
+      ...request,
+      model: "openrouter/auto",
+      maxTokens: 1800,
+    });
+  }
   recordUsage(response.usage);
   consumeLumiereCredit(userId);
   const raw = response.content.filter((block) => block.type === "text").map((block) => block.text).join("");
-  const parsed = parseBreakdownJson(raw);
+  let parsed;
+  parsed = parseBreakdownJson(raw, { allowTruncated: true });
   return normalizeBudgetImportProposal({ ...parsed, source: { filename: source.filename, type: source.sourceType } }, budget);
 }
 
@@ -1769,7 +2387,7 @@ async function handleBudgetImport(req, res, scriptId) {
     });
   } catch (error) {
     console.error("Budget import error:", error.status || "", error.message);
-    return json(res, anthropicFailureStatus(error), { error: "lumiere_unavailable", message: anthropicFailureMessage(error) });
+    return json(res, lumiereFailureStatus(error), { error: "lumiere_unavailable", message: lumiereFailureMessage(error) });
   }
 }
 
@@ -2174,9 +2792,10 @@ async function generateShotLists(scriptId, sid, onlySceneId = null, language = '
     });
     try {
       const sceneBudgetMinutes = shotTimeBudget(scene);
-      const response = await client.messages.create({
-        model: "claude-haiku-4-5",
-        max_tokens: 1400,
+      const response = await requestLumiere({
+        maxTokens: 1400,
+        model: OPENROUTER_BREAKDOWN_MODEL,
+        jsonMode: true,
         system: `${SHOTLIST_SYSTEM_PROMPT}\n\n${lumiereLanguageInstruction(language)}`,
         messages: [{ role: "user", content: `Scene ID: ${scene.id}\nScene heading: ${scene.title}\nProduction time available from Stripboard: ${sceneBudgetMinutes == null ? "Not set" : `${sceneBudgetMinutes} minutes`}\n\nSCENE:\n${scene.text}` }],
       });
@@ -2235,11 +2854,19 @@ async function handleShotLists(req, res, scriptId) {
   json(res, 202, { project: summarizeProject(project) });
 }
 
-function sceneNeedsBreakdown(scene) {
-  return !scene.breakdown || scene.breakdown.generated === false || scene.status === "outdated" || (scene.status === "needs_review" && scene.reviewRequired !== true);
+function sceneNeedsBreakdown(scene, { includeManual = false } = {}) {
+  const manual = scene?.breakdown?.source === "manual" || scene?.breakdown?.generated === "manual";
+  return !scene.breakdown || scene.breakdown.generated === false || scene.status === "outdated" || (scene.status === "needs_review" && scene.reviewRequired !== true) || (includeManual && manual);
 }
 
-async function analyzeProject(scriptId, sid, language = 'en') {
+function preserveManualBreakdownForm(form) {
+  const keepFilledValues = (values) => Object.fromEntries(Object.entries(values || {}).filter(([, value]) => String(value ?? "").trim()));
+  const metadata = keepFilledValues(form?.metadata);
+  const cells = keepFilledValues(form?.cells);
+  return { metadata, cells, ...(Object.keys(metadata).length || Object.keys(cells).length ? { userEdited: true } : {}) };
+}
+
+async function analyzeProject(scriptId, sid, language = 'en', { includeManual = false } = {}) {
   const script = loadScripts().scripts[scriptId];
   if (!script || script.userId !== sid) return;
   const db = loadPreproduction();
@@ -2247,7 +2874,7 @@ async function analyzeProject(scriptId, sid, language = 'en') {
   const all = Object.values(project.scenes);
   const pending = all
     .map((scene, index) => ({ scene: JSON.parse(JSON.stringify(scene)), index }))
-    .filter(({ scene }) => sceneNeedsBreakdown(scene));
+    .filter(({ scene }) => sceneNeedsBreakdown(scene, { includeManual }));
   if (!pending.length) {
     project.analysis = { status: "complete", total: all.length, completed: all.length, message: "Breakdown already up to date" };
     savePreproduction(db);
@@ -2282,18 +2909,20 @@ async function analyzeProject(scriptId, sid, language = 'en') {
     mutatePreproductionProject(scriptId, sid, (freshProject) => {
       freshProject.analysis = { status: "running", total: pending.length, completed: i, message: `Analyzing scene ${index + 1} of ${all.length}` };
     });
-    const canPatch = !!scene.previousText && !!scene.breakdown;
+      const canPatch = !!scene.previousText && !!scene.breakdown;
     try {
       const result = canPatch
-        ? await client.messages.create({
-            model: "claude-haiku-4-5",
-            max_tokens: 1800,
+        ? await requestLumiere({
+            maxTokens: 1800,
+            model: OPENROUTER_BREAKDOWN_MODEL,
+            jsonMode: true,
             system: `${BREAKDOWN_UPDATE_SYSTEM_PROMPT}\n\n${lumiereLanguageInstruction(language)}`,
             messages: [{ role: "user", content: JSON.stringify({ previousScene: scene.previousText, updatedScene: scene.text, existingBreakdown: scene.breakdown, metadata: { sceneId: scene.id, sceneNumber: index + 1, sceneHeading: scene.title } }) }],
           })
-        : await client.messages.create({
-            model: "claude-haiku-4-5",
-            max_tokens: 1800,
+        : await requestLumiere({
+            maxTokens: 1800,
+            model: OPENROUTER_BREAKDOWN_MODEL,
+            jsonMode: true,
             system: `${BREAKDOWN_SYSTEM_PROMPT}\n\n${lumiereLanguageInstruction(language)}`,
             messages: [{ role: "user", content: JSON.stringify({ scene: scene.text, metadata: { sceneId: scene.id, sceneNumber: index + 1, sceneHeading: scene.title } }) }],
           });
@@ -2304,6 +2933,11 @@ async function analyzeProject(scriptId, sid, language = 'en') {
       mutatePreproductionProject(scriptId, sid, (freshProject) => {
         const current = freshProject.scenes?.[scene.id];
         if (current && current.contentHash === scene.contentHash) {
+          // Manual fields are an intentional override. Retain only the values
+          // the user entered so Lumiere can populate the untouched cells.
+          const manualForm = current.breakdown?.source === 'manual' || current.breakdown?.generated === 'manual'
+            ? preserveManualBreakdownForm(current.breakdownForm)
+            : null;
           if (canPatch) {
             const applied = applyBreakdownPatch(current, payload);
             current.breakdown = ensureExplicitCast(applied.breakdown, current);
@@ -2316,6 +2950,7 @@ async function analyzeProject(scriptId, sid, language = 'en') {
             current.reviewRequired = false;
             current.status = "synced";
           }
+          if (manualForm) current.breakdownForm = manualForm;
           current.previousText = null;
           current.strip = current.strip || { day: null, location: current.breakdown?.elements?.find((element) => element.category === "locations")?.name || "Unassigned", status: "unscheduled" };
           current.shots = Array.isArray(current.shots) ? current.shots : [];
@@ -2342,6 +2977,57 @@ async function analyzeProject(scriptId, sid, language = 'en') {
     freshProject.analysis = { status: needsReview ? "needs_review" : "complete", total: currentScenes.length, completed: currentScenes.length - needsReview, message: needsReview ? `${needsReview} scenes need review` : "Breakdown complete" };
   });
 }
+
+function createManualBreakdown(scene) {
+  const cells = Object.fromEntries([
+    'cast', 'extras', 'props', 'stunts', 'vehicles_animals', 'special_fx', 'wardrobe',
+    'makeup_hair', 'set_dressing', 'greenery', 'equipment', 'notes', 'music', 'sound',
+  ].map((key) => [key, '']));
+  return {
+    sceneId: scene.id,
+    sceneHeading: scene.title,
+    synopsis: '',
+    elements: [],
+    productionNotes: [],
+    safetyNotes: [],
+    // A manual sheet is still a valid, connected breakdown. Keeping this
+    // distinct from generated: false prevents it from being queued for an
+    // unexpected Lumiere pass on the next refresh.
+    generated: 'manual',
+    source: 'manual',
+    breakdownForm: { metadata: { sceneDescription: '' }, cells },
+    createdAt: new Date().toISOString(),
+  };
+}
+
+async function handleManualBreakdown(req, res, scriptId) {
+  const sid = sessionId(req, res);
+  if (!sid) return googleRequired(res);
+  const script = loadScripts().scripts[scriptId];
+  if (!script || script.userId !== sid) return json(res, 404, { error: 'script not found' });
+
+  const db = loadPreproduction();
+  const project = db.projects[scriptId] = syncProject(script, db.projects[scriptId]);
+  let created = 0;
+  Object.values(project.scenes || {}).forEach((scene) => {
+    if (!scene.breakdown) {
+      const manualBreakdown = createManualBreakdown(scene);
+      scene.breakdownForm = manualBreakdown.breakdownForm;
+      delete manualBreakdown.breakdownForm;
+      scene.breakdown = manualBreakdown;
+      scene.status = 'synced';
+      scene.reviewRequired = false;
+      created += 1;
+    }
+    scene.breakdownForm ||= scene.breakdown?.breakdownForm || { metadata: {}, cells: {} };
+    scene.breakdownForm.metadata ||= {};
+    scene.breakdownForm.cells ||= {};
+  });
+  project.analysis = project.analysis || { status: 'idle' };
+  savePreproduction(db);
+  json(res, 200, { project: summarizeProject(project), created });
+}
+
 async function handlePreproduction(req, res, scriptId) {
   const sid = sessionId(req, res);
   if (!sid) return googleRequired(res);
@@ -2356,11 +3042,17 @@ async function handlePreproduction(req, res, scriptId) {
     let body = {};
     try { body = JSON.parse(await readBody(req) || "{}"); } catch { return json(res, 400, { error: "invalid request body" }); }
     const language = normalizeLumiereLanguage(body.language);
+    const includeManual = body?.includeManual === true;
     if (!activePreproductionJobs.has(scriptId)) {
-      project.analysis = { status: "queued", total: Object.values(project.scenes).filter(sceneNeedsBreakdown).length, completed: 0, message: "Starting analysis" };
+      project.analysis = {
+        status: "queued",
+        total: Object.values(project.scenes).filter((scene) => sceneNeedsBreakdown(scene, { includeManual })).length,
+        completed: 0,
+        message: includeManual ? "Lumiere is preparing your manual breakdown" : "Starting analysis",
+      };
       savePreproduction(db);
       activePreproductionJobs.add(scriptId);
-      analyzeProject(scriptId, sid, language).catch((error) => console.error("Preproduction job failed:", error.message)).finally(() => activePreproductionJobs.delete(scriptId));
+      analyzeProject(scriptId, sid, language, { includeManual }).catch((error) => console.error("Preproduction job failed:", error.message)).finally(() => activePreproductionJobs.delete(scriptId));
     }
     return json(res, 202, { project: summarizeProject(project) });
   }
@@ -2531,8 +3223,8 @@ function validateScriptAnalysisDeep(payload, snapshot, response) {
     suggestions,
     generatedAt: new Date().toISOString(),
     model: {
-      provider: "Anthropic",
-      name: response?.model || "claude-haiku-4-5",
+      provider: "OpenRouter",
+      name: response?.model || OPENROUTER_MODEL,
       inputTokens: Number(response?.usage?.input_tokens || 0),
       outputTokens: Number(response?.usage?.output_tokens || 0),
     },
@@ -2785,7 +3477,7 @@ async function runScriptAnalysis(scriptId, sid, targetHash, requestedLanguage = 
   savePreproduction(db);
 
   try {
-    if (!process.env.ANTHROPIC_API_KEY) throw Object.assign(new Error('Anthropic API key is not configured.'), { status: 503 });
+    if (!process.env.OPENROUTER_API_KEY) throw Object.assign(new Error('OpenRouter API key is not configured.'), { status: 503 });
     const requestContent = JSON.stringify({
       projectId: snapshot.projectId,
       scriptId: snapshot.scriptId,
@@ -2803,9 +3495,10 @@ async function runScriptAnalysis(scriptId, sid, targetHash, requestedLanguage = 
       savePreproduction(db);
       return;
     }
-    let response = await client.messages.create({
-      model: "claude-haiku-4-5",
-      max_tokens: 12000,
+    let response = await requestLumiere({
+      maxTokens: 12000,
+      model: OPENROUTER_ANALYSIS_MODEL,
+      jsonMode: true,
       system: `${SCRIPT_ANALYSIS_SYSTEM_PROMPT}\n\n${lumiereLanguageInstruction(requestedLanguage)}`,
       messages: [{ role: "user", content: requestContent }],
     });
@@ -2822,9 +3515,10 @@ async function runScriptAnalysis(scriptId, sid, targetHash, requestedLanguage = 
         savePreproduction(db);
         return;
       }
-      response = await client.messages.create({
-        model: "claude-haiku-4-5",
-        max_tokens: 16000,
+      response = await requestLumiere({
+        maxTokens: 16000,
+        model: OPENROUTER_ANALYSIS_MODEL,
+        jsonMode: true,
         system: `${SCRIPT_ANALYSIS_SYSTEM_PROMPT}\n\n${lumiereLanguageInstruction(requestedLanguage)}\nThe previous pass did not produce complete JSON. Make this retry especially compact and complete.`,
         messages: [{ role: "user", content: requestContent }],
       });
@@ -2861,7 +3555,7 @@ async function runScriptAnalysis(scriptId, sid, targetHash, requestedLanguage = 
     project = db.projects[scriptId] = syncProject(currentScript, db.projects[scriptId]);
     const current = syncScriptAnalysis(project, currentScript);
     current.analysis.status = current.analysis.deep ? "stale" : "error";
-    current.analysis.statusMessage = anthropicFailureMessage(error);
+    current.analysis.statusMessage = lumiereFailureMessage(error);
     current.analysis.targetHash = "";
     savePreproduction(db);
   }
@@ -2891,11 +3585,11 @@ async function handleScriptAnalysis(req, res, scriptId) {
     try { analysisOptions = JSON.parse(await readBody(req) || "{}"); } catch { analysisOptions = {}; }
     if (!hasActiveLumierePlan(sid)) return lumierePlanRequired(res);
     const requestedLanguage = normalizeLumiereLanguage(analysisOptions.language);
-    if (!process.env.ANTHROPIC_API_KEY) {
+    if (!process.env.OPENROUTER_API_KEY) {
       analysis.status = analysis.deep ? "stale" : "error";
-      analysis.statusMessage = "Lumiere is not configured on this server. Set ANTHROPIC_API_KEY in app/.env and restart FilmScript.";
+      analysis.statusMessage = "Lumiere is not configured on this server. Set OPENROUTER_API_KEY in app/.env and restart FilmScript.";
       savePreproduction(db);
-      return json(res, 503, { error: "anthropic_not_configured", message: analysis.statusMessage, analysis: publicScriptAnalysis(analysis) });
+      return json(res, 503, { error: "openrouter_not_configured", message: analysis.statusMessage, analysis: publicScriptAnalysis(analysis) });
     }
     if (!analysis.hasEnoughContent) {
       analysis.status = "insufficient";
@@ -2922,7 +3616,14 @@ async function handleScriptAnalysis(req, res, scriptId) {
         .catch((error) => console.error("Script Analysis job failed:", error.message))
         .finally(() => activeScriptAnalysisJobs.delete(scriptId));
     }
-    return json(res, 202, { analysis: publicScriptAnalysis(analysis) });
+    // The reading deliberately continues after this response. Clients can
+    // leave Analysis, keep working elsewhere, and poll the saved job state.
+    return json(res, 202, {
+      accepted: true,
+      background: true,
+      pollAfterMs: 1200,
+      analysis: publicScriptAnalysis(analysis),
+    });
   }
 
   if (req.method === "PATCH") {
@@ -3038,10 +3739,20 @@ function sessionCookie(value, maxAge = 31536000) {
 }
 
 function sessionContext(req, res, create = true) {
+  const preview = previewModeEnabled(req);
+  if (preview) ensureLocalPreviewWorkspace();
   const cookies = parseCookies(req);
   const token = cookies[SESSION_COOKIE] || null;
   const existing = token ? getSessionByToken(token) : null;
-  if (existing || !create) return existing ? { token, ...existing } : null;
+  if (existing && (!preview || (existing.userId === PREVIEW_USER_ID && existing.authMethod === "preview"))) {
+    return { token, ...existing };
+  }
+  if (!preview && !create) return null;
+  if (preview) {
+    const created = createSession({ userId: PREVIEW_USER_ID, authMethod: "preview" });
+    res.setHeader("Set-Cookie", sessionCookie(created.token));
+    return { token: created.token, ...created.session };
+  }
   const created = createSession();
   res.setHeader("Set-Cookie", sessionCookie(created.token));
   return { token: created.token, ...created.session };
@@ -3059,6 +3770,16 @@ function googleRequired(res) {
 function hasActiveLumierePlan(userId) {
   const subscription = userId ? getSubscription(userId) : null;
   return subscription?.plan === "lumiere" && subscription?.status === "active";
+}
+
+// The sidebar chat has a small Free trial and is also included in Basic. The
+// structured screenplay Analysis, Breakdown, Shot List and other production
+// passes still use the full Pro entitlement checked above.
+function hasLumiereChatAccess(userId) {
+  if (previewUnlimitedCredits(userId)) return true;
+  const plan = lumierePlanKey(userId);
+  if (plan === "basic" || plan === "lumiere") return true;
+  return hasLumiereCredits(userId);
 }
 
 function lumierePlanRequired(res) {
@@ -3134,7 +3855,12 @@ function applyCors(req, res) {
   const origin = req.headers.origin;
   const configured = (process.env.CORS_ORIGINS || publicAppUrl())
     .split(",").map((value) => value.trim().replace(/\/$/, "")).filter(Boolean);
-  if (origin && configured.includes(origin.replace(/\/$/, ""))) {
+  // Standalone `.dc.html` files are intentionally supported for local
+  // previews. Their browser origin is the opaque `null` origin, so permit it
+  // only while the configured app is local; production deployments never
+  // inherit this exception.
+  const localFilePreview = origin === "null" && /^https?:\/\/localhost(?::\d+)?$/i.test(publicAppUrl());
+  if (origin && (configured.includes(origin.replace(/\/$/, "")) || localFilePreview)) {
     res.setHeader("Access-Control-Allow-Origin", origin);
     res.setHeader("Access-Control-Allow-Credentials", "true");
     res.setHeader("Vary", "Origin");
@@ -4068,13 +4794,15 @@ async function handleBillingSync(req, res) {
 
 function accountPayload(userId, verification = null) {
   const user = userId ? getUser(userId) : null;
+  const preview = user?.googleSub === PREVIEW_GOOGLE_SUB;
   const subscription = userId ? getSubscription(userId) : null;
   const active = subscription?.status === "active";
   const tier = active ? subscription.plan : "free";
   const config = active ? planConfig(subscription.plan) : null;
   return {
     authenticated: !!user?.googleSub,
-    provider: user?.googleSub ? "google" : null,
+    provider: preview ? "preview" : (user?.googleSub ? "google" : null),
+    preview,
     id: user?.id || null,
     name: user?.name || null,
     email: user?.email || null,
@@ -4089,6 +4817,11 @@ function accountPayload(userId, verification = null) {
     tier,
     planName: config?.name || "Free",
     price: config?.price || "$0 / month",
+    // Sidebar chat entitlement is intentionally separate from full Pro
+    // production generation. Free receives the small trial, Basic receives
+    // chat, and Pro receives every Lumiere surface.
+    lumiereChatAccess: preview || hasLumiereChatAccess(userId),
+    lumiereFullAccess: preview || subscription?.plan === "lumiere" && active,
     status: subscription?.status || null,
     billing: user ? {
       provider: "recurrente",
@@ -4106,7 +4839,9 @@ async function handleMe(req, res) {
   const session = sessionContext(req, res);
   const userId = session?.googleSub ? session.userId : null;
   let verification = null;
-  if (userId && recurrenteReady()) {
+  // Preview never reaches external billing services. The local subscription
+  // fixture is already active, so `/api/me` stays fast and offline.
+  if (userId && recurrenteReady() && !previewModeEnabled(req)) {
     try {
       verification = await synchronizeRecurrenteSubscription(userId);
     } catch (error) {
@@ -4652,7 +5387,17 @@ const MIME = {
 async function handleLumiere(req, res) {
   const sid = sessionId(req, res);
   if (!sid) return googleRequired(res);
-  if (!hasActiveLumierePlan(sid)) return lumierePlanRequired(res);
+  if (!hasLumiereChatAccess(sid)) {
+    const plan = lumierePlanKey(sid);
+    if (plan === "free") {
+      return json(res, 402, {
+        error: "lumiere_credits_exhausted",
+        message: "Your Free Lumiere questions are used. Choose Basic or Pro to keep the conversation going.",
+        credits: creditsSummary(sid),
+      });
+    }
+    return lumierePlanRequired(res);
+  }
   let body = "";
   for await (const chunk of req) body += chunk;
   let messages;
@@ -4678,32 +5423,16 @@ async function handleLumiere(req, res) {
     });
   }
   try {
-    // Prompt caching: the frontend sends one string with the static
-    // instructions + full script before "CONVERSATION SO FAR:". Splitting
-    // there lets the stable prefix be cached across questions.
-    const prepared = messages.map((m) => {
-      if (typeof m.content !== "string") return m;
-      const marker = "CONVERSATION SO FAR:";
-      const at = m.content.indexOf(marker);
-      if (m.role !== "user" || at <= 0) return m;
-      return {
-        role: m.role,
-        content: [
-          { type: "text", text: m.content.slice(0, at), cache_control: { type: "ephemeral" } },
-          { type: "text", text: m.content.slice(at) },
-        ],
-      };
-    });
     const personalization = buildLumierePersonalizationSystem(sid);
-    const response = await client.messages.create({
-      model: "claude-haiku-4-5",
-      max_tokens: maxTokens,
+    const response = await requestLumiere({
+      maxTokens,
+      model: OPENROUTER_CHAT_MODEL,
       system: [
         'You are Lumiere, the AI assistant inside FilmScript.',
         lumiereLanguageInstruction(requestedLanguage),
         personalization,
       ].filter(Boolean).join("\n\n"),
-      messages: prepared,
+      messages,
     });
     recordUsage(response.usage);
     consumeLumiereCredit(sid);
@@ -4712,12 +5441,17 @@ async function handleLumiere(req, res) {
       .map((b) => b.text)
       .join("");
     res.writeHead(200, { "Content-Type": "application/json" });
-    res.end(JSON.stringify({ reply, credits: creditsSummary(sid) }));
+    res.end(JSON.stringify({
+      reply,
+      provider: "openrouter",
+      model: response.model || OPENROUTER_MODEL,
+      credits: creditsSummary(sid),
+    }));
   } catch (err) {
     console.error("Lumiere API error:", err.status || "", err.message);
-    const message = anthropicFailureMessage(err);
-    res.writeHead(anthropicFailureStatus(err), { "Content-Type": "application/json" });
-    res.end(JSON.stringify({ error: "anthropic_unavailable", message }));
+    const message = lumiereFailureMessage(err);
+    res.writeHead(lumiereFailureStatus(err), { "Content-Type": "application/json" });
+    res.end(JSON.stringify({ error: "openrouter_unavailable", message }));
   }
 }
 
@@ -4808,6 +5542,8 @@ export function requestHandler(req, res) {
     } else if (req.method === "PATCH" && /^\/api\/scripts\/scr_[a-f0-9]+\/preproduction\/scenes\/(?:sc|shsc)_[a-f0-9]+\/shots$/.test(pathname)) {
       const parts = pathname.split("/");
       handleSceneShotsPatch(req, res, parts[3], parts[6]).catch((err) => json(res, err.status || 500, { error: err.message }));
+    } else if (req.method === "POST" && /^\/api\/scripts\/scr_[a-f0-9]+\/preproduction\/manual-breakdown$/.test(pathname)) {
+      handleManualBreakdown(req, res, pathname.split("/")[3]).catch((err) => json(res, err.status || 500, { error: err.message }));
     } else if (req.method === "POST" && /^\/api\/scripts\/scr_[a-f0-9]+\/preproduction\/shotlist\/references$/.test(pathname)) {
       handleShotReferenceUpload(req, res, pathname.split("/")[3]).catch((err) => json(res, err.status || 500, { error: err.message }));
     } else if (req.method === "GET" && /^\/api\/scripts\/scr_[a-f0-9]+\/preproduction\/shotlist\/references\/ref_[a-f0-9]+$/.test(pathname)) {

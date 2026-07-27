@@ -1519,6 +1519,7 @@
     'Final delivery': 'Entrega final',
     'Delivery day': 'Día de entrega',
     'Principal photography': 'Rodaje principal',
+    'Main shoot': 'Rodaje principal',
     'Connected to Budget shooting dates': 'Conectado con las fechas de rodaje del Presupuesto',
     'Critical path': 'Ruta crítica',
     'Overall progress': 'Progreso general',

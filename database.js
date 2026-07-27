@@ -5,14 +5,22 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 
 const ROOT = path.dirname(fileURLToPath(import.meta.url));
-const DATA_DIR = process.env.FILMSCRIPT_DATA_DIR
-  ? path.resolve(process.env.FILMSCRIPT_DATA_DIR)
-  : process.env.VERCEL
-    ? path.join("/tmp", "filmscript")
-    : path.join(ROOT, "data");
-const DATABASE_PATH = process.env.FILMSCRIPT_DB_PATH
-  ? path.resolve(process.env.FILMSCRIPT_DB_PATH)
-  : path.join(DATA_DIR, "filmscript.sqlite");
+// Local Preview deliberately uses its own SQLite directory. This keeps a
+// preview session and its demo workspace separate from a developer's local
+// data, while production continues to use FILMSCRIPT_DATA_DIR as before.
+const PREVIEW_MODE = process.env.FILMSCRIPT_PREVIEW_MODE === "true";
+const DATA_DIR = PREVIEW_MODE
+  ? path.resolve(process.env.FILMSCRIPT_PREVIEW_DATA_DIR || path.join(ROOT, "data-preview"))
+  : process.env.FILMSCRIPT_DATA_DIR
+    ? path.resolve(process.env.FILMSCRIPT_DATA_DIR)
+    : process.env.VERCEL
+      ? path.join("/tmp", "filmscript")
+      : path.join(ROOT, "data");
+const DATABASE_PATH = PREVIEW_MODE
+  ? path.resolve(process.env.FILMSCRIPT_PREVIEW_DB_PATH || path.join(DATA_DIR, "filmscript.sqlite"))
+  : process.env.FILMSCRIPT_DB_PATH
+    ? path.resolve(process.env.FILMSCRIPT_DB_PATH)
+    : path.join(DATA_DIR, "filmscript.sqlite");
 
 fs.mkdirSync(path.dirname(DATABASE_PATH), { recursive: true });
 try { fs.chmodSync(path.dirname(DATABASE_PATH), 0o700); } catch {}

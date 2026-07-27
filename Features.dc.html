@@ -10,7 +10,7 @@
 <script src="./language-preference.js?v=20260716-credits1"></script>
 <script src="./ui-sounds.js?v=20260713-profile-option1"></script>
 <script src="./billing-client.js?v=20260716-profile-safe1"></script>
-<script src="./lumiere-client.js?v=20260713-language1"></script>
+<script src="./lumiere-client.js?v=20260720-openrouter1"></script>
 <script src="./lumiere-preferences.js?v=20260713-taste1"></script>
 <link rel="stylesheet" href="./auth-modal.css?v=20260713-login1">
 <link rel="stylesheet" href="./filmscript-controls.css?v=20260716-typography1">
@@ -730,7 +730,7 @@ ${history}
 
 Write Lumiere's next reply only:`;
     try {
-      const reply = await window.claude.complete({ messages: [{ role: 'user', content: prompt }] });
+      const reply = await window.lumiere.complete({ messages: [{ role: 'user', content: prompt }], surface: 'features-preview' });
       this.setState(s => ({ chat: [...s.chat, { who: 'l', text: (reply || '').trim() || '…' }], loading: false }), () => this._scrollChat());
     } catch (e) {
       this.setState(s => ({ chat: [...s.chat, { who: 'l', text: 'I lost the connection to the projection room for a moment. Ask me again?' }], loading: false }), () => this._scrollChat());

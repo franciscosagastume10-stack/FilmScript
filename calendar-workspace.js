@@ -58,6 +58,7 @@ class FilmScriptCalendar extends HTMLElement {
     this.view = "overview";
     this.loading = true;
     this.error = "";
+    this.authRequired = false;
     this.saveStatus = "";
     this.search = "";
     this.phaseFilter = "all";
@@ -115,7 +116,11 @@ class FilmScriptCalendar extends HTMLElement {
   }
 
   attributeChangedCallback(name, oldValue, newValue) {
-    if (name === "script-id" && oldValue && oldValue !== newValue && this.isConnected) this.load();
+    // The DC runtime can hydrate a custom element in two steps: first it
+    // creates the element, then it resolves the interpolated script id. The
+    // old guard ignored the initial `null -> scr_...` transition, leaving the
+    // workspace permanently stuck on “Calendar could not be opened”.
+    if (name === "script-id" && newValue && oldValue !== newValue && this.isConnected) this.load();
     if (name === "project-title" && oldValue !== newValue && this.calendar) {
       this.calendar = normalizeCalendar(this.calendar, this.projectTitle);
       this.render();
@@ -129,11 +134,13 @@ class FilmScriptCalendar extends HTMLElement {
     if (!this.scriptId || !window.filmscriptCalendar) {
       this.loading = false;
       this.error = "Calendar is not available for this screenplay.";
+      this.authRequired = false;
       this.render();
       return;
     }
     this.loading = true;
     this.error = "";
+    this.authRequired = false;
     this.render();
     try {
       const result = await window.filmscriptCalendar.get(this.scriptId);
@@ -143,6 +150,7 @@ class FilmScriptCalendar extends HTMLElement {
     } catch (error) {
       this.loading = false;
       this.error = error.message || "Could not load this calendar.";
+      this.authRequired = error.code === "google_sign_in_required";
       this.render();
     }
   }
@@ -297,7 +305,10 @@ class FilmScriptCalendar extends HTMLElement {
       const startOffset = startDays / TIMELINE_WORKDAYS_PER_WEEK * weekWidth;
       const left = Math.min(Math.max(3, startOffset + 3), Math.max(3, timelineWidth - 16));
       bar.style.left = `${left}px`;
-      if (bar.dataset.milestone !== "true") {
+      if (bar.dataset.milestone === "true") {
+        const width = Math.max(22, Math.min(44, weekWidth * 0.46));
+        bar.style.width = `${Math.min(width, Math.max(22, timelineWidth - left - 3))}px`;
+      } else {
         const spanDays = Math.max(1, finite(bar.dataset.spanDays, 1));
         const width = Math.max(18, spanDays / TIMELINE_WORKDAYS_PER_WEEK * weekWidth - 7);
         bar.style.width = `${Math.min(width, Math.max(18, timelineWidth - left - 3))}px`;
@@ -763,6 +774,15 @@ class FilmScriptCalendar extends HTMLElement {
       this.render();
     }
     if (action === "retry") this.load();
+    if (action === "sign-in") {
+      const pathname = window.location?.protocol === "file:"
+        ? `/${String(window.location.pathname || "").split("/").pop()}`
+        : window.location.pathname;
+      const returnTo = `${pathname}${window.location.search}${window.location.hash}`;
+      const signInUrl = window.filmscriptBilling?.googleSignInUrl?.(returnTo)
+        || `${window.filmscriptApiUrl ? window.filmscriptApiUrl("/auth/google") : "/auth/google"}?returnTo=${encodeURIComponent(returnTo)}`;
+      window.location.href = signInUrl;
+    }
     if (action === "close-modal" || action === "save-task" || action === "delete-task") event.preventDefault();
   };
 
@@ -960,7 +980,7 @@ class FilmScriptCalendar extends HTMLElement {
       </header>
       <div class="kpi-grid">
         ${this.renderKpi("Final delivery", this.formatDate(computed.deliveryDate, true), deliveryNote, computed.overdueCount ? "danger" : "delivery")}
-        ${this.renderKpi("Principal photography", this.formatDateRange(computed.shootingStart, computed.shootingEnd, true), "Connected to Budget shooting dates", "shoot")}
+        ${this.renderKpi("Main shoot", this.formatDateRange(computed.shootingStart, computed.shootingEnd, true), "Connected to Budget shooting dates", "shoot")}
         ${this.renderKpi("Critical path", `${computed.criticalCount} tasks`, riskNote, computed.atRiskCount ? "danger" : "critical")}
         ${this.renderKpi("Overall progress", `${computed.progress}%`, `${computed.completedCount} of ${computed.tasks.length} tasks complete`, "progress")}
       </div>
@@ -1010,9 +1030,10 @@ class FilmScriptCalendar extends HTMLElement {
       return [task.name, task.owner, phase].some((value) => String(value || "").toLowerCase().includes(query));
     });
     const timeline = this.timelineWeeks(computed);
+    const fitMode = this.timelineZoom <= 0;
     const taskColumnWidth = TIMELINE_TASK_COLUMN_WIDTH;
-    const weekWidth = this.timelineWeekWidth();
-    const timelineWidth = timeline.weeks.length * weekWidth;
+    const weekWidth = fitMode ? 1 : this.timelineWeekWidth();
+    const timelineWidth = Math.max(1, timeline.weeks.length * weekWidth);
     const rawShootOffset = computed.shootingStart
       ? Math.floor(workdayDistance(timeline.start, computed.shootingStart) / TIMELINE_WORKDAYS_PER_WEEK)
       : -1;
@@ -1022,13 +1043,13 @@ class FilmScriptCalendar extends HTMLElement {
     const weekHeaders = timeline.weeks.map((week, index) => {
       const relative = shootOffset < 0 ? index + 1 : index - shootOffset;
       const zone = shootOffset < 0 ? "zone-pre" : relative < 0 ? "zone-pre" : relative === 0 ? "zone-zero" : "zone-post";
-      const label = relative === 0 ? "Week 0" : `W${relative > 0 ? "+" : "−"}${Math.abs(relative)}`;
+      const label = fitMode ? `W${index + 1}` : relative === 0 ? "Week 0" : `W${relative > 0 ? "+" : "−"}${Math.abs(relative)}`;
       const weekStart = parseDate(week.start);
-      const dayLabels = Array.from({ length: TIMELINE_WORKDAYS_PER_WEEK }, (_, dayIndex) => {
+      const dayLabels = fitMode ? "" : Array.from({ length: TIMELINE_WORKDAYS_PER_WEEK }, (_, dayIndex) => {
         const day = weekStart ? addCalendarDays(weekStart, dayIndex) : null;
         return `<span>${day ? day.getUTCDate() : ""}</span>`;
       }).join("");
-      return `<div class="week-cell ${zone}"><strong>${label}</strong><small>${escapeHtml(this.formatDateRange(week.start, week.end))}</small><div class="week-days" aria-hidden="true">${dayLabels}</div></div>`;
+      return `<div class="week-cell ${zone} ${fitMode ? "is-fit" : ""}"><strong>${label}</strong><small>${escapeHtml(this.formatDateRange(week.start, week.end))}</small>${fitMode ? "" : `<div class="week-days" aria-hidden="true">${dayLabels}</div>`}</div>`;
     }).join("");
     const phaseOptions = [`<option value="all">All phases</option>`, ...PHASES.map((phase) =>
       `<option value="${phase.id}" ${this.phaseFilter === phase.id ? "selected" : ""}>${escapeHtml(phase.name)}</option>`)].join("");
@@ -1048,7 +1069,7 @@ class FilmScriptCalendar extends HTMLElement {
         const conflictLabel = task.dependencyConflict ? " Dependency overlap; linked tasks were not moved." : "";
         const timingLabel = `${task.name}, ${this.formatDateRange(task.startDate, task.endDate)}. Drag to move${task.milestone ? "." : " or use either edge to resize."}${conflictLabel}`;
         const bar = task.milestone
-          ? `<button type="button" class="milestone ${task.critical ? "is-critical" : ""} ${task.status === "done" ? "is-complete" : ""} ${task.dependencyConflict ? "is-conflict" : ""}" data-action="edit-task" data-task="${task.id}" data-timeline-bar="${task.id}" data-milestone="true" data-snap="day" data-snap-unit="workday" data-start-days="${startDays}" data-span-days="0" style="left:${left}px" aria-label="${escapeHtml(timingLabel)}" title="${task.dependencyConflict ? "Dependency overlap" : ""}" aria-keyshortcuts="Alt+ArrowLeft Alt+ArrowRight"><span></span></button>`
+          ? `<button type="button" class="task-bar milestone-bar ${task.critical ? "is-critical" : ""} ${task.status === "done" ? "is-complete" : ""} ${task.dependencyConflict ? "is-conflict" : ""}" data-action="edit-task" data-task="${task.id}" data-timeline-bar="${task.id}" data-milestone="true" data-snap="day" data-snap-unit="workday" data-start-days="${startDays}" data-span-days="0" style="left:${left}px;width:${Math.max(22, Math.min(44, weekWidth * 0.46))}px" aria-label="${escapeHtml(timingLabel)}" title="${task.dependencyConflict ? "Dependency overlap" : ""}" aria-keyshortcuts="Alt+ArrowLeft Alt+ArrowRight"><b>Lock</b></button>`
           : `<button type="button" class="task-bar ${task.critical ? "is-critical" : ""} ${task.status === "done" ? "is-complete" : ""} ${task.atRisk ? "is-risk" : ""} ${task.dependencyConflict ? "is-conflict" : ""}" data-action="edit-task" data-task="${task.id}" data-timeline-bar="${task.id}" data-milestone="false" data-snap="day" data-snap-unit="workday" data-start-days="${startDays}" data-span-days="${spanDays}" style="left:${left}px;width:${barWidth}px" aria-label="${escapeHtml(timingLabel)}" title="${task.dependencyConflict ? "Dependency overlap" : ""}" aria-keyshortcuts="Alt+ArrowLeft Alt+ArrowRight">
               <span class="task-progress" style="width:${task.progress}%"></span>
               <span class="resize-handle is-start" data-resize-edge="start" aria-hidden="true"></span>
@@ -1180,6 +1201,7 @@ class FilmScriptCalendar extends HTMLElement {
   styles() {
     return `<style>
       :host{--fs-font-text:"SF Pro Text",-apple-system,BlinkMacSystemFont,"Helvetica Neue",Arial,sans-serif;--fs-font-display:"SF Pro Display","SF Pro Text",-apple-system,BlinkMacSystemFont,"Helvetica Neue",Arial,sans-serif}
+      :host(.filmscript-theme-transition),:host(.filmscript-theme-transition) *{transition-property:color,background-color,border-color,box-shadow,opacity,fill,stroke,outline-color!important;transition-duration:240ms!important;transition-timing-function:cubic-bezier(.22,.7,.25,1)!important}:host(.filmscript-theme-fading){opacity:.72}@media(prefers-reduced-motion:reduce){:host(.filmscript-theme-transition),:host(.filmscript-theme-transition) *{transition-duration:.01ms!important}:host(.filmscript-theme-fading){opacity:1!important}}
       :host,:host *{font-family:var(--fs-font-text)!important}
       :host h1,:host h2,:host h3,:host h4,:host h5,:host h6{font-family:var(--fs-font-display)!important}:host h1,:host h2{font-weight:900!important}:host h3{font-weight:800!important}
       :host{display:block;min-width:0;width:100%;--cal-critical:#C74440;--cal-positive:#2E7D5B;--cal-blue:#4A6B8A;color:var(--ink,#2C2C2A);font-family:"Helvetica Neue",Helvetica,Arial,sans-serif}
@@ -1200,7 +1222,7 @@ class FilmScriptCalendar extends HTMLElement {
       .timeline-track{background:repeating-linear-gradient(to right,transparent 0,max(0px,calc(var(--day) - 1px)),color-mix(in srgb,var(--ink,#2C2C2A) 6%,var(--hair,#E7E4DA)) max(0px,calc(var(--day) - 1px)),color-mix(in srgb,var(--ink,#2C2C2A) 6%,var(--hair,#E7E4DA)) var(--day)),repeating-linear-gradient(to right,transparent 0,transparent calc(var(--week) - 1px),color-mix(in srgb,var(--ink,#2C2C2A) 12%,var(--hair,#E7E4DA)) calc(var(--week) - 1px),color-mix(in srgb,var(--ink,#2C2C2A) 12%,var(--hair,#E7E4DA)) var(--week)),var(--surface,#FFFEF9)}.timeline-track.has-week-zero{background:repeating-linear-gradient(to right,transparent 0,max(0px,calc(var(--day) - 1px)),color-mix(in srgb,var(--ink,#2C2C2A) 6%,transparent) max(0px,calc(var(--day) - 1px)),color-mix(in srgb,var(--ink,#2C2C2A) 6%,transparent) var(--day)),repeating-linear-gradient(to right,transparent 0,transparent calc(var(--week) - 1px),color-mix(in srgb,var(--ink,#2C2C2A) 12%,transparent) calc(var(--week) - 1px),color-mix(in srgb,var(--ink,#2C2C2A) 12%,transparent) var(--week)),linear-gradient(to right,var(--zone-pre) 0,var(--zone-pre) var(--zero-start),var(--zone-zero) var(--zero-start),var(--zone-zero) var(--zero-end),var(--zone-post) var(--zero-end),var(--zone-post) 100%)}
       .task-bar{top:13px;height:26px;overflow:visible;border:1px solid color-mix(in srgb,#A96A23 72%,var(--ink,#2C2C2A));border-radius:8px 10px 7px 9px;background:color-mix(in srgb,var(--accent,#FFB703) 38%,var(--surface,#FFFEF9));box-shadow:0 1px 0 color-mix(in srgb,var(--ink,#2C2C2A) 12%,transparent);color:var(--ink,#2C2C2A);cursor:grab;touch-action:pan-y;user-select:none;transform:translateX(var(--drag-x,0px));transition:box-shadow .14s ease-in-out,filter .14s ease-in-out,left .18s cubic-bezier(.22,.8,.24,1),width .18s cubic-bezier(.22,.8,.24,1)}.task-bar>.task-progress{position:absolute;z-index:0;inset:0 auto 0 0;border-radius:inherit;background:var(--task-cream-strong);opacity:.48;pointer-events:none}.task-bar>b{position:relative;z-index:2;display:block;padding:0 10px;color:color-mix(in srgb,var(--ink,#2C2C2A) 78%,#6E4516);font-size:7.5px;line-height:24px;text-shadow:none}.task-bar>.resize-handle{position:absolute;z-index:6;top:2px;bottom:2px;width:9px;inset-inline:auto;background:transparent;cursor:ew-resize;opacity:.42;touch-action:none}.task-bar>.resize-handle:after{content:"";position:absolute;top:6px;bottom:6px;border-left:1px solid color-mix(in srgb,var(--ink,#2C2C2A) 48%,transparent)}.task-bar>.resize-handle.is-start{left:-2px}.task-bar>.resize-handle.is-start:after{left:4px}.task-bar>.resize-handle.is-end{right:-2px}.task-bar>.resize-handle.is-end:after{right:4px}.task-bar:hover>.resize-handle,.task-bar:focus-visible>.resize-handle,.task-bar.is-editing>.resize-handle{opacity:1}.task-bar.is-critical{border-color:color-mix(in srgb,var(--cal-critical) 72%,#A96A23);background:var(--task-cream);box-shadow:inset 3px 0 0 var(--cal-critical)}.task-bar.is-risk{box-shadow:inset 3px 0 0 var(--cal-critical),0 0 0 2px color-mix(in srgb,var(--cal-critical) 14%,transparent)}.task-bar.is-conflict{outline:1px dashed var(--cal-critical);outline-offset:2px}.task-bar.is-complete{border-color:color-mix(in srgb,#A96A23 55%,var(--hair,#E7E4DA));background:color-mix(in srgb,var(--task-cream) 70%,var(--surface,#FFFEF9));opacity:.72}.task-bar.is-complete b:before{content:"✓";margin-right:4px}.task-bar.is-editing{z-index:20;cursor:grabbing;filter:saturate(1.08);box-shadow:0 7px 18px color-mix(in srgb,#7B501F 20%,transparent);transition:box-shadow .14s ease-in-out,filter .14s ease-in-out}.task-bar.is-editing:after{content:attr(data-drag-label);position:absolute;left:50%;bottom:calc(100% + 7px);z-index:30;width:max-content;max-width:180px;padding:5px 7px;border:1px solid color-mix(in srgb,var(--ink,#2C2C2A) 22%,transparent);border-radius:7px 6px 8px 5px;background:var(--ink,#2C2C2A);color:var(--surface,#FFFEF9);font-size:8px;font-weight:700;transform:translateX(-50%);pointer-events:none}
       .milestone{top:19px;cursor:grab;touch-action:pan-y;transform:translateX(var(--drag-x,0px)) rotate(45deg);transition:left .18s cubic-bezier(.22,.8,.24,1),filter .14s ease-in-out}.milestone>span{border-color:color-mix(in srgb,#A96A23 76%,var(--ink,#2C2C2A));background:var(--task-cream-strong)}.milestone.is-critical>span{border-color:var(--cal-critical);background:var(--task-cream-strong);box-shadow:inset 2px 0 0 var(--cal-critical)}.milestone.is-conflict>span{outline:1px dashed var(--cal-critical);outline-offset:2px}.milestone.is-complete>span{border-color:#A96A23;background:var(--task-cream);opacity:.65}.milestone.is-editing{z-index:20;cursor:grabbing;filter:saturate(1.08);box-shadow:none;transition:filter .14s ease-in-out}
-      .task-bar,.task-bar.is-critical,.task-bar.is-risk,.task-bar.is-conflict,.task-bar.is-complete{border-color:color-mix(in srgb,#A96A23 72%,var(--ink,#2C2C2A));background:var(--task-cream);box-shadow:0 1px 0 color-mix(in srgb,var(--ink,#2C2C2A) 12%,transparent);opacity:1}.task-bar.is-risk,.task-bar.is-conflict{outline:0}.task-bar>.task-progress{background:var(--task-cream-strong);opacity:.58}.task-bar.is-complete b:before{content:"✓";margin-right:4px;color:color-mix(in srgb,var(--ink,#2C2C2A) 58%,transparent)}
+      .task-bar,.task-bar.is-critical,.task-bar.is-risk,.task-bar.is-conflict,.task-bar.is-complete{border-color:color-mix(in srgb,#A96A23 72%,var(--ink,#2C2C2A));background:var(--task-cream);box-shadow:0 1px 0 color-mix(in srgb,var(--ink,#2C2C2A) 12%,transparent);opacity:1}.task-bar.is-risk,.task-bar.is-conflict{outline:0}.task-bar>.task-progress{background:var(--task-cream-strong);opacity:.58}.task-bar.is-complete b:before{content:"✓";margin-right:4px;color:color-mix(in srgb,var(--ink,#2C2C2A) 58%,transparent)}.task-bar.milestone-bar{min-width:22px;overflow:hidden}.task-bar.milestone-bar b{padding:0 8px;font-size:7px}
       .timeline-live{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0}
       @media(max-width:1100px){.kpi-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.phase-card-grid{grid-template-columns:repeat(3,minmax(0,1fr))}.timeline-tools{grid-template-columns:minmax(220px,1fr) 156px auto}.zoom-control{grid-column:1 / -1;justify-self:end;width:min(360px,100%)}.overview-grid{grid-template-columns:1fr}}
       @media(max-width:700px){.fs-calendar{padding-top:10px}.calendar-nav{align-items:flex-start;flex-direction:column;top:-24px}.calendar-actions{width:100%;justify-content:space-between}.calendar-hero,.section-head{align-items:flex-start;flex-direction:column}.start-control{width:100%}.kpi-grid,.phase-card-grid{grid-template-columns:1fr}.phase-ribbon{overflow:auto}.phase-ribbon>div{flex:0 0 150px}.timeline-tools{grid-template-columns:1fr}.timeline-legend{overflow:auto}.form-grid{grid-template-columns:1fr}.field-wide{grid-column:auto}.modal-backdrop{padding:10px}.modal-foot{align-items:stretch;flex-direction:column}.modal-foot>div{justify-content:flex-end}.dependency-add{grid-template-columns:1fr}.upcoming-row{grid-template-columns:62px minmax(0,1fr) 28px}.upcoming-row .status{display:none}}
@@ -1229,7 +1251,10 @@ class FilmScriptCalendar extends HTMLElement {
       return;
     }
     if (this.error && !this.calendar) {
-      this.shadowRoot.innerHTML = `${styles}<div class="fs-calendar"><div class="empty"><strong>Calendar could not be opened</strong><p>${escapeHtml(this.error)}</p><button type="button" class="primary" data-action="retry">Try again</button></div></div>`;
+      const action = this.authRequired
+        ? `<button type="button" class="primary" data-action="sign-in">Continue with Google</button><button type="button" class="secondary" data-action="retry">Try again</button>`
+        : `<button type="button" class="primary" data-action="retry">Try again</button>`;
+      this.shadowRoot.innerHTML = `${styles}<div class="fs-calendar"><div class="empty"><strong>Calendar could not be opened</strong><p>${escapeHtml(this.error)}</p><div class="empty-actions" style="display:flex;align-items:center;justify-content:center;gap:8px;margin-top:17px">${action}</div></div></div>`;
       return;
     }
     const computed = this.computed();
@@ -1238,7 +1263,7 @@ class FilmScriptCalendar extends HTMLElement {
     const content = this.view === "timeline" ? this.renderTimeline(computed) : this.renderOverview(computed);
     const shouldAnimate = this._animateView;
     this.shadowRoot.innerHTML = `${styles}<div class="fs-calendar">
-      <div class="calendar-nav"><div class="tabs" role="tablist" aria-label="Calendar views">${tabs}</div><div class="calendar-actions"><span aria-live="polite">${escapeHtml(this.saveStatus)}</span><button type="button" class="primary" data-action="add-task">Add task</button></div></div>
+      <div class="calendar-nav"><div class="tabs" role="tablist" aria-label="Calendar views">${tabs}</div><div class="calendar-actions"><span aria-live="polite">${escapeHtml(this.saveStatus)}</span>${this.view === "timeline" ? "" : '<button type="button" class="primary" data-action="add-task">Add task</button>'}</div></div>
       ${this.error ? `<div class="notice">${escapeHtml(this.error)}</div>` : ""}
       ${content}
       ${this.renderTaskModal(computed)}

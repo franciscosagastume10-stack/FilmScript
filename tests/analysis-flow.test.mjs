@@ -143,7 +143,7 @@ test("account Analysis persists feedback, stays owner-scoped, and exports the cu
       PUBLIC_APP_URL: url,
       CORS_ORIGINS: url,
       FILMSCRIPT_DATA_DIR: dataDir,
-      ANTHROPIC_API_KEY: "test-key",
+      OPENROUTER_API_KEY: "test-key",
       PDF_PYTHON: runtimePython,
     },
     stdio: ["ignore", "pipe", "pipe"],

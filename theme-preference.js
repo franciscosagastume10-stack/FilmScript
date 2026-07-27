@@ -1,6 +1,39 @@
 // Shared, persistent FilmScript color-theme preference.
 (() => {
   const STORAGE_KEY = 'filmscript_theme';
+  const THEME_SURFACES = 'film-script-canvas, filmscript-budget, filmscript-calendar';
+  let surfaceTransitionActive = false;
+  let surfaceTransitionTimer = 0;
+
+  // These workspaces render inside open Shadow DOM roots, so the document
+  // transition selector cannot reach their cards, tracks and controls. Mirror
+  // the short-lived transition classes onto each surface host as well.
+  const syncThemeSurfaces = () => {
+    document.querySelectorAll(THEME_SURFACES).forEach((surface) => {
+      surface.classList.toggle('filmscript-theme-transition', surfaceTransitionActive);
+      surface.classList.toggle('filmscript-theme-fading', surfaceTransitionActive);
+    });
+  };
+
+  const beginSurfaceTransition = () => {
+    surfaceTransitionActive = true;
+    syncThemeSurfaces();
+    window.requestAnimationFrame(() => window.setTimeout(() => {
+      document.querySelectorAll(THEME_SURFACES).forEach((surface) => surface.classList.remove('filmscript-theme-fading'));
+    }, 26));
+    window.clearTimeout(surfaceTransitionTimer);
+    surfaceTransitionTimer = window.setTimeout(() => {
+      surfaceTransitionActive = false;
+      syncThemeSurfaces();
+    }, 290);
+  };
+
+  // A theme toggle can cause the editor shell to replace a workspace host.
+  // Re-apply the classes to a newly mounted host while the fade is active.
+  const surfaceObserver = new MutationObserver(() => {
+    if (surfaceTransitionActive) syncThemeSurfaces();
+  });
+  surfaceObserver.observe(document.documentElement, { childList: true, subtree: true });
 
   const normalize = (value) => value === 'dark' ? 'dark' : 'light';
 
@@ -33,6 +66,7 @@
     const next = normalize(theme);
     if (animate) {
       installTransitionStyles();
+      beginSurfaceTransition();
       document.documentElement.classList.add('filmscript-theme-transition', 'filmscript-theme-fading');
       requestAnimationFrame(() => window.setTimeout(() => document.documentElement.classList.remove('filmscript-theme-fading'), 24));
       window.setTimeout(() => document.documentElement.classList.remove('filmscript-theme-transition'), 260);

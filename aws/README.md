@@ -37,7 +37,7 @@ RDS PostgreSQL.
 
 ```json
 {
-  "ANTHROPIC_API_KEY": "...",
+  "OPENROUTER_API_KEY": "...",
   "GOOGLE_CLIENT_ID": "...apps.googleusercontent.com",
   "GOOGLE_CLIENT_SECRET": "...",
   "RECURRENTE_SECRET_KEY": "...",

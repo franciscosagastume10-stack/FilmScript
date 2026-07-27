@@ -1,7 +1,17 @@
 (() => {
   const resolve = (path) => window.filmscriptApiUrl ? window.filmscriptApiUrl(path) : path;
   const request = async (path, options = {}) => {
-    const response = await fetch(resolve(path), { credentials: "include", ...options });
+    let response;
+    try {
+      response = await fetch(resolve(path), { credentials: "include", ...options });
+    } catch (cause) {
+      const error = new Error(window.location?.protocol === "file:"
+        ? "Calendar needs the FilmScript local server. Open the app through http://localhost:4173 or start the local server, then try again."
+        : "FilmScript could not reach the Calendar service. Check the connection and try again.");
+      error.code = "calendar_network_error";
+      error.cause = cause;
+      throw error;
+    }
     const data = await response.json().catch(() => ({}));
     if (!response.ok) {
       const error = new Error(data.message || data.error || `Calendar error ${response.status}`);

@@ -40,7 +40,7 @@ async function startServer(dataDir) {
       PUBLIC_APP_URL: url,
       CORS_ORIGINS: url,
       FILMSCRIPT_DATA_DIR: dataDir,
-      ANTHROPIC_API_KEY: "test-key",
+      OPENROUTER_API_KEY: "test-key",
       PDF_PYTHON: pdfPython,
     },
     stdio: ["ignore", "pipe", "pipe"],
