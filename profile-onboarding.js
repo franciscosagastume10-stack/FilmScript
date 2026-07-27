@@ -17,7 +17,11 @@
   const safeSession = (action, fallback = null) => {
     try { return action(window.sessionStorage); } catch { return fallback; }
   };
+  const safeLocal = (action, fallback = null) => {
+    try { return action(window.localStorage); } catch { return fallback; }
+  };
   const sessionKey = (prefix, id) => `filmscript_${prefix}_${id || 'account'}`;
+  const profileCompleteKey = (id) => sessionKey('profile_completed', id);
   const accountName = () => state.account?.name || state.account?.email?.split('@')[0] || 'filmmaker';
 
   const addStyles = () => {
@@ -106,7 +110,8 @@
   const showProfile = (force = false) => {
     if (!state.account || state.overlay) return;
     const profile = state.account.profile || {};
-    if (!force && profile.completed) return;
+    const completedLocally = Boolean(safeLocal((storage) => storage.getItem(profileCompleteKey(state.account.id)), null));
+    if (!force && (profile.completed || completedLocally)) return;
     if (!force && safeSession((storage) => storage.getItem(sessionKey('profile_skipped', state.account.id)), null)) return;
     addStyles();
     const overlay = document.createElement('div');
@@ -174,6 +179,11 @@
         const name = savedName.length >= 2 && savedName.length <= 80 ? savedName : 'FilmScript Writer';
         const account = await window.filmscriptBilling.updateProfile({ name, gender: gender.value, birthDate: birthDate.value });
         state.account = account;
+        // The profile endpoint was added after some API releases. Persist the
+        // completed optional prompt on this device too, so an older response
+        // that does not yet echo profile fields never asks the same person
+        // again after a successful save.
+        safeLocal((storage) => storage.setItem(profileCompleteKey(state.account.id), '1'));
         safeSession((storage) => storage.removeItem(sessionKey('profile_skipped', state.account.id)));
         removeOverlay();
         window.dispatchEvent(new CustomEvent('filmscript:profile-updated', { detail: account }));
@@ -193,6 +203,7 @@
       const account = await window.filmscriptBilling?.me?.();
       if (!account?.authenticated) return;
       state.account = account;
+      if (account.profile?.completed) safeLocal((storage) => storage.setItem(profileCompleteKey(account.id), '1'));
       showProfile(false);
       if (account.profile?.completed) showBirthdayGreeting();
     } catch { /* The page's own auth guard handles account failures. */ }
