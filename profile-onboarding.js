@@ -164,7 +164,15 @@
       state.busy = true;
       form.querySelector('[type="submit"]').disabled = true;
       try {
-        const account = await window.filmscriptBilling.updateProfile({ gender: gender.value, birthDate: birthDate.value });
+        // Some already-deployed API versions still validate `name` whenever a
+        // profile is saved. This sheet deliberately has no name field, so use
+        // the Google account name we already have instead of ever submitting a
+        // blank value (which made a completed optional profile look broken).
+        const savedName = String(state.account?.name || state.account?.email?.split('@')[0] || 'FilmScript Writer')
+          .replace(/\s+/g, ' ')
+          .trim();
+        const name = savedName.length >= 2 && savedName.length <= 80 ? savedName : 'FilmScript Writer';
+        const account = await window.filmscriptBilling.updateProfile({ name, gender: gender.value, birthDate: birthDate.value });
         state.account = account;
         safeSession((storage) => storage.removeItem(sessionKey('profile_skipped', state.account.id)));
         removeOverlay();
