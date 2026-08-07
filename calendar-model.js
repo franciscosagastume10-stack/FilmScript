@@ -159,7 +159,7 @@ function createCalendarTemplate(projectTitle = "Untitled screenplay", referenceD
     templateTask("cal_equipment_check", "Equipment check", "preproduction", 3, ["cal_tech_scout", "cal_camera_tests"], "Camera / Grip"),
     templateTask("cal_final_meeting", "Final production meeting", "preproduction", 1, ["cal_art_build", "cal_wardrobe", "cal_makeup_tests", "cal_rehearsals", "cal_equipment_check"], "Producer"),
 
-    templateTask("cal_principal_photography", "Principal photography", "production", 3, ["cal_final_meeting"], "Production", { kind: "shoot" }),
+  templateTask("cal_principal_photography", "Main shoot", "production", 3, ["cal_final_meeting"], "Production", { kind: "shoot" }),
 
     templateTask("cal_media_sync", "Media offload, proxies and sound sync", "postproduction", 3, ["cal_principal_photography"], "Editorial"),
     templateTask("cal_production_close", "Production expense close", "postproduction", 6, ["cal_principal_photography"], "Production"),

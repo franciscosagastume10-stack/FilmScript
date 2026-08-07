@@ -145,7 +145,7 @@ test("Google account checkout activates and cancels the matching Recurrente subs
       PUBLIC_APP_URL: appUrl,
       CORS_ORIGINS: appUrl,
       FILMSCRIPT_DATA_DIR: dataDir,
-      ANTHROPIC_API_KEY: "test-key",
+      OPENROUTER_API_KEY: "test-key",
       RECURRENTE_API_URL: `http://127.0.0.1:${recurrentePort}/api`,
       RECURRENTE_SECRET_KEY: "sk_test_integration",
       RECURRENTE_LUMIERE_PRODUCT_ID: PRODUCT_ID,

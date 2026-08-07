@@ -60,3 +60,18 @@ test("Calendar exposes critical-path planning, protected Sundays and accessible 
   assert.match(language, /'Calendar': 'Calendario'/);
   assert.match(language, /'Critical path': 'Ruta crítica'/);
 });
+
+test("Calendar recovers from deferred DC hydration and gives auth failures a next step", async () => {
+  const [workspace, client, server] = await Promise.all([
+    fs.readFile(path.join(ROOT, "calendar-workspace.js"), "utf8"),
+    fs.readFile(path.join(ROOT, "calendar-client.js"), "utf8"),
+    fs.readFile(path.join(ROOT, "server.js"), "utf8"),
+  ]);
+
+  assert.match(workspace, /name === "script-id" && newValue && oldValue !== newValue && this\.isConnected/);
+  assert.match(workspace, /data-action="sign-in"/);
+  assert.match(workspace, /googleSignInUrl/);
+  assert.match(client, /calendar_network_error/);
+  assert.match(server, /origin === "null"/);
+  assert.match(server, /localFilePreview/);
+});

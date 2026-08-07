@@ -13,8 +13,8 @@
 <script src="./language-preference.js?v=20260716-language-choice1"></script>
 <script src="./ui-sounds.js?v=20260713-profile-option1"></script>
 <script src="./billing-client.js?v=20260716-profile-safe1"></script>
-<script src="./profile-onboarding.js?v=20260716-profile1"></script>
-<script src="./lumiere-client.js?v=20260713-language1"></script>
+<script src="./profile-onboarding.js?v=20260727-profile3"></script>
+<script src="./lumiere-client.js?v=20260720-openrouter1"></script>
 <script src="./lumiere-preferences.js?v=20260713-taste1"></script>
 <script src="./pdf-import.js"></script>
 <script src="./scripts-client.js?v=20260710-auth1"></script>
@@ -1545,7 +1545,7 @@ ${history}
 
 Write Lumiere's next reply only:`;
     try {
-      const reply = await window.claude.complete({ messages: [{ role: 'user', content: prompt }] });
+      const reply = await window.lumiere.complete({ messages: [{ role: 'user', content: prompt }], surface: 'app-chat' });
       this.setState(s => ({ chat: [...s.chat, { who: 'l', text: (reply || '').trim() || '…' }], loading: false }), () => { this._scrollChat(); this._queueChatSave(this.state.chat); });
     } catch (e) {
       this.setState(s => ({ chat: [...s.chat, { who: 'l', text: 'I lost the connection to the projection room for a moment. Ask me again?' }], loading: false }), () => { this._scrollChat(); this._queueChatSave(this.state.chat); });

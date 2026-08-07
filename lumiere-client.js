@@ -1,5 +1,5 @@
-// Lumiere connection: routes window.claude.complete through the local proxy,
-// which calls the Claude API (Haiku) with the key kept server side.
+// Lumiere connection: every browser-side Lumiere action uses this one safe
+// proxy. The OpenRouter credential never leaves the FilmScript server.
 (() => {
   const resolve = (path) => window.filmscriptApiUrl ? window.filmscriptApiUrl(path) : path;
   const interfaceLanguage = () => {
@@ -7,14 +7,14 @@
     if (language === 'es' || language === 'en') return language;
     try { return localStorage.getItem('filmscript_language') === 'es' ? 'es' : 'en'; } catch { return 'en'; }
   };
-  if (!window.claude) window.claude = {};
-  if (window.claude.complete) return;
-  window.claude.complete = async ({ messages, maxTokens }) => {
+  const lumiere = window.lumiere || {};
+  window.lumiere = lumiere;
+  lumiere.complete = async ({ messages, maxTokens, surface = 'workspace' } = {}) => {
     const res = await fetch(resolve("/api/lumiere"), {
       method: "POST",
       credentials: "include",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ messages, maxTokens, language: interfaceLanguage() }),
+      body: JSON.stringify({ messages, maxTokens, surface, language: interfaceLanguage() }),
     });
     if (!res.ok) {
       const data = await res.json().catch(() => ({}));

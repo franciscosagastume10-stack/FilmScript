@@ -1,6 +1,7 @@
 (function () {
   const STYLE = `
     :host{--fs-font-text:"SF Pro Text",-apple-system,BlinkMacSystemFont,"Helvetica Neue",Arial,sans-serif;--fs-font-display:"SF Pro Display","SF Pro Text",-apple-system,BlinkMacSystemFont,"Helvetica Neue",Arial,sans-serif}
+    :host(.filmscript-theme-transition),:host(.filmscript-theme-transition) *{transition-property:color,background-color,border-color,box-shadow,opacity,fill,stroke,outline-color!important;transition-duration:240ms!important;transition-timing-function:cubic-bezier(.22,.7,.25,1)!important}:host(.filmscript-theme-fading){opacity:.72}@media(prefers-reduced-motion:reduce){:host(.filmscript-theme-transition),:host(.filmscript-theme-transition) *{transition-duration:.01ms!important}:host(.filmscript-theme-fading){opacity:1!important}}
     :host,:host *{font-family:var(--fs-font-text)!important}
     :host h1,:host h2,:host h3,:host h4,:host h5,:host h6{font-family:var(--fs-font-display)!important}:host h1,:host h2{font-weight:900!important}:host h3{font-weight:800!important}
     :host{display:block;min-height:560px;color:var(--ink,#2C2C2A);font-family:'Helvetica Neue',Helvetica,Arial,sans-serif;--cv-accent:var(--accent,#BA7517);--cv-accent-soft:var(--accent-soft,rgba(186,117,23,.11));--cv-bg:var(--bg,#F5F0E8);--cv-surface:var(--surface,#FFFEF9);--cv-ink:var(--ink,#2C2C2A);--cv-muted:var(--muted,#888780);--cv-hair:var(--hair,#E7E4DA);--cv-soft:var(--soft,#EFEBE1)}

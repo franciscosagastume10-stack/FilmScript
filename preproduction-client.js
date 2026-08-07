@@ -18,7 +18,16 @@
   const interfaceLanguage = () => window.filmscriptLanguage?.get?.() === 'es' ? 'es' : 'en';
   window.filmscriptPreproduction = {
     get: (scriptId) => request(`/api/scripts/${encodeURIComponent(scriptId)}/preproduction`),
-    analyze: (scriptId) => request(`/api/scripts/${encodeURIComponent(scriptId)}/preproduction`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ language: interfaceLanguage() }) }),
+    analyze: (scriptId, options = {}) => request(`/api/scripts/${encodeURIComponent(scriptId)}/preproduction`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ language: interfaceLanguage(), ...(options?.includeManual === true ? { includeManual: true } : {}) }),
+    }),
+    createManualBreakdown: (scriptId) => request(`/api/scripts/${encodeURIComponent(scriptId)}/preproduction/manual-breakdown`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: '{}',
+    }),
     saveScene: (scriptId, sceneId, changes) => request(`/api/scripts/${encodeURIComponent(scriptId)}/preproduction/scenes/${encodeURIComponent(sceneId)}`, {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
