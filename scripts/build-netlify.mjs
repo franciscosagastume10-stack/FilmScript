@@ -42,6 +42,7 @@ const frontendFiles = [
   "calendar-workspace.js",
   "auth-modal.css",
   "filmscript-controls.css",
+  "filmscript-landing.css",
 ];
 
 fs.rmSync(output, { recursive: true, force: true });

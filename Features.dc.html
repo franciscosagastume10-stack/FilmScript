@@ -3,6 +3,8 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="description" content="FilmScript connects screenwriting, visual planning, analysis, breakdowns, schedules, shot lists, budgets and calendars in one filmmaking workspace.">
+<title>FilmScript — Write it. See it. Make it.</title>
 <script src="./support.js"></script>
 <script src="./runtime-config.js?v=20260710-auth1"></script>
 <script src="./funnel-tracking.js?v=20260716-erp1"></script>
@@ -14,6 +16,7 @@
 <script src="./lumiere-preferences.js?v=20260713-taste1"></script>
 <link rel="stylesheet" href="./auth-modal.css?v=20260713-login1">
 <link rel="stylesheet" href="./filmscript-controls.css?v=20260716-typography1">
+<link rel="stylesheet" href="./filmscript-landing.css?v=20260807-home1">
 </head>
 <body>
 <x-dc>
@@ -87,21 +90,21 @@
 </style>
 </helmet>
 
-<div style="--accent: {{ accent }}; --accent-hover: {{ accentHover }}; --bg: {{ bg }}; --chrome: {{ chrome }}; --surface: {{ surface }}; --ink: {{ ink }}; --muted: {{ muted }}; --line: {{ line }}; --soft: {{ soft }}; height: 100vh; width: 100%; position: relative; display: flex; flex-direction: column; background: var(--bg, #F5F0E8); color: var(--ink, #2C2C2A); overflow: hidden; font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;">
+<div class="fs-site-shell" style="--accent: {{ accent }}; --accent-hover: {{ accentHover }}; --bg: {{ bg }}; --chrome: {{ chrome }}; --surface: {{ surface }}; --ink: {{ ink }}; --muted: {{ muted }}; --line: {{ line }}; --soft: {{ soft }}; height: 100vh; height: 100dvh; width: 100%; position: relative; display: flex; flex-direction: column; background: var(--bg, #F5F0E8); color: var(--ink, #2C2C2A); overflow: hidden;">
 
   <!-- hand-drawn sketch filter: wobbles the edges of any bordered element -->
   <svg width="0" height="0" style="position: absolute;"><defs><filter id="fs-sketch" x="-6%" y="-22%" width="112%" height="144%"><feTurbulence type="fractalNoise" baseFrequency="0.014" numOctaves="2" seed="7" result="n"></feTurbulence><feDisplacementMap in="SourceGraphic" in2="n" scale="2.6" xChannelSelector="R" yChannelSelector="G"></feDisplacementMap></filter></defs></svg>
 
   <!-- ============ TOPBAR ============ -->
-  <div style="height: 44px; flex: 0 0 44px; background: var(--chrome, #2C2C2A); display: flex; align-items: center; padding: 0 16px; gap: 16px; user-select: none;">
+  <div class="fs-topbar" style="height: 44px; flex: 0 0 44px; background: var(--chrome, #2C2C2A); display: flex; align-items: center; padding: 0 16px; gap: 16px; user-select: none;">
     <div class="fs-brand-mark" data-filmscript-brand onClick="{{ goScripts }}" role="link" aria-label="FilmScript, go to scripts"><span class="fs-brand-word">FilmScript</span></div>
 
-    <div style="flex: 1; display: flex; justify-content: center; gap: 8px;">
+    <div class="fs-topnav" style="flex: 1; display: flex; justify-content: center; gap: 8px;">
       <div onClick="{{ navFeatures }}" style="font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; font-size: 13px; font-weight: 500; line-height: 1; padding: 6px 14px; border-radius: 8px; cursor: pointer; color: #FFFEF9; background: rgba(255,255,255,.12);">Features</div>
       <div onClick="{{ navPricing }}" class="fs-navlink" style="font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; font-size: 13px; font-weight: 500; line-height: 1; padding: 6px 14px; border-radius: 8px; cursor: pointer; color: #b9b8b2; background: transparent;">Pricing</div>
     </div>
 
-    <div style="display: flex; align-items: center; gap: 8px;">
+    <div class="fs-top-actions" style="display: flex; align-items: center; gap: 8px;">
       <div onClick="{{ toggleDark }}" title="Theme" class="fsx-bright" style="cursor: pointer; padding: 6px; color: #b9b8b2; display: flex; align-items: center;">
         <sc-if value="{{ darkMode }}" hint-placeholder-val="{{ false }}">
           <svg viewBox="0 0 20 20" style="width: 18px; height: 18px;" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><circle cx="10" cy="10" r="3.1"></circle><path d="M10 3.4 V5 M10 15 V16.6 M3.4 10 H5 M15 10 H16.6 M5.5 5.5 L6.6 6.6 M13.4 13.4 L14.5 14.5 M14.5 5.5 L13.4 6.6 M6.6 13.4 L5.5 14.5"></path></svg>
@@ -147,130 +150,249 @@
 
     <!-- ============ FEATURES (MAIN) ============ -->
   <sc-if value="{{ isLanding }}" hint-placeholder-val="{{ true }}">
-  <div ref="{{ landingScrollRef }}" style="flex: 1; min-height: 0; overflow-y: auto;">
+  <div ref="{{ landingScrollRef }}" class="fs-home-scroll" style="flex: 1; min-height: 0; overflow-y: auto;">
+    <main class="fs-home">
+      <header class="fs-home-hero">
+        <div class="fs-home-eyebrow" style="animation: fs-rise .55s ease both;">From first page to final delivery</div>
+        <h1 class="fs-home-title" style="animation: fs-rise .55s ease both .05s;">Write it. See it. Make it.</h1>
+        <p class="fs-home-lede" style="animation: fs-rise .55s ease both .1s;">FilmScript connects every stage of production to the same screenplay—from writing and visual planning to breakdowns, budgets and the final delivery calendar.</p>
+        <div class="fs-cta-row" style="display: flex; gap: 16px; align-items: center; justify-content: center; animation: fs-rise .55s ease both .16s;">
+          <button type="button" data-testid="landing-primary-hero" onClick="{{ goScripts }}" class="fs-double-outline fs-outline-control fs-outline-control--primary" style="min-width: 154px; min-height: 50px;"><span style="font-size: 15px; font-weight: 600;">{{ landingPrimaryLabel }}</span></button>
+          <button type="button" onClick="{{ navPricing }}" class="fs-double-outline fs-outline-control fs-outline-control--secondary" style="min-width: 142px; min-height: 50px;"><span style="font-size: 15px; font-weight: 500;">See pricing</span><span class="fs-control-arrow" aria-hidden="true">›</span></button>
+        </div>
+        <button type="button" data-testid="landing-plan-cta" onClick="{{ openCheckoutLumiere }}" class="fs-hero-plan-cta" style="margin-top: 18px; animation: fs-rise .55s ease both .22s;">Start writing with FilmScript Pro · $19.99/month</button>
+      </header>
 
-    <!-- HERO -->
-    <div style="max-width: 980px; margin: 0 auto; padding: 96px 40px 0; text-align: center;">
-      <h1 class="fs-hero-title" style="font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; font-weight: 700; font-size: 64px; line-height: 1.05; letter-spacing: -2px; color: var(--ink, #2C2C2A); margin: 0; animation: fs-rise .55s ease both;">Write the script. FilmScript handles the rest.</h1>
-      <p style="font-size: 20px; line-height: 1.5; color: var(--muted, #888780); max-width: 600px; margin: 24px auto 0; animation: fs-rise .55s ease both .08s;">A professional screenplay editor with an AI companion named Lumiere. Write your pages, then turn them into breakdowns, stripboards and shot lists. All text, all yours.</p>
-      <div class="fs-cta-row" style="display: flex; gap: 16px; margin-top: 34px; align-items: center; justify-content: center; animation: fs-rise .55s ease both .16s;">
-        <button type="button" data-testid="landing-primary-hero" onClick="{{ goScripts }}" class="fs-double-outline fs-outline-control fs-outline-control--primary" style="min-width: 154px; min-height: 50px;"><span style="font-size: 15px; font-weight: 600;">{{ landingPrimaryLabel }}</span></button>
-        <button type="button" onClick="{{ navPricing }}" class="fs-double-outline fs-outline-control fs-outline-control--secondary" style="min-width: 142px; min-height: 50px;"><span style="font-size: 15px; font-weight: 500;">See pricing</span><span class="fs-control-arrow" aria-hidden="true">›</span></button>
-      </div>
-      <button type="button" data-testid="landing-plan-cta" onClick="{{ openCheckoutLumiere }}" class="fs-hero-plan-cta" style="margin-top: 18px; animation: fs-rise .55s ease both .22s;">Start writing with FilmScript Pro · $19.99/month</button>
-    </div>
-
-    <!-- HERO PAGE MOCK -->
-    <div style="max-width: 560px; margin: 56px auto 0; position: relative; padding: 0 40px; animation: fs-rise .6s ease both .26s;">
-      <svg viewBox="0 0 480 300" style="width: 100%; height: auto; display: block;">
-        <path d="{{ heroFramePath }}" style="fill: var(--surface, #FFFEF9); stroke: var(--line, #2C2C2A);" stroke-width="1.6" stroke-linejoin="round" stroke-linecap="round"></path>
-        <sc-for list="{{ heroLines }}" as="ln" hint-placeholder-count="10">
-          <rect x="{{ ln.x }}" y="{{ ln.y }}" width="{{ ln.w }}" height="4" rx="1.5" style="fill: var(--ink, #2C2C2A);" opacity="{{ ln.o }}"></rect>
-        </sc-for>
-      </svg>
-      <div style="position: absolute; right: 6px; bottom: 22px; background: var(--chrome, #2C2C2A); color: #FFFEF9; border-radius: 13px; padding: 12px 15px; max-width: 196px; filter: url(#fs-sketch); animation: fs-pop .45s cubic-bezier(.2,.8,.3,1.1) both .55s;">
-        <div style="font-size: 12px; font-weight: 700; color: var(--accent-hover, #EF9F27); line-height: 1;">Lumiere</div>
-        <div style="font-size: 12px; line-height: 1.45; margin-top: 6px; color: #e6e4dc;">"This line leans on a cliché. Want a sharper image?"</div>
-      </div>
-    </div>
-
-    <!-- 01 WRITE -->
-    
-    <div style="max-width: 1040px; margin: 0 auto; padding: 110px 56px 0;">
-      <div style="display: grid; grid-template-columns: 1fr 1.05fr; gap: 64px; align-items: center;">
-        <div><div style="font-size: 12px; letter-spacing: 1.8px; text-transform: uppercase; color: var(--accent, #BA7517); font-weight: 600;">Step 01 · Write</div><h2 style="font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; font-weight: 700; font-size: 38px; letter-spacing: -1px; color: var(--ink, #2C2C2A); margin: 14px 0 0; line-height: 1.12; max-width: 440px;">A real Hollywood format editor.</h2><p style="font-size: 16.5px; line-height: 1.55; color: var(--muted, #888780); margin: 16px 0 0; max-width: 430px;">Scene headings, action, dialogue and transitions, all on industry standard margins. The page feels like paper and sounds like a typewriter.</p><div style="display: flex; flex-direction: column; gap: 12px; margin-top: 26px;"><div style="display: flex; gap: 10px; align-items: flex-start; font-size: 14px; line-height: 1.5; color: var(--ink, #2C2C2A);"><span style="color: var(--accent, #BA7517); flex: 0 0 auto;">{{ check }}</span><span>Format at one key. Tab cycles the block types, ⌘1 to ⌘6 jumps straight to one.</span></div><div style="display: flex; gap: 10px; align-items: flex-start; font-size: 14px; line-height: 1.5; color: var(--ink, #2C2C2A);"><span style="color: var(--accent, #BA7517); flex: 0 0 auto;">{{ check }}</span><span>Typewriter sound you can mute any time.</span></div><div style="display: flex; gap: 10px; align-items: flex-start; font-size: 14px; line-height: 1.5; color: var(--ink, #2C2C2A);"><span style="color: var(--accent, #BA7517); flex: 0 0 auto;">{{ check }}</span><span>Hand drawn pages, light and dark, WGA checked as you type.</span></div></div></div><div><div style="position: relative; padding: 26px 30px; border: 1.4px solid var(--line, #2C2C2A); border-radius: 18px; background: var(--surface, #FFFEF9); filter: url(#fs-sketch);"><div style="font-family: 'Courier Prime', monospace; font-size: 13px; line-height: 1.8; color: var(--ink, #2C2C2A);">
-            <div style="font-weight: 700;">INT. WRITING ROOM. DAY</div>
-            <div style="margin-top: 10px;">Start with a blank page. Shape the scene, then let FilmScript handle the format.</div>
-            <div style="text-align: center; font-weight: 700; margin-top: 10px;">ACTION</div>
-            <div style="text-align: center; font-style: italic; opacity: .7;">(your voice)</div>
-            <div style="max-width: 260px; margin: 0 auto;">Write the moment exactly as you see it.</div>
-            <div style="margin-top: 10px; display: inline-block; border-bottom: 2px solid var(--accent, #BA7517);">Your next line starts here.</div><span style="display: inline-block; width: 2px; height: 15px; background: var(--accent, #BA7517); vertical-align: text-bottom; margin-left: 2px; animation: fs-caret 1.1s step-end infinite;"></span>
-          </div></div></div>
-      </div>
-    </div>
-
-    <!-- 02 REFINE -->
-    
-    <div style="max-width: 1040px; margin: 0 auto; padding: 110px 56px 0;">
-      <div style="display: grid; grid-template-columns: 1fr 1.05fr; gap: 64px; align-items: center;">
-        <div><div style="position: relative; padding: 20px 22px; border: 1.4px solid var(--line, #2C2C2A); border-radius: 18px; background: var(--surface, #FFFEF9); filter: url(#fs-sketch);">
-          <div style="display: flex; align-items: center; gap: 9px;"><span style="width: 9px; height: 9px; border-radius: 50%; background: var(--accent-hover, #EF9F27);"></span><span style="font-size: 13px; font-weight: 700; color: var(--ink, #2C2C2A);">Lumiere</span><span style="font-size: 11px; color: var(--muted, #888780);">reading Scene 12</span></div>
-          <div style="display: flex; flex-direction: column; gap: 12px; margin-top: 16px;">
-            <div style="align-self: flex-start; max-width: 88%; border: 1.4px solid var(--line, #2C2C2A); border-radius: 16px 17px 16px 4px; padding: 10px 13px; font-size: 12.5px; line-height: 1.55; color: var(--ink, #2C2C2A); filter: url(#fs-sketch);">This line leans on a familiar image. What sharper detail could make the moment yours?</div>
-            <div style="align-self: flex-end; max-width: 80%; background: var(--bg, #F5F0E8); border: 1.4px solid var(--line, #2C2C2A); border-radius: 15px 15px 4px 16px; padding: 10px 13px; font-size: 12.5px; line-height: 1.5; color: var(--ink, #2C2C2A); filter: url(#fs-sketch);">Run a full analysis on act two. Where does the tension sag?</div>
-            <div style="align-self: flex-start; max-width: 88%; border: 1.4px solid var(--line, #2C2C2A); border-radius: 16px 17px 16px 4px; padding: 10px 13px; font-size: 12.5px; line-height: 1.55; color: var(--ink, #2C2C2A); filter: url(#fs-sketch);">Done. The report maps pacing, structure and repeated beats, with evidence from your pages.</div>
-          </div></div></div><div><div style="font-size: 12px; letter-spacing: 1.8px; text-transform: uppercase; color: var(--accent, #BA7517); font-weight: 600;">Step 02 · Refine</div><h2 style="font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; font-weight: 700; font-size: 38px; letter-spacing: -1px; color: var(--ink, #2C2C2A); margin: 14px 0 0; line-height: 1.12; max-width: 440px;">Lumiere reads. You decide.</h2><p style="font-size: 16.5px; line-height: 1.55; color: var(--muted, #888780); margin: 16px 0 0; max-width: 430px;">An AI companion that never writes a line for you. It reads like a great script editor and hands the pages back sharper.</p><div style="display: flex; flex-direction: column; gap: 12px; margin-top: 26px;"><div style="display: flex; gap: 10px; align-items: flex-start; font-size: 14px; line-height: 1.5; color: var(--ink, #2C2C2A);"><span style="color: var(--accent, #BA7517); flex: 0 0 auto;">{{ check }}</span><span>Cliché detector flags tired phrases the moment they land.</span></div><div style="display: flex; gap: 10px; align-items: flex-start; font-size: 14px; line-height: 1.5; color: var(--ink, #2C2C2A);"><span style="color: var(--accent, #BA7517); flex: 0 0 auto;">{{ check }}</span><span>Script analysis maps structure, pacing and character arcs into a readable report.</span></div><div style="display: flex; gap: 10px; align-items: flex-start; font-size: 14px; line-height: 1.5; color: var(--ink, #2C2C2A);"><span style="color: var(--accent, #BA7517); flex: 0 0 auto;">{{ check }}</span><span>Spotless spelling and grammar, without breaking your flow.</span></div></div></div>
-      </div>
-    </div>
-
-    <!-- 03 BREAK DOWN -->
-    
-    <div style="max-width: 1040px; margin: 0 auto; padding: 110px 56px 0;">
-      <div style="display: grid; grid-template-columns: 1fr 1.05fr; gap: 64px; align-items: center;">
-        <div><div style="font-size: 12px; letter-spacing: 1.8px; text-transform: uppercase; color: var(--accent, #BA7517); font-weight: 600;">Step 03 · Break down</div><h2 style="font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; font-weight: 700; font-size: 38px; letter-spacing: -1px; color: var(--ink, #2C2C2A); margin: 14px 0 0; line-height: 1.12; max-width: 440px;">One click turns a scene into a breakdown sheet.</h2><p style="font-size: 16.5px; line-height: 1.55; color: var(--muted, #888780); margin: 16px 0 0; max-width: 430px;">Lumiere reads every scene and tags the cast, props, wardrobe and sound it finds. You review, adjust, and export clean breakdown sheets ready for production.</p><div style="display: flex; flex-direction: column; gap: 12px; margin-top: 26px;"><div style="display: flex; gap: 10px; align-items: flex-start; font-size: 14px; line-height: 1.5; color: var(--ink, #2C2C2A);"><span style="color: var(--accent, #BA7517); flex: 0 0 auto;">{{ check }}</span><span>Elements tagged by category, scene by scene.</span></div><div style="display: flex; gap: 10px; align-items: flex-start; font-size: 14px; line-height: 1.5; color: var(--ink, #2C2C2A);"><span style="color: var(--accent, #BA7517); flex: 0 0 auto;">{{ check }}</span><span>A first pass drafted for you. Nothing is final until you approve it.</span></div><div style="display: flex; gap: 10px; align-items: flex-start; font-size: 14px; line-height: 1.5; color: var(--ink, #2C2C2A);"><span style="color: var(--accent, #BA7517); flex: 0 0 auto;">{{ check }}</span><span>Breakdown summaries and element lists as plain text documents.</span></div></div></div><div><div style="position: relative; padding: 24px 26px; border: 1.4px solid var(--line, #2C2C2A); border-radius: 18px; background: var(--surface, #FFFEF9); filter: url(#fs-sketch);">
-          <div style="font-family: 'Courier Prime', monospace; font-size: 13px; line-height: 1.75; color: var(--ink, #2C2C2A);">
-            <div style="font-weight: 700;">12 &nbsp;INT. WRITING ROOM. DAY</div>
-            <div style="margin-top: 10px;">Write a scene and tag its <span style="background: #BA751722; box-shadow: inset 0 -2px 0 #BA7517; border-radius: 3px; padding: 0 2px;">cast</span>, <span style="background: #5B7A4A22; box-shadow: inset 0 -2px 0 #5B7A4A; border-radius: 3px; padding: 0 2px;">props</span>, <span style="background: #5B7A4A22; box-shadow: inset 0 -2px 0 #5B7A4A; border-radius: 3px; padding: 0 2px;">wardrobe</span> and <span style="background: #8A5A8A22; box-shadow: inset 0 -2px 0 #8A5A8A; border-radius: 3px; padding: 0 2px;">sound</span>. FilmScript keeps every element ready for production.</div>
+      <section class="fs-hero-stage" aria-label="A screenplay connected to FilmScript production tools" style="animation: fs-rise .62s ease both .24s;">
+        <svg class="fs-hero-stage-frame" viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true"><path d="M2.2 5.8 C5.8 1.8 20 2.9 35 2.2 C54 1.2 77 3 95.6 2.4 C98.8 5.7 97.4 22 98.1 39 C98.8 60 97 79 98.5 94 C94.4 98.5 78 97 59 98 C38 99.2 17 96.8 3.1 98.2 C.7 92.8 2.1 75 1.6 59 C1.1 39 2.9 20 2.2 5.8 Z"></path></svg>
+        <div class="fs-hero-stage-content">
+          <div class="fs-hero-script">
+            <svg viewBox="0 0 520 286" role="img" aria-label="A screenplay page with a Lumiere note">
+              <path d="M36 17 C92 10 173 15 235 12 C300 9 370 15 426 13 C433 48 428 96 431 139 C434 186 429 230 432 266 C365 272 292 266 227 270 C163 273 95 266 37 271 C32 210 38 146 34 90 C32 61 36 37 36 17 Z" style="fill: var(--bg, #F5F0E8);" class="fs-svg-ink" stroke-width="1.45"></path>
+              <g class="fs-screenplay-svg">
+                <text x="70" y="53" class="fs-svg-text" font-size="13" font-weight="700">INT. ROOFTOP — NIGHT</text>
+                <text x="70" y="83" class="fs-svg-text" font-size="11.5">Mara crosses the empty roof.</text>
+                <text x="70" y="100" class="fs-svg-text" font-size="11.5">The city hums below her.</text>
+                <text x="204" y="137" class="fs-svg-text" font-size="11.5" font-weight="700">MARA</text>
+                <text x="177" y="159" class="fs-svg-text" font-size="10.5" font-style="italic">(under her breath)</text>
+                <text x="164" y="181" class="fs-svg-text" font-size="11.5">We only get one take.</text>
+                <text x="70" y="224" class="fs-svg-text" font-size="11.5">She raises the camera.</text>
+              </g>
+              <path d="M287 202 C322 195 364 200 401 197 C439 195 476 201 497 199 C501 215 497 239 499 258 C470 264 432 258 398 262 C360 265 322 258 288 262 C285 243 289 219 287 202 Z" style="fill: var(--chrome, #2C2C2A); stroke: var(--chrome, #2C2C2A);" stroke-width="1.2"></path>
+              <text x="306" y="223" fill="#EF9F27" font-size="11" font-weight="700">Lumiere</text>
+              <text x="306" y="242" fill="#FFFEF9" font-size="10.5">The image is clear.</text>
+              <text x="306" y="257" fill="#FFFEF9" font-size="10.5">What changes in this beat?</text>
+            </svg>
           </div>
-          <div style="height: 1px; background: var(--soft, #e4e2d8); margin: 18px 0 14px;"></div>
-          <div style="display: flex; flex-wrap: wrap; gap: 8px;">
-            <div style="display: flex; align-items: center; gap: 7px; font-size: 11.5px; font-weight: 600; color: var(--ink, #2C2C2A); border: 1.3px solid var(--line, #2C2C2A); border-radius: 999px; padding: 5px 11px; filter: url(#fs-sketch);"><span style="width: 8px; height: 8px; border-radius: 50%; background: #BA7517;"></span>Cast<span style="color: var(--muted, #888780); font-weight: 500;">1</span></div><div style="display: flex; align-items: center; gap: 7px; font-size: 11.5px; font-weight: 600; color: var(--ink, #2C2C2A); border: 1.3px solid var(--line, #2C2C2A); border-radius: 999px; padding: 5px 11px; filter: url(#fs-sketch);"><span style="width: 8px; height: 8px; border-radius: 50%; background: #5B7A4A;"></span>Props<span style="color: var(--muted, #888780); font-weight: 500;">2</span></div><div style="display: flex; align-items: center; gap: 7px; font-size: 11.5px; font-weight: 600; color: var(--ink, #2C2C2A); border: 1.3px solid var(--line, #2C2C2A); border-radius: 999px; padding: 5px 11px; filter: url(#fs-sketch);"><span style="width: 8px; height: 8px; border-radius: 50%; background: #4A6B8A;"></span>Wardrobe<span style="color: var(--muted, #888780); font-weight: 500;">1</span></div><div style="display: flex; align-items: center; gap: 7px; font-size: 11.5px; font-weight: 600; color: var(--ink, #2C2C2A); border: 1.3px solid var(--line, #2C2C2A); border-radius: 999px; padding: 5px 11px; filter: url(#fs-sketch);"><span style="width: 8px; height: 8px; border-radius: 50%; background: #8A5A8A;"></span>Sound<span style="color: var(--muted, #888780); font-weight: 500;">2</span></div>
-          </div></div></div>
-      </div>
-    </div>
+          <div class="fs-hero-modules" aria-label="Connected FilmScript modules">
+            <div class="fs-hero-module"><span class="fs-hero-module-icon"><svg viewBox="0 0 28 28" fill="none" stroke="currentColor" stroke-width="1.35" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 20 C8 12 12 17 16 9 C18 6 21 8 24 4"></path><circle cx="8" cy="9" r="2.2"></circle><path d="M4 24 C10 22 17 25 24 22"></path></svg></span><span><strong>Imagine</strong><small>Boards, references and visual direction</small></span><span class="fs-hero-module-status"></span></div>
+            <div class="fs-hero-module"><span class="fs-hero-module-icon"><svg viewBox="0 0 28 28" fill="none" stroke="currentColor" stroke-width="1.35" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 7 C9 5 19 6 24 5 L23 23 C17 25 10 22 4 24 Z"></path><path d="M4 11 L23 10 M10 6 L10 23 M17 6 L17 23"></path></svg></span><span><strong>Calendar</strong><small>Milestones, dependencies and delivery</small></span><span class="fs-hero-module-status"></span></div>
+            <div class="fs-hero-module"><span class="fs-hero-module-icon"><svg viewBox="0 0 28 28" fill="none" stroke="currentColor" stroke-width="1.35" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="14" cy="14" r="9"></circle><path d="M14 5 L14 14 L21 19 M7 21 C10 18 12 16 14 14"></path></svg></span><span><strong>Budget</strong><small>Plan, actuals and cash flow</small></span><span class="fs-hero-module-status"></span></div>
+          </div>
+        </div>
+      </section>
 
-    <!-- 04 SCHEDULE -->
-    
-    <div style="max-width: 1040px; margin: 0 auto; padding: 110px 56px 0;">
-      <div style="display: grid; grid-template-columns: 1fr 1.05fr; gap: 64px; align-items: center;">
-        <div><div style="position: relative; padding: 22px; border: 1.4px solid var(--line, #2C2C2A); border-radius: 18px; background: var(--surface, #FFFEF9); filter: url(#fs-sketch);">
-          <div style="display: flex; flex-direction: column; gap: 8px;">
-            <div style="display: flex; align-items: center; gap: 12px; background: #F5E9BC; border: 1.3px solid var(--line, #2C2C2A); border-radius: 8px; padding: 9px 14px; font-size: 12px; color: #2C2C2A; filter: url(#fs-sketch);"><span style="font-weight: 700; min-width: 20px;">12</span><span style="font-weight: 600; min-width: 30px;">INT</span><span style="flex: 1;">WRITING ROOM</span><span style="min-width: 44px; opacity: .75;">DAY</span><span style="min-width: 40px; text-align: right; font-variant-numeric: tabular-nums;">2 3/8</span></div>
-            <div style="display: flex; align-items: center; gap: 12px; background: #DCE8C4; border: 1.3px solid var(--line, #2C2C2A); border-radius: 8px; padding: 9px 14px; font-size: 12px; color: #2C2C2A; filter: url(#fs-sketch);"><span style="font-weight: 700; min-width: 20px;">4</span><span style="font-weight: 600; min-width: 30px;">EXT</span><span style="flex: 1;">HALLWAY</span><span style="min-width: 44px; opacity: .75;">DAY</span><span style="min-width: 40px; text-align: right; font-variant-numeric: tabular-nums;">1 1/8</span></div>
-            <div style="display: flex; align-items: center; gap: 12px; background: #CFE0EE; border: 1.3px solid var(--line, #2C2C2A); border-radius: 8px; padding: 9px 14px; font-size: 12px; color: #2C2C2A; filter: url(#fs-sketch);"><span style="font-weight: 700; min-width: 20px;">27</span><span style="font-weight: 600; min-width: 30px;">INT</span><span style="flex: 1;">BEDROOM</span><span style="min-width: 44px; opacity: .75;">NIGHT</span><span style="min-width: 40px; text-align: right; font-variant-numeric: tabular-nums;">5/8</span></div>
-            <div style="display: flex; align-items: center; justify-content: space-between; background: var(--chrome, #2C2C2A); color: #FFFEF9; border-radius: 8px; padding: 8px 14px; font-size: 11px; font-weight: 600; letter-spacing: 1.2px;"><span>END OF DAY 1</span><span style="font-weight: 500; letter-spacing: 0; opacity: .8;">4 1/8 pages</span></div>
-            <div style="display: flex; align-items: center; gap: 12px; background: #D9D2E8; border: 1.3px solid var(--line, #2C2C2A); border-radius: 8px; padding: 9px 14px; font-size: 12px; color: #2C2C2A; filter: url(#fs-sketch);"><span style="font-weight: 700; min-width: 20px;">31</span><span style="font-weight: 600; min-width: 30px;">EXT</span><span style="flex: 1;">STORAGE ROOM</span><span style="min-width: 44px; opacity: .75;">NIGHT</span><span style="min-width: 40px; text-align: right; font-variant-numeric: tabular-nums;">1 4/8</span></div>
-            <div style="display: flex; align-items: center; gap: 12px; background: #CFE0EE; border: 1.3px solid var(--line, #2C2C2A); border-radius: 8px; padding: 9px 14px; font-size: 12px; color: #2C2C2A; filter: url(#fs-sketch);"><span style="font-weight: 700; min-width: 20px;">8</span><span style="font-weight: 600; min-width: 30px;">INT</span><span style="flex: 1;">OFFICE</span><span style="min-width: 44px; opacity: .75;">NIGHT</span><span style="min-width: 40px; text-align: right; font-variant-numeric: tabular-nums;">2 2/8</span></div>
-          </div></div></div><div><div style="font-size: 12px; letter-spacing: 1.8px; text-transform: uppercase; color: var(--accent, #BA7517); font-weight: 600;">Step 04 · Schedule</div><h2 style="font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; font-weight: 700; font-size: 38px; letter-spacing: -1px; color: var(--ink, #2C2C2A); margin: 14px 0 0; line-height: 1.12; max-width: 440px;">Every scene becomes a strip. Drag them into days.</h2><p style="font-size: 16.5px; line-height: 1.55; color: var(--muted, #888780); margin: 16px 0 0; max-width: 430px;">The classic stripboard, kept simple. Strips carry scene number, set, time of day and page count. Move one and the day breaks recalculate.</p><div style="display: flex; flex-direction: column; gap: 12px; margin-top: 26px;"><div style="display: flex; gap: 10px; align-items: flex-start; font-size: 14px; line-height: 1.5; color: var(--ink, #2C2C2A);"><span style="color: var(--accent, #BA7517); flex: 0 0 auto;">{{ check }}</span><span>Colors follow the old convention: day, night, interior, exterior.</span></div><div style="display: flex; gap: 10px; align-items: flex-start; font-size: 14px; line-height: 1.5; color: var(--ink, #2C2C2A);"><span style="color: var(--accent, #BA7517); flex: 0 0 auto;">{{ check }}</span><span>Day breaks total your pages so you never overplan a day.</span></div><div style="display: flex; gap: 10px; align-items: flex-start; font-size: 14px; line-height: 1.5; color: var(--ink, #2C2C2A);"><span style="color: var(--accent, #BA7517); flex: 0 0 auto;">{{ check }}</span><span>Export the board as a one page shooting schedule.</span></div></div></div>
-      </div>
-    </div>
+      <nav class="fs-suite-nav" aria-label="Explore FilmScript features">
+        <a href="#editor">Editor</a><a href="#lumiere">Lumiere</a><a href="#imagine">Imagine</a><a href="#analysis">Analysis</a><a href="#breakdown">Breakdown</a><a href="#stripboard">Stripboard</a><a href="#shot-list">Shot List</a><a href="#budget">Budget</a><a href="#calendar">Calendar</a>
+      </nav>
 
-    <!-- 05 SHOOT -->
-    
-    <div style="max-width: 1040px; margin: 0 auto; padding: 110px 56px 0;">
-      <div style="display: grid; grid-template-columns: 1fr 1.05fr; gap: 64px; align-items: center;">
-        <div><div style="font-size: 12px; letter-spacing: 1.8px; text-transform: uppercase; color: var(--accent, #BA7517); font-weight: 600;">Step 05 · Shoot</div><h2 style="font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; font-weight: 700; font-size: 38px; letter-spacing: -1px; color: var(--ink, #2C2C2A); margin: 14px 0 0; line-height: 1.12; max-width: 440px;">Plan every shot before you roll.</h2><p style="font-size: 16.5px; line-height: 1.55; color: var(--muted, #888780); margin: 16px 0 0; max-width: 430px;">Build a shot list per scene with the specs that matter: size, angle, movement and a line of intent. Print it, share it, check it off on the day.</p><div style="display: flex; flex-direction: column; gap: 12px; margin-top: 26px;"><div style="display: flex; gap: 10px; align-items: flex-start; font-size: 14px; line-height: 1.5; color: var(--ink, #2C2C2A);"><span style="color: var(--accent, #BA7517); flex: 0 0 auto;">{{ check }}</span><span>Preset shot sizes and angles keep the list consistent.</span></div><div style="display: flex; gap: 10px; align-items: flex-start; font-size: 14px; line-height: 1.5; color: var(--ink, #2C2C2A);"><span style="color: var(--accent, #BA7517); flex: 0 0 auto;">{{ check }}</span><span>Lumiere suggests coverage from the scene text. You keep what serves the story.</span></div><div style="display: flex; gap: 10px; align-items: flex-start; font-size: 14px; line-height: 1.5; color: var(--ink, #2C2C2A);"><span style="color: var(--accent, #BA7517); flex: 0 0 auto;">{{ check }}</span><span>Exports as a clean text document your crew can read anywhere.</span></div></div></div><div><div style="position: relative; padding: 22px 24px; border: 1.4px solid var(--line, #2C2C2A); border-radius: 18px; background: var(--surface, #FFFEF9); filter: url(#fs-sketch);">
-          <div style="display: grid; grid-template-columns: 34px 74px 84px 70px 1fr; gap: 10px; padding: 0 4px 8px; font-size: 10.5px; letter-spacing: 1.2px; text-transform: uppercase; font-weight: 600; color: var(--muted, #888780); border-bottom: 1.3px solid var(--line, #2C2C2A);"><span>Shot</span><span>Size</span><span>Angle</span><span>Move</span><span>Description</span></div>
-          <div style="display: grid; grid-template-columns: 34px 74px 84px 70px 1fr; gap: 10px; padding: 9px 4px; border-bottom: 1px solid var(--soft, #e4e2d8); font-size: 12px; color: var(--ink, #2C2C2A); align-items: baseline;"><span style="font-weight: 700; color: var(--accent, #BA7517);">12A</span><span>Wide</span><span>Eye level</span><span>Static</span><span style="color: var(--muted, #888780);">Establish the space and the character's intention</span></div>
-          <div style="display: grid; grid-template-columns: 34px 74px 84px 70px 1fr; gap: 10px; padding: 9px 4px; border-bottom: 1px solid var(--soft, #e4e2d8); font-size: 12px; color: var(--ink, #2C2C2A); align-items: baseline;"><span style="font-weight: 700; color: var(--accent, #BA7517);">12B</span><span>Close up</span><span>High</span><span>Dolly in</span><span style="color: var(--muted, #888780);">Hold on the detail that changes the scene</span></div>
-          <div style="display: grid; grid-template-columns: 34px 74px 84px 70px 1fr; gap: 10px; padding: 9px 4px; border-bottom: 1px solid var(--soft, #e4e2d8); font-size: 12px; color: var(--ink, #2C2C2A); align-items: baseline;"><span style="font-weight: 700; color: var(--accent, #BA7517);">12C</span><span>Medium</span><span>Over shoulder</span><span>Pan</span><span style="color: var(--muted, #888780);">Follow the exchange without losing the room</span></div>
-          <div style="display: grid; grid-template-columns: 34px 74px 84px 70px 1fr; gap: 10px; padding: 9px 4px 0; font-size: 12px; color: var(--ink, #2C2C2A);"><span style="font-weight: 700; color: var(--accent, #BA7517);">12D</span><span>Insert</span><span>Top down</span><span>Static</span><span style="color: var(--muted, #888780);">Capture the prop or production detail that matters</span></div></div></div>
-      </div>
-    </div>
+      <section class="fs-suite-section" aria-labelledby="suite-title">
+        <div class="fs-section-heading">
+          <div class="fs-section-eyebrow">One connected workspace</div>
+          <h2 id="suite-title">Every part of the film starts with the same script.</h2>
+          <p>Write the scene once. FilmScript keeps the creative, production and financial decisions beside it all the way to delivery.</p>
+        </div>
 
-    <!-- EXPORTS BAND -->
-    <div style="max-width: 760px; margin: 0 auto; padding: 110px 56px 0; text-align: center;">
-      <h2 style="font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; font-weight: 700; font-size: 36px; letter-spacing: -1px; color: var(--ink, #2C2C2A); margin: 0; line-height: 1.12;">Every document, plain text out.</h2>
-      <p style="font-size: 16.5px; line-height: 1.55; color: var(--muted, #888780); max-width: 520px; margin: 16px auto 0;">No renders, no heavy assets. Clean documents you can print, share or paste anywhere.</p>
-      <div style="display: flex; flex-wrap: wrap; gap: 10px; justify-content: center; margin-top: 30px;">
-        <div class="fsx-chip" style="font-size: 12.5px; font-weight: 600; color: var(--ink, #2C2C2A); border: 1.3px solid var(--line, #2C2C2A); border-radius: 999px; padding: 8px 16px; filter: url(#fs-sketch);">Screenplay PDF</div>
-        <div class="fsx-chip" style="font-size: 12.5px; font-weight: 600; color: var(--ink, #2C2C2A); border: 1.3px solid var(--line, #2C2C2A); border-radius: 999px; padding: 8px 16px; filter: url(#fs-sketch);">Script analysis</div>
-        <div class="fsx-chip" style="font-size: 12.5px; font-weight: 600; color: var(--ink, #2C2C2A); border: 1.3px solid var(--line, #2C2C2A); border-radius: 999px; padding: 8px 16px; filter: url(#fs-sketch);">Breakdown sheets</div>
-        <div class="fsx-chip" style="font-size: 12.5px; font-weight: 600; color: var(--ink, #2C2C2A); border: 1.3px solid var(--line, #2C2C2A); border-radius: 999px; padding: 8px 16px; filter: url(#fs-sketch);">Stripboard schedule</div>
-        <div class="fsx-chip" style="font-size: 12.5px; font-weight: 600; color: var(--ink, #2C2C2A); border: 1.3px solid var(--line, #2C2C2A); border-radius: 999px; padding: 8px 16px; filter: url(#fs-sketch);">Shot lists</div>
-      </div>
-    </div>
+        <div class="fs-feature-grid">
+          <article class="fs-feature-card fs-feature-card--wide" id="editor">
+            <svg class="fs-card-frame" viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true"><path d="M2.4 6.1 C5 2.1 19 2.9 33 2.4 C54 1.5 73 3.1 95 2.5 C98 5.4 97.2 20 98 37 C98.4 58 97 78 98.4 94 C94 98.5 76 97.2 59 98 C38 99 19 97 3.2 98.1 C.8 93 2 76 1.6 60 C1.2 39 2.7 21 2.4 6.1 Z"></path></svg>
+            <div class="fs-feature-card-content">
+              <div class="fs-feature-kicker">Write</div><h3 class="fs-feature-title">Editor</h3><p class="fs-feature-copy">Write in a production-ready screenplay editor with smart formatting, autosave, imports and PDF export.</p>
+              <div class="fs-feature-visual">
+                <svg viewBox="0 0 620 250" role="img" aria-label="FilmScript screenplay editor illustration">
+                  <path d="M38 18 C143 13 253 18 359 14 C454 11 532 17 584 14 C589 66 584 131 588 181 C590 205 586 225 588 235 C466 241 352 235 241 239 C154 242 84 236 38 240 C35 184 39 124 35 76 C34 51 38 29 38 18 Z" style="fill: var(--bg, #F5F0E8);" class="fs-svg-ink" stroke-width="1.35"></path>
+                  <path d="M38 48 C155 46 272 50 386 47 C460 45 526 48 585 46" class="fs-svg-soft" stroke-width="1"></path>
+                  <circle cx="58" cy="32" r="2.2" style="fill: var(--accent, #BA7517);"></circle><circle cx="69" cy="32" r="2.2" style="fill: var(--soft, #E4E2D8);"></circle><circle cx="80" cy="32" r="2.2" style="fill: var(--soft, #E4E2D8);"></circle>
+                  <text x="276" y="34" class="fs-svg-muted-text" font-size="9.5">AUTOSAVED</text>
+                  <g class="fs-screenplay-svg">
+                    <text x="74" y="76" class="fs-svg-text" font-size="12" font-weight="700">INT. ROOFTOP — NIGHT</text>
+                    <text x="74" y="100" class="fs-svg-text" font-size="11">Mara crosses the roof as the city wakes below.</text>
+                    <text x="276" y="131" class="fs-svg-text" font-size="11" font-weight="700">MARA</text>
+                    <text x="235" y="153" class="fs-svg-text" font-size="10.5">We only get one take.</text>
+                    <text x="74" y="189" class="fs-svg-text" font-size="11">She raises the camera and waits for the light.</text>
+                  </g>
+                  <path d="M74 206 C140 204 190 208 246 205" class="fs-svg-accent" stroke-width="2"></path>
+                  <path d="M552 73 L552 198" class="fs-svg-soft" stroke-width="4"></path><path d="M552 90 L552 134" class="fs-svg-accent" stroke-width="4"></path>
+                </svg>
+              </div>
+            </div>
+          </article>
 
-    <!-- FINAL CTA -->
-    <div style="max-width: 720px; margin: 0 auto; padding: 110px 56px 0; text-align: center;">
-      <h2 style="font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; font-weight: 700; font-size: 38px; letter-spacing: -1px; color: var(--ink, #2C2C2A); line-height: 1.12; margin: 0;">Ready when you are.</h2>
-      <div class="fs-cta-row" style="display: flex; gap: 16px; margin-top: 30px; align-items: center; justify-content: center;">
-        <button type="button" data-testid="landing-primary-final" onClick="{{ goScripts }}" class="fs-double-outline fs-outline-control fs-outline-control--primary" style="min-width: 154px; min-height: 50px;"><span style="font-size: 15px; font-weight: 600;">{{ landingPrimaryLabel }}</span></button>
-        <button type="button" onClick="{{ navPricing }}" class="fs-double-outline fs-outline-control fs-outline-control--secondary" style="min-width: 142px; min-height: 50px;"><span style="font-size: 15px; font-weight: 500;">See pricing</span><span class="fs-control-arrow" aria-hidden="true">›</span></button>
-      </div>
-    </div>
+          <article class="fs-feature-card fs-feature-card--narrow" id="lumiere">
+            <svg class="fs-card-frame" viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true"><path d="M3.1 3.8 C20 1.9 42 3.2 59 2.1 C75 1.1 90 2.9 96.8 2.2 C99 17 97.3 34 98.5 51 C99.2 69 96.9 84 97.6 96.1 C83 98.8 64 97 47 98.2 C27 99.3 12 96.8 2.2 97.7 C1 81 2.7 65 1.8 47 C1.1 28 3.3 13 3.1 3.8 Z"></path></svg>
+            <div class="fs-feature-card-content">
+              <div class="fs-feature-kicker">Collaborate</div><h3 class="fs-feature-title">Lumiere</h3><p class="fs-feature-copy">Explore titles, character names and scene directions while keeping every creative decision yours.</p>
+              <div class="fs-feature-visual">
+                <svg viewBox="0 0 430 250" role="img" aria-label="A conversation with Lumiere">
+                  <circle cx="42" cy="31" r="5" style="fill: var(--accent, #BA7517);"></circle><text x="56" y="35" class="fs-svg-text" font-size="12" font-weight="700">Lumiere</text><text x="116" y="35" class="fs-svg-muted-text" font-size="10">reading Scene 12</text>
+                  <path d="M24 58 C65 52 144 58 205 55 C224 61 220 91 222 116 C175 121 92 115 27 119 C22 102 26 76 24 58 Z" style="fill: var(--bg, #F5F0E8);" class="fs-svg-ink" stroke-width="1.2"></path>
+                  <text x="43" y="78" class="fs-svg-text" font-size="10.5">The scene has a strong image.</text><text x="43" y="95" class="fs-svg-text" font-size="10.5">What decision forces Mara</text><text x="43" y="112" class="fs-svg-text" font-size="10.5">to act now?</text>
+                  <path d="M174 137 C227 132 333 138 405 134 C410 153 405 178 408 194 C346 200 248 194 177 198 C172 181 176 154 174 137 Z" style="fill: #BA75171C;" class="fs-svg-ink" stroke-width="1.2"></path>
+                  <text x="197" y="158" class="fs-svg-text" font-size="10.5">Compare three endings</text><text x="197" y="175" class="fs-svg-text" font-size="10.5">without changing my pages.</text>
+                  <path d="M31 219 C92 216 143 220 201 217" class="fs-svg-soft" stroke-width="1.2"></path><path d="M376 212 L398 222 L376 232" class="fs-svg-accent" stroke-width="1.5"></path>
+                </svg>
+              </div>
+            </div>
+          </article>
 
-    <div style="text-align: center; padding: 80px 0 60px; font-size: 13px; color: var(--muted, #888780);">FilmScript. Write better, not louder.</div>
+          <article class="fs-feature-card fs-feature-card--narrow" id="imagine">
+            <svg class="fs-card-frame" viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true"><path d="M2.1 4.7 C13 1.4 32 3.1 47 2.4 C65 1.6 84 3.5 96.2 2.1 C98.7 11 97.4 29 98 44 C98.9 63 96.7 81 98.6 94.5 C92.4 98.3 73 96.9 56 98.2 C38 99.4 20 97.1 3.7 98.5 C.9 86 2.9 70 1.4 54 C.2 37 2.8 17 2.1 4.7 Z"></path></svg>
+            <div class="fs-feature-card-content">
+              <div class="fs-feature-kicker">Visual development</div><h3 class="fs-feature-title">Imagine</h3><p class="fs-feature-copy">Collect references, build boards and develop the visual direction of each scene beside the screenplay.</p>
+              <div class="fs-feature-visual">
+                <svg viewBox="0 0 430 250" role="img" aria-label="FilmScript Imagine visual board illustration">
+                  <path d="M23 36 C69 31 119 36 159 33 C164 72 158 113 162 151 C117 156 69 151 25 154 C21 116 25 74 23 36 Z" style="fill: #BA751718;" class="fs-svg-ink" stroke-width="1.2"></path>
+                  <circle cx="56" cy="67" r="10" style="fill: #EF9F2760;"></circle><path d="M35 131 C61 105 78 115 96 91 C114 112 127 108 149 134" class="fs-svg-ink" stroke-width="1.2"></path>
+                  <path d="M181 20 C228 17 280 22 321 18 C325 55 320 95 324 127 C279 132 229 127 183 131 C179 95 183 54 181 20 Z" style="fill: #5B7A4A20;" class="fs-svg-ink" stroke-width="1.2"></path>
+                  <path d="M196 110 C221 81 241 92 259 63 C282 89 294 87 313 112" class="fs-svg-ink" stroke-width="1.2"></path><circle cx="299" cy="44" r="8" style="fill: #5B7A4A55;"></circle>
+                  <path d="M250 148 C295 144 363 150 406 146 C410 176 405 211 408 232 C358 236 301 232 252 235 C248 207 252 173 250 148 Z" style="fill: #4A6B8A1B;" class="fs-svg-ink" stroke-width="1.2"></path>
+                  <path d="M267 215 C286 192 308 198 325 177 C347 199 366 193 395 219" class="fs-svg-ink" stroke-width="1.2"></path>
+                  <path d="M36 188 C88 184 158 190 215 186 C218 202 214 222 217 232 C159 236 92 232 38 235 C34 220 38 202 36 188 Z" class="fs-svg-soft" stroke-width="1.1"></path><text x="53" y="211" class="fs-svg-muted-text" font-size="10.5">Scene 12 · amber light · handheld</text>
+                </svg>
+              </div>
+            </div>
+          </article>
+
+          <article class="fs-feature-card fs-feature-card--wide" id="analysis">
+            <svg class="fs-card-frame" viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true"><path d="M3.4 2.9 C18 1.7 34 3.4 51 2 C70 .6 85 3 96.9 1.8 C98.1 18 97 36 98.4 52 C99.7 70 97 86 98 96.4 C80 98.4 63 96.7 45 98.1 C27 99.6 14 97 2.3 98 C.7 82 2.9 66 1.7 48 C.4 31 3.1 14 3.4 2.9 Z"></path></svg>
+            <div class="fs-feature-card-content">
+              <div class="fs-feature-kicker">Understand</div><h3 class="fs-feature-title">Analysis</h3><p class="fs-feature-copy">See story flow, priority scenes, production impact and the screenplay evidence behind every insight.</p>
+              <div class="fs-feature-visual">
+                <svg viewBox="0 0 620 250" role="img" aria-label="FilmScript analysis chart illustration">
+                  <text x="28" y="31" class="fs-svg-muted-text" font-size="10" font-weight="700">STORY FLOW</text>
+                  <path d="M30 199 C88 189 104 153 151 159 C204 166 219 101 270 111 C326 123 338 62 389 75 C438 87 467 33 518 47 C548 53 567 38 590 24" class="fs-svg-accent" stroke-width="2.4"></path>
+                  <path d="M30 199 L30 54 M151 199 L151 54 M270 199 L270 54 M389 199 L389 54 M518 199 L518 54" class="fs-svg-soft" stroke-width="1" stroke-dasharray="3 6"></path>
+                  <circle cx="151" cy="159" r="5" style="fill: var(--surface, #FFFEF9); stroke: var(--accent, #BA7517); stroke-width: 2;"></circle><circle cx="270" cy="111" r="5" style="fill: var(--surface, #FFFEF9); stroke: var(--accent, #BA7517); stroke-width: 2;"></circle><circle cx="389" cy="75" r="5" style="fill: var(--surface, #FFFEF9); stroke: var(--accent, #BA7517); stroke-width: 2;"></circle><circle cx="518" cy="47" r="5" style="fill: var(--surface, #FFFEF9); stroke: var(--accent, #BA7517); stroke-width: 2;"></circle>
+                  <text x="28" y="222" class="fs-svg-muted-text" font-size="9">START</text><text x="136" y="222" class="fs-svg-muted-text" font-size="9">CONFLICT</text><text x="374" y="222" class="fs-svg-muted-text" font-size="9">PEAK</text><text x="552" y="222" class="fs-svg-muted-text" font-size="9">ENDING</text>
+                  <path d="M405 116 C455 111 522 117 590 113 M405 141 C469 137 527 143 579 138 M405 166 C452 162 501 168 548 163 M405 191 C456 187 535 194 588 188" class="fs-svg-soft" stroke-width="5"></path>
+                  <path d="M405 116 C434 113 452 116 471 114 M405 141 C444 139 466 142 493 140" class="fs-svg-ink" stroke-width="5" opacity=".45"></path>
+                </svg>
+              </div>
+            </div>
+          </article>
+
+          <article class="fs-feature-card fs-feature-card--third" id="breakdown">
+            <svg class="fs-card-frame" viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true"><path d="M2.8 5 C15 2 28 3.8 43 2.4 C62 .8 82 3.3 97.2 2.1 C99 21 96.8 36 98.5 52 C100 69 97 85 98.2 94.8 C89 99 70 96.8 54 98.3 C35 100 17 96.7 2.8 98 C1 80 2.7 66 1.4 49 C.3 32 3.4 15 2.8 5 Z"></path></svg>
+            <div class="fs-feature-card-content">
+              <div class="fs-feature-kicker">Prepare</div><h3 class="fs-feature-title">Breakdown</h3><p class="fs-feature-copy">Build editable scene sheets for cast, props, wardrobe, sound and every production element.</p>
+              <div class="fs-feature-visual">
+                <svg viewBox="0 0 360 250" role="img" aria-label="Scene breakdown illustration">
+                  <path d="M19 28 C93 23 173 30 231 25 C235 78 230 140 234 205 C157 210 87 204 21 209 C17 150 21 86 19 28 Z" style="fill: var(--bg, #F5F0E8);" class="fs-svg-ink" stroke-width="1.2"></path>
+                  <g class="fs-screenplay-svg"><text x="39" y="52" class="fs-svg-text" font-size="10.5" font-weight="700">12  INT. ROOFTOP — NIGHT</text><text x="39" y="82" class="fs-svg-text" font-size="9.5">Mara raises the camera.</text><text x="39" y="102" class="fs-svg-text" font-size="9.5">A RED SCARF catches wind.</text><text x="39" y="122" class="fs-svg-text" font-size="9.5">The CITY HUM grows louder.</text></g>
+                  <path d="M117 106 L176 106" stroke="#BA7517" stroke-width="3" stroke-linecap="round"></path><path d="M55 126 L117 126" stroke="#8A5A8A" stroke-width="3" stroke-linecap="round"></path>
+                  <path d="M252 44 C279 40 322 45 344 42 C346 57 343 72 345 83 C313 87 281 83 253 86 C250 71 254 55 252 44 Z" style="fill: #BA751718; stroke: #BA7517;" stroke-width="1.1"></path><text x="271" y="65" class="fs-svg-text" font-size="9.5" font-weight="700">CAST · 1</text>
+                  <path d="M245 99 C276 95 319 100 348 96 C350 112 347 129 349 140 C318 144 279 140 247 143 C243 128 247 111 245 99 Z" style="fill: #5B7A4A18; stroke: #5B7A4A;" stroke-width="1.1"></path><text x="262" y="121" class="fs-svg-text" font-size="9.5" font-weight="700">PROPS · 2</text>
+                  <path d="M253 157 C282 153 323 158 345 155 C348 170 344 188 347 199 C318 203 284 199 254 202 C251 187 254 170 253 157 Z" style="fill: #8A5A8A18; stroke: #8A5A8A;" stroke-width="1.1"></path><text x="269" y="179" class="fs-svg-text" font-size="9.5" font-weight="700">SOUND · 2</text>
+                </svg>
+              </div>
+            </div>
+          </article>
+
+          <article class="fs-feature-card fs-feature-card--third" id="stripboard">
+            <svg class="fs-card-frame" viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true"><path d="M3.7 2.6 C19 .9 36 3.3 53 1.8 C72 .3 88 3.4 96.5 2 C99 14 97.2 30 98 47 C99 64 97.2 82 98.8 95.6 C83 98.8 68 96.4 49 98.1 C31 99.7 16 96.9 2.1 98.4 C.4 83 2.9 69 1.6 52 C.2 34 3 15 3.7 2.6 Z"></path></svg>
+            <div class="fs-feature-card-content">
+              <div class="fs-feature-kicker">Schedule</div><h3 class="fs-feature-title">Stripboard</h3><p class="fs-feature-copy">Reorder scenes, assign cast and locations, set timings and day breaks, then shape the shooting plan.</p>
+              <div class="fs-feature-visual">
+                <svg viewBox="0 0 360 250" role="img" aria-label="FilmScript stripboard illustration">
+                  <path d="M16 26 C83 21 187 28 342 23 L344 59 C242 63 126 57 18 62 Z" style="fill:#F5E9BC;stroke:#2C2C2A;" stroke-width="1.05"></path><text x="31" y="47" fill="#2C2C2A" font-size="9.5" font-weight="700">12</text><text x="61" y="47" fill="#2C2C2A" font-size="9.5">INT · ROOFTOP · NIGHT</text><text x="298" y="47" fill="#2C2C2A" font-size="9">2 3/8</text>
+                  <path d="M20 72 C97 68 209 74 345 70 L342 106 C238 110 124 104 17 109 Z" style="fill:#DCE8C4;stroke:#2C2C2A;" stroke-width="1.05"></path><text x="34" y="94" fill="#2C2C2A" font-size="9.5" font-weight="700">04</text><text x="64" y="94" fill="#2C2C2A" font-size="9.5">EXT · STREET · DAY</text><text x="300" y="94" fill="#2C2C2A" font-size="9">1 1/8</text>
+                  <path d="M16 121 C93 116 224 123 342 118 L345 154 C245 159 116 152 19 157 Z" style="fill:#CFE0EE;stroke:#2C2C2A;" stroke-width="1.05"></path><text x="31" y="142" fill="#2C2C2A" font-size="9.5" font-weight="700">27</text><text x="61" y="142" fill="#2C2C2A" font-size="9.5">INT · BEDROOM · NIGHT</text><text x="301" y="142" fill="#2C2C2A" font-size="9">5/8</text>
+                  <path d="M18 168 C110 164 254 170 344 165 L343 200 C238 205 117 199 17 203 Z" style="fill:#2C2C2A;stroke:#2C2C2A;" stroke-width="1"></path><text x="34" y="189" fill="#FFFEF9" font-size="9.5" font-weight="700">END OF DAY 1</text><text x="272" y="189" fill="#FFFEF9" font-size="9">4 1/8 pages</text>
+                  <path d="M95 222 C150 217 213 223 267 219" class="fs-svg-muted" stroke-width="1.2"></path><path d="M173 212 L181 220 L173 228" class="fs-svg-accent" stroke-width="1.6"></path>
+                </svg>
+              </div>
+            </div>
+          </article>
+
+          <article class="fs-feature-card fs-feature-card--third" id="shot-list">
+            <svg class="fs-card-frame" viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true"><path d="M1.9 4 C17 1.4 33 3.7 48 2.1 C66 .3 84 3.2 97.8 1.7 C99.4 17 96.7 34 98.2 50 C99.7 67 97.1 84 98.4 96.3 C83.5 98.5 66 97 50 98.5 C31 100 15 96.5 3.3 98.1 C.7 84 2.8 68 1.5 53 C.2 36 2.6 17 1.9 4 Z"></path></svg>
+            <div class="fs-feature-card-content">
+              <div class="fs-feature-kicker">Cover</div><h3 class="fs-feature-title">Shot List</h3><p class="fs-feature-copy">Plan coverage with lens, movement, reference images and time connected to the Stripboard.</p>
+              <div class="fs-feature-visual">
+                <svg viewBox="0 0 360 250" role="img" aria-label="FilmScript shot list illustration">
+                  <text x="18" y="29" class="fs-svg-muted-text" font-size="8.5" font-weight="700">SHOT</text><text x="70" y="29" class="fs-svg-muted-text" font-size="8.5" font-weight="700">SIZE</text><text x="142" y="29" class="fs-svg-muted-text" font-size="8.5" font-weight="700">LENS</text><text x="205" y="29" class="fs-svg-muted-text" font-size="8.5" font-weight="700">MOVE</text>
+                  <path d="M16 40 C112 36 249 42 343 38 M18 86 C123 82 246 88 340 84 M15 132 C112 128 246 134 344 130 M19 178 C126 174 250 181 341 176 M16 224 C127 220 251 226 344 221" class="fs-svg-soft" stroke-width="1"></path>
+                  <text x="18" y="67" class="fs-svg-text" font-size="10" font-weight="700">12A</text><text x="70" y="67" class="fs-svg-text" font-size="10">Wide</text><text x="142" y="67" class="fs-svg-text" font-size="10">24mm</text><text x="205" y="67" class="fs-svg-text" font-size="10">Static</text><path d="M284 50 C302 46 329 50 343 48 L341 76 C320 79 300 75 283 78 Z" style="fill:#BA75171A;" class="fs-svg-ink" stroke-width="1"></path><path d="M289 70 L302 57 L313 66 L323 55 L337 71" class="fs-svg-ink" stroke-width="1"></path>
+                  <text x="18" y="113" class="fs-svg-text" font-size="10" font-weight="700">12B</text><text x="70" y="113" class="fs-svg-text" font-size="10">Close</text><text x="142" y="113" class="fs-svg-text" font-size="10">85mm</text><text x="205" y="113" class="fs-svg-text" font-size="10">Dolly in</text><path d="M284 96 C303 93 327 98 344 94 L342 122 C322 125 302 121 282 124 Z" style="fill:#5B7A4A1A;" class="fs-svg-ink" stroke-width="1"></path><circle cx="312" cy="108" r="7" class="fs-svg-ink" stroke-width="1"></circle>
+                  <text x="18" y="159" class="fs-svg-text" font-size="10" font-weight="700">12C</text><text x="70" y="159" class="fs-svg-text" font-size="10">Medium</text><text x="142" y="159" class="fs-svg-text" font-size="10">50mm</text><text x="205" y="159" class="fs-svg-text" font-size="10">Handheld</text><path d="M284 142 C304 139 329 143 343 140 L342 168 C321 171 303 167 283 170 Z" style="fill:#4A6B8A1A;" class="fs-svg-ink" stroke-width="1"></path><path d="M290 162 C302 148 315 157 326 148 L337 163" class="fs-svg-ink" stroke-width="1"></path>
+                  <text x="18" y="205" class="fs-svg-text" font-size="10" font-weight="700">12D</text><text x="70" y="205" class="fs-svg-text" font-size="10">Insert</text><text x="142" y="205" class="fs-svg-text" font-size="10">100mm</text><text x="205" y="205" class="fs-svg-text" font-size="10">Static</text>
+                </svg>
+              </div>
+            </div>
+          </article>
+
+          <article class="fs-feature-card" id="budget">
+            <svg class="fs-card-frame" viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true"><path d="M2.2 6 C17 2 35 3.4 51 2.3 C69 1.1 87 3.2 96.6 2.2 C99.1 15 97.1 34 98.3 50 C99.5 69 96.6 86 98.1 94.2 C84 99 67 96.5 50 98 C31 99.6 14 97 3.5 98.4 C.8 84 2.9 65 1.5 49 C.2 31 2.7 16 2.2 6 Z"></path></svg>
+            <div class="fs-feature-card-content">
+              <div class="fs-feature-kicker">Control</div><h3 class="fs-feature-title">Budget</h3><p class="fs-feature-copy">Track planned and actual costs, funding, cash flow, expenses, receipts and tax in one production view.</p>
+              <div class="fs-feature-visual">
+                <svg viewBox="0 0 520 250" role="img" aria-label="FilmScript budget illustration">
+                  <circle cx="112" cy="126" r="72" class="fs-svg-soft" stroke-width="18"></circle><circle cx="112" cy="126" r="72" class="fs-svg-accent" stroke-width="18" stroke-dasharray="312 452" transform="rotate(-90 112 126)"></circle>
+                  <text x="112" y="119" class="fs-svg-muted-text" font-size="10" text-anchor="middle">PLANNED</text><text x="112" y="142" class="fs-svg-text" font-size="21" font-weight="700" text-anchor="middle">$84.2k</text>
+                  <text x="250" y="38" class="fs-svg-muted-text" font-size="9.5" font-weight="700">DEPARTMENT</text><text x="442" y="38" class="fs-svg-muted-text" font-size="9.5" font-weight="700">ACTUAL</text>
+                  <text x="250" y="76" class="fs-svg-text" font-size="11">Camera</text><text x="456" y="76" class="fs-svg-text" font-size="11">$18.4k</text><path d="M318 72 C357 69 401 74 434 70" class="fs-svg-soft" stroke-width="7"></path><path d="M318 72 C345 70 369 73 389 71" class="fs-svg-accent" stroke-width="7"></path>
+                  <text x="250" y="119" class="fs-svg-text" font-size="11">Art</text><text x="456" y="119" class="fs-svg-text" font-size="11">$12.8k</text><path d="M318 115 C357 112 401 117 434 113" class="fs-svg-soft" stroke-width="7"></path><path d="M318 115 C343 113 360 116 376 114" class="fs-svg-accent" stroke-width="7"></path>
+                  <text x="250" y="162" class="fs-svg-text" font-size="11">Locations</text><text x="456" y="162" class="fs-svg-text" font-size="11">$9.6k</text><path d="M318 158 C357 155 401 160 434 156" class="fs-svg-soft" stroke-width="7"></path><path d="M318 158 C337 156 349 159 364 157" class="fs-svg-accent" stroke-width="7"></path>
+                  <path d="M247 199 C305 194 384 201 493 196" class="fs-svg-soft" stroke-width="1"></path><text x="250" y="224" class="fs-svg-muted-text" font-size="10">Cash flow connected to shooting dates</text>
+                </svg>
+              </div>
+            </div>
+          </article>
+
+          <article class="fs-feature-card" id="calendar">
+            <svg class="fs-card-frame" viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true"><path d="M3.1 3.3 C17 1.2 35 3.5 52 1.9 C70 .2 84 3.4 97.3 1.9 C99 17 97 31 98.5 48 C100 66 96.9 83 98.7 96 C84 98.7 65 96.8 49 98.2 C30 99.7 14 96.8 2.4 98.5 C.4 82 3 68 1.7 50 C.3 33 3.5 15 3.1 3.3 Z"></path></svg>
+            <div class="fs-feature-card-content">
+              <div class="fs-feature-kicker">Deliver</div><h3 class="fs-feature-title">Calendar</h3><p class="fs-feature-copy">Move from development to delivery with dependencies, milestones, critical path and live progress.</p>
+              <div class="fs-feature-visual">
+                <svg viewBox="0 0 520 250" role="img" aria-label="FilmScript production calendar illustration">
+                  <text x="21" y="28" class="fs-svg-muted-text" font-size="9.5" font-weight="700">PRODUCTION CALENDAR</text><text x="384" y="28" class="fs-svg-muted-text" font-size="9.5">WEEK 06 — WEEK 10</text>
+                  <path d="M20 45 C138 41 293 47 500 42 M20 86 C152 82 320 88 500 83 M20 127 C151 123 325 129 500 124 M20 168 C152 164 324 170 500 165 M20 209 C153 205 325 211 500 206" class="fs-svg-soft" stroke-width="1"></path>
+                  <path d="M125 44 L125 210 M218 44 L218 210 M311 44 L311 210 M404 44 L404 210" class="fs-svg-soft" stroke-width="1" stroke-dasharray="3 5"></path>
+                  <text x="27" y="69" class="fs-svg-text" font-size="10.5">Casting</text><path d="M128 57 C175 53 214 58 255 55 L253 76 C210 80 171 75 129 78 Z" style="fill:#BA75172B;stroke:#BA7517;" stroke-width="1"></path><text x="148" y="70" fill="#BA7517" font-size="9.5" font-weight="700">82%</text>
+                  <text x="27" y="110" class="fs-svg-text" font-size="10.5">Prep</text><path d="M184 98 C239 94 308 100 354 96 L352 117 C297 121 235 116 183 119 Z" style="fill:#5B7A4A25;stroke:#5B7A4A;" stroke-width="1"></path><text x="207" y="111" fill="#5B7A4A" font-size="9.5" font-weight="700">IN PROGRESS</text>
+                  <text x="27" y="151" class="fs-svg-text" font-size="10.5">Principal photography</text><path d="M265 139 C320 135 385 141 433 137 L431 158 C375 162 318 157 264 160 Z" style="fill:#4A6B8A25;stroke:#4A6B8A;" stroke-width="1"></path>
+                  <text x="27" y="192" class="fs-svg-text" font-size="10.5">Delivery</text><circle cx="451" cy="179" r="7" style="fill:var(--accent, #BA7517);"></circle><path d="M451 171 L451 186 M443 179 L459 179" stroke="#FFFEF9" stroke-width="1.4" stroke-linecap="round"></path>
+                  <path d="M254 76 C265 82 264 88 272 97 M352 117 C364 125 366 131 371 138 M431 158 C440 164 445 170 451 172" class="fs-svg-muted" stroke-width="1.2" stroke-dasharray="3 4"></path>
+                </svg>
+              </div>
+            </div>
+          </article>
+        </div>
+      </section>
+
+      <section class="fs-connection-section" aria-labelledby="connection-title">
+        <h2 id="connection-title">One change moves through the whole production.</h2>
+        <p>Update a scene and the next decisions stay traceable—from the visual idea to the final date on the calendar.</p>
+        <div class="fs-connection-flow" aria-label="FilmScript connected workflow">
+          <div class="fs-flow-step"><svg class="fs-card-frame" viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true"><path d="M4 9 C18 3 44 8 96 4 L97 91 C71 97 35 92 3 97 Z"></path></svg><span style="position:relative;z-index:1;"><strong>Script</strong><small>The source</small></span></div>
+          <div class="fs-flow-step"><svg class="fs-card-frame" viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true"><path d="M2 5 C30 2 66 7 98 3 L96 95 C63 99 29 92 4 98 Z"></path></svg><span style="position:relative;z-index:1;"><strong>Imagine</strong><small>The visual world</small></span></div>
+          <div class="fs-flow-step"><svg class="fs-card-frame" viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true"><path d="M5 3 C33 7 62 1 96 6 L98 93 C69 96 34 91 2 96 Z"></path></svg><span style="position:relative;z-index:1;"><strong>Breakdown</strong><small>What the scene needs</small></span></div>
+          <div class="fs-flow-step"><svg class="fs-card-frame" viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true"><path d="M3 7 C25 2 58 8 97 3 L95 97 C65 93 33 99 2 94 Z"></path></svg><span style="position:relative;z-index:1;"><strong>Plan</strong><small>Shots, days and cost</small></span></div>
+          <div class="fs-flow-step"><svg class="fs-card-frame" viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true"><path d="M2 4 C37 8 69 1 98 7 L96 94 C68 99 31 93 4 97 Z"></path></svg><span style="position:relative;z-index:1;"><strong>Delivery</strong><small>The final milestone</small></span></div>
+        </div>
+      </section>
+
+      <section class="fs-final-cta">
+        <h2>One script. One source of truth.</h2>
+        <p>Open FilmScript and keep every creative and production decision connected from the first scene to delivery.</p>
+        <div class="fs-cta-row" style="display: flex; gap: 16px; margin-top: 30px; align-items: center; justify-content: center;">
+          <button type="button" data-testid="landing-primary-final" onClick="{{ goScripts }}" class="fs-double-outline fs-outline-control fs-outline-control--primary" style="min-width: 154px; min-height: 50px;"><span style="font-size: 15px; font-weight: 600;">{{ landingPrimaryLabel }}</span></button>
+          <button type="button" onClick="{{ navPricing }}" class="fs-double-outline fs-outline-control fs-outline-control--secondary" style="min-width: 142px; min-height: 50px;"><span style="font-size: 15px; font-weight: 500;">See pricing</span><span class="fs-control-arrow" aria-hidden="true">›</span></button>
+        </div>
+      </section>
+
+      <footer class="fs-home-footer">FilmScript · From the page to the production.</footer>
+    </main>
   </div>
   </sc-if>
 
