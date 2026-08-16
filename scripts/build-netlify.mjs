@@ -43,6 +43,7 @@ const frontendFiles = [
   "auth-modal.css",
   "filmscript-controls.css",
   "filmscript-landing.css",
+  "vercel-analytics.js",
 ];
 
 fs.rmSync(output, { recursive: true, force: true });
