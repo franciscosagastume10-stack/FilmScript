@@ -1,4 +1,6 @@
-# Prompt para implementar los planes definitivos de FilmScript
+# Prompt histórico de planes de FilmScript
+
+> Archivado el 31 de julio de 2026. No usar para nuevas implementaciones. El modelo vigente es Free, Creator a $24.99 al mes y Full a $39.99 al mes. Full incluye 1,000 créditos de imagen mensuales y cada imagen cuesta 3 créditos. Consulta `README_RELEASE.md` y `server.js` como fuente de verdad.
 
 Usa este prompt desde la raíz del proyecto FilmScript. Implementa el cambio completo; no te limites a cambiar textos o precios visibles.
 

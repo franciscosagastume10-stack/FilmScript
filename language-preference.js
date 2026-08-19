@@ -38,17 +38,22 @@
     'My scripts': 'Mis guiones',
     'Plan and billing': 'Plan y facturación',
     'Terms & conditions': 'Términos y condiciones',
-    'Upgrade to FilmScript Pro': 'Mejorar a FilmScript Pro',
-    'FilmScript Basic': 'FilmScript Basic',
-    'FilmScript Pro': 'FilmScript Pro',
     'Choose a plan': 'Elegir un plan',
-    'Choose Basic': 'Elegir Basic',
-    'Choose Pro': 'Elegir Pro',
     'Start for free': 'Empezar gratis',
-    'Choose FilmScript Pro': 'Elegir FilmScript Pro',
-    'Choose FilmScript Pro →': 'Elegir FilmScript Pro →',
-    'View FilmScript Pro': 'Ver FilmScript Pro',
-    'View FilmScript Pro · $19.99 / month': 'Ver FilmScript Pro · $19.99 / mes',
+    'Upgrade to Full': 'Mejorar a Full',
+    'Upgrade to FilmScript Full': 'Mejorar a FilmScript Full',
+    'FilmScript Creator': 'FilmScript Creator',
+    'FilmScript Full': 'FilmScript Full',
+    'Choose Creator': 'Elegir Creator',
+    'Choose Full': 'Elegir Full',
+    'Choose FilmScript Creator': 'Elegir FilmScript Creator',
+    'Choose FilmScript Creator →': 'Elegir FilmScript Creator →',
+    'Choose FilmScript Full': 'Elegir FilmScript Full',
+    'Choose FilmScript Full →': 'Elegir FilmScript Full →',
+    'View Creator': 'Ver Creator',
+    'View Creator · $24.99 / month': 'Ver Creator · $24.99 / mes',
+    'View Full': 'Ver Full',
+    'View Full · $39.99 / month': 'Ver Full · $39.99 / mes',
     'No active plan': 'Sin plan activo',
     'Active': 'Activo',
     'Inactive': 'Inactivo',
@@ -88,46 +93,64 @@
     'Your account': 'Tu cuenta',
     'Connected securely with Google.': 'Conectado de forma segura con Google.',
     'Everything about your FilmScript membership.': 'Todo sobre tu membresía de FilmScript.',
-    'Manage or cancel FilmScript Pro from the profile menu.': 'Administra o cancela FilmScript Pro desde el menú de perfil.',
+    'Manage or cancel your FilmScript plan from the profile menu.': 'Administra o cancela tu plan de FilmScript desde el menú de perfil.',
     'Your writing stays yours.': 'Tu escritura sigue siendo tuya.',
     'You retain ownership of scripts and notes created in FilmScript.': 'Conservas la propiedad de los guiones y notas creados en FilmScript.',
     'You retain ownership of scripts, notes, and material created in FilmScript. We do not sell your writing.': 'Conservas la propiedad de los guiones, notas y material creado en FilmScript. No vendemos tu escritura.',
     'Lumiere is an assistant.': 'Lumiere es un asistente.',
     'It offers suggestions and analysis. You decide what belongs in your work.': 'Ofrece sugerencias y análisis. Tú decides qué pertenece a tu obra.',
+    'Credits and limits.': 'Créditos y límites.',
     'Lumiere credits and usage limits.': 'Créditos y límites de uso de Lumiere.',
-    'FilmScript Pro includes 100 Lumiere credits per monthly billing period. AI actions may use different amounts depending on the size and complexity of the request. Credits reset with each monthly renewal, do not roll over, and have no cash value. When credits run out, new Lumiere generations pause until the next reset; your scripts and existing production documents stay available. Free and Basic plans include no Lumiere credits.': 'FilmScript Pro incluye 100 créditos de Lumiere por cada periodo mensual de facturación. Las acciones de IA pueden usar cantidades distintas según el tamaño y la complejidad de la solicitud. Los créditos se reinician con cada renovación mensual, no se acumulan y no tienen valor en efectivo. Cuando se agotan, las nuevas generaciones de Lumiere se pausan hasta el siguiente reinicio; tus guiones y documentos de producción existentes siguen disponibles. Los planes Free y Basic no incluyen créditos de Lumiere.',
-    'FilmScript Pro includes 100 Lumiere credits per monthly billing period. A rolling 8-hour session allows 20 credits and each week allows 60; both windows reset automatically. Credits reset with each monthly renewal, do not roll over, and have no cash value. When a window or the monthly allowance is reached, you can wait for its reset or purchase 20 extra credits for $5. Your scripts and existing production documents stay available. Free and Basic plans include no Lumiere credits.': 'FilmScript Pro incluye 100 créditos de Lumiere por cada periodo mensual de facturación. Una sesión continua de 8 horas permite 20 créditos y cada semana permite 60; ambas ventanas se reinician automáticamente. Los créditos mensuales no se acumulan ni tienen valor en efectivo. Cuando se alcanza una ventana o el límite mensual, puedes esperar su reinicio o comprar 20 créditos extra por $5. Tus guiones y documentos de producción existentes siguen disponibles. Los planes Free y Basic no incluyen créditos de Lumiere.',
-    'FilmScript Pro includes 100 Lumiere credits per monthly billing period. A rolling 8-hour session allows 20 credits and each week allows 60; both windows reset automatically. Credits reset with each monthly renewal, do not roll over, and have no cash value. When a window or the monthly allowance is reached, new Lumiere generations pause until the next reset; you can wait for its reset or purchase 80 extra credits for $5. Your scripts and existing production documents stay available. Free and Basic plans include no Lumiere credits.': 'FilmScript Pro incluye 100 créditos de Lumiere por cada periodo mensual de facturación. Una sesión continua de 8 horas permite 20 créditos y cada semana permite 60; ambas ventanas se reinician automáticamente. Los créditos mensuales no se acumulan ni tienen valor en efectivo. Cuando se alcanza una ventana o el límite mensual, las nuevas generaciones de Lumiere se pausan hasta el siguiente reinicio; puedes esperar su reinicio o comprar 80 créditos extra por $5. Tus guiones y documentos de producción existentes siguen disponibles. Los planes Free y Basic no incluyen créditos de Lumiere.',
+    'Free includes 5 Lumiere prompts total, one AI script analysis, one AI breakdown, and one AI storyboard or shot list per account. Creator includes 75 prompts per 8-hour session, 250 per week and 600 per month. Full includes 150 prompts per 8-hour session, 500 per week and 1,200 per month, plus 1,000 image credits each monthly cycle. Every AI image in Imagine, Boards, and Shot List uses 3 credits. Your scripts and existing production documents stay available.': 'Free incluye 5 prompts de Lumiere en total, un análisis de guion con IA, un desglose con IA y un storyboard o lista de planos con IA por cuenta. Creator incluye 75 prompts por sesión de 8 horas, 250 por semana y 600 por mes. Full incluye 150 prompts por sesión de 8 horas, 500 por semana y 1,200 por mes, además de 1,000 créditos de imagen por ciclo mensual. Cada imagen de IA en Imagine, Boards y Lista de planos usa 3 créditos. Tus guiones y documentos de producción existentes siguen disponibles.',
     'Lumiere offers editorial suggestions and analysis. You decide what belongs in your work and remain responsible for the final text.': 'Lumiere ofrece sugerencias editoriales y análisis. Tú decides qué pertenece a tu obra y sigues siendo responsable del texto final.',
-    'Too inspired to wait until tomorrow?': '¿Demasiado inspirado para esperar hasta mañana?',
-    'Reset your Lumiere limits for $5 and keep going.': 'Restablece tus límites de Lumiere por $5 y sigue adelante.',
-    'Buy 20 extra Lumiere credits for $5 and keep going.': 'Compra 20 créditos extra de Lumiere por $5 y sigue adelante.',
-    'Reset your Lumiere limits for $5 and keep going. Buy 80 extra credits for the next stretch.': 'Restablece tus límites de Lumiere por $5 y sigue adelante. Compra 80 créditos extra para continuar.',
-    'Reset limits for $5': 'Restablecer límites por $5',
-    'Buy extra credits · $5': 'Comprar créditos extra · $5',
-    'Opening reset…': 'Abriendo recarga…',
-    'Opening top-up…': 'Abriendo recarga…',
-    'Lumiere credits are empty. Reset your limits for $5 to keep going.': 'Tus créditos de Lumiere se agotaron. Restablece tus límites por $5 para continuar.',
-    'Could not open the credit reset checkout.': 'No se pudo abrir el pago para restablecer los créditos.',
-    'Could not verify the credit reset yet.': 'Aún no se pudo verificar el reinicio de créditos.',
-    'Payment received. Your reset is being verified.': 'Pago recibido. Estamos verificando tu reinicio.',
-    'Lumiere limits reset. Keep creating.': 'Límites de Lumiere restablecidos. Sigue creando.',
-    'Extra Lumiere credits added. Keep creating.': 'Créditos extra de Lumiere añadidos. Sigue creando.',
-    'Payment received. Your extra credits are being verified.': 'Pago recibido. Estamos verificando tus créditos extra.',
+    'Your Lumiere prompt allowance is currently empty. It refreshes automatically with your plan.': 'Tu límite de prompts de Lumiere está agotado. Se renueva automáticamente según tu plan.',
+    'Your Lumiere credits are used up. Choose Creator or Full to keep asking questions.': 'Tus créditos de Lumiere se agotaron. Elige Creator o Full para seguir haciendo preguntas.',
+    'Image credits renew automatically with your Creator or Full subscription.': 'Los créditos de imagen se renuevan automáticamente con tu suscripción Creator o Full.',
+    'Lumiere pass used': 'Uso gratuito de Lumiere consumido',
+    'Keep editing breakdowns, stripboards, shot lists, budgets, and calendars. Creator unlocks Lumiere and 100 image credits each month; Full includes 1,000.': 'Sigue editando desgloses, planes de rodaje, listas de planos, presupuestos y calendarios. Creator desbloquea Lumiere y 100 créditos de imagen cada mes; Full incluye 1,000.',
+    'View plans': 'Ver planes',
+    'Your screenplay and every existing breakdown, stripboard, shot list, and budget remain available to edit and export. Creator includes Lumiere and 100 image credits; Full includes 1,000.': 'Tu guion y todos los desgloses, planes de rodaje, listas de planos y presupuestos existentes siguen disponibles para editar y exportar. Creator incluye Lumiere y 100 créditos de imagen; Full incluye 1,000.',
+    'Creator unlocks more Lumiere breakdowns.': 'Creator desbloquea más desgloses con Lumiere.',
+    'Image generation is included with FilmScript Creator and Full. Creator includes 100 image credits each month; Full includes 1,000; each image uses 3 credits.': 'La generación de imágenes está incluida con FilmScript Creator y Full. Creator incluye 100 créditos de imagen cada mes; Full incluye 1,000; cada imagen usa 3 créditos.',
+    'This Lumiere feature is included with FilmScript Creator and Full.': 'Esta función de Lumiere está incluida con FilmScript Creator y Full.',
+    'AI budget planning is included with FilmScript Creator and Full. You can still build, edit, and export your budget manually.': 'La planificación de presupuesto con IA está incluida con FilmScript Creator y Full. Aún puedes crear, editar y exportar tu presupuesto manualmente.',
+    'AI Budget import': 'Importación de presupuesto con IA',
+    'AI Storyboard generation': 'Generación de storyboard con IA',
+    'your one Free AI Storyboard': 'tu único storyboard gratuito con IA',
+    'your one Free AI Breakdown': 'tu único desglose gratuito con IA',
+    'your one Free AI Script Analysis': 'tu único análisis de guion gratuito con IA',
+    'FilmScript Creator or Full is required to continue generating shot lists. Existing work was preserved.': 'Se requiere FilmScript Creator o Full para seguir generando listas de planos. El trabajo existente se conservó.',
+    'FilmScript Creator or Full is required to continue the breakdown. Existing work was preserved.': 'Se requiere FilmScript Creator o Full para continuar el desglose. El trabajo existente se conservó.',
+    'Image generation is included with FilmScript Creator and Full. Creator includes 100 image credits each month, while Full includes 1,000.': 'La generación de imágenes está incluida con FilmScript Creator y Full. Creator incluye 100 créditos de imagen cada mes, mientras Full incluye 1,000.',
+    'Your image credits are used for this cycle. They renew automatically with your subscription.': 'Tus créditos de imagen se agotaron para este ciclo. Se renuevan automáticamente con tu suscripción.',
+    'Credit resets have been retired. Creator includes 100 image credits and Full includes 1,000 per billing cycle; Lumiere allowances renew automatically.': 'Las recargas manuales de créditos ya no están disponibles. Creator incluye 100 créditos de imagen y Full incluye 1,000 por ciclo de facturación; los límites de Lumiere se renuevan automáticamente.',
     'Lumiere usage': 'Uso de Lumiere',
     'Session · 8h': 'Sesión · 8 h',
     'This week': 'Esta semana',
     'This month': 'Este mes',
     'Starts on first use': 'Comienza al usar Lumiere',
     'Subscriptions.': 'Suscripciones.',
-    'FilmScript Pro subscriptions.': 'Suscripciones de FilmScript Pro.',
     'Paid plans renew monthly through Recurrente and can be canceled from your account menu.': 'Los planes de pago se renuevan mensualmente mediante Recurrente y se pueden cancelar desde el menú de tu cuenta.',
-    'FilmScript Pro renews monthly through Recurrente. You can cancel from your account menu. Access remains available according to the payment provider’s confirmed subscription status.': 'FilmScript Pro se renueva mensualmente mediante Recurrente. Puedes cancelarlo desde el menú de tu cuenta. El acceso permanece disponible según el estado de suscripción confirmado por el proveedor de pago.',
+    'Creator and Full renew monthly through Recurrente. You can cancel from your account menu. Access remains available according to the payment provider’s confirmed subscription status.': 'Creator y Full se renuevan mensualmente mediante Recurrente. Puedes cancelarlos desde el menú de tu cuenta. El acceso permanece disponible según el estado de suscripción confirmado por el proveedor de pago.',
     'Fair use.': 'Uso responsable.',
     'Use FilmScript only with material you have permission to use.': 'Usa FilmScript únicamente con material para el que tengas permiso.',
     'Do not use FilmScript to upload material you do not have permission to use, or to interfere with the service or other writers.': 'No uses FilmScript para subir material que no tengas permiso de utilizar ni para interferir con el servicio u otros escritores.',
     'Questions?': '¿Preguntas?',
     'Contact support if you need help with your account, billing, or your writing workspace.': 'Contacta a soporte si necesitas ayuda con tu cuenta, facturación o espacio de escritura.',
+    'Manage your membership, billing and access to FilmScript Creator.': 'Administra tu membresía, facturación y acceso a FilmScript Creator.',
+    'Manage your membership, billing and access to FilmScript Full.': 'Administra tu membresía, facturación y acceso a FilmScript Full.',
+    'Your Creator workspace': 'Tu espacio Creator',
+    'The complete workflow, including Lumiere text tools and 1,000 monthly image credits.': 'El flujo completo, incluidas las herramientas de texto de Lumiere y 1,000 créditos de imagen mensuales.',
+    'The connected writing and production workflow, including Lumiere text tools and manual visual work.': 'El flujo conectado de escritura y producción, incluidas las herramientas de texto de Lumiere y el trabajo visual manual.',
+    'Every AI image in Imagine, Boards, and Shot List uses 3 credits.': 'Cada imagen de IA en Imagine, Boards y Lista de planos usa 3 créditos.',
+    'Editable camera coverage with AI image references available from your 1,000 monthly credits.': 'Cobertura de cámara editable con referencias de imagen por IA disponibles dentro de tus 1,000 créditos mensuales.',
+    'Cancel FilmScript Creator': 'Cancelar FilmScript Creator',
+    'Cancel FilmScript Creator?': '¿Cancelar FilmScript Creator?',
+    'Cancel FilmScript Full': 'Cancelar FilmScript Full',
+    'Cancel FilmScript Full?': '¿Cancelar FilmScript Full?',
+    'Canceling stops future renewals. Your scripts and existing production documents remain available to edit and export.': 'La cancelación detiene futuras renovaciones. Tus guiones y documentos de producción existentes siguen disponibles para editar y exportar.',
+    'Review the details before you continue. Cancellation stops future renewals, but it never deletes your existing work.': 'Revisa los detalles antes de continuar. La cancelación detiene futuras renovaciones, pero nunca elimina tu trabajo existente.',
+    'I understand that canceling stops future renewals, while my scripts and existing production documents remain editable and exportable.': 'Entiendo que cancelar detiene futuras renovaciones, mientras mis guiones y documentos de producción existentes siguen siendo editables y exportables.',
     'I understand': 'Entiendo',
     'Last updated July 2026': 'Última actualización: julio de 2026',
 
@@ -319,7 +342,7 @@
     'No clear strength has enough evidence yet.': 'Aún no hay suficiente evidencia para destacar una fortaleza clara.',
     'No critical writing issue was identified in this pass.': 'No se identificó ningún problema crítico de escritura en esta lectura.',
     'No material production impact was identified.': 'No se identificó ningún impacto importante de producción.',
-    'Your existing insights and exports remain available. FilmScript Pro is required only for a new Lumiere reading.': 'Tus análisis y exportaciones existentes siguen disponibles. FilmScript Pro solo es necesario para una nueva lectura de Lumiere.',
+    'Your existing insights and exports remain available. Creator or Full unlocks a new Lumiere reading.': 'Tus análisis y exportaciones existentes siguen disponibles. Creator o Full desbloquean una nueva lectura con Lumiere.',
     'Overview': 'Resumen',
     'Pages': 'Páginas',
     'Words': 'Palabras',
@@ -366,7 +389,7 @@
     'Switch to light mode': 'Cambiar a modo día',
     'Updating analysis…': 'Actualizando análisis…',
     'Lumiere is finding the story priorities and production impact': 'Lumiere está encontrando las prioridades narrativas y el impacto de producción',
-    'Lumiere credits are empty. Reset your limits for $5 to continue.': 'Los créditos de Lumiere están agotados. Restablece tus límites por $5 para continuar.',
+    'Lumiere credits are empty. Upgrade to keep creating.': 'Los créditos de Lumiere se agotaron. Mejora tu plan para seguir creando.',
     'The screenplay changed while Lumiere was reading it': 'El guion cambió mientras Lumiere lo leía',
     'Lumiere could not finish this pass. Your previous analysis was preserved.': 'Lumiere no pudo terminar esta lectura. Se conservó tu análisis anterior.',
     'The previous analysis was interrupted. Start it again when ready.': 'La lectura anterior se interrumpió. Vuelve a iniciarla cuando estés listo.',
@@ -423,7 +446,7 @@
     'Write a few scenes and Lumiere will begin analyzing your screenplay.': 'Escribe algunas escenas y Lumiere comenzará a analizar tu guion.',
     'Lumiere is connecting to the current screenplay…': 'Lumiere se está conectando al guion actual…',
     'Lumiere is reading the current draft…': 'Lumiere está leyendo el borrador actual…',
-    'FilmScript Pro is required for new Lumiere story structure analysis.': 'Se requiere FilmScript Pro para generar un nuevo análisis de estructura narrativa con Lumiere.',
+    'Creator or Full unlocks a new Lumiere story structure analysis.': 'Creator o Full desbloquean un nuevo análisis de estructura narrativa con Lumiere.',
     'More screenplay context is needed before Lumiere can interpret story structure.': 'Lumiere necesita más contexto del guion para interpretar la estructura narrativa.',
     'Connected production': 'Producción conectada',
     'Budget saves automatically': 'El presupuesto se guarda automáticamente',
@@ -662,14 +685,14 @@
     'Cinematic': 'Cinematográfico',
     'Festival': 'Festival',
     'From the Script': 'Del guion',
-    'FilmScript Pro at $19.99 / month is required to use Lumiere. Your scripts and manual production work remain available to edit and export.': 'Se requiere FilmScript Pro de $19.99 / mes para usar Lumiere. Tus guiones y trabajo manual de producción siguen disponibles para editar y exportar.',
-    'Lumiere requires FilmScript Pro': 'Lumiere requiere FilmScript Pro',
+    'FilmScript Creator at $24.99 / month unlocks ongoing Lumiere work. Your scripts and manual production work remain available to edit and export.': 'FilmScript Creator por $24.99 / mes desbloquea el uso continuo de Lumiere. Tus guiones y trabajo manual de producción siguen disponibles para editar y exportar.',
+    'Lumiere requires FilmScript Creator': 'Lumiere requiere FilmScript Creator',
     'Your screenplay and existing production documents remain available to edit and export. An active plan is required only to generate new work with Lumiere.': 'Tu guion y los documentos de producción existentes siguen disponibles para editar y exportar. Solo se requiere un plan activo para generar trabajo nuevo con Lumiere.',
     'Your screenplay and every existing breakdown, stripboard, shot list, and budget remain available to edit and export. An active plan is required only to generate new work with Lumiere.': 'Tu guion y todos los desgloses, planes de rodaje, listas de planos y presupuestos existentes siguen disponibles para editar y exportar. Solo se requiere un plan activo para generar trabajo nuevo con Lumiere.',
     'Canceling never deletes your scripts or existing production documents.': 'Cancelar nunca elimina tus guiones ni los documentos de producción existentes.',
     'Canceling never deletes your existing production documents.': 'Cancelar nunca elimina tus documentos de producción existentes.',
-    'Free · Lumiere unavailable': 'Gratis · Lumiere no disponible',
-    'FilmScript Pro required': 'Se requiere FilmScript Pro',
+    'Free · Lumiere allowance used': 'Gratis · límite de Lumiere usado',
+    'FilmScript Creator required': 'Se requiere FilmScript Creator',
     'Planning with Lumiere…': 'Planificando con Lumiere…',
     'Saving order…': 'Guardando orden…',
     'Order saved': 'Orden guardado',
@@ -738,12 +761,12 @@
 
     // Connected preproduction.
     'Connected preproduction': 'Preproducción conectada',
-    'FilmScript Pro inactive': 'FilmScript Pro inactivo',
+    'FilmScript Creator inactive': 'FilmScript Creator inactivo',
     'Your existing production work stays yours.': 'Tu trabajo de producción existente sigue siendo tuyo.',
     'Keep editing and exporting existing breakdowns, stripboards, shot lists, and budgets. An active plan is required only to generate new work with Lumiere.': 'Sigue editando y exportando desgloses, planes de rodaje, listas de planos y presupuestos existentes. Solo se requiere un plan activo para generar trabajo nuevo con Lumiere.',
     'Keep editing and exporting existing breakdowns, stripboards, shot lists, budgets, and calendars. An active plan is required only to generate new work with Lumiere.': 'Sigue editando y exportando desgloses, planes de rodaje, listas de planos, presupuestos y calendarios existentes. Solo se requiere un plan activo para generar trabajo nuevo con Lumiere.',
     'Keep editing existing breakdowns, stripboards, shot lists, budgets, and calendars, with exports where available. An active plan is required only to generate new work with Lumiere.': 'Sigue editando tus desgloses, planes de rodaje, listas de planos, presupuestos y calendarios existentes, con exportaciones donde estén disponibles. Solo se requiere un plan activo para generar trabajo nuevo con Lumiere.',
-    'Keep editing and exporting existing documents. FilmScript Pro is required only for new Lumiere generation.': 'Sigue editando y exportando documentos existentes. FilmScript Pro solo es necesario para generar contenido nuevo con Lumiere.',
+    'Keep editing and exporting existing documents. Creator unlocks ongoing Lumiere text generation.': 'Sigue editando y exportando documentos existentes. Creator desbloquea la generación continua de texto con Lumiere.',
     'Loading screenplay data…': 'Cargando datos del guion…',
     'Loading production plan…': 'Cargando plan de producción…',
     'Synced': 'Sincronizado',
@@ -772,7 +795,7 @@
     'Add first shot': 'Agregar primer plano',
     'Edit shots': 'Editar planos',
     'Generate with Lumiere': 'Generar con Lumiere',
-    'FilmScript Pro required': 'Se requiere FilmScript Pro',
+    'FilmScript Creator required': 'Se requiere FilmScript Creator',
     'Planning…': 'Planificando…',
     'Start with a scene': 'Empieza con una escena',
     'Add a manual scene for pickups or begin writing scene headings in the screenplay.': 'Agrega una escena manual para pickups o empieza a escribir encabezados de escena en el guion.',
@@ -860,7 +883,7 @@
     'A professional screenplay editor with an AI companion named Lumiere. Write your pages, then turn them into breakdowns, stripboards and shot lists. All text, all yours.': 'Un editor profesional de guion con un compañero de IA llamado Lumiere. Escribe tus páginas y conviértelas en desgloses, planes de rodaje y listas de planos. Todo el texto, completamente tuyo.',
     'Start writing': 'Empezar a escribir',
     'See pricing': 'Ver precios',
-    'Start writing with FilmScript Pro · $19.99/month': 'Empieza a escribir con FilmScript Pro · $19.99/mes',
+    'Start creating with FilmScript Full · $39.99/month': 'Empieza a crear con FilmScript Full · $39.99/mes',
     '"This line leans on a cliché. Want a sharper image?"': '"Esta línea se apoya en un cliché. ¿Quieres una imagen más precisa?"',
     'reading Scene 12': 'leyendo la escena 12',
     'Run a full analysis on act two. Where does the tension sag?': 'Haz un análisis completo del segundo acto. ¿Dónde pierde fuerza la tensión?',
@@ -931,25 +954,78 @@
     'Does Lumiere write my script?': '¿Lumiere escribe mi guion?',
     'No. Lumiere never adds a single line. It reads what you wrote and helps you make it sharper.': 'No. Lumiere nunca agrega una sola línea. Lee lo que escribiste y te ayuda a hacerlo más preciso.',
     'Can I switch plans later?': '¿Puedo cambiar de plan después?',
-    'Yes. Add or drop Lumiere any time from your account menu. Changes apply right away.': 'Sí. Activa o desactiva Lumiere cuando quieras desde el menú de tu cuenta. Los cambios se aplican de inmediato.',
+    'Yes. Move between Free, Creator, and Full at any time. Your existing scripts and production work stay available.': 'Sí. Cambia entre Free, Creator y Full cuando quieras. Tus guiones y trabajo de producción existentes seguirán disponibles.',
     'What do my pages export to?': '¿En qué formato se exportan mis páginas?',
     'Industry standard PDF, WGA checked, ready to send the moment you finish.': 'PDF estándar de la industria, revisado según WGA y listo para enviar al terminar.',
     'Which plan makes the production documents?': '¿Qué plan crea los documentos de producción?',
-    'Breakdowns, stripboards, shot lists and script analysis are Lumiere features, included in the Pro plan.': 'Los desgloses, planes de rodaje, listas de planos y análisis de guion son funciones de Lumiere incluidas en el plan Pro.',
+    'Breakdowns, stripboards, shot lists and script analysis are Lumiere features, included in Creator and Full.': 'Los desgloses, planes de rodaje, listas de planos y análisis de guion son funciones de Lumiere incluidas en Creator y Full.',
     'Is there a free trial?': '¿Hay una prueba gratuita?',
     'Your first script is on us. Write it fully before you pick a plan.': 'Tu primer guion corre por nuestra cuenta. Escríbelo completo antes de elegir un plan.',
     'FilmScript. Write better, not louder.': 'FilmScript. Escribe mejor, no más fuerte.',
 
     // Pricing.
     'Choose the workspace that fits your process.': 'Elige el espacio de trabajo que se adapta a tu proceso.',
-    'Start free, build your production manually with Basic, or unlock the full Lumiere workflow with Pro.': 'Empieza gratis, construye tu producción manualmente con Basic o desbloquea el flujo completo de Lumiere con Pro.',
+    'Start free, create with Lumiere in Creator, or unlock Full with 1,000 monthly image credits.': 'Empieza gratis, crea con Lumiere en Creator o desbloquea Full con 1,000 créditos mensuales para imágenes.',
     'Most loved': 'Más elegido',
     '/ month': '/ mes',
     '$0 / month': '$0 / mes',
-    '$12.99 / month': '$12.99 / mes',
-    '$19.99 / month': '$19.99 / mes',
-    'FilmScript Basic · $12.99 / month': 'FilmScript Basic · $12.99 / mes',
-    'FilmScript Pro · $19.99 / month': 'FilmScript Pro · $19.99 / mes',
+    '$24.99 / month': '$24.99 / mes',
+    '$39.99 / month': '$39.99 / mes',
+    'FilmScript Creator': 'FilmScript Creator',
+    'FilmScript Full': 'FilmScript Full',
+    'FilmScript Creator · $24.99 / month': 'FilmScript Creator · $24.99 / mes',
+    'FilmScript Full · $39.99 / month': 'FilmScript Full · $39.99 / mes',
+    'AI writing': 'Escritura con IA',
+    '1,000 image credits': '1,000 créditos de imagen',
+    'See the workspace before you commit.': 'Conoce el espacio de trabajo antes de decidir.',
+    'Every FilmScript tool and AI text workflow, without AI image generation.': 'Todas las herramientas de FilmScript y el flujo de texto con IA, sin generación de imágenes con IA.',
+    'The full production studio, with image generation across FilmScript.': 'El estudio de producción completo, con generación de imágenes en todo FilmScript.',
+    'Choose Creator': 'Elegir Creator',
+    'Choose Full': 'Elegir Full',
+    'Professional screenplay editor and PDF export': 'Editor profesional de guion y exportación a PDF',
+    'Manual Breakdown, Stripboard, Shot List, Budget, Canvas, and Calendar': 'Desglose, plan de rodaje, lista de planos, presupuesto, Canvas y calendario manuales',
+    'Upload reference images and build mood boards manually': 'Sube imágenes de referencia y crea mood boards manualmente',
+    'A small set of Lumiere prompts to explore the assistant': 'Un pequeño número de prompts de Lumiere para explorar el asistente',
+    'One AI script analysis, one AI breakdown, and one AI storyboard or shot list per account': 'Un análisis de guion con IA, un desglose con IA y un storyboard o lista de planos con IA por cuenta',
+    'Free AI grants stay used even if a script is deleted': 'Las funciones gratuitas de IA siguen consumidas aunque elimines un guion',
+    'No AI image generation': 'Sin generación de imágenes con IA',
+    'Everything in the manual production workspace': 'Todo en el espacio de producción manual',
+    'Lumiere inside the editor with expanded text limits': 'Lumiere dentro del editor con límites de texto ampliados',
+    'AI script analysis and AI-assisted breakdowns': 'Análisis de guion con IA y desgloses asistidos por IA',
+    'AI-assisted scheduling, shot list coverage, and Budget generation': 'Programación asistida por IA, cobertura para listas de planos y generación de presupuestos',
+    'Lumiere creative taste profile': 'Perfil de gusto creativo de Lumiere',
+    'Manual Canvas mood boards and reference uploads': 'Mood boards manuales en Canvas y carga de referencias',
+    'Upload reference images in Shot List': 'Carga imágenes de referencia en la lista de planos',
+    'Connected Budget, Cash Flow, expenses, and A4 exports': 'Presupuesto, flujo de caja, gastos y exportaciones A4 conectados',
+    'No AI image generation in Imagine, Boards, or Shot List': 'Sin generación de imágenes con IA en Imagine, Boards ni Lista de planos',
+    'Everything in Creator': 'Todo lo de Creator',
+    '1,000 image credits every monthly billing cycle': '1,000 créditos de imagen en cada ciclo de facturación mensual',
+    'Every AI image costs 3 credits': 'Cada imagen de IA cuesta 3 créditos',
+    'Generate frames in Imagine': 'Genera imágenes en Imagine',
+    'Generate visual references in Boards': 'Genera referencias visuales en Boards',
+    'Generate shot references in Shot List': 'Genera referencias de planos en Lista de planos',
+    'Higher Lumiere text limits': 'Límites de texto de Lumiere más altos',
+    'Use images across Imagine, Boards, Vault, and Shot List': 'Usa imágenes en Imagine, Boards, Vault y Lista de planos',
+    'Manual editing remains available on every AI result': 'La edición manual sigue disponible en cada resultado de IA',
+    'Yes. Move between Free, Creator, and Full at any time. Your existing scripts and production work stay available.': 'Sí. Cambia entre Free, Creator y Full cuando quieras. Tus guiones y trabajo de producción existentes seguirán disponibles.',
+    'Free includes a limited AI introduction. Creator adds the AI text workflow. Full adds 1,000 monthly image credits for Imagine, Boards, and Shot List.': 'Free incluye una introducción limitada a la IA. Creator añade el flujo de texto con IA. Full añade 1,000 créditos mensuales para imágenes en Imagine, Boards y Lista de planos.',
+    'Create more with Full · $39.99/month': 'Crea más con Full · $39.99/mes',
+    'Start free. Creator $24.99/month. Full $39.99/month.': 'Empieza gratis. Creator $24.99/mes. Full $39.99/mes.',
+    'Upgrade to Full': 'Mejorar a Full',
+    'Lumiere requires FilmScript Creator': 'Lumiere requiere FilmScript Creator',
+    'FilmScript Creator at $24.99 / month unlocks ongoing Lumiere work. Your scripts and manual production work remain available to edit and export.': 'FilmScript Creator por $24.99 / mes desbloquea el uso continuo de Lumiere. Tus guiones y trabajo manual de producción siguen disponibles para editar y exportar.',
+    'View Creator': 'Ver Creator',
+    'View Creator · $24.99 / month': 'Ver Creator · $24.99 / mes',
+    'Keep editing and exporting existing documents. Creator unlocks ongoing Lumiere text generation.': 'Sigue editando y exportando documentos existentes. Creator desbloquea la generación continua de texto con Lumiere.',
+    'Credits and limits.': 'Créditos y límites.',
+    'Paid plans renew monthly.': 'Los planes de pago se renuevan mensualmente.',
+    'Paid subscriptions.': 'Suscripciones de pago.',
+    'Free includes a small set of Lumiere prompts, plus one AI script analysis, one AI breakdown, and one AI storyboard or shot list per account. Those grants are not restored by deleting a script. Creator includes AI text tools and 100 image credits every monthly billing cycle. Full includes 1,000 image credits every monthly billing cycle; every AI image in Imagine, Boards, or Shot List uses 3 credits. Unused image credits do not roll over and have no cash value.': 'Free incluye un pequeño número de prompts de Lumiere, además de un análisis de guion con IA, un desglose con IA y un storyboard o lista de planos con IA por cuenta. Estas funciones no se restauran al eliminar un guion. Creator incluye herramientas de texto con IA y 100 créditos de imagen en cada ciclo de facturación mensual. Full incluye 1,000 créditos de imagen en cada ciclo de facturación mensual; cada imagen de IA en Imagine, Boards o Lista de planos usa 3 créditos. Los créditos no utilizados no se acumulan ni tienen valor en efectivo.',
+    'Free includes a small set of Lumiere prompts, plus one AI script analysis, one AI breakdown, and one AI storyboard or shot list per account. Those free grants are account-based and are not restored by deleting a script. Creator includes FilmScript’s AI text tools and 100 image credits each monthly billing cycle. Full includes 1,000 image credits each monthly billing cycle. Every AI image generated in Imagine, Boards, or Shot List uses 3 credits. Unused image credits do not roll over and have no cash value.': 'Free incluye un pequeño número de prompts de Lumiere, además de un análisis de guion con IA, un desglose con IA y un storyboard o lista de planos con IA por cuenta. Estas funciones gratuitas pertenecen a la cuenta y no se restauran al eliminar un guion. Creator incluye las herramientas de texto con IA de FilmScript y 100 créditos de imagen en cada ciclo de facturación mensual. Full incluye 1,000 créditos de imagen en cada ciclo de facturación mensual. Cada imagen de IA generada en Imagine, Boards o Lista de planos usa 3 créditos. Los créditos no utilizados no se acumulan ni tienen valor en efectivo.',
+    'Creator and Full renew monthly through Recurrente and can be canceled from your account menu.': 'Creator y Full se renuevan mensualmente mediante Recurrente y se pueden cancelar desde el menú de tu cuenta.',
+    'Creator and Full renew through Recurrente. You can cancel or change your plan from your account menu. Access remains available according to the payment provider’s confirmed subscription status.': 'Creator y Full se renuevan mediante Recurrente. Puedes cancelar o cambiar tu plan desde el menú de tu cuenta. El acceso permanece disponible según el estado de suscripción confirmado por el proveedor de pago.',
+    'Do not use FilmScript to upload material you do not have permission to use, or to interfere with the service or other writers.': 'No uses FilmScript para subir material que no tienes permiso de usar ni para interferir con el servicio o con otros escritores.',
+    'Contact support if you need help with your account, billing, or your writing workspace.': 'Contacta a soporte si necesitas ayuda con tu cuenta, facturación o espacio de escritura.',
     'Every FilmScript tool, connected from first draft to production.': 'Todas las herramientas de FilmScript, conectadas desde el primer borrador hasta producción.',
     'Professional screenplay editor and PDF exports': 'Editor profesional de guion y exportaciones PDF',
     'Lumiere, your AI script assistant': 'Lumiere, tu asistente de guion con IA',
@@ -970,7 +1046,8 @@
     'Checking your subscription': 'Verificando tu suscripción',
     'FilmScript is securely checking your subscription with Recurrente.': 'FilmScript está verificando de forma segura tu suscripción con Recurrente.',
     'Google account': 'Cuenta de Google',
-    'Your FilmScript Pro plan': 'Tu plan FilmScript Pro',
+    'Your FilmScript Creator plan': 'Tu plan FilmScript Creator',
+    'Your FilmScript Full plan': 'Tu plan FilmScript Full',
     'Everything in FilmScript is unlocked for this Google account, from the first page to the production plan.': 'Todo FilmScript está desbloqueado para esta cuenta de Google, desde la primera página hasta el plan de producción.',
     'Current plan': 'Plan actual',
     'Connected Google account': 'Cuenta de Google conectada',
@@ -996,10 +1073,6 @@
     'Manage your billing securely with the payment provider.': 'Administra tu facturación de forma segura con el proveedor de pago.',
     'Cancel service': 'Cancelar servicio',
     'Canceling stops future renewals and Lumiere generation. Your scripts and existing production documents remain available to edit and export.': 'La cancelación detiene futuras renovaciones y la generación con Lumiere. Tus guiones y documentos de producción existentes siguen disponibles para editar y exportar.',
-    'Cancel FilmScript Pro': 'Cancelar FilmScript Pro',
-    'Cancel FilmScript Pro?': '¿Cancelar FilmScript Pro?',
-    'Cancel FilmScript Basic': 'Cancelar FilmScript Basic',
-    'Cancel FilmScript Basic?': '¿Cancelar FilmScript Basic?',
     'Review the details before you continue. Cancellation stops future renewals and Lumiere generation, but it never deletes your existing work.': 'Revisa los detalles antes de continuar. La cancelación detiene futuras renovaciones y la generación con Lumiere, pero nunca elimina tu trabajo existente.',
     'I understand that canceling removes Lumiere generation, while my scripts and existing production documents remain editable and exportable.': 'Entiendo que cancelar desactiva la generación con Lumiere, mientras mis guiones y documentos de producción existentes siguen siendo editables y exportables.',
     'Cancel through Recurrente': 'Cancelar mediante Recurrente',
@@ -1007,8 +1080,9 @@
     'FilmScript never exposes your Recurrente secret key or payment details in the browser.': 'FilmScript nunca expone tu llave secreta de Recurrente ni los detalles de pago en el navegador.',
     'This Google account does not have an active FilmScript subscription. Existing scripts and production documents remain editable and exportable.': 'Esta cuenta de Google no tiene una suscripción activa de FilmScript. Los guiones y documentos de producción existentes siguen siendo editables y exportables.',
     'Cancellation complete': 'Cancelación completada',
-    'FilmScript Pro canceled': 'FilmScript Pro cancelado',
-    'FilmScript Pro is canceled. Your existing work remains available to edit and export; Lumiere generation is now locked.': 'FilmScript Pro está cancelado. Tu trabajo existente sigue disponible para editar y exportar; la generación con Lumiere ahora está bloqueada.',
+    'FilmScript Creator canceled': 'FilmScript Creator cancelado',
+    'FilmScript Full canceled': 'FilmScript Full cancelado',
+    'Your FilmScript plan is canceled. Your existing work remains available to edit and export; new AI generation is now locked.': 'Tu plan de FilmScript está cancelado. Tu trabajo existente sigue disponible para editar y exportar; la generación nueva con IA está bloqueada.',
     'Return to FilmScript': 'Volver a FilmScript',
     'Nothing was changed': 'No se modificó nada',
     'We could not complete that': 'No pudimos completar la acción',
@@ -1521,6 +1595,12 @@
     'Principal photography': 'Rodaje principal',
     'Main shoot': 'Rodaje principal',
     'Connected to Budget shooting dates': 'Conectado con las fechas de rodaje del Presupuesto',
+    'Production status': 'Estado de producción',
+    'Budget linked': 'Presupuesto conectado',
+    'On track': 'En curso',
+    'Overdue': 'Atrasado',
+    'Today': 'Hoy',
+    'Live': 'En vivo',
     'Critical path': 'Ruta crítica',
     'Overall progress': 'Progreso general',
     'Production path': 'Ruta de producción',
@@ -1730,7 +1810,8 @@
     if ((match = value.match(/^(.+) · Overall over budget$/))) return `${match[1]} · Total sobre presupuesto`;
     if ((match = value.match(/^(.+) · Overall remaining$/))) return `${match[1]} · Total restante`;
     if ((match = value.match(/^More screenplay context is needed before Lumiere can interpret (.+)\.$/))) return `Lumiere necesita más contexto del guion para interpretar ${match[1]}.`;
-    if ((match = value.match(/^FilmScript Pro is required for new Lumiere (.+) analysis\.$/))) return `Se requiere FilmScript Pro para generar un nuevo análisis de ${match[1]} con Lumiere.`;
+    if ((match = value.match(/^Creator or Full unlocks a new Lumiere (.+) analysis\.$/))) return `Creator o Full desbloquean un nuevo análisis de ${match[1]} con Lumiere.`;
+    if ((match = value.match(/^(.+) is included with FilmScript Creator and FilmScript Full\. Your scripts and manual production documents remain available to edit and export\.$/))) return `${t(match[1], 'es')} está incluido con FilmScript Creator y Full. Tus guiones y documentos manuales de producción siguen disponibles para editar y exportar.`;
     if ((match = value.match(/^Ask Lumiere about (.+)$/))) return `Preguntar a Lumiere sobre ${match[1]}`;
     if ((match = value.match(/^Scene (\d+) · Page (\d+)$/))) return `Escena ${match[1]} · Página ${match[2]}`;
     if ((match = value.match(/^Scene (\d+) · Pages? ([\d,\s–-]+)$/))) return `Escena ${match[1]} · Páginas ${match[2]}`;
@@ -1820,7 +1901,8 @@
     if ((match = value.match(/^Remove dependency (.+)$/))) return `Quitar dependencia ${match[1]}`;
     if ((match = value.match(/^Task (\d+)$/))) return `Tarea ${match[1]}`;
     if ((match = value.match(/^Reads all (\d+) pages$/))) return `Lee las ${match[1]} páginas`;
-    if ((match = value.match(/^(\d+)% credits left$/))) return `${match[1]}% de créditos disponibles`;
+    if ((match = value.match(/^(\d+) image credits? left$/))) return `${match[1]} créditos de imagen disponibles`;
+    if ((match = value.match(/^(\d+) credits? left$/))) return `${match[1]} créditos disponibles`;
     if ((match = value.match(/^(\d+) cost items?$/))) return `${match[1]} ${Number(match[1]) === 1 ? 'partida' : 'partidas'}`;
     if ((match = value.match(/^(\d+) payments?$/))) return `${match[1]} ${Number(match[1]) === 1 ? 'pago' : 'pagos'}`;
     if ((match = value.match(/^Schedule (.+)$/))) return `Programar ${match[1]}`;
@@ -1957,6 +2039,30 @@
     refreshInjectedControls();
   };
 
+  // Profile is a global control. It must never sit behind workspace controls
+  // (for example the New script action) just because a page creates its own
+  // stacking context. Keep the full profile layer above each workspace while
+  // leaving ordinary modals above it when they are intentionally opened.
+  const enforceProfileLayerPriority = () => {
+    document.querySelectorAll('[data-testid="account-avatar"]').forEach((avatar) => {
+      const host = avatar.parentElement;
+      if (host) {
+        host.dataset.filmscriptProfileHost = '1';
+        host.style.position = host.style.position || 'relative';
+        host.style.zIndex = '2147482000';
+      }
+      const topbar = avatar.closest?.('.v5-topbar, .fs-marketing-topbar, .fs-app-topbar');
+      if (topbar) {
+        topbar.dataset.filmscriptProfileLayer = '1';
+        topbar.style.position = topbar.style.position || 'relative';
+        topbar.style.zIndex = '2147482000';
+      }
+    });
+    document.querySelectorAll('[data-filmscript-profile-panel]').forEach((panel) => {
+      panel.style.zIndex = '2147482500';
+    });
+  };
+
   const renderSettings = (modal) => {
     const language = get();
     const spanish = language === 'es';
@@ -2086,6 +2192,7 @@
     walk(root, next);
     injectLanguageButtons();
     injectProfileSettings();
+    enforceProfileLayerPriority();
     refreshInjectedControls();
     return next;
   };
@@ -2110,6 +2217,7 @@
       }
       injectLanguageButtons();
       injectProfileSettings();
+      enforceProfileLayerPriority();
     });
     observer.observe(root, { subtree: true, childList: true, characterData: true, attributes: true, attributeFilter: ATTRIBUTES });
   }
@@ -2122,6 +2230,11 @@
       .fs-language-modal,.fs-language-modal *{font-family:"SF Pro Text",-apple-system,BlinkMacSystemFont,"Helvetica Neue",Arial,sans-serif!important}.fs-language-modal h1,.fs-language-modal h2,.fs-language-modal h3{font-family:"SF Pro Display","SF Pro Text",-apple-system,BlinkMacSystemFont,"Helvetica Neue",Arial,sans-serif!important;font-weight:800!important}
       .fs-language-profile-item{display:flex!important;align-items:center;justify-content:space-between;gap:16px;min-height:34px}.fs-language-profile-item small{color:var(--muted,#888780);font:500 10.5px/1 "Helvetica Neue",Helvetica,Arial,sans-serif;letter-spacing:.15px}.fs-language-profile-item:hover small{color:var(--accent,#BA7517)}
       .fs-language-profile-item:focus-visible,.fs-language-option:focus-visible,.fs-language-close:focus-visible{outline:2px solid #BA7517;outline-offset:2px}
+      /* The profile menu belongs above every workspace action on every FilmScript page. */
+      .fs-app-topbar,.fs-marketing-topbar,.v5-topbar,[data-filmscript-profile-layer="1"]{position:relative;z-index:2147482000!important;isolation:isolate}
+      [data-filmscript-profile-host="1"]{position:relative;z-index:2147482000!important}
+      [data-filmscript-profile-panel]{z-index:2147482500!important}
+      [data-testid="account-details-overlay"]{z-index:2147483000!important}
       .fs-language-modal[hidden]{display:none!important}.fs-language-modal{position:fixed;inset:0;z-index:2147483000;display:grid;place-items:center;padding:24px;font-family:"Helvetica Neue",Helvetica,Arial,sans-serif}.fs-language-backdrop{position:absolute;inset:0;background:rgba(20,20,18,.48);backdrop-filter:blur(10px);animation:fsLanguageFade .16s ease both}.fs-language-sheet{--fs-lang-bg:#FFFEF9;--fs-lang-ink:#242421;--fs-lang-muted:#77756e;--fs-lang-line:rgba(36,36,33,.34);position:relative;width:min(460px,calc(100vw - 32px));box-sizing:border-box;padding:28px;background:var(--fs-lang-bg);color:var(--fs-lang-ink);border:1px solid var(--fs-lang-line);border-radius:21px 18px 23px 17px/19px 22px 17px 21px;box-shadow:0 26px 90px rgba(0,0,0,.28);animation:fsLanguageRise .2s cubic-bezier(.2,.8,.2,1) both}.fs-language-sheet:after{content:"";position:absolute;pointer-events:none;inset:4px 5px 4px 4px;border:1px solid color-mix(in srgb,var(--fs-lang-ink) 24%,transparent);border-radius:17px 16px 18px 15px/16px 18px 15px 17px;opacity:.42;transform:rotate(.08deg)}
       :root[data-filmscript-theme="dark"] .fs-language-sheet{--fs-lang-bg:#242422;--fs-lang-ink:#F0EEE7;--fs-lang-muted:#aaa79e;--fs-lang-line:rgba(240,238,231,.3)}
       .fs-language-sheet>*{position:relative;z-index:1}.fs-language-close{position:absolute;z-index:3;right:17px;top:15px;width:32px;height:32px;border:0;border-radius:50%;background:transparent;color:var(--fs-lang-muted);font:300 24px/1 sans-serif;cursor:pointer;transition:background-color .15s ease,color .15s ease}.fs-language-close:hover{background:color-mix(in srgb,var(--fs-lang-ink) 8%,transparent);color:var(--fs-lang-ink)}.fs-language-eyebrow{font-size:10px;font-weight:750;letter-spacing:1.7px;color:#BA7517}.fs-language-sheet h2{margin:8px 0 0;font-size:28px;line-height:1.08;letter-spacing:-.75px}.fs-language-initial-choice .fs-language-sheet h2 span{font-size:.64em;font-weight:500;letter-spacing:-.2px;color:var(--fs-lang-muted)}.fs-language-intro{margin:9px 42px 0 0;color:var(--fs-lang-muted);font-size:13px;line-height:1.5}.fs-language-rule{width:100%;height:1px;margin:22px 0 20px;background:color-mix(in srgb,var(--fs-lang-ink) 14%,transparent);transform:rotate(-.15deg)}.fs-language-section-title{font-size:14px;font-weight:700}.fs-language-section-copy{margin:5px 0 0;color:var(--fs-lang-muted);font-size:12px;line-height:1.5}.fs-language-options{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:16px}.fs-language-option{display:flex;align-items:center;justify-content:space-between;gap:12px;min-height:70px;padding:12px 13px;border:1px solid color-mix(in srgb,var(--fs-lang-ink) 20%,transparent);border-radius:13px 11px 14px 10px/11px 14px 10px 13px;background:transparent;color:var(--fs-lang-ink);text-align:left;cursor:pointer;transition:transform .16s cubic-bezier(.2,.8,.2,1),border-color .16s ease,background-color .16s ease}.fs-language-option:hover{transform:translateY(-1px);border-color:color-mix(in srgb,#BA7517 66%,var(--fs-lang-line))}.fs-language-option.is-active{border-color:#BA7517;background:rgba(186,117,23,.09)}.fs-language-option span,.fs-language-option strong,.fs-language-option small{display:block}.fs-language-option strong{font-size:13px}.fs-language-option small{margin-top:4px;color:var(--fs-lang-muted);font-size:10.5px}.fs-language-arrow{font-style:normal;color:#BA7517;font-size:18px;transition:transform .16s ease}.fs-language-option:hover .fs-language-arrow{transform:translateX(3px)}.fs-language-check{display:grid;place-items:center;width:22px;height:22px;flex:0 0 22px;border:1px solid color-mix(in srgb,var(--fs-lang-ink) 24%,transparent);border-radius:50%;color:#BA7517;font:800 12px/1 sans-serif}.fs-language-option.is-active .fs-language-check{border-color:#BA7517}.fs-language-helper{margin:15px 0 0;color:var(--fs-lang-muted);font-size:10.5px;line-height:1.45}.fs-language-open{overflow:hidden}@keyframes fsLanguageFade{from{opacity:0}to{opacity:1}}@keyframes fsLanguageRise{from{opacity:0;transform:translateY(8px) scale(.985)}to{opacity:1;transform:none}}@media(max-width:520px){.fs-language-modal{padding:14px}.fs-language-sheet{padding:25px 20px}.fs-language-options{grid-template-columns:1fr}}@media(prefers-reduced-motion:reduce){.fs-language-backdrop,.fs-language-sheet,.fs-language-quick,.fs-language-option{animation-duration:.01ms!important;transition-duration:.01ms!important}}
@@ -2138,7 +2251,9 @@
       if (!settings) return;
       event.preventDefault();
       event.stopPropagation();
-      window.filmscriptSounds?.play?.('profileOption');
+      // Language has its own gentle cue so opening this setting feels distinct
+      // from navigating the rest of the profile menu.
+      window.filmscriptSounds?.play?.('languageSelect');
       openSettings();
     }, true);
     document.addEventListener('keydown', (event) => {

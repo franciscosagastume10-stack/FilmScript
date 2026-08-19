@@ -3,6 +3,10 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
+  <link rel="icon" href="./assets/filmscript-favicon.svg?v=20260813" type="image/svg+xml">
+  <link rel="shortcut icon" href="./assets/filmscript-favicon.svg?v=20260813" type="image/svg+xml">
+  <!-- Vercel Web Analytics: production page views and navigation. -->
+  <script defer src="/_vercel/insights/script.js"></script>
   <meta name="color-scheme" content="light dark">
   <title>Plan and billing · FilmScript</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -10,10 +14,11 @@
   <link href="https://fonts.googleapis.com/css2?family=Courier+Prime:wght@400;700&amp;display=swap" rel="stylesheet">
   <script src="./runtime-config.js?v=20260711-cancel1"></script>
   <script src="./theme-preference.js?v=20260712-theme1"></script>
-  <script src="./language-preference.js?v=20260716-language-choice1"></script>
-  <script src="./ui-sounds.js?v=20260713-subscription-cancel1"></script>
-  <script src="./billing-client.js?v=20260716-profile-safe1"></script>
-  <script src="./profile-onboarding.js?v=20260716-profile1"></script>
+  <script defer src="./language-preference.js?v=20260731-plan-credits4"></script>
+  <script defer src="./ui-sounds.js?v=20260728-calendar-complete1"></script>
+<script defer src="./billing-client.js?v=20260716-profile-safe1"></script>
+<script defer src="./credit-indicator.js?v=20260801-credit-panel1"></script>
+  <script defer src="./profile-onboarding.js?v=20260716-profile1"></script>
   <style>
     :root {
       --bg: #faf7f2;
@@ -442,10 +447,10 @@
           <div class="plan-kicker">Current plan</div>
           <div class="plan-heading">
             <div>
-              <h2 id="overview-plan-name">FilmScript Pro</h2>
+              <h2 id="overview-plan-name">FilmScript Full</h2>
               <div class="active-pill" id="overview-status">Active</div>
             </div>
-            <div class="plan-price" id="overview-plan-price">$19.99 / month</div>
+            <div class="plan-price" id="overview-plan-price">$39.99 / month</div>
           </div>
           <div class="plan-account" id="overview-email">Connected Google account</div>
         </div>
@@ -462,6 +467,11 @@
             <div class="feature-icon"><svg viewBox="0 0 24 24"><path class="icon-star-main" d="m12 3 1.5 5.5L19 10l-5.5 1.5L12 17l-1.5-5.5L5 10l5.5-1.5z"/><path class="icon-star-small" d="m18.5 16 .7 2.3 2.3.7-2.3.7-.7 2.3-.7-2.3-2.3-.7 2.3-.7z"/></svg></div>
             <div class="feature-name">Lumiere</div>
             <div class="feature-description">Script feedback, analysis and conversations saved per screenplay.</div>
+          </div>
+          <div class="feature-card" id="image-credit-feature-card" hidden>
+            <div class="feature-icon"><svg viewBox="0 0 24 24"><rect x="4" y="4" width="16" height="16" rx="2"/><circle cx="9" cy="9" r="1.5"/><path d="m5.8 18 4.5-4.7 3.2 3 2-2.1 2.7 3.2"/></svg></div>
+            <div class="feature-name">1,000 image credits</div>
+            <div class="feature-description">Every AI image in Imagine, Boards, and Shot List uses 3 credits.</div>
           </div>
           <div class="feature-card">
             <div class="feature-icon"><svg viewBox="0 0 24 24"><path class="icon-grid" d="M4 5h16v14H4zM4 10h16M10 10v9M15 10v9"/><path class="icon-grid-label" d="M7 7.5h5"/></svg></div>
@@ -505,24 +515,24 @@
         <div class="danger-zone" id="danger-zone">
           <svg viewBox="0 0 520 8" preserveAspectRatio="none" aria-hidden="true"><path d="M2 5 C92 1, 177 7, 268 4 S431 2, 518 5"/><path d="M19 7 C145 5, 319 7, 495 4" opacity=".35"/></svg>
           <h2>Cancel service</h2>
-          <p id="danger-copy">Canceling stops future renewals and Lumiere generation. Your scripts and existing production documents remain available to edit and export.</p>
-          <button class="button button-danger" id="start-cancel-button" type="button">Cancel FilmScript Pro</button>
+          <p id="danger-copy">Canceling stops future renewals. Your scripts and existing production documents remain available to edit and export.</p>
+          <button class="button button-danger" id="start-cancel-button" type="button">Cancel FilmScript Full</button>
         </div>
       </div>
 
       <div class="content" id="manage-view" hidden>
         <div class="eyebrow">Plan and billing</div>
-        <h1 id="manage-title">Cancel FilmScript Pro?</h1>
+        <h1 id="manage-title">Cancel FilmScript Full?</h1>
         <svg class="sketch-line" viewBox="0 0 84 9" aria-hidden="true"><path d="M2 5 C18 2, 38 7, 82 3"/><path d="M9 8 C29 6, 49 8, 72 6" opacity=".45"/></svg>
-        <p class="lede" id="manage-copy">Review the details before you continue. Cancellation stops future renewals and Lumiere generation, but it never deletes your existing work.</p>
+        <p class="lede" id="manage-copy">Review the details before you continue. Cancellation stops future renewals, but it never deletes your existing work.</p>
 
         <div class="plan-card">
           <div class="plan-row">
             <div>
-              <div class="plan-name" id="manage-plan-name">FilmScript Pro</div>
+              <div class="plan-name" id="manage-plan-name">FilmScript Full</div>
               <div class="plan-meta" id="account-email">Connected Google account</div>
             </div>
-            <div class="price" id="manage-plan-price">$19.99 / month</div>
+            <div class="price" id="manage-plan-price">$39.99 / month</div>
           </div>
           <div class="provider">
             <span class="provider-mark" aria-hidden="true"></span>
@@ -535,7 +545,7 @@
 
         <label class="confirm" id="confirm-label">
           <input id="confirm-checkbox" type="checkbox">
-          <span id="confirm-copy">I understand that canceling removes Lumiere generation, while my scripts and existing production documents remain editable and exportable.</span>
+          <span id="confirm-copy">I understand that canceling stops future renewals, while my scripts and existing production documents remain editable and exportable.</span>
         </label>
 
         <div class="actions">
@@ -602,6 +612,14 @@
       let management = null;
       let account = null;
 
+      const planDetails = (plan) => {
+        // Present legacy subscriptions as Creator while existing billing records migrate.
+        const key = plan === 'full' ? 'full' : 'creator';
+        return key === 'full'
+          ? { key, name: 'FilmScript Full', price: '$39.99 / month', isFull: true }
+          : { key, name: 'FilmScript Creator', price: '$24.99 / month', isFull: false };
+      };
+
       const byId = (id) => document.getElementById(id);
       const playSound = (name) => window.filmscriptSounds?.play(name);
       const show = (name) => views.forEach((view) => { byId(view + '-view').hidden = view !== name; });
@@ -632,20 +650,21 @@
       byId('recurrente-link').addEventListener('click', () => playSound('profileOption'));
 
       function configureOverview() {
-        const planName = management.planName || (management.plan === 'basic' ? 'FilmScript Basic' : 'FilmScript Pro');
-        const planPrice = management.price || (management.plan === 'basic' ? '$12.99 / month' : '$19.99 / month');
-        const isBasic = management.plan === 'basic';
+        const { name: planName, price: planPrice, isFull } = planDetails(management.plan);
         const recurringSubscription = management.cancelMode === 'recurrente' && management.subscriptionLinked;
         const cancelableSubscription = !!management.cancelMode;
         byId('overview-email').textContent = account?.email || 'Connected Google account';
         byId('overview-plan-name').textContent = planName;
         byId('overview-plan-price').textContent = planPrice;
         byId('overview-lede').textContent = `Manage your membership, billing and access to ${planName}.`;
-        byId('overview-features-title').textContent = isBasic ? 'Your manual production toolkit' : 'Everything included';
-        byId('overview-features-copy').textContent = isBasic ? 'Write, break down, schedule and budget your production with full manual control.' : 'One connected workflow for writing, planning and preparing the shoot.';
-        byId('lumiere-feature-card').hidden = isBasic;
-        byId('shot-feature-description').textContent = isBasic
-          ? 'Build and edit camera coverage scene by scene with full manual control.'
+        byId('overview-features-title').textContent = isFull ? 'Everything included' : 'Your Creator workspace';
+        byId('overview-features-copy').textContent = isFull
+          ? 'The complete workflow, including Lumiere text tools and 1,000 monthly image credits.'
+          : 'The connected writing and production workflow, including Lumiere text tools and manual visual work.';
+        byId('lumiere-feature-card').hidden = false;
+        byId('image-credit-feature-card').hidden = !isFull;
+        byId('shot-feature-description').textContent = isFull
+          ? 'Editable camera coverage with AI image references available from your 1,000 monthly credits.'
           : 'Editable camera coverage generated scene by scene with Lumiere.';
         byId('overview-status').textContent = 'Active';
         byId('overview-environment').hidden = true;
@@ -655,17 +674,13 @@
         byId('overview-developer-link').hidden = true;
         byId('start-cancel-button').textContent = `Cancel ${planName}`;
         byId('danger-zone').hidden = !cancelableSubscription;
-        byId('danger-copy').textContent = isBasic
-          ? 'Canceling stops future renewals. Your scripts and manual production documents remain available to edit and export.'
-          : 'Canceling stops future renewals and Lumiere generation. Your scripts and existing production documents remain available to edit and export.';
+        byId('danger-copy').textContent = 'Canceling stops future renewals. Your scripts and existing production documents remain available to edit and export.';
         show('overview');
       }
 
       function configureManage() {
         if (!management?.cancelMode) return configureOverview();
-        const planName = management.planName || (management.plan === 'basic' ? 'FilmScript Basic' : 'FilmScript Pro');
-        const planPrice = management.price || (management.plan === 'basic' ? '$12.99 / month' : '$19.99 / month');
-        const isBasic = management.plan === 'basic';
+        const { name: planName, price: planPrice } = planDetails(management.plan);
         byId('account-email').textContent = account?.email || 'Connected Google account';
         byId('environment-badge').textContent = 'Secure billing';
         byId('developer-link').hidden = true;
@@ -677,17 +692,34 @@
         byId('manage-plan-price').textContent = planPrice;
 
         byId('manage-title').textContent = `Cancel ${planName}?`;
-        byId('manage-copy').textContent = isBasic
-          ? 'FilmScript will securely stop future renewals. Your scripts and manual production documents will remain editable and exportable.'
-          : 'FilmScript will securely stop future renewals and Lumiere generation. Your scripts and existing production documents will remain editable and exportable.';
+        byId('manage-copy').textContent = 'FilmScript will securely stop future renewals. Your scripts and existing production documents will remain editable and exportable.';
         byId('provider-label').textContent = management.cancelMode === 'recurrente' ? 'Managed securely with Recurrente' : 'Payment verified securely';
-        byId('confirm-copy').textContent = isBasic
-          ? 'I understand that canceling stops renewals, while my scripts and manual production documents remain editable and exportable.'
-          : 'I understand that canceling removes Lumiere generation, while my scripts and existing production documents remain editable and exportable.';
+        byId('confirm-copy').textContent = 'I understand that canceling stops renewals, while my scripts and existing production documents remain editable and exportable.';
         byId('cancel-button').textContent = `Cancel ${planName}`;
         byId('cancel-button').classList.add('button-danger');
         byId('cancel-button').classList.remove('button-primary');
         show('manage');
+      }
+
+      function managementFallbackFromAccount() {
+        // Account state is persisted by FilmScript independently of the
+        // payment provider. If Recurrente is temporarily unavailable, keep
+        // the member inside FilmScript rather than exposing a provider error.
+        const rawPlan = String(account?.plan || account?.billingPlan || account?.tier || '').trim().toLowerCase();
+        const active = account?.status === 'active' && ['creator', 'full', 'basic', 'lumiere'].includes(rawPlan);
+        const plan = rawPlan === 'full' ? 'full' : (active ? 'creator' : 'free');
+        return {
+          active,
+          status: account?.status || null,
+          plan,
+          cancelMode: null,
+          subscriptionLinked: false,
+          provider: 'recurrente',
+          providerAvailable: false,
+          message: active
+            ? 'Your plan is active. Billing details are temporarily refreshing, so no changes can be made right now.'
+            : null,
+        };
       }
 
       async function load() {
@@ -695,7 +727,14 @@
         try {
           account = await window.filmscriptBilling.me();
           if (!account.authenticated) return show('signin');
-          management = await window.filmscriptBilling.manageSubscription();
+          try {
+            management = await window.filmscriptBilling.manageSubscription();
+          } catch (error) {
+            // Never show a raw provider implementation error (for example
+            // “reading 'me'”) to a FilmScript member. The account response is
+            // the safe local source of truth while the provider retries.
+            management = managementFallbackFromAccount();
+          }
           if (!management.active) {
             byId('empty-view').querySelector('h1').textContent = 'No active plan';
             byId('empty-view').querySelector('.lede').textContent = 'This Google account does not have an active FilmScript subscription. Existing scripts and production documents remain editable and exportable.';
@@ -718,16 +757,14 @@
         playSound('cancelPro');
         const button = byId('cancel-button');
         button.disabled = true;
-        const planName = management.planName || (management.plan === 'basic' ? 'FilmScript Basic' : 'FilmScript Pro');
+        const { name: planName } = planDetails(management.plan);
         button.textContent = `Canceling ${planName}…`;
         try {
           const result = await window.filmscriptBilling.cancel(management.cancelMode);
           const refreshed = await window.filmscriptBilling.me();
           if (refreshed.plan) throw new Error('Cancellation was not confirmed. Your plan remains active.');
           byId('success-title').textContent = `${planName} canceled`;
-          byId('success-message').textContent = management.plan === 'basic'
-            ? `${planName} is canceled. Your existing work remains available to edit and export.`
-            : `${planName} is canceled. Your existing work remains available to edit and export; Lumiere generation is now locked.`;
+          byId('success-message').textContent = `${planName} is canceled. Your existing work remains available to edit and export.`;
           show('success');
         } catch (error) {
           byId('error-message').textContent = error.message || 'The cancellation could not be verified. Your plan has not been changed.';

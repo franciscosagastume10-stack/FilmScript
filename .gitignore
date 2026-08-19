@@ -13,5 +13,11 @@ node_modules/
 __pycache__/
 *.pyc
 tmp/
+uploads/
+screenshots/
+output/
+dist */
 .DS_Store
 .vercel/
+.vercel
+.env*

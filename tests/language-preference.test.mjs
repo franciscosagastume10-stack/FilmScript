@@ -32,7 +32,7 @@ test('first workspace entry asks for a language and persists the choice', () => 
   assert.match(language, /needsInitialChoice: shouldOfferInitialChoice/);
   assert.match(language, /closeInitialChoice\(\);/);
   for (const page of ['App.dc.html', 'Editor v5.dc.html', 'Subscription.dc.html']) {
-    assert.match(read(page), /language-preference\.js\?v=20260716-language-choice1/, page);
+    assert.match(read(page), /language-preference\.js\?v=[^"']+/, page);
   }
 });
 
@@ -75,16 +75,18 @@ test('every user-facing FilmScript page loads the shared language preference', (
   assert.match(read('scripts/build-netlify.mjs'), /"language-preference\.js"/);
 });
 
-test('terms disclose the Lumiere credit limit and what happens when it is reached', () => {
+test('terms disclose durable Free grants and Creator and Full image-credit rules', () => {
   for (const page of ['App.dc.html', 'Features.dc.html', 'Pricing.dc.html']) {
     const source = read(page);
-    assert.match(source, /Lumiere credits and usage limits\./, page);
-    assert.match(source, /100 Lumiere credits per monthly billing period\./, page);
-    assert.match(source, /new Lumiere generations pause until the next reset/, page);
+    assert.match(source, /one AI script analysis, one AI breakdown, and one AI storyboard or shot list per account/, page);
+    assert.match(source, /not restored by deleting a script/, page);
+    assert.match(source, /Creator includes .*AI text tools.*100 image credits/, page);
+    assert.match(source, /Full includes 1,000 image credits/, page);
+    assert.match(source, /uses 3 credits/, page);
   }
   const language = read('language-preference.js');
-  assert.match(language, /'Lumiere credits and usage limits\.': 'Créditos y límites de uso de Lumiere\.'/);
-  assert.match(language, /FilmScript Pro incluye 100 créditos de Lumiere/);
+  assert.match(language, /Free incluye un pequeño número de prompts de Lumiere/);
+  assert.match(language, /Full incluye 1,000 créditos de imagen/);
 });
 
 test('the Lumiere brand name is never accented in the interface', () => {
@@ -112,7 +114,7 @@ test('Analysis has Spanish copy for its empty state, focus cards, drawers, and d
     assert.match(language, new RegExp(`'${english.replace(/[.*+?^${}()|[\\]\\]/g, '\\$&')}': '${spanish.replace(/[.*+?^${}()|[\\]\\]/g, '\\$&')}'`), spanish);
   }
   assert.match(language, /More screenplay context is needed before Lumiere can interpret/);
-  assert.match(language, /FilmScript Pro is required for new Lumiere/);
+  assert.match(language, /FilmScript Creator at \$24\.99 \/ month unlocks ongoing Lumiere work/);
   assert.match(language, /value\.match\(\/\^\(\\d\+\) scenes · current draft\$/);
   assert.match(language, /value\.match\(\/\^Updated \(\.\+\)\$/);
   assert.match(analysis, /window\.filmscriptLanguage\?\.get\?\.\(\) === 'es'/);
@@ -161,7 +163,8 @@ test('Budget translates every primary view, cash-flow title, expense state, and 
 test('authored screenplay titles and saved conversations are excluded from UI translation', () => {
   assert.match(read('App.dc.html'), /fs-script-card-title" data-i18n-skip/);
   assert.match(read('App.dc.html'), /data-i18n-skip style="\{\{ m\.bubbleStyle \}\}"/);
-  assert.match(read('Editor v5.dc.html'), /data-i18n-skip[^>]*>\{\{ m\.text \}\}/);
+  assert.match(read('Editor v5.dc.html'), /data-i18n-skip class="v5-chat-bubble"/);
+  assert.match(read('Editor v5.dc.html'), /\{\{ part\.text \}\}/);
   assert.match(read('language-preference.js'), /\[data-fs-page\], \[data-v5-cover\]/);
 });
 

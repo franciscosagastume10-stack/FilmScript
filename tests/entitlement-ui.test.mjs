@@ -26,7 +26,8 @@ test("preproduction access copy is English and explains post-cancellation owners
   assert.equal(/free question/i.test(source), false);
   assert.match(editor, /Your existing production work stays yours\./);
   assert.match(editor, /remain available to edit and export/);
-  assert.match(subscription, /Lumiere generation/);
+  assert.match(subscription, /1,000 image credits/);
+  assert.match(subscription, /FilmScript Full/);
   assert.match(subscription, /editable and exportable/);
 });
 
@@ -49,6 +50,9 @@ test("Breakdown begins with a clear manual-or-Lumiere choice", async () => {
   assert.match(server, /source: 'manual'/);
   assert.match(editor, /Generate with Lumiere/);
   assert.match(editor, /generateManualBreakdownWithLumiere/);
+  assert.match(editor, /Generating your full breakdown/);
+  assert.match(editor, /breakdownGenerationPercent/);
+  assert.match(editor, /manualGenerationFinished/);
   assert.match(client, /includeManual === true/);
   assert.match(server, /preserveManualBreakdownForm/);
   assert.match(server, /sceneNeedsBreakdown\(scene, \{ includeManual \}\)/);
@@ -69,43 +73,64 @@ test("Plan and billing uses a concise section heading without repeating the plan
   assert.doesNotMatch(subscription, /<h1>FilmScript Pro<\/h1>/);
 });
 
-test("Lumiere exhaustion exposes a verified five-dollar reset path", async () => {
+test("legacy one-off resets are retired in favor of subscription image credits", async () => {
   const [editor, billing, server] = await Promise.all([
     fs.readFile(path.join(ROOT, "Editor v5.dc.html"), "utf8"),
     fs.readFile(path.join(ROOT, "billing-client.js"), "utf8"),
     fs.readFile(path.join(ROOT, "server.js"), "utf8"),
   ]);
-  assert.match(editor, /Too inspired to wait until tomorrow\?/);
-  assert.match(editor, /Reset your Lumiere limits for \$5 and keep going\./);
-  assert.match(editor, /creditsEmpty/);
-  assert.match(editor, /createCreditsResetCheckout/);
+  assert.doesNotMatch(editor, /Buy extra credits · \$5/);
+  assert.doesNotMatch(editor, /Reset your Lumiere limits for \$5/);
   assert.match(billing, /\/api\/credits\/checkout/);
   assert.match(billing, /\/api\/credits\/confirm/);
-  assert.match(server, /amount_in_cents: LUMIERE_RESET_AMOUNT_CENTS/);
-  assert.match(server, /lumiere_credits_exhausted/);
-  assert.match(server, /plan === "credits_reset"/);
+  assert.match(server, /legacy_credit_reset_retired/);
+  assert.match(server, /Creator includes 100 image credits and Full includes 1,000 per billing cycle/);
 });
 
-test("Lumiere credits expose rolling session, weekly, monthly and paid top-up windows", async () => {
-  const [editor, language, server] = await Promise.all([
+test("credits expose Free grants, Creator text limits, and Full image credits", async () => {
+  const [editor, language, server, billing, indicator, app, pricing, features, subscription] = await Promise.all([
     fs.readFile(path.join(ROOT, "Editor v5.dc.html"), "utf8"),
     fs.readFile(path.join(ROOT, "language-preference.js"), "utf8"),
     fs.readFile(path.join(ROOT, "server.js"), "utf8"),
+    fs.readFile(path.join(ROOT, "billing-client.js"), "utf8"),
+    fs.readFile(path.join(ROOT, "credit-indicator.js"), "utf8"),
+    fs.readFile(path.join(ROOT, "App.dc.html"), "utf8"),
+    fs.readFile(path.join(ROOT, "Pricing.dc.html"), "utf8"),
+    fs.readFile(path.join(ROOT, "Features.dc.html"), "utf8"),
+    fs.readFile(path.join(ROOT, "Subscription.dc.html"), "utf8"),
   ]);
-  assert.match(server, /free: Object\.freeze\(\{ session: 3, week: 9, month: 12 \}\)/);
-  assert.match(server, /basic: Object\.freeze\(\{ session: 45, week: 135, month: 300 \}\)/);
-  assert.match(server, /lumiere: Object\.freeze\(\{ session: 100, week: 300, month: 600 \}\)/);
+  assert.match(server, /free: Object\.freeze\(\{ session: 5, week: 5, month: 5, lifetime: true \}\)/);
+  assert.match(server, /creator: Object\.freeze\(\{ session: 75, week: 250, month: 600 \}\)/);
+  assert.match(server, /full: Object\.freeze\(\{ session: 150, week: 500, month: 1200 \}\)/);
   assert.match(server, /LUMIERE_CREDIT_SESSION_MS = 8 \* 60 \* 60 \* 1000/);
-  assert.match(server, /LUMIERE_PAID_CREDIT_AMOUNT = 80/);
-  assert.match(server, /extraCredits/);
+  assert.match(server, /IMAGE_CREDITS_PER_FULL_CYCLE = 1000/);
+  assert.match(server, /IMAGE_CREDITS_PER_CREATOR_CYCLE = 100/);
+  assert.match(server, /OPENAI_STORYBOARD_CREDIT_COST = 3/);
+  assert.match(server, /FREE_FEATURE_ALLOWANCES = Object\.freeze\(\{ analysis: 1, breakdown: 1, storyboard: 1 \}\)/);
+  assert.match(server, /function imageGenerationAccess\(userId\)/);
+  assert.match(server, /function reserveImageCredits\(userId, amount = OPENAI_STORYBOARD_CREDIT_COST\)/);
+  assert.match(server, /function settleImageCreditReservation/);
+  assert.match(server, /function refundImageCreditReservation/);
+  assert.match(server, /function consumeFreeAllowance\(userId, feature\)/);
   assert.match(server, /blockedBy/);
   assert.match(editor, /data-testid="credits-usage-panel"/);
   assert.match(editor, /creditUsageRows/);
-  assert.match(editor, /Session · 8h/);
-  assert.match(editor, /This week/);
-  assert.match(editor, /This month/);
-  assert.match(editor, /Buy extra credits · \$5/);
-  assert.match(language, /'Lumiere usage': 'Uso de Lumiere'/);
+  assert.match(editor, /creditsFreeAllowanceLabel/);
+  assert.match(editor, /creditsAvailableLabel/);
+  assert.match(language, /Full incluye 1,000 créditos de imagen/);
+  assert.match(billing, /credits: \(\) => api\('\/api\/credits'\)/);
+  assert.match(indicator, /fs-avatar-credit/);
+  assert.match(indicator, /image\?\.remaining/);
+  assert.match(indicator, /fs-profile-credit-track/);
+  assert.match(indicator, /fs-profile-credit-fill/);
+  assert.match(indicator, /decorateProfilePanels/);
+  assert.match(indicator, /data-filmscript-profile-panel/);
+  assert.match(indicator, /3 credits per image/);
+  assert.doesNotMatch(indicator, /fs-profile-credit-dot/);
+  assert.doesNotMatch(indicator, /% credits available/);
+  for (const source of [editor, app, pricing, features, subscription]) {
+    assert.match(source, /credit-indicator\.js\?v=[^"']+/);
+  }
 });
 
 test("Scene heading picker follows the interface language", async () => {
@@ -137,10 +162,10 @@ test("subscription cancellation uses distinct close and profile-menu sounds", as
   const [subscription, sounds, cancelAsset] = await Promise.all([
     fs.readFile(path.join(ROOT, "Subscription.dc.html"), "utf8"),
     fs.readFile(path.join(ROOT, "ui-sounds.js"), "utf8"),
-    fs.stat(path.join(ROOT, "assets", "sfx", "cancel-filmscript-pro.mp3")),
+    fs.stat(path.join(ROOT, "assets", "sfx", "stripboard-selection-exit.mp3")),
   ]);
 
-  assert.match(sounds, /cancelPro:\s*\{\s*src:\s*'\.\/assets\/sfx\/cancel-filmscript-pro\.mp3'/);
+  assert.match(sounds, /cancelPro:\s*\{\s*src:\s*'\.\/assets\/sfx\/stripboard-selection-exit\.mp3'/);
   assert.equal((subscription.match(/playSound\('cancelPro'\)/g) || []).length, 2);
   assert.ok((subscription.match(/playSound\('profileOption'\)/g) || []).length >= 3);
   assert.match(subscription, /preload\('cancelPro'\)/);
@@ -209,7 +234,7 @@ test("Editor entry uses the dedicated typewriter bell sound", async () => {
   ]);
   assert.match(editor, /this\._playWorkModeSound\('editor'\)/);
   assert.match(editor, /mode === 'editor' \? 'editorEnter'/);
-  assert.match(sounds, /editorEnter: \{ src: '\.\/assets\/sfx\/editor-enter-typewriter-bell\.wav'/);
+  assert.match(sounds, /editorEnter: \{ src: '\.\/assets\/sfx\/filmscript-brand-bell\.wav'/);
 });
 
 test("Scripts is the first editor work-navigation control", async () => {
@@ -262,7 +287,7 @@ test("Breakdown entry uses the dedicated breakdown sound", async () => {
     fs.readFile(path.join(ROOT, "ui-sounds.js"), "utf8"),
   ]);
   assert.match(editor, /mode === 'breakdown' \? 'breakdownEnter'/);
-  assert.match(sounds, /breakdownEnter: \{ src: '\.\/assets\/sfx\/breakdown-accept-select\.mp3'/);
+  assert.match(sounds, /breakdownEnter: \{ src: '\.\/assets\/sfx\/import-script\.mp3'/);
 });
 
 test("Breakdown uses direct autosaving edits without an Edit Sheet control", async () => {
@@ -289,7 +314,7 @@ test("Breakdown categories keep distinct colors and open their exact screenplay 
   assert.match(editor, /const matchesByKey = new Map\(\)/);
   assert.match(editor, /_dedupeBreakdownFieldValue\(section, value\)/);
   assert.doesNotMatch(editor, /<sc-if value="\{\{ entry\.linkable \}\}"/);
-  assert.match(editor, /entryClass: `v5-breakdown-entry\$\{linkable \? ' v5-breakdown-entry-link' : ' is-static'\}`/);
+  assert.match(editor, /entryClass: `v5-breakdown-entry\$\{linkable \? ' v5-breakdown-entry-link' : ' is-static'\}\$\{isVisualEntry \? ' is-visual-reference' : ''\}/);
   assert.match(server, /function dedupeBreakdownElements\(value\)/);
   assert.match(server, /elements: dedupeBreakdownElements\(elements\)/);
   assert.match(server, /"greenery"/);
@@ -313,8 +338,11 @@ test("Breakdown canonicalizes repeated production items before display, export, 
 test("Lumiere structured work requests JSON and safely recovers a missed array comma", async () => {
   const server = await fs.readFile(path.join(ROOT, "server.js"), "utf8");
   assert.match(server, /jsonMode = false/);
-  assert.match(server, /response_format: \{ type: "json_object" \}/);
+  assert.match(server, /const jsonInstruction = "Return one valid JSON object only\."/);
+  assert.match(server, /text: \{ format: \{ type: "json_object" \} \}/);
   assert.match(server, /jsonMode: true/);
+  assert.match(server, /model: OPENAI_TEXT_MODEL/);
+  assert.match(server, /generationFailure \|\|= lumiereFailureMessage/);
 
   const start = server.indexOf("function extractStructuredJson(raw)");
   const end = server.indexOf("\nfunction normalizeEvidence", start);
@@ -372,6 +400,30 @@ test("Account details opens in place from the editor", async () => {
   assert.doesNotMatch(editor, /profile=1&returnTo=/);
 });
 
+test("Account details includes an editable Personal profile", async () => {
+  const editor = await fs.readFile(path.join(ROOT, "Editor v5.dc.html"), "utf8");
+  assert.match(editor, /Personal profile/);
+  assert.match(editor, /saveAccountPersonalProfile/);
+  assert.match(editor, /accountProfileBirthDate/);
+  assert.match(editor, /accountProfileGender/);
+});
+
+test("Opening Lumiere refits the screenplay to the remaining editor width", async () => {
+  const editor = await fs.readFile(path.join(ROOT, "Editor v5.dc.html"), "utf8");
+  assert.match(editor, /_fitEditorToAvailableWidth/);
+  assert.match(editor, /lumiereOpen: true \}, \(\) => this\._fitEditorToAvailableWidth\(\)/);
+  assert.match(editor, /canvas\.clientWidth - 100/);
+  assert.match(editor, /v5-editor-page-area/);
+});
+
+test("Character picker excludes title cards and transitions", async () => {
+  const editor = await fs.readFile(path.join(ROOT, "Editor v5.dc.html"), "utf8");
+  assert.match(editor, /_isValidCharacterCue/);
+  assert.match(editor, /TITULO\|TITLE\|ESCRITO\\s\+POR/);
+  assert.match(editor, /next\?\.dataset\?\.type === 'dialogue'/);
+  assert.match(editor, /_characterCueLabel/);
+});
+
 test("Story flow uses the same subtle double hand-drawn frame language", async () => {
   const analysis = await fs.readFile(path.join(ROOT, "analysis-workspace.js"), "utf8");
   assert.match(analysis, /\.flow-frame\{position:relative/);
@@ -404,7 +456,8 @@ test("Shot List is grouped by scene, connected to Stripboard time, and supports 
   assert.match(client, /deleteShotScene:/);
   assert.match(editor, /data-testid="\{\{ scene\.referenceTestId \}\}"/);
   assert.match(editor, /Stripboard time/);
-  assert.match(editor, /Minutes needed for shot \{\{ shot\.number \}\}/);
+  assert.match(editor, /aria-label="Set duration for shot \{\{ shot\.number \}\}"/);
+  assert.match(editor, /title="Set duration in 15-minute intervals"/);
   assert.match(editor, /_shotSceneBudget\(sceneId\)/);
   assert.match(editor, /Scene time is full/);
   assert.match(editor, /addShotDisabled: timeFull/);
@@ -439,7 +492,7 @@ test("Stripboard carries the cast IDs assigned by Breakdown", async () => {
   assert.match(editor, /v5-strip-cast-id/);
   assert.match(editor, /v5-strip-cast-tooltip/);
   assert.match(editor, /const stripboardCastById = new Map/);
-  assert.match(editor, /ariaLabel: `Cast \$\{number\}: \$\{castName\}`/);
+  assert.match(editor, /ariaLabel: `Open Cast \$\{number\}: \$\{castName\} in scene \$\{sceneNo\}`/);
   assert.match(editor, /Most recently used/);
   assert.match(editor, /const recentShootLocation = shootLocationLibrary\[0\]/);
   assert.match(editor, /Other saved locations/);
@@ -683,7 +736,7 @@ test("Analysis uses one Lumiere insights contract with screenplay evidence and p
   assert.doesNotMatch(pdf, /Dialogue \/ Action/);
 });
 
-test("every Lumiere surface uses the shared OpenRouter-backed proxy", async () => {
+test("every Lumiere surface uses the shared server-side OpenAI proxy", async () => {
   const [client, editor, app, features, pricing, server] = await Promise.all([
     fs.readFile(path.join(ROOT, "lumiere-client.js"), "utf8"),
     fs.readFile(path.join(ROOT, "Editor v5.dc.html"), "utf8"),
@@ -695,15 +748,17 @@ test("every Lumiere surface uses the shared OpenRouter-backed proxy", async () =
 
   assert.match(client, /window\.lumiere/);
   assert.match(client, /resolve\("\/api\/lumiere"\)/);
-  assert.match(client, /OpenRouter credential never leaves the FilmScript server/);
+  assert.doesNotMatch(client, /OPENROUTER_API_KEY/);
+  assert.doesNotMatch(client, /OPENAI_API_KEY/);
   assert.doesNotMatch(client, /window\.claude/);
   for (const surface of [editor, app, features, pricing]) {
     assert.match(surface, /window\.lumiere\.complete/);
     assert.doesNotMatch(surface, /window\.claude\.complete/);
   }
-  assert.match(server, /const OPENROUTER_API_URL = "https:\/\/openrouter\.ai\/api\/v1\/chat\/completions"/);
+  assert.match(server, /const OPENAI_RESPONSES_API_URL = "https:\/\/api\.openai\.com\/v1\/responses"/);
+  assert.match(server, /const OPENAI_TEXT_MODEL = String\(process\.env\.OPENAI_TEXT_MODEL \|\| "gpt-5\.6-luna"\)/);
   assert.match(server, /async function requestLumiere/);
-  assert.match(server, /provider: "openrouter"/);
+  assert.match(server, /provider: "openai"/);
 });
 
 test("Stripboard and Shot List entry sounds stay coordinated with motion-safe work modes", async () => {
@@ -727,7 +782,7 @@ test("Stripboard and Shot List entry sounds stay coordinated with motion-safe wo
   assert.match(sounds, /stripboardEnter: \{ src: '\.\/assets\/sfx\/stripboard-enter-dial\.mp3'/);
   assert.match(sounds, /shotlistEnter: \{ src: '\.\/assets\/sfx\/shotlist-enter-shutter\.wav'/);
   assert.match(editor, /_playWorkModeSound\(mode\)/);
-  assert.match(editor, /mode === 'stripboard' \? 'stripboardEnter' : mode === 'shotlist' \? 'shotlistEnter' : 'workMode'/);
+  assert.match(editor, /mode === 'stripboard' \? 'stripboardEnter' : mode === 'shotlist' \? 'shotlistEnter' : mode === 'imagine' \? 'imagineEnter' : mode === 'budget' \? 'budgetEnter' : mode === 'calendar' \? 'calendarEnter' : 'workMode'/);
   assert.match(budget, /preload\('budgetCount'\)/);
   assert.match(budget, /play\('budgetCount', \{ volume: 0\.11 \}\)/);
   assert.match(budget, /stopMoneySound\(\)/);
@@ -784,7 +839,7 @@ test("writing pause detection rearms on typing and fires only once per pause", a
   assert.equal(idleCount, 1);
 });
 
-test("the editor offers contextual Pro help and a copyable free prompt after a writing pause", async () => {
+test("the editor offers contextual Lumiere help and a copyable Free prompt after a writing pause", async () => {
   const [editor, language] = await Promise.all([
     fs.readFile(path.join(ROOT, "Editor v5.dc.html"), "utf8"),
     fs.readFile(path.join(ROOT, "language-preference.js"), "utf8"),

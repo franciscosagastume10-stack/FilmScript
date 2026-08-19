@@ -87,9 +87,9 @@ test("landing and pricing tracking use anonymous stable IDs and first touch attr
     environment: "test",
   });
 
-  landing.window.filmscriptFunnel.track("plan_selected", { plan: "lumiere", cycle: "monthly" });
+  landing.window.filmscriptFunnel.track("plan_selected", { plan: "full", cycle: "monthly" });
   assert.equal(landing.requests[1].payload.event_type, "plan_selected");
-  assert.equal(landing.requests[1].payload.plan, "lumiere");
+  assert.equal(landing.requests[1].payload.plan, "full");
   assert.equal(landing.requests[1].payload.cycle, "monthly");
 
   const pricing = trackerHarness({
@@ -109,7 +109,7 @@ test("landing and pricing tracking use anonymous stable IDs and first touch attr
 test("tracking is a silent no op when ERP_API_URL is absent", () => {
   const tracking = trackerHarness({ erpApiUrl: "" });
   assert.equal(tracking.requests.length, 0);
-  const payload = tracking.window.filmscriptFunnel.track("checkout_requested", { plan: "basic", cycle: "monthly" });
+  const payload = tracking.window.filmscriptFunnel.track("checkout_requested", { plan: "creator", cycle: "monthly" });
   assert.equal(payload.event_type, "checkout_requested");
   assert.equal(tracking.requests.length, 0);
 });
@@ -156,10 +156,10 @@ test("checkout preserves its response while forwarding tracking context", async 
     },
   });
 
-  const result = await window.filmscriptBilling.checkout("lumiere", "writer@example.com", "es");
+  const result = await window.filmscriptBilling.checkout("full", "writer@example.com", "es");
   assert.equal(result.checkoutId, "ch_test");
   assert.deepEqual(apiRequests[0].body, {
-    plan: "lumiere",
+    plan: "full",
     email: "writer@example.com",
     language: "es",
     visitorId: tracking.visitorId,
@@ -168,12 +168,12 @@ test("checkout preserves its response while forwarding tracking context", async 
   });
   assert.deepEqual(JSON.parse(JSON.stringify(funnelEvents[0])), {
     eventType: "checkout_requested",
-    details: { plan: "lumiere", cycle: "monthly" },
+    details: { plan: "full", cycle: "monthly" },
   });
-  window.filmscriptBilling.trackCheckoutRedirected("lumiere");
+  window.filmscriptBilling.trackCheckoutRedirected("full");
   assert.deepEqual(JSON.parse(JSON.stringify(funnelEvents[1])), {
     eventType: "checkout_redirected",
-    details: { plan: "lumiere", cycle: "monthly" },
+    details: { plan: "full", cycle: "monthly" },
   });
 });
 

@@ -117,6 +117,13 @@ test("Canvas persists role, Vault, authenticated images, Boards, quotes, and an 
   assert.equal("key" in uploaded.data.asset, false);
   const assetId = uploaded.data.asset.id;
 
+  const disguisedUpload = await requestJson(`${running.url}/api/scripts/${scriptId}/canvas/assets`, ownerCookie, {
+    method: "POST",
+    headers: { "Content-Type": "image/png", "X-Filename": encodeURIComponent("not-an-image.png") },
+    body: Buffer.from("this is not a PNG image"),
+  });
+  assert.equal(disguisedUpload.response.status, 415);
+
   const itemResult = await requestJson(`${running.url}/api/scripts/${scriptId}/canvas/vault`, ownerCookie, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
@@ -188,7 +195,7 @@ test("Canvas persists role, Vault, authenticated images, Boards, quotes, and an 
   assert.equal(restored.data.workspace.quotes[0].quoteNumber, "FS-TEST-001");
 });
 
-test("Canvas replaces standalone Shot List navigation while keeping the existing Shot List implementation nested", async () => {
+test("Shot List is a first-class workspace while Canvas keeps Boards and Vault focused", async () => {
   const [editor, workspace, client] = await Promise.all([
     fs.readFile(path.join(ROOT, "Editor v5.dc.html"), "utf8"),
     fs.readFile(path.join(ROOT, "canvas-workspace.js"), "utf8"),
@@ -196,7 +203,7 @@ test("Canvas replaces standalone Shot List navigation while keeping the existing
   ]);
   const navigation = editor.slice(editor.indexOf("workModes: ["), editor.indexOf("editorDisplay:", editor.indexOf("workModes: [")));
   assert.match(navigation, /id: 'canvas', label: 'Canvas'/);
-  assert.doesNotMatch(navigation, /id: 'shotlist'/);
+  assert.match(navigation, /id: 'shotlist', label: 'Shot List'/);
   assert.match(editor, /canvasWorkspaceVisible/);
   assert.match(editor, /shotListHasData: shotListMode/);
   assert.match(editor, /filmscript:canvas-shotlist/);
@@ -206,8 +213,56 @@ test("Canvas replaces standalone Shot List navigation while keeping the existing
   assert.doesNotMatch(workspace, /What is your role in this production\?/);
   assert.doesNotMatch(workspace, /data-action="role-settings"/);
   assert.match(workspace, /data-action="board-fit"/);
+  assert.match(workspace, /data-action="board-undo"/);
+  assert.match(workspace, /data-action="board-redo"/);
+  assert.match(workspace, /undo\.disabled = !this\._history\.length/);
+  assert.match(workspace, /redo\.disabled = !this\._future\.length/);
+  assert.match(workspace, /_restoreBoardSnapshot/);
+  assert.match(workspace, /cv-picker-modal/);
+  assert.match(workspace, /cv-picker-grid/);
+  assert.match(workspace, /!this\.shadowRoot\.querySelector\('\.cv-modal-backdrop,\.cv-menu-pop,\.cv-context'\)/);
+  assert.match(workspace, /setPointerCapture/);
+  assert.match(workspace, /pointercancel/);
+  assert.match(workspace, /visibilitychange/);
+  assert.match(workspace, /p\.points\.length>180/);
+  assert.match(workspace, /_armEraserExitTimer/);
+  assert.match(workspace, /3000/);
+  assert.match(workspace, /cv-board-eraser-trail\.is-fading/);
+  assert.match(workspace, /_pointIsInsideBoard/);
   assert.match(workspace, /data-file="board-image"/);
   assert.match(workspace, /stopBoundary\.contains\(trigger\)/);
   assert.match(workspace, /form\.dataset\.form === 'vault-item'/);
   assert.match(client, /pathFor\(scriptId, '\/quotes'\)/);
+});
+
+test("Imagine preserves each generated frame's actual ratio and newest-first order", async () => {
+  const [workspace, server] = await Promise.all([
+    fs.readFile(path.join(ROOT, "canvas-workspace.js"), "utf8"),
+    fs.readFile(path.join(ROOT, "server.js"), "utf8"),
+  ]);
+
+  assert.match(workspace, /imagineImages\(\)/);
+  assert.match(workspace, /imagineGalleryEntries\(\)/);
+  assert.match(workspace, /imaginePendingJobs/);
+  assert.match(workspace, /type: 'pending'/);
+  assert.match(workspace, /cv-imagine-pending/);
+  assert.match(workspace, /Imagine<\/strong>/);
+  assert.match(workspace, /--cv-imagine-ratio:\$\{entry\.ratio\.toFixed\(4\)\}/);
+  assert.match(workspace, /this\.state\.imaginePendingJobs\.push\(job\)/);
+  assert.match(workspace, /_animateImagineReflow/);
+  assert.match(workspace, /map\(\(asset, index\) => \(\{ asset, index \}\)\)/);
+  assert.match(workspace, /imagineJustifiedRows\(entries\)/);
+  assert.match(workspace, /cv-imagine-gallery-row\{display:flex/);
+  assert.match(workspace, /--cv-imagine-ratio/);
+  assert.match(workspace, /object-fit:contain/);
+  assert.match(workspace, /data-action="imagine-size-menu"[\s\S]{0,260}?<strong>\$\{sizeOption\.compact\}<\/strong><\/button>/);
+  assert.match(workspace, /data-action="imagine-style-menu"[\s\S]{0,260}?<strong>\$\{styleLabel\}<\/strong><\/button>/);
+  assert.doesNotMatch(workspace, /data-action="imagine-size-menu"[\s\S]{0,260}?⌄/);
+  assert.doesNotMatch(workspace, /data-action="imagine-style-menu"[\s\S]{0,260}?⌄/);
+  assert.doesNotMatch(workspace, /if \(this\.state\.imagineGenerating\) return;/);
+  assert.doesNotMatch(workspace, /const disabled = this\.state\.imagineGenerating \? 'disabled' : '';/);
+  assert.match(workspace, /if \(this\.state\.view === 'imagine'\) return '';/);
+  assert.match(server, /function imageDimensions\(data, declaredMimeType = ""\)/);
+  assert.match(server, /actualSize: `\$\{dimensions\.width\}x\$\{dimensions\.height\}`/);
+  assert.match(server, /dimensionsVerified: Boolean\(verifiedDimensions\)/);
 });

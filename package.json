@@ -3,14 +3,14 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "dev": "node --env-file=.env server.js",
+    "dev": "./scripts/run-node.sh --env-file=.env server.js",
     "preview": "./scripts/preview-server.sh",
-    "start": "node server.js",
-    "build:netlify": "node scripts/build-netlify.mjs",
-    "build:vercel": "node scripts/build-netlify.mjs",
-    "build:sites": "node scripts/build-sites.mjs",
-    "recurrente:webhook": "node --env-file=.env scripts/register-recurrente-webhook.mjs",
-    "test": "node --test tests/*.test.mjs"
+    "start": "./scripts/run-node.sh server.js",
+    "build:netlify": "./scripts/run-node.sh scripts/build-netlify.mjs",
+    "build:vercel": "./scripts/run-node.sh scripts/build-netlify.mjs",
+    "build:sites": "./scripts/run-node.sh scripts/build-sites.mjs",
+    "recurrente:webhook": "./scripts/run-node.sh --env-file=.env scripts/register-recurrente-webhook.mjs",
+    "test": "./scripts/run-node.sh --test tests/*.test.mjs"
   },
   "engines": {
     "node": ">=22 <25"
@@ -19,6 +19,8 @@
     "@aws-sdk/client-s3": "^3.1087.0",
     "better-sqlite3": "^12.11.1",
     "mammoth": "^1.12.0",
-    "xlsx": "^0.18.5"
+    "react": "18.3.1",
+    "react-dom": "18.3.1",
+    "xlsx": "https://cdn.sheetjs.com/xlsx-0.20.3/xlsx-0.20.3.tgz"
   }
 }
