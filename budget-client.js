@@ -12,7 +12,7 @@
     }
     return data;
   };
-  const budgetPath = (scriptId, suffix = '') => `/api/scripts/${encodeURIComponent(scriptId)}/preproduction/budget${suffix}`;
+  const budgetPath = (scriptId, suffix = '') => `/api/project-files/${encodeURIComponent(scriptId)}/preproduction/budget${suffix}`;
   window.filmscriptBudget = {
     get: (scriptId) => request(budgetPath(scriptId)),
     save: (scriptId, budget) => request(budgetPath(scriptId), {
