@@ -13,15 +13,15 @@
     ['filmscript','FilmScript','#ffb703'],['dark','Dark','#191919'],['mint','Mint','#bce3ca'],['tangerine','Tangerine','#f6bd88'],
     ['lavender','Lavender','#d9c7ef'],['sky','Sky','#bcdff1'],['rose','Rose','#f0c4cf'],['sun','Sun','#f3dc8c'],
   ];
-  const state = { me: null, profile: null, notifications: [], presence: [], eventSource: null };
+  const state = { me: null, profile: null, notifications: [], presence: [], eventSource: null, commentContext: null, localContext: null };
   let lastUserActivityAt = Date.now();
-  const currentModule = () => ({ editor:'script', shotlist:'shot_list' }[new URLSearchParams(location.search).get('view') || 'script'] || new URLSearchParams(location.search).get('view') || 'script');
+  const currentModule = () => ({ editor:'script', shotlist:'shot_list', 'shot-list':'shot_list' }[new URLSearchParams(location.search).get('view') || 'script'] || new URLSearchParams(location.search).get('view') || 'script');
 
   const escapeHtml = (value) => String(value ?? '').replace(/[&<>"']/g, (char) => ({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' })[char]);
   const api = {
     me: () => request('/api/me'), profile: () => request('/api/me/platform-profile'),
     updateProfile: (body) => request('/api/me/platform-profile', { method:'PATCH', body:JSON.stringify(body) }),
-    notifications: () => request('/api/notifications'), markRead: (id) => request(`/api/notifications${id ? `/${id}` : ''}`, { method:'PATCH' }),
+    notifications: () => request('/api/notifications'), markRead: (id, read = true) => request(`/api/notifications${id ? `/${id}` : ''}`, { method:'PATCH', body:JSON.stringify({ read }) }),
     members: () => request(`/api/projects/${projectId}/members`), invite: (body) => request(`/api/projects/${projectId}/members`, { method:'POST', body:JSON.stringify(body) }),
     updateMember: (id, body) => request(`/api/projects/${projectId}/members/${id}`, { method:'PATCH', body:JSON.stringify(body) }),
     transferOwnership: (membershipId) => request(`/api/projects/${projectId}/ownership/transfer`, { method:'POST', body:JSON.stringify({ membershipId }) }),
@@ -29,6 +29,9 @@
     revokeInvitation: (id) => request(`/api/projects/${projectId}/invitations/${id}`, { method:'DELETE' }),
     invitationLink: (id, resend = false) => request(`/api/projects/${projectId}/invitations/${id}/${resend ? 'resend' : 'link'}`, { method:'POST' }),
     activity: (module) => request(`/api/projects/${projectId}/activity${module ? `?module=${encodeURIComponent(module)}` : ''}`),
+    comments: (module, entityId) => request(`/api/projects/${projectId}/comments?module=${encodeURIComponent(module)}${entityId ? `&entityId=${encodeURIComponent(entityId)}` : ''}`),
+    createComment: (body) => request(`/api/projects/${projectId}/comments`, { method:'POST', headers:{ 'X-FilmScript-Client-Id':clientId }, body:JSON.stringify(body) }),
+    updateComment: (id, resolved) => request(`/api/projects/${projectId}/comments/${id}`, { method:'PATCH', headers:{ 'X-FilmScript-Client-Id':clientId }, body:JSON.stringify({ resolved }) }),
     translationPreview: (id, targetLanguage) => request(`/api/scripts/${id}/translation`, { method:'POST', body:JSON.stringify({ preview:true,targetLanguage }) }),
     translate: (id, targetLanguage) => request(`/api/scripts/${id}/translation`, { method:'POST', body:JSON.stringify({ targetLanguage }) }),
     createShared: (body) => request(`/api/projects/${projectId}/shared-projects`, { method:'POST', body:JSON.stringify(body) }),
@@ -64,11 +67,20 @@
     return `<span class="${className}"${person?.color ? ` style="--collaborator-color:${escapeHtml(person.color)}"` : ''}>${person?.picture ? `<img src="${escapeHtml(person.picture)}" alt="">` : escapeHtml(initial)}</span>`;
   }
 
+  const relativeTime = (value) => {
+    const seconds = Math.max(0, Math.round((Date.now() - Date.parse(value || 0)) / 1000));
+    if (seconds < 60) return 'Now'; if (seconds < 3600) return `${Math.floor(seconds / 60)}m ago`; if (seconds < 86400) return `${Math.floor(seconds / 3600)}h ago`; if (seconds < 604800) return `${Math.floor(seconds / 86400)}d ago`;
+    return new Date(value).toLocaleDateString(undefined, { month:'short', day:'numeric', year:new Date(value).getFullYear() === new Date().getFullYear() ? undefined : 'numeric' });
+  };
+
+  const notificationTypeLabel = (type) => ({ project_invitation:'Invitation', mention:'Mention', comment_reply:'Reply', permission_changed:'Access', removed_from_project:'Access', ownership_transfer:'Ownership', analysis_completed:'Analysis', breakdown_completed:'Breakdown', translation_completed:'Translation', shot_list_generation_completed:'Shot List' }[type] || 'Project');
+
   async function openNotifications() {
     const result = await api.notifications(); state.notifications = result.notifications;
-    const content = result.notifications.length ? `<div class="fs-platform-list">${result.notifications.map((item) => `<button type="button" class="fs-notification-card" data-link="${escapeHtml(item.deepLink || '')}" data-id="${item.id}">${avatar(item.actor || { name:'FilmScript' })}<span class="fs-member-copy"><strong>${escapeHtml(item.title)}</strong><small>${escapeHtml(item.message)}</small></span>${item.read ? '' : '<i aria-label="Unread">●</i>'}</button>`).join('')}</div><div class="fs-dialog-actions"><button class="fs-action" data-mark-all>Mark all as read</button></div>` : '<div class="fs-member-card"><span class="fs-member-copy"><strong>You are all caught up</strong><small>Project invitations and completed Lumiere work will appear here.</small></span></div>';
-    const root = dialog('Activity', 'Your FilmScript notifications', content);
-    root.querySelectorAll('[data-id]').forEach((button) => button.addEventListener('click', async () => { await api.markRead(button.dataset.id); if (button.dataset.link) location.href = button.dataset.link; else openNotifications(); }));
+    const content = result.notifications.length ? `<div class="fs-platform-list fs-notification-list">${result.notifications.map((item) => `<article class="fs-notification-card${item.read ? '' : ' is-unread'}" data-notification-id="${item.id}"><button type="button" class="fs-notification-main" data-link="${escapeHtml(item.deepLink || '')}" data-id="${item.id}">${avatar(item.actor || { name:'FilmScript' })}<span class="fs-member-copy"><span class="fs-notification-meta">${escapeHtml(notificationTypeLabel(item.type))}${item.count > 1 ? ` · ${item.count} updates` : ''} · ${escapeHtml(relativeTime(item.updatedAt))}</span><strong>${escapeHtml(item.title)}</strong><small>${escapeHtml(item.message)}</small></span>${item.read ? '' : '<i aria-label="Unread">●</i>'}</button><button type="button" class="fs-notification-read" data-toggle-read="${item.id}" data-read="${item.read ? 'true' : 'false'}">Mark ${item.read ? 'unread' : 'read'}</button></article>`).join('')}</div><div class="fs-dialog-actions"><button class="fs-action" data-mark-all ${result.unreadCount ? '' : 'disabled'}>Mark all as read</button></div>` : '<div class="fs-member-card"><span class="fs-member-copy"><strong>You are all caught up</strong><small>Invitations, mentions, replies and important project changes will appear here.</small></span></div>';
+    const root = dialog('Notifications', result.unreadCount ? `${result.unreadCount} unread` : 'You are up to date', content, 'fs-notifications-dialog');
+    root.querySelectorAll('[data-id]').forEach((button) => button.addEventListener('click', async () => { await api.markRead(button.dataset.id, true); if (button.dataset.link) location.href = button.dataset.link; else openNotifications(); }));
+    root.querySelectorAll('[data-toggle-read]').forEach((button) => button.addEventListener('click', async () => { await api.markRead(button.dataset.toggleRead, button.dataset.read !== 'true'); await openNotifications(); refreshNotifications(); }));
     root.querySelector('[data-mark-all]')?.addEventListener('click', async () => { await api.markRead(); openNotifications(); refreshNotifications(); });
   }
 
@@ -170,9 +182,42 @@
     if (!canManageFinancial) root.querySelectorAll('[name="financial"]').forEach((select) => select.disabled = true);
   }
 
-  async function openActivity() {
-    const result = await api.activity();
-    dialog('Project activity', 'Meaningful changes, without cursor noise or every keystroke.', result.events.length ? `<div class="fs-platform-list">${result.events.map((item) => `<article class="fs-activity-card">${avatar(item.actor)}<span class="fs-member-copy"><strong>${escapeHtml(item.summary)}</strong><small>${escapeHtml(new Date(item.createdAt).toLocaleString())}</small></span></article>`).join('')}</div>` : '<div class="fs-member-card"><span class="fs-member-copy"><strong>No activity yet</strong><small>Important project changes will appear here.</small></span></div>');
+  const moduleLabel = (module) => ({ script:'Script Editor', breakdown:'Breakdown', shot_list:'Shot List', canvas:'Canvas', budget:'Budget', analysis:'Analysis', stripboard:'Stripboard', calendar:'Calendar', imagine:'Imagine' }[module] || label(module));
+
+  function currentCommentAnchor(module = currentModule()) {
+    const queryEntity = new URLSearchParams(location.search).get('entity');
+    let node = document.activeElement?.closest?.('[data-shot-id],[data-scene-id],[data-block-id]');
+    if (!node) node = window.getSelection?.()?.anchorNode?.parentElement?.closest?.('[data-shot-id],[data-scene-id],[data-block-id]');
+    const entityId = queryEntity || node?.dataset?.shotId || node?.dataset?.sceneId || node?.dataset?.blockId || (state.localContext?.module === module ? state.localContext.selectedObjectId || state.localContext.sceneId || state.localContext.selection?.blockId : null) || null;
+    const entityType = module === 'script' ? 'script_block' : module === 'breakdown' ? 'breakdown_card' : module === 'shot_list' ? 'shot_list_item' : module === 'canvas' ? 'canvas_object' : 'project';
+    return { module, entityId, entityType };
+  }
+
+  async function openActivity(module = null) {
+    const selectedModule = module || null; const result = await api.activity(selectedModule);
+    const title = selectedModule && ['script','canvas'].includes(selectedModule) ? 'Version History' : selectedModule ? `${moduleLabel(selectedModule)} Activity` : 'Project Activity';
+    const cards = result.events.map((item) => `<article class="fs-activity-card" data-activity-id="${item.id}">${avatar(item.actor)}<span class="fs-member-copy"><span class="fs-activity-meta">${escapeHtml(item.actor?.name || 'FilmScript')} · ${escapeHtml(moduleLabel(item.module))} · ${escapeHtml(relativeTime(item.updatedAt || item.createdAt))}</span><strong>${escapeHtml(item.summary)}</strong>${item.count > 1 ? `<small>Grouped from ${item.count} related changes</small>` : ''}</span></article>`).join('');
+    dialog(title, 'Meaningful project changes—never cursor movement or individual keystrokes.', cards ? `<div class="fs-platform-list fs-activity-list">${cards}</div>` : '<div class="fs-member-card"><span class="fs-member-copy"><strong>No activity yet</strong><small>Important changes in this area will appear here.</small></span></div>', 'fs-activity-dialog');
+  }
+
+  async function openComments(context = currentCommentAnchor()) {
+    if (!projectId) return;
+    state.commentContext = { ...context };
+    const [result, peopleResult] = await Promise.all([api.comments(context.module, context.entityId), api.members().catch(() => ({ members:[] }))]);
+    const comments = result.comments || []; const replies = new Map();
+    comments.filter((item) => item.parentCommentId).forEach((item) => { if (!replies.has(item.parentCommentId)) replies.set(item.parentCommentId, []); replies.get(item.parentCommentId).push(item); });
+    const highlighted = new URLSearchParams(location.search).get('comment');
+    const commentCard = (item, reply = false) => `<article class="fs-comment-card${reply ? ' is-reply' : ''}${item.resolved ? ' is-resolved' : ''}${highlighted === item.id ? ' is-highlighted' : ''}" data-comment-id="${item.id}">${avatar(item.author)}<div class="fs-comment-content"><div class="fs-comment-meta"><strong>${escapeHtml(item.author?.name || 'Collaborator')}</strong><span>${escapeHtml(relativeTime(item.updatedAt || item.createdAt))}</span>${item.resolved ? '<span class="fs-comment-state">Resolved</span>' : ''}</div><p>${escapeHtml(item.body)}</p><div class="fs-comment-actions">${reply ? '' : `<button type="button" data-reply-to="${item.id}">Reply</button>`}<button type="button" data-comment-state="${item.id}" data-resolved="${item.resolved ? 'true' : 'false'}">${item.resolved ? 'Reopen' : 'Resolve'}</button></div>${reply ? '' : `<div class="fs-comment-replies">${(replies.get(item.id) || []).map((entry) => commentCard(entry, true)).join('')}</div><form class="fs-comment-reply-form" data-reply-form="${item.id}" hidden><textarea name="body" maxlength="5000" placeholder="Write a reply…" required></textarea><button class="fs-action fs-action-primary">Reply</button></form>`}</div></article>`;
+    const roots = comments.filter((item) => !item.parentCommentId);
+    const members = (peopleResult.members || []).filter((member) => member.username && member.userId !== state.me?.id);
+    const mentionHints = members.length ? `<div class="fs-mention-hints"><span>Mention:</span>${members.slice(0,8).map((member) => `<button type="button" data-mention="${escapeHtml(member.username)}">@${escapeHtml(member.username)}</button>`).join('')}</div>` : '';
+    const anchorCopy = context.entityId ? `Anchored to ${context.entityType.replaceAll('_',' ')}` : `Project-level ${moduleLabel(context.module)} discussion`;
+    const root = dialog('Comments', anchorCopy, `<div class="fs-comment-thread">${roots.map((item) => commentCard(item)).join('') || '<div class="fs-member-card"><span class="fs-member-copy"><strong>No comments yet</strong><small>Start a focused discussion here.</small></span></div>'}</div><form class="fs-comment-compose" data-comment-form><textarea name="body" maxlength="5000" placeholder="Add a comment or @mention…" required></textarea>${mentionHints}<div class="fs-dialog-actions"><button class="fs-action fs-action-primary">Comment</button></div></form>`, 'fs-comments-dialog');
+    root.querySelectorAll('[data-reply-to]').forEach((button) => button.onclick = () => { const form = root.querySelector(`[data-reply-form="${CSS.escape(button.dataset.replyTo)}"]`); form.hidden = !form.hidden; if (!form.hidden) form.querySelector('textarea').focus(); });
+    root.querySelectorAll('[data-comment-state]').forEach((button) => button.onclick = async () => { await api.updateComment(button.dataset.commentState, button.dataset.resolved !== 'true'); openComments(context); });
+    root.querySelectorAll('[data-reply-form]').forEach((form) => form.onsubmit = async (event) => { event.preventDefault(); const body = new FormData(form).get('body'); await api.createComment({ ...context, parentCommentId:form.dataset.replyForm, body }); openComments(context); });
+    const compose = root.querySelector('[data-comment-form]'); compose.onsubmit = async (event) => { event.preventDefault(); const body = new FormData(compose).get('body'); await api.createComment({ ...context, body }); openComments(context); };
+    root.querySelectorAll('[data-mention]').forEach((button) => button.onclick = () => { const input = compose.querySelector('textarea'); const token = `@${button.dataset.mention} `; input.setRangeText(token, input.selectionStart, input.selectionEnd, 'end'); input.focus(); });
   }
 
   function openThemes() {
@@ -280,7 +325,7 @@
     state.eventSource.addEventListener('presence.joined', (event) => { const person = JSON.parse(event.data); state.presence = [...state.presence.filter((item) => item.clientId !== person.clientId), person]; renderPresence(); });
     state.eventSource.addEventListener('presence.updated', (event) => { const person = JSON.parse(event.data); state.presence = [...state.presence.filter((item) => item.clientId !== person.clientId), person]; renderPresence(); });
     state.eventSource.addEventListener('presence.left', (event) => { const person = JSON.parse(event.data); state.presence = state.presence.filter((item) => item.clientId !== person.clientId); renderPresence(); });
-    ['ai.job.completed','content.operation','content.conflict','comment.created','script.crdt','canvas.drag'].forEach((type) => state.eventSource.addEventListener(type, (event) => { let detail={};try{detail=JSON.parse(event.data)}catch{}window.dispatchEvent(new CustomEvent(`filmscript:${type}`,{detail})) }));
+    ['ai.job.completed','content.operation','content.conflict','comment.created','comment.updated','activity.updated','notification.updated','script.crdt','canvas.drag'].forEach((type) => state.eventSource.addEventListener(type, (event) => { let detail={};try{detail=JSON.parse(event.data)}catch{}window.dispatchEvent(new CustomEvent(`filmscript:${type}`,{detail})); if (type === 'notification.updated') refreshNotifications(); if ((type === 'comment.created' || type === 'comment.updated') && state.commentContext && document.querySelector('.fs-comments-dialog')) { clearTimeout(state.commentRefreshTimer); state.commentRefreshTimer = setTimeout(() => openComments(state.commentContext), 180); } }));
     document.addEventListener('visibilitychange', () => { if (!document.hidden) sendPresence({ type:'presence.updated' }); });
     const activity = () => { const wasIdle = Date.now() - lastUserActivityAt > 90_000; lastUserActivityAt = Date.now(); if (wasIdle) sendPresence({ type:'presence.updated' }); };
     ['pointerdown','keydown','wheel'].forEach((type) => document.addEventListener(type, activity, { passive:true }));
@@ -291,14 +336,18 @@
   let presenceTimer = 0;
   function sendPresence(detail = {}) {
     if (!projectId || document.hidden) return;
+    state.localContext = { ...(state.localContext || {}), ...detail, module:detail.module || currentModule() };
     clearTimeout(presenceTimer); presenceTimer = setTimeout(() => request(`/api/projects/${projectId}/collaboration/presence`, { method:'POST', headers:{ 'X-FilmScript-Client-Id':clientId }, body:JSON.stringify({ type:detail.type || 'presence.updated', module:currentModule(), ...detail }) }).catch(() => {}), detail.type === 'cursor.updated' ? 80 : 120);
   }
 
   function mountHub() {
     const host = document.querySelector('.v5-top-actions') || document.querySelector('.fs-app-topbar > div:last-child'); if (!host || document.querySelector('.fs-platform-hub')) return;
     const hub = document.createElement('div'); hub.className = 'fs-platform-hub';
-    hub.innerHTML = `${projectId ? '<span class="fs-live-avatars" aria-label="Active collaborators"></span><button class="fs-platform-button fs-manage-people" data-people title="People and access" aria-label="People and access"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M16 19v-1.5a4 4 0 0 0-4-4H7a4 4 0 0 0-4 4V19"></path><circle cx="9.5" cy="7" r="3"></circle><path d="M17 5.2a3 3 0 0 1 0 5.6M21 19v-1.5a4 4 0 0 0-3-3.87"></path></svg></button>' : ''}<button class="fs-platform-button" data-bell title="Notifications" aria-label="Notifications"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9"></path><path d="M10 21h4"></path></svg><span class="fs-notification-badge" hidden></span></button>`;
+    hub.innerHTML = `${projectId ? '<span class="fs-live-avatars" aria-label="Active collaborators"></span><button class="fs-platform-button fs-manage-people" data-people title="People and access" aria-label="People and access"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M16 19v-1.5a4 4 0 0 0-4-4H7a4 4 0 0 0-4 4V19"></path><circle cx="9.5" cy="7" r="3"></circle><path d="M17 5.2a3 3 0 0 1 0 5.6M21 19v-1.5a4 4 0 0 0-3-3.87"></path></svg></button><details class="fs-module-menu"><summary class="fs-platform-button" title="Module actions" aria-label="Module actions">•••</summary><div class="fs-module-menu-pop"><button type="button" data-module-history></button><button type="button" data-module-comments>Comments</button></div></details>' : ''}<button class="fs-platform-button" data-bell title="Notifications" aria-label="Notifications"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9"></path><path d="M10 21h4"></path></svg><span class="fs-notification-badge" hidden></span></button>`;
     host.prepend(hub); hub.querySelector('[data-bell]').onclick = openNotifications; hub.querySelector('[data-people]')?.addEventListener('click', openMembers);
+    const menu = hub.querySelector('.fs-module-menu'); menu?.addEventListener('toggle', () => { if (!menu.open) return; const module = currentModule(); menu.querySelector('[data-module-history]').textContent = ['script','canvas'].includes(module) ? 'Version History' : 'Activity'; });
+    hub.querySelector('[data-module-history]')?.addEventListener('click', () => { menu.removeAttribute('open'); openActivity(currentModule()); });
+    hub.querySelector('[data-module-comments]')?.addEventListener('click', () => { menu.removeAttribute('open'); openComments(currentCommentAnchor()); });
   }
 
   function mountMobileNav() {
@@ -326,9 +375,12 @@
   async function init() {
     try { state.me = await api.me(); const local = localStorage.getItem('filmscript_theme_v2'); applyTheme(state.me.theme || local || 'filmscript'); } catch { applyTheme(localStorage.getItem('filmscript_theme_v2') || 'filmscript'); }
     mountHub(); mountMobileNav(); syncResponsiveChrome(); addEventListener('resize', syncResponsiveChrome, { passive:true }); injectProfileControls(); refreshNotifications(); connectCollaboration();
+    document.addEventListener('pointerdown', (event) => { const entity = event.target?.closest?.('[data-shot-id],[data-scene-id],[data-block-id]'); if (!entity) return; state.localContext = { module:currentModule(), selectedObjectId:entity.dataset.shotId || entity.dataset.sceneId || entity.dataset.blockId || null, sceneId:entity.dataset.sceneId || null, selection:{ blockId:entity.dataset.blockId || null } }; }, { passive:true, capture:true });
     const invitation = params.get('invitation'); if (invitation) request('/api/invitations/accept', { method:'POST', body:JSON.stringify({ token:invitation }) }).then((result) => location.replace(`Editor%20v5.dc.html?script=${encodeURIComponent(result.membership.projectId)}`)).catch((error) => dialog('Invitation unavailable', error.message, '<div class="fs-dialog-actions"><button class="fs-action" onclick="location.href=\'App.dc.html\'">Back to projects</button></div>'));
+    if (params.get('comment') && projectId) openComments(currentCommentAnchor()).catch(() => {});
   }
 
-  window.filmscriptPlatform = { api, clientId, openTranslation, openMembers, openActivity, openThemes, openShare, openLocationPlan, sendPresence, sendOperation:(body) => api.collaborate(body), applyTheme };
+  window.addEventListener('filmscript:open-comments', (event) => openComments(event.detail || currentCommentAnchor()).catch(() => {}));
+  window.filmscriptPlatform = { api, clientId, openTranslation, openMembers, openActivity, openComments, openNotifications, openThemes, openShare, openLocationPlan, sendPresence, sendOperation:(body) => api.collaborate(body), applyTheme };
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', init); else init();
 })();

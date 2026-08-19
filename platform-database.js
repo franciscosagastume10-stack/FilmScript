@@ -26,6 +26,10 @@ const invitationExpiry = (value) => {
   return new Date(timestamp).toISOString();
 };
 
+let platformEventSink = null;
+export function setPlatformEventSink(sink) { platformEventSink = typeof sink === "function" ? sink : null; }
+function emitPlatformEvent(event) { try { platformEventSink?.(event); } catch {} }
+
 function validateCinematicRole(value) {
   if (value == null || value === "") return null;
   if (!CINEMATIC_ROLES.includes(value)) throw Object.assign(new Error("Choose a valid cinematic role."), { status: 422, code: "invalid_cinematic_role" });
@@ -62,6 +66,7 @@ export function runPlatformMigrations() {
     [10, "010_collaboration_platform.sql"],
     [11, "011_collaboration_access_foundation.sql"],
     [12, "012_realtime_collaboration.sql"],
+    [13, "013_activity_comments_notifications.sql"],
   ];
   for (const [version, filename] of migrations) {
     if (current >= version && (version !== 10 || hasColumn("users", "theme")) && (version !== 11 || hasColumn("project_memberships", "department_ids_json"))) continue;
@@ -246,6 +251,9 @@ export function acceptInvitation(token, userId) {
     db.prepare("UPDATE project_invitations SET status='accepted', updated_at=? WHERE id=?").run(timestamp, row.id);
   })();
   recordActivity({ projectId: row.project_id, module: "members", actorUserId: userId, entityType: "membership", action: "project.member.joined", summary: `${user.username || user.email || "A collaborator"} joined the project.` });
+  for (const manager of db.prepare("SELECT user_id FROM project_memberships WHERE project_id=? AND status='active' AND project_role IN ('owner','co_owner','admin') AND user_id IS NOT NULL AND user_id<>?").all(row.project_id, userId)) {
+    createNotification({ userId: manager.user_id, projectId: row.project_id, type: "member_added", title: "Member joined the project", message: `${user.username || user.email || "A collaborator"} accepted an invitation.`, actorUserId: userId, deepLink: `/Editor%20v5.dc.html?script=${encodeURIComponent(row.project_id)}`, aggregationKey: `member-added:${row.project_id}` });
+  }
   return projectAccess(userId, row.project_id);
 }
 
@@ -304,14 +312,16 @@ export function updateMembership(projectId, membershipId, actorUserId, input = {
   const permissions = permissionsForRole(role, cinematicRole, validatePermissionInput(input.modulePermissions || (role === current.project_role ? currentPermissions : {})));
   const previousFinancial = jsonParse(current.financial_permissions_json, []);
   const financial = normalizeFinancialPermissions(validateFinancialInput(input.financialPermissions ?? previousFinancial), role);
-  if (JSON.stringify(financial) !== JSON.stringify(previousFinancial) && !(actor.financialPermissions || []).includes("financial.manage_access")) throw Object.assign(new Error("You cannot change financial access."), { status: 403, code: "financial_permission_denied" });
+  const financialChanged = JSON.stringify(financial) !== JSON.stringify(previousFinancial);
+  if (financialChanged && !(actor.financialPermissions || []).includes("financial.manage_access")) throw Object.assign(new Error("You cannot change financial access."), { status: 403, code: "financial_permission_denied" });
   const departments = Array.isArray(input.financialDepartmentIds) ? input.financialDepartmentIds.map(String) : jsonParse(current.financial_department_ids_json, []);
   const departmentIds = Array.isArray(input.departmentIds) ? input.departmentIds.map(String) : jsonParse(current.department_ids_json, []);
   const status = ["active", "suspended", "removed"].includes(input.status) ? input.status : current.status;
   db.prepare(`UPDATE project_memberships SET project_role=?, cinematic_role=?, module_permissions_json=?, financial_permissions_json=?, financial_department_ids_json=?, department_ids_json=?, status=?, version=version+1, updated_at=? WHERE id=?`)
     .run(role, cinematicRole, JSON.stringify(permissions), JSON.stringify(financial), JSON.stringify(departments), JSON.stringify(departmentIds), status, nowIso(), membershipId);
-  recordActivity({ projectId, module: "members", actorUserId, entityType: "membership", entityId: membershipId, action: status === "removed" ? "project.member.removed" : "project.permission.changed", summary: status === "removed" ? "Project access was revoked." : "Project permissions were updated.", containsFinancialData: JSON.stringify(financial) !== current.financial_permissions_json });
-  if (current.user_id) createNotification({ userId: current.user_id, projectId, type: status === "removed" ? "removed_from_project" : "permission_changed", title: status === "removed" ? "Project access removed" : "Permissions updated", message: status === "removed" ? "Your project access was removed." : "Your project permissions changed.", actorUserId, deepLink: `/App.dc.html?project=${encodeURIComponent(projectId)}` });
+  const action = status === "removed" ? "project.member.removed" : financialChanged ? "project.financial_access.changed" : "project.permission.changed";
+  recordActivity({ projectId, module: "members", actorUserId, entityType: "membership", entityId: membershipId, action, summary: status === "removed" ? "Project access was revoked." : financialChanged ? "Financial access was changed." : "Project permissions were updated.", containsFinancialData: financialChanged });
+  if (current.user_id) createNotification({ userId: current.user_id, projectId, type: status === "removed" ? "member_removed" : "permission_changed", title: status === "removed" ? "Project access removed" : financialChanged ? "Financial access updated" : "Permissions updated", message: status === "removed" ? "Your project access was removed." : financialChanged ? "Your financial access settings changed." : "Your project permissions changed.", actorUserId, deepLink: `/App.dc.html?project=${encodeURIComponent(projectId)}`, containsFinancialData: financialChanged, aggregationKey: `access:${projectId}:${current.user_id}` });
   return { ...rowToAccess(db.prepare("SELECT * FROM project_memberships WHERE id=?").get(membershipId)), name: db.prepare("SELECT name FROM users WHERE id=?").get(current.user_id)?.name || null };
 }
 
@@ -333,48 +343,99 @@ export function transferProjectOwnership(projectId, actorUserId, targetMembershi
   return projectAccess(target.user_id, projectId);
 }
 
+function activitySummary(event, count = 1) {
+  const metadata = event.metadata || {};
+  const scene = metadata.sceneLabel ? ` in ${metadata.sceneLabel}` : "";
+  if (event.action === "scene.edited") return `Edited ${metadata.sceneLabel || "a scene"}.`;
+  if (event.action === "breakdown.changed") return `Updated ${count} Breakdown item${count === 1 ? "" : "s"}${scene}.`;
+  if (event.action === "shot.added") return `Added ${count} shot${count === 1 ? "" : "s"}${scene}.`;
+  if (event.action === "shot.modified") return `Modified ${count} shot${count === 1 ? "" : "s"}${scene}.`;
+  if (event.action === "canvas.modified") return `Modified ${count} Canvas object${count === 1 ? "" : "s"}.`;
+  return String(event.summary || "Project updated.").slice(0, 400);
+}
+
+function publicActivity(row) {
+  return { id: row.id, projectId: row.project_id, module: row.module, actor: { id: row.actor_user_id, name: row.name || (row.actor_type === "lumiere" ? "Lumiere" : "FilmScript"), picture: row.picture_url || null, type: row.actor_type }, entityType: row.entity_type, entityId: row.entity_id, action: row.action, summary: row.summary, count: Number(row.aggregation_count) || 1, metadata: jsonParse(row.metadata_json, {}), containsFinancialData: !!row.contains_financial_data, financialDepartmentId: row.financial_department_id || null, before: jsonParse(row.before_json, null), after: jsonParse(row.after_json, null), createdAt: row.created_at, updatedAt: row.updated_at || row.created_at };
+}
+
 export function recordActivity(event) {
-  const timestamp = event.createdAt || nowIso(); const eventId = event.id || id("act");
-  db.prepare(`INSERT INTO activity_events (id, project_id, module, actor_user_id, actor_type, entity_type, entity_id, action, summary, before_json, after_json, contains_financial_data, financial_department_id, created_at)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`)
-    .run(eventId, event.projectId, PROJECT_MODULES.includes(event.module) ? event.module : "project_settings", event.actorUserId || null, event.actorType || "user", event.entityType || "project", event.entityId || null, event.action, String(event.summary || "Project updated.").slice(0, 400), event.before === undefined ? null : JSON.stringify(event.before), event.after === undefined ? null : JSON.stringify(event.after), event.containsFinancialData ? 1 : 0, event.financialDepartmentId || null, timestamp);
-  return eventId;
+  const timestamp = event.createdAt || nowIso();
+  const module = PROJECT_MODULES.includes(event.module) ? event.module : "project_settings";
+  const aggregationKey = event.aggregationKey ? String(event.aggregationKey).slice(0, 240) : null;
+  const windowStart = new Date(Date.parse(timestamp) - Math.max(1, Number(event.aggregationWindowMinutes) || 10) * 60_000).toISOString();
+  const existing = aggregationKey ? db.prepare(`SELECT * FROM activity_events WHERE project_id=? AND actor_user_id IS ? AND aggregation_key=? AND updated_at>? ORDER BY updated_at DESC LIMIT 1`).get(event.projectId, event.actorUserId || null, aggregationKey, windowStart) : null;
+  let eventId; let count;
+  if (existing) {
+    eventId = existing.id; count = (Number(existing.aggregation_count) || 1) + 1;
+    db.prepare(`UPDATE activity_events SET summary=?,after_json=?,aggregation_count=?,metadata_json=?,updated_at=? WHERE id=?`)
+      .run(activitySummary(event, count), event.after === undefined ? existing.after_json : JSON.stringify(event.after), count, JSON.stringify(event.metadata || jsonParse(existing.metadata_json, {})), timestamp, eventId);
+  } else {
+    eventId = event.id || id("act"); count = 1;
+    db.prepare(`INSERT INTO activity_events (id, project_id, module, actor_user_id, actor_type, entity_type, entity_id, action, summary, before_json, after_json, contains_financial_data, financial_department_id, aggregation_key, aggregation_count, metadata_json, created_at, updated_at)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`)
+      .run(eventId, event.projectId, module, event.actorUserId || null, event.actorType || "user", event.entityType || "project", event.entityId || null, event.action, activitySummary(event, count), event.before === undefined ? null : JSON.stringify(event.before), event.after === undefined ? null : JSON.stringify(event.after), event.containsFinancialData ? 1 : 0, event.financialDepartmentId || null, aggregationKey, count, JSON.stringify(event.metadata || {}), timestamp, timestamp);
+  }
+  const row = db.prepare(`SELECT activity_events.*, users.name, users.picture_url FROM activity_events LEFT JOIN users ON users.id=activity_events.actor_user_id WHERE activity_events.id=?`).get(eventId);
+  const activity = publicActivity(row);
+  emitPlatformEvent({ type: "activity.updated", projectId: event.projectId, payload: activity });
+  return activity;
 }
 
 export function listActivity(projectId, actorUserId, module = null, limit = 50, cursor = null) {
-  const access = requireProjectPermission(actorUserId, projectId, module && PROJECT_MODULES.includes(module) ? module : "script", "view");
-  const financial = canViewFinancialData(access);
+  const access = projectAccess(actorUserId, projectId);
+  if (!access) throw Object.assign(new Error("You do not have permission for this project action."), { status: 403, code: "permission_denied" });
+  const normalizedModule = PROJECT_MODULES.includes(module) ? module : null;
+  if (normalizedModule && !canAccessModule(access, normalizedModule, "view")) throw Object.assign(new Error("You do not have permission for this project action."), { status: 403, code: "permission_denied" });
+  const requestedLimit = Math.min(100, Math.max(1, Number(limit) || 50));
   const rows = db.prepare(`SELECT activity_events.*, users.name, users.picture_url FROM activity_events LEFT JOIN users ON users.id=activity_events.actor_user_id
-    WHERE project_id=? AND (? IS NULL OR module=?) AND (? IS NULL OR created_at < ?) AND (? = 1 OR contains_financial_data = 0) ORDER BY created_at DESC LIMIT ?`)
-    .all(projectId, module, module, cursor, cursor, financial ? 1 : 0, Math.min(100, Math.max(1, Number(limit) || 50)));
-  return rows.map((row) => ({ id: row.id, projectId: row.project_id, module: row.module, actor: { id: row.actor_user_id, name: row.name || (row.actor_type === "lumiere" ? "Lumiere" : "FilmScript"), picture: row.picture_url || null, type: row.actor_type }, entityType: row.entity_type, entityId: row.entity_id, action: row.action, summary: row.summary, before: jsonParse(row.before_json, null), after: jsonParse(row.after_json, null), createdAt: row.created_at }));
+    WHERE activity_events.project_id=? AND (? IS NULL OR activity_events.module=?) AND (? IS NULL OR COALESCE(activity_events.updated_at,activity_events.created_at) < ?) ORDER BY COALESCE(activity_events.updated_at,activity_events.created_at) DESC LIMIT ?`)
+    .all(projectId, normalizedModule, normalizedModule, cursor, cursor, requestedLimit * 4);
+  return rows.filter((row) => canAccessModule(access, row.module, "view") && (!row.contains_financial_data || canViewFinancialData(access, row.financial_department_id || null))).slice(0, requestedLimit).map(publicActivity);
 }
 
 export function createNotification(input) {
   if (!input.userId) return null;
   const timestamp = nowIso();
   if (input.aggregationKey) {
-    const existing = db.prepare("SELECT id FROM notifications WHERE user_id=? AND aggregation_key=? AND read_at IS NULL AND updated_at > ?").get(input.userId, input.aggregationKey, new Date(Date.now() - 10 * 60_000).toISOString());
+    const existing = db.prepare("SELECT id,aggregation_count FROM notifications WHERE user_id=? AND aggregation_key=? AND read_at IS NULL AND updated_at > ?").get(input.userId, input.aggregationKey, new Date(Date.now() - 10 * 60_000).toISOString());
     if (existing) {
-      db.prepare("UPDATE notifications SET title=?, message=?, updated_at=? WHERE id=?").run(input.title, input.message, timestamp, existing.id);
+      db.prepare("UPDATE notifications SET title=?, message=?, deep_link=?, actor_user_id=?, aggregation_count=?, metadata_json=?, updated_at=? WHERE id=?").run(input.title, input.message, input.deepLink || null, input.actorUserId || null, (Number(existing.aggregation_count) || 1) + 1, JSON.stringify(input.metadata || {}), timestamp, existing.id);
+      emitPlatformEvent({ type: "notification.updated", projectId: input.projectId || null, userId: input.userId, payload: { id: existing.id } });
       return existing.id;
     }
   }
   const notificationId = id("not");
-  db.prepare(`INSERT INTO notifications (id,user_id,project_id,type,title,message,actor_user_id,deep_link,contains_financial_data,financial_department_id,aggregation_key,created_at,updated_at)
-    VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)`).run(notificationId, input.userId, input.projectId || null, input.type, input.title, input.message, input.actorUserId || null, input.deepLink || null, input.containsFinancialData ? 1 : 0, input.financialDepartmentId || null, input.aggregationKey || null, timestamp, timestamp);
+  db.prepare(`INSERT INTO notifications (id,user_id,project_id,type,title,message,actor_user_id,deep_link,contains_financial_data,financial_department_id,aggregation_key,aggregation_count,metadata_json,created_at,updated_at)
+    VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`).run(notificationId, input.userId, input.projectId || null, input.type, input.title, input.message, input.actorUserId || null, input.deepLink || null, input.containsFinancialData ? 1 : 0, input.financialDepartmentId || null, input.aggregationKey || null, 1, JSON.stringify(input.metadata || {}), timestamp, timestamp);
+  emitPlatformEvent({ type: "notification.updated", projectId: input.projectId || null, userId: input.userId, payload: { id: notificationId } });
   return notificationId;
+}
+
+export function createAICompletionNotification({ userId, projectId, kind, actorUserId = null, deepLink = null, message = null }) {
+  const definitions = {
+    analysis: ["analysis_completed", "Analysis completed", "Your screenplay analysis is ready."],
+    breakdown: ["breakdown_completed", "Breakdown completed", "Your production breakdown is ready."],
+    translation: ["translation_completed", "Translation completed", "Your translated screenplay is ready."],
+    shot_list: ["shot_list_generation_completed", "Shot List completed", "Your generated Shot List is ready."],
+  };
+  const definition = definitions[kind];
+  if (!definition) throw Object.assign(new Error("Choose a supported AI completion notification."), { status: 422, code: "invalid_notification_type" });
+  return createNotification({ userId, projectId, type: definition[0], title: definition[1], message: message || definition[2], actorUserId, deepLink, aggregationKey: `ai:${kind}:${projectId}` });
 }
 
 export function listNotifications(userId, { limit = 40 } = {}) {
   const rows = db.prepare(`SELECT notifications.*, users.name AS actor_name, users.picture_url AS actor_picture FROM notifications LEFT JOIN users ON users.id=notifications.actor_user_id WHERE notifications.user_id=? ORDER BY notifications.updated_at DESC LIMIT ?`).all(userId, Math.min(100, Math.max(1, Number(limit) || 40)));
-  return rows.map((row) => ({ id: row.id, projectId: row.project_id, type: row.type, title: row.title, message: row.message, actor: row.actor_user_id ? { id: row.actor_user_id, name: row.actor_name, picture: row.actor_picture } : null, deepLink: row.deep_link, read: !!row.read_at, createdAt: row.created_at, updatedAt: row.updated_at }));
+  return rows.map((row) => {
+    const access = row.project_id ? projectAccess(userId, row.project_id) : null;
+    const financialAllowed = !row.contains_financial_data || canViewFinancialData(access, row.financial_department_id || null);
+    return { id: row.id, projectId: row.project_id, type: row.type, title: financialAllowed ? row.title : "Financial access changed", message: financialAllowed ? row.message : "Your financial access settings were updated.", actor: row.actor_user_id ? { id: row.actor_user_id, name: row.actor_name, picture: row.actor_picture } : null, deepLink: financialAllowed ? row.deep_link : (row.project_id ? `/App.dc.html?project=${encodeURIComponent(row.project_id)}` : null), read: !!row.read_at, count: Number(row.aggregation_count) || 1, metadata: financialAllowed ? jsonParse(row.metadata_json, {}) : {}, createdAt: row.created_at, updatedAt: row.updated_at };
+  });
 }
 
-export function markNotificationsRead(userId, notificationId = null) {
+export function markNotificationsRead(userId, notificationId = null, read = true) {
   const timestamp = nowIso();
-  if (notificationId) db.prepare("UPDATE notifications SET read_at=COALESCE(read_at,?), updated_at=? WHERE id=? AND user_id=?").run(timestamp, timestamp, notificationId, userId);
-  else db.prepare("UPDATE notifications SET read_at=COALESCE(read_at,?), updated_at=? WHERE user_id=? AND read_at IS NULL").run(timestamp, timestamp, userId);
+  if (notificationId) db.prepare("UPDATE notifications SET read_at=?, updated_at=? WHERE id=? AND user_id=?").run(read ? timestamp : null, timestamp, notificationId, userId);
+  else if (read) db.prepare("UPDATE notifications SET read_at=COALESCE(read_at,?), updated_at=? WHERE user_id=? AND read_at IS NULL").run(timestamp, timestamp, userId);
   return db.prepare("SELECT count(*) AS count FROM notifications WHERE user_id=? AND read_at IS NULL").get(userId).count;
 }
 
@@ -518,39 +579,64 @@ export function saveLocationPlan(projectId, userId, plan, expectedVersion = null
 }
 
 export function listComments(projectId, userId, module = null, entityId = null) {
-  requireProjectPermission(userId, projectId, module && PROJECT_MODULES.includes(module) ? module : "script", "view");
-  return db.prepare(`SELECT project_comments.*, users.name, users.picture_url FROM project_comments LEFT JOIN users ON users.id=project_comments.author_user_id
+  const normalizedModule = module && PROJECT_MODULES.includes(module) ? module : null;
+  const access = normalizedModule ? requireProjectPermission(userId, projectId, normalizedModule, "view") : projectAccess(userId, projectId);
+  if (!access) throw Object.assign(new Error("You do not have permission for this project action."), { status: 403, code: "permission_denied" });
+  if (normalizedModule === "budget" && !canViewFinancialData(access)) throw Object.assign(new Error("You do not have permission to view financial comments."), { status: 403, code: "financial_permission_denied" });
+  const rows = db.prepare(`SELECT project_comments.*, users.name, users.picture_url FROM project_comments LEFT JOIN users ON users.id=project_comments.author_user_id
     WHERE project_id=? AND (? IS NULL OR module=?) AND (? IS NULL OR entity_id=?) ORDER BY created_at ASC`)
-    .all(projectId, module, module, entityId, entityId).map((row) => ({ id: row.id, projectId: row.project_id, module: row.module, entityType: row.entity_type, entityId: row.entity_id, coordinate: jsonParse(row.coordinate_json, null), body: row.body, author: { id: row.author_user_id, name: row.name || "Guest", picture: row.picture_url || null }, resolved: !!row.resolved_at, resolvedAt: row.resolved_at, createdAt: row.created_at, updatedAt: row.updated_at }));
+    .all(projectId, normalizedModule, normalizedModule, entityId, entityId);
+  return rows.filter((row) => canAccessModule(access, row.module, "view") && (row.module !== "budget" || canViewFinancialData(access))).map((row) => ({ id: row.id, projectId: row.project_id, module: row.module, entityType: row.entity_type, entityId: row.entity_id, parentCommentId: row.parent_comment_id || null, coordinate: jsonParse(row.coordinate_json, null), body: row.body, author: { id: row.author_user_id, name: row.name || "Guest", picture: row.picture_url || null }, resolved: !!row.resolved_at, resolvedAt: row.resolved_at, resolvedByUserId: row.resolved_by_user_id || null, reopenedAt: row.reopened_at || null, createdAt: row.created_at, updatedAt: row.updated_at }));
 }
 
 export function createComment(projectId, userId, input = {}) {
   const module = PROJECT_MODULES.includes(input.module) ? input.module : "script";
-  requireProjectPermission(userId, projectId, module, "comment");
+  const access = requireProjectPermission(userId, projectId, module, "comment");
+  if (module === "budget" && !canViewFinancialData(access)) throw Object.assign(new Error("You do not have permission to comment on financial information."), { status: 403, code: "financial_permission_denied" });
   const body = String(input.body || "").replace(/[\u0000-\u0008\u000b\u000c\u000e-\u001f]/g, "").trim().slice(0, 5000);
   if (!body) throw Object.assign(new Error("Write a comment before posting."), { status: 422 });
+  const parent = input.parentCommentId ? db.prepare("SELECT * FROM project_comments WHERE id=? AND project_id=?").get(input.parentCommentId, projectId) : null;
+  if (input.parentCommentId && (!parent || parent.module !== module || String(parent.entity_id || "") !== String(input.entityId || ""))) throw Object.assign(new Error("The reply target is not available."), { status: 422, code: "invalid_reply_target" });
   const commentId = id("cmt"); const timestamp = nowIso();
-  db.prepare(`INSERT INTO project_comments (id,project_id,module,entity_type,entity_id,coordinate_json,body,author_user_id,created_at,updated_at) VALUES (?,?,?,?,?,?,?,?,?,?)`)
-    .run(commentId, projectId, module, String(input.entityType || "project").slice(0,80), input.entityId || null, input.coordinate ? JSON.stringify(input.coordinate) : null, body, userId, timestamp, timestamp);
-  recordActivity({ projectId, module, actorUserId: userId, entityType: "comment", entityId: commentId, action: "comment.created", summary: "A comment was added." });
-  const mentioned = [...body.matchAll(/@([a-z0-9_]{2,30})/gi)].map((match) => match[1].toLowerCase());
+  db.prepare(`INSERT INTO project_comments (id,project_id,module,entity_type,entity_id,coordinate_json,body,author_user_id,parent_comment_id,created_at,updated_at) VALUES (?,?,?,?,?,?,?,?,?,?,?)`)
+    .run(commentId, projectId, module, String(input.entityType || "project").slice(0,80), input.entityId || null, input.coordinate ? JSON.stringify(input.coordinate) : null, body, userId, parent?.id || null, timestamp, timestamp);
+  const action = parent ? "comment.replied" : "comment.created";
+  recordActivity({ projectId, module, actorUserId: userId, entityType: "comment", entityId: commentId, action, summary: parent ? "A reply was added." : "A comment was added.", aggregationKey: `comment:${parent?.id || commentId}` });
+  const view = module === "script" ? "editor" : module === "shot_list" ? "shotlist" : module;
+  const deepLink = `/Editor%20v5.dc.html?script=${encodeURIComponent(projectId)}&view=${encodeURIComponent(view)}${input.entityId ? `&entity=${encodeURIComponent(input.entityId)}` : ""}&comment=${encodeURIComponent(commentId)}`;
+  const notificationUserIds = new Set();
+  if (parent?.author_user_id && parent.author_user_id !== userId) {
+    createNotification({ userId: parent.author_user_id, projectId, type: "comment_reply", title: "New reply to your comment", message: body.slice(0,220), actorUserId: userId, deepLink, aggregationKey: `reply:${parent.id}:${parent.author_user_id}` });
+    notificationUserIds.add(parent.author_user_id);
+  }
+  const mentioned = [...new Set([...body.matchAll(/@([a-z0-9_]{2,30})/gi)].map((match) => match[1].toLowerCase()))];
   if (mentioned.length) {
     const placeholders = mentioned.map(() => "?").join(",");
     for (const user of db.prepare(`SELECT id FROM users WHERE lower(username) IN (${placeholders})`).all(...mentioned)) {
-      if (user.id !== userId && projectAccess(user.id, projectId)) createNotification({ userId: user.id, projectId, type: "mention", title: "You were mentioned", message: body.slice(0,220), actorUserId: userId, deepLink: `/Editor%20v5.dc.html?script=${encodeURIComponent(projectId)}&view=${encodeURIComponent(module)}` });
+      if (user.id !== userId && projectAccess(user.id, projectId)) {
+        db.prepare("INSERT OR IGNORE INTO comment_mentions (comment_id,user_id,created_at) VALUES (?,?,?)").run(commentId, user.id, timestamp);
+        createNotification({ userId: user.id, projectId, type: "mention", title: "You were mentioned", message: body.slice(0,220), actorUserId: userId, deepLink, aggregationKey: `mention:${commentId}:${user.id}` });
+        notificationUserIds.add(user.id);
+      }
     }
   }
-  return listComments(projectId, userId, module, input.entityId || null).find((comment) => comment.id === commentId);
+  const comment = listComments(projectId, userId, module, input.entityId || null).find((entry) => entry.id === commentId);
+  Object.defineProperty(comment, "notificationUserIds", { value: [...notificationUserIds], enumerable: false });
+  return comment;
 }
 
-export function resolveComment(projectId, userId, commentId) {
+export function resolveComment(projectId, userId, commentId, resolved = true) {
   const row = db.prepare("SELECT * FROM project_comments WHERE id=? AND project_id=?").get(commentId, projectId);
   if (!row) throw Object.assign(new Error("Comment was not found."), { status: 404 });
   const access = requireProjectPermission(userId, projectId, row.module, "comment");
+  if (row.module === "budget" && !canViewFinancialData(access)) throw Object.assign(new Error("You do not have permission to update financial comments."), { status: 403, code: "financial_permission_denied" });
   if (row.author_user_id !== userId && !canAccessModule(access, row.module, "edit")) throw Object.assign(new Error("You do not have permission to resolve this comment."), { status: 403 });
-  const timestamp = nowIso(); db.prepare("UPDATE project_comments SET resolved_at=?,resolved_by_user_id=?,updated_at=? WHERE id=?").run(timestamp, userId, timestamp, commentId);
-  recordActivity({ projectId, module: row.module, actorUserId: userId, entityType: "comment", entityId: commentId, action: "comment.resolved", summary: "A comment was resolved." });
-  return { ok: true, resolvedAt: timestamp };
+  const timestamp = nowIso();
+  if (resolved) db.prepare("UPDATE project_comments SET resolved_at=?,resolved_by_user_id=?,updated_at=? WHERE id=?").run(timestamp, userId, timestamp, commentId);
+  else db.prepare("UPDATE project_comments SET resolved_at=NULL,resolved_by_user_id=NULL,reopened_at=?,updated_at=? WHERE id=?").run(timestamp, timestamp, commentId);
+  recordActivity({ projectId, module: row.module, actorUserId: userId, entityType: "comment", entityId: commentId, action: resolved ? "comment.resolved" : "comment.reopened", summary: resolved ? "A comment was resolved." : "A comment was reopened." });
+  const comment = listComments(projectId, userId, row.module, row.entity_id).find((entry) => entry.id === commentId);
+  return { ok: true, comment };
 }
 
 export function userPlatformProfile(userId) {

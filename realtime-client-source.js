@@ -13,7 +13,7 @@ const textPatch = (shared, next) => {
 };
 
 class ScriptSession {
-  constructor(projectId, clientId, onBlocks) { this.projectId = projectId; this.clientId = clientId; this.onBlocks = onBlocks; this.doc = new Y.Doc(); this.pending = []; this.sending = false; this.ready = false; }
+  constructor(projectId, clientId, onBlocks, contextProvider) { this.projectId = projectId; this.clientId = clientId; this.onBlocks = onBlocks; this.contextProvider = contextProvider; this.doc = new Y.Doc(); this.pending = []; this.sending = false; this.ready = false; }
   blocks() { return this.doc.getArray("blocks").toArray().map((item) => ({ id: String(item.get("id") || makeId()), type: String(item.get("type") || "action"), text: item.get("text")?.toString?.() || "" })); }
   async connect() {
     const response = await fetch(apiUrl(`/api/projects/${this.projectId}/collaboration/script`), { credentials:"include", cache:"no-store" });
@@ -45,7 +45,8 @@ class ScriptSession {
     if (this.sending || !this.pending.length || !navigator.onLine) return;
     this.sending = true; const update = Y.mergeUpdates(this.pending.splice(0));
     try {
-      const response = await fetch(apiUrl(`/api/projects/${this.projectId}/collaboration/script`), { method:"POST", credentials:"include", headers:{ "Content-Type":"application/json", "X-FilmScript-Client-Id":this.clientId }, body:JSON.stringify({ update:bytesToBase64(update) }) });
+      const context = this.contextProvider?.() || {};
+      const response = await fetch(apiUrl(`/api/projects/${this.projectId}/collaboration/script`), { method:"POST", credentials:"include", headers:{ "Content-Type":"application/json", "X-FilmScript-Client-Id":this.clientId }, body:JSON.stringify({ update:bytesToBase64(update), sceneId:context.sceneId || null, sceneLabel:context.sceneLabel || null, blockId:context.blockId || null }) });
       if (!response.ok) throw new Error("CRDT update was rejected");
     } catch { this.pending.unshift(update); window.setTimeout(() => this.flush(), 2000); }
     finally { this.sending = false; if (this.pending.length) this.flush(); }
@@ -54,5 +55,5 @@ class ScriptSession {
 }
 
 window.FilmScriptRealtime = {
-  async connectScript(projectId, options = {}) { return new ScriptSession(projectId, options.clientId || window.filmscriptPlatform?.clientId, options.onBlocks).connect(); },
+  async connectScript(projectId, options = {}) { return new ScriptSession(projectId, options.clientId || window.filmscriptPlatform?.clientId, options.onBlocks, options.contextProvider).connect(); },
 };

@@ -24,17 +24,17 @@
 <script defer src="./scripts-client.js?v=20260713-names1"></script>
 <script defer src="./preproduction-client.js?v=20260819-collab2"></script>
 <script defer src="./canvas-client.js?v=20260819-collab2"></script>
-<script defer src="./canvas-workspace.js?v=20260819-collab2"></script>
+<script defer src="./canvas-workspace.js?v=20260819-phase1c1"></script>
 <script defer src="./analysis-client.js?v=20260713-language1"></script>
     <script type="module" src="./analysis-workspace.js?v=20260731-plan-entitlements2"></script>
 <script defer src="./budget-client.js?v=20260720-allocationdonut2"></script>
 <script type="module" src="./budget-workspace.js?v=20260801-budget-glass1"></script>
 <script defer src="./calendar-client.js?v=20260727-calendar3"></script>
 <script type="module" src="./calendar-workspace.js?v=20260801-calendar-glass1"></script>
-<script defer src="./platform-client.js?v=20260819-collab2"></script>
-<script defer src="./assets/vendor/realtime-collaboration.bundle.js?v=20260819-collab2"></script>
+<script defer src="./platform-client.js?v=20260819-phase1c1"></script>
+<script defer src="./assets/vendor/realtime-collaboration.bundle.js?v=20260819-phase1c1"></script>
 <link rel="stylesheet" href="./filmscript-controls.css?v=20260716-typography1">
-<link rel="stylesheet" href="./platform-ui.css?v=20260819-collab2">
+<link rel="stylesheet" href="./platform-ui.css?v=20260819-phase1c1">
 <link rel="prefetch" href="./App.dc.html" as="document">
 </head>
 <body>
@@ -2896,6 +2896,7 @@ class Component extends DCLogic {
       this._realtimeScript = await window.FilmScriptRealtime.connectScript(scriptId, {
         clientId: window.filmscriptPlatform?.clientId,
         onBlocks: (blocks, origin) => { if (origin !== 'local') this._applyRealtimeScriptBlocks(blocks); },
+        contextProvider: () => { const block = this._currentBlock(); const sceneNumber = Number(this.state.activeScene) || 1; return { blockId:block?.dataset?.blockId || null, sceneId:`scene_${sceneNumber}`, sceneLabel:`Scene ${sceneNumber}` }; },
       });
       if (recoveryBlocks?.length) this._realtimeScript.syncBlocks(recoveryBlocks);
     } catch (error) { window.setTimeout(() => this._connectScriptRealtime(scriptId, recoveryBlocks), 2000); }
@@ -3454,7 +3455,7 @@ class Component extends DCLogic {
     const documentId = `breakdown:${sceneId}:${section}`; const entityKey = `${documentId}:${sceneId}`; const baseVersion = this._collaborationVersions?.get(entityKey) || 0;
     const task = previous.catch(() => {}).then(async () => {
       if (window.filmscriptPlatform?.sendOperation) {
-        const result = await window.filmscriptPlatform.sendOperation({ module:'breakdown', documentId, entityType:'breakdown_card', entityId:sceneId, baseVersion, current:{ id:sceneId, version:baseVersion, [key]:previousValue }, previous:{ [key]:previousValue }, patch:{ [key]:savedValue }, operationType:'field.set' });
+        const result = await window.filmscriptPlatform.sendOperation({ module:'breakdown', documentId, entityType:'breakdown_card', entityId:sceneId, baseVersion, current:{ id:sceneId, version:baseVersion, [key]:previousValue }, previous:{ [key]:previousValue }, patch:{ [key]:savedValue }, operationType:'field.set', metadata:{ sceneId, sceneLabel:sceneBefore?.title || sceneBefore?.heading || `Scene ${sceneId}` } });
         if (!this._collaborationVersions) this._collaborationVersions = new Map(); this._collaborationVersions.set(entityKey, result.entity?.version || baseVersion);
       }
       return window.filmscriptPreproduction.saveScene(scriptId, sceneId, { [section]: { [key]: savedValue } });
@@ -4585,7 +4586,8 @@ class Component extends DCLogic {
     const scriptId = this.state.activeScriptId || this._activeScriptId; const entityKey = `shot_list:${sceneId}:${shotId}`; const baseVersion = this._collaborationVersions?.get(entityKey) || 0;
     try {
       if (window.filmscriptPlatform?.sendOperation) {
-        const result = await window.filmscriptPlatform.sendOperation({ module:'shot_list', documentId:`shot_list:${sceneId}`, entityType:'shot_list_item', entityId:shotId, baseVersion, current:{ id:shotId, version:baseVersion, [key]:previousValue }, previous:{ [key]:previousValue }, patch:{ [key]:value }, operationType:'field.set' });
+        const shotScene = this._shotListScene(sceneId);
+        const result = await window.filmscriptPlatform.sendOperation({ module:'shot_list', documentId:`shot_list:${sceneId}`, entityType:'shot_list_item', entityId:shotId, baseVersion, current:{ id:shotId, version:baseVersion, [key]:previousValue }, previous:{ [key]:previousValue }, patch:{ [key]:value }, operationType:'field.set', metadata:{ sceneId, sceneLabel:shotScene?.title || shotScene?.heading || `Scene ${sceneId}` } });
         if (!this._collaborationVersions) this._collaborationVersions = new Map(); this._collaborationVersions.set(entityKey, result.entity?.version || baseVersion);
       }
       this.setState({ shotListSaving:true, shotListSaveError:false });
@@ -5092,7 +5094,10 @@ class Component extends DCLogic {
     }
     const random = new Uint32Array(2);
     crypto.getRandomValues(random);
-    shots.push({ id: `sh_${Date.now().toString(16)}${Array.from(random, (value) => value.toString(16).padStart(8, '0')).join('')}`, size: 'Medium', angle: 'Eye level', focalLength: '50mm', estimatedMinutes: remainingMinutes == null ? 15 : Math.min(15, remainingMinutes), movement: 'Static', description: '', sourceExcerpt: '', userEdited: true });
+    const shot = { id: `sh_${Date.now().toString(16)}${Array.from(random, (value) => value.toString(16).padStart(8, '0')).join('')}`, size: 'Medium', angle: 'Eye level', focalLength: '50mm', estimatedMinutes: remainingMinutes == null ? 15 : Math.min(15, remainingMinutes), movement: 'Static', description: '', sourceExcerpt: '', userEdited: true };
+    shots.push(shot);
+    const shotScene = this._shotListScene(sceneId);
+    window.filmscriptPlatform?.sendOperation?.({ module:'shot_list', documentId:`shot_list:${sceneId}`, entityType:'shot_list_item', entityId:shot.id, baseVersion:0, current:{ id:shot.id, version:0 }, previous:{}, patch:shot, operationType:'entity.add', metadata:{ sceneId, sceneLabel:shotScene?.title || shotScene?.heading || `Scene ${sceneId}` } }).catch(() => {});
     this._replaceSceneShotsLocal(sceneId, shots);
     this.setState({ shotListEditing: true, shotListSaveError: false });
     this._persistShots(sceneId, shots);
