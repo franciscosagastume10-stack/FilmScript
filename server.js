@@ -312,23 +312,31 @@ async function requestLumiere({ system = "", messages = [], maxTokens = 1024, js
     if (lastUserMessage) lastUserMessage.content = `${lastUserMessage.content}\n\n${jsonInstruction}`;
     else input.push({ role: "user", content: jsonInstruction });
   }
-  const response = await fetch(OPENAI_RESPONSES_API_URL, {
-    method: "POST",
-    signal: AbortSignal.timeout(OPENAI_TEXT_TIMEOUT_MS),
-    headers: {
-      Authorization: `Bearer ${apiKey}`,
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify({
-      model: String(model || OPENAI_TEXT_MODEL).trim() || OPENAI_TEXT_MODEL,
-      instructions: `${String(system || '').trim()}${jsonMode ? "\n\nRespond with one valid JSON object only." : ""}`.trim() || undefined,
-      input,
-      max_output_tokens: Math.max(64, Math.round(Number(maxTokens) || 1024)),
-      store: false,
-      reasoning: { effort: jsonMode ? 'medium' : 'low' },
-      ...(jsonMode ? { text: { format: { type: "json_object" } } } : {}),
-    }),
-  });
+  let response;
+  try {
+    response = await fetch(OPENAI_RESPONSES_API_URL, {
+      method: "POST",
+      signal: AbortSignal.timeout(OPENAI_TEXT_TIMEOUT_MS),
+      headers: {
+        Authorization: `Bearer ${apiKey}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        model: String(model || OPENAI_TEXT_MODEL).trim() || OPENAI_TEXT_MODEL,
+        instructions: `${String(system || '').trim()}${jsonMode ? "\n\nRespond with one valid JSON object only." : ""}`.trim() || undefined,
+        input,
+        max_output_tokens: Math.max(64, Math.round(Number(maxTokens) || 1024)),
+        store: false,
+        reasoning: { effort: jsonMode ? 'medium' : 'low' },
+        ...(jsonMode ? { text: { format: { type: "json_object" } } } : {}),
+      }),
+    });
+  } catch (error) {
+    if (error?.name === "AbortError" || error?.name === "TimeoutError") {
+      throw Object.assign(new Error("Lumiere request timed out."), { status: 504, code: "provider_timeout" });
+    }
+    throw error;
+  }
   const payload = await response.json().catch(() => ({}));
   if (!response.ok) {
     throw Object.assign(new Error(String(payload?.error?.message || payload?.message || `OpenAI request failed (${response.status}).`)), {
@@ -5100,6 +5108,14 @@ const ANALYSIS_JOB_STAGES = Object.freeze({
   finalizing_results: { progress: 92, message: "Finalizing results" },
 });
 
+function analysisOutputTokenBudget(sceneCount) {
+  // The previous 16k ceiling made a full-script request more likely to exceed
+  // the provider deadline while it was visibly parked at “Building analysis”.
+  // The rendered analysis has bounded lists, so a compact response is enough
+  // for the scene-level merge and is substantially faster and less expensive.
+  return Math.min(8_000, Math.max(2_400, Math.round(Number(sceneCount || 0) * 900)));
+}
+
 function analysisEntryTouchesScenes(entry, sceneIds) {
   if (!entry || !sceneIds?.size) return false;
   if (sceneIds.has(entry.sceneId)) return true;
@@ -5297,7 +5313,7 @@ async function runScriptAnalysis(scriptId, sid, targetHash, requestedLanguage = 
       });
       progress("building_analysis");
       let response = await requestLumiereForTask("analysis", {
-        maxTokens: Math.min(16000, Math.max(3200, packets.length * 2200)),
+        maxTokens: analysisOutputTokenBudget(packets.length),
         jsonMode: true,
         system: `${SCRIPT_ANALYSIS_SYSTEM_PROMPT}\n\n${lumiereLanguageInstruction(requestedLanguage)}\nOnly evaluate the supplied changed or added scenes. Do not speculate about unsupplied scenes; FilmScript will safely merge these scene results with unchanged analysis.`,
         messages: [{ role: "user", content: requestContent }],
@@ -5309,7 +5325,7 @@ async function runScriptAnalysis(scriptId, sid, targetHash, requestedLanguage = 
         payload = parseBreakdownJson(raw);
       } catch {
         response = await requestLumiereForTask("analysis", {
-          maxTokens: 16000,
+          maxTokens: analysisOutputTokenBudget(packets.length),
           jsonMode: true,
           system: `${SCRIPT_ANALYSIS_SYSTEM_PROMPT}\n\n${lumiereLanguageInstruction(requestedLanguage)}\nOnly evaluate the supplied changed or added scenes. The previous pass did not produce complete JSON. Make this retry especially compact and complete.`,
           messages: [{ role: "user", content: requestContent }],

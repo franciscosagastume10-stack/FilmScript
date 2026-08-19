@@ -5,7 +5,10 @@ export const AI_MODELS = Object.freeze({
 });
 
 export const AI_TASK_ROUTE = Object.freeze({
-  analysis: "sol", partial_analysis: "sol", breakdown: "sol", breakdown_scene: "sol",
+  // Analysis and Breakdown are the most frequent long-form production jobs.
+  // Keep them on the efficient production tier by default; Sol remains
+  // available for the generation workflows that still need its extra depth.
+  analysis: "terra", partial_analysis: "terra", breakdown: "terra", breakdown_scene: "terra",
   shot_list: "sol", shot_list_update: "sol", translation: "sol", chat: "luna",
 });
 
@@ -46,7 +49,8 @@ export function modelForTask(task, env = process.env) {
 export function isRetryableAIError(error) {
   if (NON_RETRYABLE_CODES.has(String(error?.code || ""))) return false;
   const status = Number(error?.status || error?.statusCode || 0);
-  return status === 408 || status === 409 || status === 425 || status === 429 || status >= 500 || error?.name === "AbortError";
+  return status === 408 || status === 409 || status === 425 || status === 429 || status >= 500
+    || error?.name === "AbortError" || error?.name === "TimeoutError";
 }
 
 export async function routeAIRequest({ task, request, invoke, onAttempt = () => {} }) {

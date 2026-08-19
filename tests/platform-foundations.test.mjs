@@ -56,15 +56,16 @@ test('Lumiere actions require both Lumiere and target module edit permission', (
   assert.equal(canUseLumiereAction(access('editor'), 'translation'), true);
 });
 
-test('AI routing uses Luna for chat and Sol for structured production work', () => {
+test('AI routing uses Terra for frequent structured production work', () => {
   assert.equal(modelForTask('chat', {}), AI_MODELS.luna);
-  assert.equal(modelForTask('analysis', {}), AI_MODELS.sol);
+  assert.equal(modelForTask('analysis', {}), AI_MODELS.terra);
+  assert.equal(modelForTask('breakdown', {}), AI_MODELS.terra);
   assert.equal(modelForTask('translation', {}), AI_MODELS.sol);
 });
 
 test('retryable Sol errors fall back to Terra in the same request', async () => {
   const attempts = [];
-  const routed = await routeAIRequest({ task:'breakdown', request:{ value:1 }, onAttempt:(attempt)=>attempts.push(attempt.model), invoke:async ({ model }) => { if (model === AI_MODELS.sol) throw Object.assign(new Error('busy'), { status:503 }); return { ok:true, model }; } });
+  const routed = await routeAIRequest({ task:'translation', request:{ value:1 }, onAttempt:(attempt)=>attempts.push(attempt.model), invoke:async ({ model }) => { if (model === AI_MODELS.sol) throw Object.assign(new Error('busy'), { status:503 }); return { ok:true, model }; } });
   assert.equal(routed.usedFallback, true);
   assert.equal(routed.completedModel, AI_MODELS.terra);
   assert.deepEqual(attempts, [AI_MODELS.sol, AI_MODELS.terra]);
@@ -72,6 +73,7 @@ test('retryable Sol errors fall back to Terra in the same request', async () => 
 
 test('permission and credit failures never trigger Terra fallback', async () => {
   assert.equal(isRetryableAIError({ code:'permission_denied', status:503 }), false);
+  assert.equal(isRetryableAIError({ name:'TimeoutError' }), true);
   await assert.rejects(() => routeAIRequest({ task:'analysis', request:{}, invoke:async () => { throw Object.assign(new Error('denied'), { code:'permission_denied', status:403 }); } }), /denied/);
 });
 
