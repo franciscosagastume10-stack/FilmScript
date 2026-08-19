@@ -10,7 +10,7 @@ export const CINEMATIC_ROLES = Object.freeze([
 
 export const PROJECT_MODULES = Object.freeze([
   "script", "analysis", "breakdown", "shot_list", "stripboard", "calendar", "budget", "canvas",
-  "location_plan", "imagine", "files", "project_settings", "members", "exports", "lumiere",
+  "location_plan", "imagine", "files", "project_settings", "members", "shared_projects", "exports", "lumiere",
 ]);
 
 export const PERMISSION_LEVELS = Object.freeze(["no_access", "view", "comment", "edit", "manage"]);
@@ -29,8 +29,8 @@ const ROLE_DEFAULTS = Object.freeze({
   admin: { ...FULL_MODULE_ACCESS, project_settings: "manage", members: "manage", budget: "no_access" },
   editor: Object.fromEntries(PROJECT_MODULES.map((module) => [module, ["project_settings", "members", "shared_projects", "budget"].includes(module) ? "no_access" : "edit"])),
   department_editor: Object.fromEntries(PROJECT_MODULES.map((module) => [module, "no_access"])),
-  commenter: Object.fromEntries(PROJECT_MODULES.map((module) => [module, ["project_settings", "members", "budget"].includes(module) ? "no_access" : "comment"])),
-  viewer: Object.fromEntries(PROJECT_MODULES.map((module) => [module, ["project_settings", "members", "budget", "lumiere"].includes(module) ? "no_access" : "view"])),
+  commenter: Object.fromEntries(PROJECT_MODULES.map((module) => [module, ["project_settings", "members", "shared_projects", "budget"].includes(module) ? "no_access" : "comment"])),
+  viewer: Object.fromEntries(PROJECT_MODULES.map((module) => [module, ["project_settings", "members", "shared_projects", "budget", "lumiere"].includes(module) ? "no_access" : "view"])),
   temporary_guest: Object.fromEntries(PROJECT_MODULES.map((module) => [module, "no_access"])),
 });
 
@@ -82,6 +82,7 @@ export function permissionsForRole(role, cinematicRole = null, explicit = {}) {
   if (normalizedRole === "temporary_guest") {
     base.members = "no_access";
     base.project_settings = "no_access";
+    base.shared_projects = "no_access";
     base.exports = "no_access";
     base.lumiere = "no_access";
     base.budget = "no_access";
