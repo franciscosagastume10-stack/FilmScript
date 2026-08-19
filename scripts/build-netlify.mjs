@@ -100,7 +100,7 @@ const erpApiUrl = String(process.env.ERP_API_URL || "").replace(/\/$/, "");
 const erpEnvironment = String(process.env.ERP_ENVIRONMENT || "").trim().toLowerCase();
 fs.writeFileSync(
   path.join(output, "runtime-config.js"),
-  `window.FILMSCRIPT_CONFIG = { apiUrl: ${JSON.stringify(apiUrl)}, erpApiUrl: ${JSON.stringify(erpApiUrl)}, erpEnvironment: ${JSON.stringify(erpEnvironment)} };\n${sourceConfig}`,
+  `window.FILMSCRIPT_CONFIG = { apiUrl: ${JSON.stringify(apiUrl)}, firstPartyApi: ${JSON.stringify(firstPartyApi)}, erpApiUrl: ${JSON.stringify(erpApiUrl)}, erpEnvironment: ${JSON.stringify(erpEnvironment)} };\n${sourceConfig}`,
 );
 // Sites accepts both Wrangler config extensions; keep a JSON copy so the
 // static asset binding is discovered consistently by the production adapter.
