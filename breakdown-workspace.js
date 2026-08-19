@@ -68,6 +68,7 @@ class FilmScriptBreakdown extends HTMLElement {
 
   connectedCallback() {
     this.shadowRoot.addEventListener('click', this.onClick);
+    this.shadowRoot.addEventListener('keydown', this.onKeydown);
     this.shadowRoot.addEventListener('input', this.onInput);
     this.shadowRoot.addEventListener('change', this.onChange);
     window.addEventListener('filmscript:content.operation', this._remoteOperation);
@@ -78,6 +79,7 @@ class FilmScriptBreakdown extends HTMLElement {
 
   disconnectedCallback() {
     this.shadowRoot.removeEventListener('click', this.onClick);
+    this.shadowRoot.removeEventListener('keydown', this.onKeydown);
     this.shadowRoot.removeEventListener('input', this.onInput);
     this.shadowRoot.removeEventListener('change', this.onChange);
     window.removeEventListener('filmscript:content.operation', this._remoteOperation);
@@ -231,7 +233,8 @@ class FilmScriptBreakdown extends HTMLElement {
       <div class="element-actions"><button type="button" class="primary" data-action="save-element">${this.t('Save changes', 'Guardar cambios')}</button></div>
     </article>`;
     const image = element.imageAsset?.id ? `<img src="${escapeHtml(window.filmscriptPreproduction?.breakdownImageUrl?.(this.scriptId, element.imageAsset.id) || '')}" alt="${escapeHtml(`${this.t('Reference image for', 'Imagen de referencia de')} ${element.name}`)}">` : '';
-    return `<article class="element" style="--tone:${tone}" data-element-id="${escapeHtml(element.id)}" data-scene-id="${escapeHtml(info.id)}">
+    const scriptLinkLabel = this.t('Open exact source in screenplay for', 'Abrir fuente exacta en el guion para');
+    return `<article class="element is-script-link" style="--tone:${tone}" data-action="open-script-reference" data-category-key="${escapeHtml(card.key)}" data-element-id="${escapeHtml(element.id)}" data-scene-id="${escapeHtml(info.id)}" role="link" tabindex="0" title="${escapeHtml(`${scriptLinkLabel} ${element.name}`)}" aria-label="${escapeHtml(`${scriptLinkLabel} ${element.name}`)}">
       ${image ? `<div class="element-image">${image}</div>` : ''}<div class="element-main"><div class="element-top"><strong>${escapeHtml(element.name)}</strong><span class="qty">×${Math.max(1, Number(element.quantity) || 1)}</span></div>
       ${element.description ? `<p>${escapeHtml(element.description)}</p>` : ''}${element.notes ? `<small>${escapeHtml(element.notes)}</small>` : ''}
       ${element.assignee || status !== 'open' ? `<footer>${element.assignee ? `<span class="owner">${escapeHtml(element.assignee)}</span>` : ''}${status !== 'open' ? `<span class="state ${escapeHtml(status)}">${escapeHtml(statusLabel)}</span>` : ''}</footer>` : ''}</div>
@@ -272,7 +275,7 @@ class FilmScriptBreakdown extends HTMLElement {
       card.elements.forEach((element) => departments.get(card.key).items.push({ element, info }));
     }));
     const populatedDepartments = [...departments.values()].filter((department) => department.items.length);
-    return `<section class="department-view">${populatedDepartments.length ? populatedDepartments.map((department) => `<article class="department-card" style="--tone:${categoryTone[department.key] || '#b7acdb'}"><header><span></span><h3>${escapeHtml(department.label)}</h3><b>${department.items.length}</b></header><div>${department.items.map(({ element, info }) => `<button type="button" class="department-item" data-action="focus-scene" data-scene-id="${escapeHtml(info.id)}" aria-label="${escapeHtml(`${this.t('Open', 'Abrir')} ${element.name}, ${this.t('scene', 'escena')} ${info.number}`)}"><span>${escapeHtml(element.name)}</span><small>${this.t('Scene', 'Escena')} ${info.number} · ${escapeHtml(info.heading)}</small></button>`).join('')}</div></article>`).join('') : `<div class="department-empty">${this.t('No production elements have been added yet.', 'Aún no se han añadido elementos de producción.')}</div>`}</section>`;
+    return `<section class="department-view">${populatedDepartments.length ? populatedDepartments.map((department) => `<article class="department-card" style="--tone:${categoryTone[department.key] || '#b7acdb'}"><header><span></span><h3>${escapeHtml(department.label)}</h3><b>${department.items.length}</b></header><div>${department.items.map(({ element, info }) => `<button type="button" class="department-item" data-action="open-script-reference" data-category-key="${escapeHtml(department.key)}" data-element-id="${escapeHtml(element.id)}" data-scene-id="${escapeHtml(info.id)}" aria-label="${escapeHtml(`${this.t('Open exact source for', 'Abrir fuente exacta de')} ${element.name}, ${this.t('scene', 'escena')} ${info.number}`)}"><span>${escapeHtml(element.name)}</span><small>${this.t('Scene', 'Escena')} ${info.number} · ${escapeHtml(info.heading)}</small></button>`).join('')}</div></article>`).join('') : `<div class="department-empty">${this.t('No production elements have been added yet.', 'Aún no se han añadido elementos de producción.')}</div>`}</section>`;
   }
 
   renderProgress() {
@@ -332,6 +335,25 @@ class FilmScriptBreakdown extends HTMLElement {
     }
   }
 
+  openScriptReference(sceneId, elementId, categoryKey = '') {
+    const index = this.scenes().findIndex((scene) => scene.id === sceneId);
+    const scene = this.scenes()[index];
+    const element = scene?.breakdown?.elements?.find((candidate) => candidate.id === elementId);
+    if (!scene || !element) return;
+    const references = [...new Set([element.sourceExcerpt, element.name]
+      .map((value) => String(value || '').trim()).filter(Boolean))];
+    window.dispatchEvent(new CustomEvent('filmscript:breakdown-open-reference', {
+      detail: {
+        scriptId: this.scriptId,
+        sceneId,
+        sceneNumber: index + 1,
+        categoryKey: categoryKey || normalCategory(element.category),
+        references,
+        label: element.name,
+      },
+    }));
+  }
+
   onClick = (event) => {
     const button = event.target.closest('[data-action]');
     if (!button) return;
@@ -346,10 +368,19 @@ class FilmScriptBreakdown extends HTMLElement {
     if (action === 'clear-focus') { this.focusSceneId = ''; this.render(); }
     if (action === 'show-add') { this.addingSceneId = sceneId; this.expanded.add(sceneId); this.render(); }
     if (action === 'cancel-add') { this.addingSceneId = ''; this.render(); }
+    if (action === 'open-script-reference') this.openScriptReference(sceneId, button.dataset.elementId, button.dataset.categoryKey);
     if (action === 'edit-element') { const id = button.closest('[data-element-id]')?.dataset.elementId; this.editing = `${sceneId}:${id}`; window.filmscriptPlatform?.sendPresence?.({ type: 'selection.updated', module: 'breakdown', sceneId, selectedObjectId: id, selection: { kind: 'element' } }); this.render(); }
     if (action === 'cancel-element') { this.editing = null; this.render(); }
     if (action === 'save-element') this.saveEditingElement(button.closest('[data-element-id]'));
     if (action === 'save-add') this.saveNewElement(button.closest('.new-element'));
+  };
+
+  onKeydown = (event) => {
+    if (event.key !== 'Enter' && event.key !== ' ') return;
+    const link = event.target.closest?.('[data-action="open-script-reference"]');
+    if (!link) return;
+    event.preventDefault();
+    this.openScriptReference(link.dataset.sceneId, link.dataset.elementId, link.dataset.categoryKey);
   };
 
   onInput = () => {};
@@ -427,6 +458,13 @@ class FilmScriptBreakdown extends HTMLElement {
     .element-image{width:56px;height:56px;flex:0 0 56px;border-radius:9px}
     .element-open{flex:0 0 auto;align-self:center;min-height:38px;padding:0 11px;border:1px solid color-mix(in srgb,var(--tone) 35%,var(--hair,#e7e4da));border-radius:10px;background:rgba(255,255,255,.76);color:var(--ink,#2c2c2a);font:750 11px inherit;cursor:pointer;box-shadow:inset 0 1px rgba(255,255,255,.72)}
     .element-open:hover{background:color-mix(in srgb,var(--tone) 12%,white)}
+    .element.is-script-link{cursor:pointer;isolation:isolate;transition:border-color .24s ease,background-color .24s ease,box-shadow .24s cubic-bezier(.2,.8,.2,1),transform .24s cubic-bezier(.2,.8,.2,1)}
+    .element.is-script-link::after{content:'↗';position:absolute;right:12px;top:10px;z-index:-1;color:var(--tone);font-size:13px;font-weight:850;opacity:0;transform:translate3d(-4px,4px,0) scale(.92);transition:opacity .2s ease,transform .24s cubic-bezier(.2,.8,.2,1)}
+    .element.is-script-link:hover,.element.is-script-link:focus-visible{border-color:color-mix(in srgb,var(--tone) 52%,var(--hair,#e7e4da));background:color-mix(in srgb,var(--tone) 8%,rgba(255,255,255,.64));box-shadow:0 13px 26px color-mix(in srgb,var(--tone) 17%,transparent),inset 0 1px rgba(255,255,255,.86);transform:translateY(-2px)}
+    .element.is-script-link:focus-visible{outline:3px solid color-mix(in srgb,var(--tone) 48%,white);outline-offset:3px}
+    .element.is-script-link:hover::after,.element.is-script-link:focus-visible::after{opacity:.94;transform:translate3d(0,0,0) scale(1)}
+    .element.is-script-link .element-top strong{position:relative;text-decoration-line:underline;text-decoration-color:transparent;text-decoration-thickness:2px;text-underline-offset:4px;transition:color .22s ease,text-decoration-color .22s ease}
+    .element.is-script-link:hover .element-top strong,.element.is-script-link:focus-visible .element-top strong{color:color-mix(in srgb,var(--tone) 82%,var(--ink,#2c2c2a));text-decoration-color:var(--tone)}
     .element-links{display:none}
     .scene-empty,.department-empty{padding:24px;border:1px dashed color-mix(in srgb,var(--hair,#e7e4da) 85%,transparent);border-radius:15px;color:var(--muted,#77766f);font-size:12px;text-align:center}
     .add-element{min-height:42px;margin-top:14px;padding:0 3px;font-size:12px;text-align:left}
@@ -452,8 +490,13 @@ class FilmScriptBreakdown extends HTMLElement {
     .department-card h3{font-size:13px}
     .department-card>div{gap:4px;padding:8px}
     .department-item{min-height:58px;padding:10px;border-radius:10px}
+    .department-item{transition:background-color .2s ease,box-shadow .2s ease,transform .2s cubic-bezier(.2,.8,.2,1),color .2s ease}
+    .department-item:hover,.department-item:focus-visible{background:color-mix(in srgb,var(--tone) 11%,rgba(255,255,255,.62));box-shadow:0 7px 16px color-mix(in srgb,var(--tone) 14%,transparent);outline:2px solid color-mix(in srgb,var(--tone) 42%,white);outline-offset:1px;transform:translateX(2px)}
+    .department-item span{text-decoration-line:underline;text-decoration-color:transparent;text-decoration-thickness:2px;text-underline-offset:4px;transition:color .2s ease,text-decoration-color .2s ease}
+    .department-item:hover span,.department-item:focus-visible span{color:color-mix(in srgb,var(--tone) 82%,var(--ink,#2c2c2a));text-decoration-color:var(--tone)}
     .department-item span{font-size:12px}
     .department-item small{font-size:10px}
+    @media(prefers-reduced-motion:reduce){.element.is-script-link,.element.is-script-link::after,.element.is-script-link .element-top strong,.department-item,.department-item span{transition-duration:.01ms!important}}
     @media(max-width:720px){.breakdown-top{align-items:flex-start;gap:14px}.breakdown-context{font-size:12px}.top-actions{width:100%;justify-content:space-between}.view-switch button{padding:0 11px}.scene-head{padding:14px}.scene-content{padding:0 14px 16px}.scene-meta{padding:0 14px 14px}.category-grid{grid-template-columns:1fr}.element{align-items:stretch;flex-wrap:wrap}.element-main{min-width:calc(100% - 70px)}.element-open{width:100%}.element-edit-grid{grid-template-columns:1fr}.new-element{grid-template-columns:1fr 1fr}.new-element input:nth-child(2){grid-column:span 2}}
   `; }
 }

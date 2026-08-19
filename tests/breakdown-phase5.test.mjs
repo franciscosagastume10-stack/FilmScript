@@ -52,3 +52,22 @@ test('Breakdown keeps cards concise while exposing accessible, working detail co
   assert.match(workspace, /min-height:42px/);
   assert.match(workspace, /:focus-visible/);
 });
+
+test('Breakdown elements reveal their exact screenplay evidence with a smooth five-second highlight', async () => {
+  const [workspace, editor] = await Promise.all([
+    fs.readFile(path.join(ROOT, 'breakdown-workspace.js'), 'utf8'),
+    fs.readFile(path.join(ROOT, 'Editor v5.dc.html'), 'utf8'),
+  ]);
+  assert.match(workspace, /class="element is-script-link"/);
+  assert.match(workspace, /data-action="open-script-reference"/);
+  assert.match(workspace, /filmscript:breakdown-open-reference/);
+  assert.match(workspace, /role="link" tabindex="0"/);
+  assert.match(workspace, /onKeydown/);
+  assert.match(workspace, /text-decoration-color:transparent/);
+  assert.match(editor, /filmscript:breakdown-open-reference/);
+  assert.match(editor, /Collect through the next scene heading across every screenplay page/);
+  assert.match(editor, /_fadeBreakdownReferenceHighlight/);
+  assert.match(editor, /window\.setTimeout\(\(\) => this\._fadeBreakdownReferenceHighlight\(\), 5000\)/);
+  assert.match(editor, /v5-breakdown-highlight-fading/);
+  assert.match(editor, /v5-breakdown-reference-fallback\.is-fading/);
+});
