@@ -4909,8 +4909,16 @@ function sessionContext(req, res, create = true) {
   const preview = previewModeEnabled(req);
   if (preview) ensureLocalPreviewWorkspace();
   const cookies = parseCookies(req);
-  const token = cookies[SESSION_COOKIE] || cookies[SHARED_SESSION_COOKIE] || null;
-  const existing = token ? getSessionByToken(token) : null;
+  const hostToken = cookies[SESSION_COOKIE] || null;
+  const sharedToken = cookies[SHARED_SESSION_COOKIE] || null;
+  const hostSession = hostToken ? getSessionByToken(hostToken) : null;
+  const sharedSession = sharedToken && sharedToken !== hostToken ? getSessionByToken(sharedToken) : null;
+  // A prior host-only anonymous cookie can coexist with the authenticated
+  // parent-domain cookie after the first login through the Vercel proxy. Never
+  // let that stale anonymous cookie hide a valid authenticated shared session.
+  const useShared = !!sharedSession && (!hostSession || (!hostSession.userId && !!sharedSession.userId));
+  const token = useShared ? sharedToken : hostToken || sharedToken;
+  const existing = useShared ? sharedSession : hostSession || sharedSession;
   if (existing && (!preview || (existing.userId === PREVIEW_USER_ID && existing.authMethod === "preview"))) {
     if (existing.userId && existing.googleSub) setSharedSessionCookie(res, token);
     return { token, ...existing };
@@ -6507,8 +6515,8 @@ async function handleGoogleCallback(req, res, requestUrl) {
 
 function handleLogout(req, res) {
   const cookies = parseCookies(req);
-  const token = cookies[SESSION_COOKIE] || cookies[SHARED_SESSION_COOKIE];
-  deleteSessionByToken(token);
+  deleteSessionByToken(cookies[SESSION_COOKIE]);
+  if (cookies[SHARED_SESSION_COOKIE] !== cookies[SESSION_COOKIE]) deleteSessionByToken(cookies[SHARED_SESSION_COOKIE]);
   json(res, 200, { ok: true }, { "Set-Cookie": [sessionCookie("", 0), sharedSessionCookie("", 0)].filter(Boolean) });
 }
 
