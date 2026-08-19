@@ -38,6 +38,7 @@ const frontendFiles = [
   "analysis-model.js",
   "analysis-client.js",
   "analysis-workspace.js",
+  "breakdown-workspace.js",
   "budget-model.js",
   "budget-client.js",
   "budget-workspace.js",
