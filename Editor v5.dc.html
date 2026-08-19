@@ -413,7 +413,9 @@
   ::highlight(v5-breakdown-notes) { background-color: rgba(138,108,93,.20); text-decoration: underline 2px #8A6C5D; }
   ::highlight(v5-breakdown-music) { background-color: rgba(105,104,161,.20); text-decoration: underline 2px #6968A1; }
   ::highlight(v5-breakdown-sound) { background-color: rgba(62,124,143,.20); text-decoration: underline 2px #3E7C8F; }
-  .v5-breakdown-reference-fallback { border-radius: 2px; background: var(--reference-soft, rgba(173,126,24,.20)); text-decoration-line: underline; text-decoration-color: var(--reference-color, #AD7E18); text-decoration-thickness: 2px; text-underline-offset: 3px; box-shadow: 0 2px 0 color-mix(in srgb, var(--reference-color, #AD7E18) 16%, transparent); animation: v5-reference-reveal .22s ease both; }
+  html.v5-breakdown-highlight-fading *::highlight(v5-breakdown-cast),html.v5-breakdown-highlight-fading *::highlight(v5-breakdown-extras),html.v5-breakdown-highlight-fading *::highlight(v5-breakdown-props),html.v5-breakdown-highlight-fading *::highlight(v5-breakdown-stunts),html.v5-breakdown-highlight-fading *::highlight(v5-breakdown-vehicles-animals),html.v5-breakdown-highlight-fading *::highlight(v5-breakdown-special-fx),html.v5-breakdown-highlight-fading *::highlight(v5-breakdown-wardrobe),html.v5-breakdown-highlight-fading *::highlight(v5-breakdown-makeup-hair),html.v5-breakdown-highlight-fading *::highlight(v5-breakdown-set-dressing),html.v5-breakdown-highlight-fading *::highlight(v5-breakdown-greenery),html.v5-breakdown-highlight-fading *::highlight(v5-breakdown-equipment),html.v5-breakdown-highlight-fading *::highlight(v5-breakdown-notes),html.v5-breakdown-highlight-fading *::highlight(v5-breakdown-music),html.v5-breakdown-highlight-fading *::highlight(v5-breakdown-sound) { background-color: transparent; text-decoration-color: transparent; transition: background-color .48s ease, text-decoration-color .48s ease; }
+  .v5-breakdown-reference-fallback { border-radius: 2px; background: var(--reference-soft, rgba(173,126,24,.20)); text-decoration-line: underline; text-decoration-color: var(--reference-color, #AD7E18); text-decoration-thickness: 2px; text-underline-offset: 3px; box-shadow: 0 2px 0 color-mix(in srgb, var(--reference-color, #AD7E18) 16%, transparent); animation: v5-reference-reveal .22s ease both; transition:background-color .48s ease,text-decoration-color .48s ease,box-shadow .48s ease; }
+  .v5-breakdown-reference-fallback.is-fading { background: transparent; text-decoration-color: transparent; box-shadow: none; }
   @keyframes v5-reference-reveal { from { background: transparent; text-decoration-color: transparent; } to { background: var(--reference-soft, rgba(173,126,24,.20)); text-decoration-color: var(--reference-color, #AD7E18); } }
   @media (prefers-reduced-motion: reduce) { .v5-production-sync-dot.is-stale { animation: none; } .v5-breakdown-start { animation: none; } .v5-breakdown-start-card, .v5-breakdown-start-button { transition: none; } }
   @media (max-width: 860px) { .v5-production-header { align-items: flex-start; flex-direction: column; } .v5-production-header-actions { width: 100%; justify-content: flex-start; flex-wrap: wrap; } .v5-breakdown-toolbar { align-items: flex-start; flex-direction: column; } .v5-breakdown-actions { width: 100%; justify-content: flex-start; flex-wrap: wrap; } .v5-breakdown-scene-heading { max-width: 64vw; } .v5-breakdown-start-grid { grid-template-columns: 1fr; } .v5-breakdown-start-card { min-height: 250px; } }
@@ -2770,12 +2772,20 @@ class Component extends DCLogic {
     this._analysisAskHandler = (event) => this.openAnalysisInLumiere(event?.detail?.prompt);
     this._analysisBackgroundHandler = (event) => this._setAnalysisBackground(event?.detail || {});
     this._canvasShotlistHandler = () => this.openCanvasShotList();
+    this._breakdownOpenReferenceHandler = (event) => {
+      const detail = event?.detail || {};
+      const activeScriptId = this.state.activeScriptId || this._activeScriptId;
+      if (!Number.isFinite(Number(detail.sceneNumber)) || Number(detail.sceneNumber) < 1) return;
+      if (detail.scriptId && activeScriptId && detail.scriptId !== activeScriptId) return;
+      this.openBreakdownReference(detail.sceneNumber, detail.categoryKey, detail.references, detail.label);
+    };
     window.addEventListener('filmscript:analysis-open-editor', this._analysisOpenEditorHandler);
     window.addEventListener('filmscript:analysis-open-scene', this._analysisOpenSceneHandler);
     window.addEventListener('filmscript:analysis-open-mode', this._analysisOpenModeHandler);
     window.addEventListener('filmscript:analysis-ask-lumiere', this._analysisAskHandler);
     window.addEventListener('filmscript:analysis-background', this._analysisBackgroundHandler);
     window.addEventListener('filmscript:canvas-shotlist', this._canvasShotlistHandler);
+    window.addEventListener('filmscript:breakdown-open-reference', this._breakdownOpenReferenceHandler);
     setTimeout(() => { if (this._autoFit) this.fillPage(1); }, 0);
     setTimeout(() => this._snapshot('First draft'), 700);
   };
@@ -3273,6 +3283,8 @@ class Component extends DCLogic {
 
   _clearBreakdownReferenceHighlight() {
     clearTimeout(this._breakdownHighlightTimer);
+    clearTimeout(this._breakdownHighlightFadeTimer);
+    document.documentElement.classList.remove('v5-breakdown-highlight-fading');
     if (window.CSS?.highlights) this._breakdownHighlightNames().forEach((name) => window.CSS.highlights.delete(name));
     document.querySelectorAll('[data-breakdown-reference]').forEach((highlight) => {
       const parent = highlight.parentNode;
@@ -3283,9 +3295,23 @@ class Component extends DCLogic {
     });
   }
 
+  _fadeBreakdownReferenceHighlight() {
+    document.documentElement.classList.add('v5-breakdown-highlight-fading');
+    document.querySelectorAll('[data-breakdown-reference]').forEach((highlight) => highlight.classList.add('is-fading'));
+    this._breakdownHighlightFadeTimer = window.setTimeout(() => this._clearBreakdownReferenceHighlight(), 480);
+  }
+
+  _breakdownHighlightCategory(categoryKey) {
+    const key = String(categoryKey || '').replace(/-/g, '_');
+    return ({
+      vehicles: 'vehicles_animals', animals: 'vehicles_animals', visual_effects: 'special_fx', special_effects: 'special_fx',
+      locations: 'notes', camera: 'equipment', lighting: 'equipment', grip: 'equipment', production_notes: 'notes', safety_notes: 'notes',
+    })[key] || key || 'notes';
+  }
+
   _breakdownReferenceColor(categoryKey) {
     const colors = { cast: '#C65B50', extras: '#D18736', props: '#AD7E18', stunts: '#B44E68', vehicles_animals: '#3F8780', special_fx: '#765F9C', wardrobe: '#93647F', makeup_hair: '#B86876', set_dressing: '#8C6B4E', greenery: '#56805A', equipment: '#4F7796', notes: '#8A6C5D', music: '#6968A1', sound: '#3E7C8F' };
-    return colors[String(categoryKey || '')] || '#BA7517';
+    return colors[this._breakdownHighlightCategory(categoryKey)] || '#BA7517';
   }
 
   _findBreakdownTextRanges(block, reference) {
@@ -3328,12 +3354,13 @@ class Component extends DCLogic {
   _highlightBreakdownReference(sceneNumber, categoryKey, references) {
     const sceneHeading = document.querySelector(`[data-scene-no="${Number(sceneNumber)}"]`);
     if (!sceneHeading) return false;
-    const sceneBlocks = [];
-    let block = sceneHeading;
-    while (block && (block === sceneHeading || block.dataset?.type !== 'scene')) {
-      sceneBlocks.push(block);
-      block = block.nextElementSibling;
-    }
+    // Collect through the next scene heading across every screenplay page so
+    // an excerpt near a page break still resolves to the exact source words.
+    const allBlocks = Array.from(document.querySelectorAll('[data-fs-page] [data-type]'));
+    const sceneStart = allBlocks.indexOf(sceneHeading);
+    if (sceneStart < 0) return false;
+    const sceneEnd = allBlocks.findIndex((block, index) => index > sceneStart && block.dataset?.type === 'scene');
+    const sceneBlocks = allBlocks.slice(sceneStart, sceneEnd < 0 ? undefined : sceneEnd);
     const candidates = Array.from(new Set((references || []).map((value) => String(value || '').trim()).filter(Boolean)));
     let target = null;
     for (const reference of candidates) {
@@ -3351,7 +3378,7 @@ class Component extends DCLogic {
     }
     if (!target) return false;
     this._clearBreakdownReferenceHighlight();
-    const highlightKey = `v5-breakdown-${String(categoryKey || 'notes').replace(/_/g, '-')}`;
+    const highlightKey = `v5-breakdown-${this._breakdownHighlightCategory(categoryKey).replace(/_/g, '-')}`;
     if (window.CSS?.highlights && window.Highlight) {
       window.CSS.highlights.set(highlightKey, new window.Highlight(...target.ranges));
     } else {
@@ -3369,7 +3396,9 @@ class Component extends DCLogic {
       }
     }
     target.block.scrollIntoView({ behavior: 'smooth', block: 'center' });
-    this._breakdownHighlightTimer = window.setTimeout(() => this._clearBreakdownReferenceHighlight(), 4600);
+    // Keep the evidence fully visible for five seconds, then fade it away
+    // instead of abruptly removing the user's visual anchor.
+    this._breakdownHighlightTimer = window.setTimeout(() => this._fadeBreakdownReferenceHighlight(), 5000);
     return true;
   }
 
@@ -7652,6 +7681,7 @@ Write Lumiere's next reply only:`;
     if (this._analysisAskHandler) window.removeEventListener('filmscript:analysis-ask-lumiere', this._analysisAskHandler);
     if (this._analysisBackgroundHandler) window.removeEventListener('filmscript:analysis-background', this._analysisBackgroundHandler);
     if (this._canvasShotlistHandler) window.removeEventListener('filmscript:canvas-shotlist', this._canvasShotlistHandler);
+    if (this._breakdownOpenReferenceHandler) window.removeEventListener('filmscript:breakdown-open-reference', this._breakdownOpenReferenceHandler);
     clearTimeout(this._saveT);
     clearTimeout(this._chatSaveTimer);
     clearTimeout(this._writingIdleCopyTimer);
