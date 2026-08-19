@@ -94,7 +94,8 @@ for (const filename of [...frontendAssets].sort()) {
 }
 
 const sourceConfig = fs.readFileSync(path.join(root, "runtime-config.js"), "utf8");
-const apiUrl = String(process.env.API_URL || "").replace(/\/$/, "");
+const firstPartyApi = String(process.env.FILMSCRIPT_FIRST_PARTY_API || "").toLowerCase() === "true";
+const apiUrl = firstPartyApi ? "" : String(process.env.API_URL || "").replace(/\/$/, "");
 const erpApiUrl = String(process.env.ERP_API_URL || "").replace(/\/$/, "");
 const erpEnvironment = String(process.env.ERP_ENVIRONMENT || "").trim().toLowerCase();
 fs.writeFileSync(

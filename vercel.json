@@ -5,6 +5,14 @@
   "outputDirectory": "dist",
   "rewrites": [
     {
+      "source": "/api/:path*",
+      "destination": "https://api.filmscript.app/api/:path*"
+    },
+    {
+      "source": "/auth/:path*",
+      "destination": "https://api.filmscript.app/auth/:path*"
+    },
+    {
       "source": "/features",
       "destination": "/Features.dc.html"
     }
