@@ -263,8 +263,8 @@
   function mountHub() {
     const host = document.querySelector('.v5-top-actions') || document.querySelector('.fs-app-topbar > div:last-child'); if (!host || document.querySelector('.fs-platform-hub')) return;
     const hub = document.createElement('div'); hub.className = 'fs-platform-hub';
-    hub.innerHTML = `${projectId ? '<button class="fs-platform-button fs-manage-people" data-people title="Manage people" aria-label="Manage people">Manage people</button><details class="fs-project-menu"><summary class="fs-platform-button">Project</summary><div class="fs-context-menu"><button type="button" data-menu-people>People &amp; Access</button></div></details>' : ''}<button class="fs-platform-button" data-bell title="Notifications" aria-label="Notifications"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9"></path><path d="M10 21h4"></path></svg><span class="fs-notification-badge" hidden></span></button>`;
-    host.prepend(hub); hub.querySelector('[data-bell]').onclick = openNotifications; hub.querySelector('[data-people]')?.addEventListener('click', openMembers); hub.querySelector('[data-menu-people]')?.addEventListener('click', openMembers);
+    hub.innerHTML = `${projectId ? '<button class="fs-platform-button fs-manage-people" data-people title="People and access" aria-label="People and access"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M16 19v-1.5a4 4 0 0 0-4-4H7a4 4 0 0 0-4 4V19"></path><circle cx="9.5" cy="7" r="3"></circle><path d="M17 5.2a3 3 0 0 1 0 5.6M21 19v-1.5a4 4 0 0 0-3-3.87"></path></svg></button>' : ''}<button class="fs-platform-button" data-bell title="Notifications" aria-label="Notifications"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9"></path><path d="M10 21h4"></path></svg><span class="fs-notification-badge" hidden></span></button>`;
+    host.prepend(hub); hub.querySelector('[data-bell]').onclick = openNotifications; hub.querySelector('[data-people]')?.addEventListener('click', openMembers);
   }
 
   function mountMobileNav() {
