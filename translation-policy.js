@@ -16,7 +16,42 @@ export function translationCreditCost(pageCount) {
 
 export function translatedProjectName(title, language) {
   const target = TRANSLATION_LANGUAGES.includes(language) ? language : "English";
-  return `${String(title || "Untitled Screenplay").trim()}: ${target} Version`;
+  return `${String(title || "Untitled Screenplay").trim()} — ${target} Version`;
+}
+
+// PDF imports retain their authored page boundaries. For original web scripts
+// without them, use the same lightweight screenplay-pagination model as the
+// editor so the quoted translation price is stable before a job is created.
+const PAGE_LINE_CAPACITY = 44;
+const BLOCK_LINE_WIDTHS = Object.freeze({ dialogue: 38, paren: 42 });
+const BLOCK_VERTICAL_SPACE = Object.freeze({ scene: 1.1, character: 0.7, action: 0.6, transition: 0.7, fadein: 0.6, end: 3, paren: 0, dialogue: 0 });
+
+function estimatedBlockLines(block) {
+  const type = String(block?.type || "action");
+  const width = BLOCK_LINE_WIDTHS[type] || 74;
+  return Math.max(1, Math.ceil(String(block?.text || "").length / width)) + (BLOCK_VERTICAL_SPACE[type] || 0);
+}
+
+export function screenplayPageCount(blocks, fallbackText = "") {
+  const source = Array.isArray(blocks) ? blocks : [];
+  if (!source.length) return Math.max(1, Math.ceil(String(fallbackText || "").length / 3000));
+  if (source.some((block) => block?.type === "pagebreak")) {
+    return Math.max(1, source.filter((block) => block?.type === "pagebreak").length + 1);
+  }
+  let pages = 1;
+  let currentLines = 0;
+  let hasContent = false;
+  for (const block of source) {
+    if (!block || block.type === "pagebreak") continue;
+    const lines = estimatedBlockLines(block);
+    if (hasContent && currentLines + lines > PAGE_LINE_CAPACITY) {
+      pages += 1;
+      currentLines = 0;
+    }
+    currentLines += lines;
+    hasContent = true;
+  }
+  return Math.max(1, pages);
 }
 
 export function screenplayTranslationPacket(blocks, entityMap = {}) {
@@ -25,7 +60,9 @@ export function screenplayTranslationPacket(blocks, entityMap = {}) {
     type: String(block?.type || "action"),
     text: String(block?.text || ""),
     preserve: block?.type === "character" ? true : undefined,
-    entities: Object.entries(entityMap).filter(([, occurrences]) => Array.isArray(occurrences) && occurrences.includes(index)).map(([id]) => id),
+    entities: Object.entries(entityMap)
+      .filter(([, entry]) => (Array.isArray(entry) ? entry : entry?.occurrences || []).includes(index))
+      .map(([id]) => id),
   }));
 }
 

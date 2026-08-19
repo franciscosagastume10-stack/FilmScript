@@ -251,10 +251,51 @@
   }
 
   async function openTranslation(script) {
-    const root = dialog('Translate Script', 'It runs in the background and opens beside the original screenplay.', `<div class="fs-form-grid"><label class="fs-form-field" style="grid-column:1/-1"><span>Source script</span><input value="${escapeHtml(script.title)}" readonly></label><label class="fs-form-field" style="grid-column:1/-1"><span>Target language</span><select data-language><option>English</option><option>Spanish</option><option>French</option><option>Portuguese</option><option>German</option></select></label></div><div data-translation-summary class="fs-member-card" style="margin-top:14px"><span class="fs-member-copy"><strong>Choose a target language</strong><small>The exact credit cost will appear before processing.</small></span></div><div class="fs-dialog-actions"><button class="fs-action fs-action-primary" data-start disabled>Translate and compare</button></div>`);
-    const select = root.querySelector('[data-language]'); const start = root.querySelector('[data-start]'); let preview;
-    const refresh = async () => { try { preview = await api.translationPreview(script.id, select.value); root.querySelector('[data-translation-summary]').innerHTML = `<span class="fs-member-copy"><strong>${escapeHtml(preview.newProjectName)}</strong><small>${preview.pageCount} pages · Translation cost ${preview.requiredCredits} credits · Available ${preview.availableCredits ?? 'Unlimited'}</small></span>`; start.disabled = false; } catch (error) { root.querySelector('[data-translation-summary]').textContent = error.message; } };
-    select.onchange = refresh; refresh(); start.onclick = async () => { start.disabled = true; start.textContent = 'Starting translation'; try { const result = await api.translate(script.id, select.value); const url = new URL('Editor%20v5.dc.html', location.href); url.searchParams.set('script', script.id); url.searchParams.set('view', 'translation'); url.searchParams.set('translationJob', result.job.id); url.searchParams.set('targetLanguage', select.value); location.assign(`${url.pathname}${url.search}${url.hash}`); } catch (error) { start.disabled = false; start.textContent = 'Translate and compare'; root.querySelector('[data-translation-summary]').textContent = error.message; } };
+    const root = dialog('Translate Script', 'Choose a language, review the exact credit cost, then confirm.', `<div class="fs-form-grid"><label class="fs-form-field" style="grid-column:1/-1"><span>Source script</span><input value="${escapeHtml(script.title)}" readonly></label><label class="fs-form-field" style="grid-column:1/-1"><span>Target language</span><select data-language><option>English</option><option>Spanish</option><option>French</option><option>Portuguese</option><option>German</option></select></label></div><div data-translation-summary class="fs-member-card" style="margin-top:14px"><span class="fs-member-copy"><strong>Calculating translation</strong><small>FilmScript will show the page count and exact credit cost before it begins.</small></span></div><div class="fs-dialog-actions"><button class="fs-action fs-action-primary" data-continue disabled>Continue</button></div>`);
+    const select = root.querySelector('[data-language]'); const continueButton = root.querySelector('[data-continue]'); let preview; let previewRequest = 0;
+    const creditLabel = (value) => value == null ? 'Unlimited' : `${value} credits`;
+    const previewMarkup = (details) => `<span class="fs-member-copy"><strong>${escapeHtml(details.newProjectName)}</strong><small>${details.pageCount} pages</small><small>Required credits: ${details.requiredCredits} · Available: ${creditLabel(details.availableCredits)} · Remaining after translation: ${creditLabel(details.remainingCredits)}</small><small>Your original stays unchanged. This creates an independent FilmScript project.</small></span>`;
+    const refresh = async () => {
+      const requestId = ++previewRequest;
+      continueButton.disabled = true;
+      root.querySelector('[data-translation-summary]').innerHTML = '<span class="fs-member-copy"><strong>Calculating translation</strong><small>Checking pages and available credits.</small></span>';
+      try {
+        const next = await api.translationPreview(script.id, select.value);
+        if (requestId !== previewRequest) return;
+        preview = next;
+        root.querySelector('[data-translation-summary]').innerHTML = previewMarkup(preview);
+        continueButton.disabled = false;
+      } catch (error) {
+        if (requestId !== previewRequest) return;
+        root.querySelector('[data-translation-summary]').textContent = error.message;
+      }
+    };
+    const begin = async (button) => {
+      button.disabled = true;
+      button.textContent = 'Starting translation';
+      try {
+        const result = await api.translate(script.id, select.value);
+        const url = new URL('Editor%20v5.dc.html', location.href);
+        url.searchParams.set('script', script.id);
+        url.searchParams.set('view', 'translation');
+        url.searchParams.set('translationJob', result.job.id);
+        url.searchParams.set('targetLanguage', select.value);
+        location.assign(`${url.pathname}${url.search}${url.hash}`);
+      } catch (error) {
+        button.disabled = false;
+        button.textContent = `Confirm translation — ${preview?.requiredCredits || ''} credits`;
+        root.querySelector('[data-translation-confirmation]').textContent = error.message;
+      }
+    };
+    continueButton.onclick = () => {
+      if (!preview) return;
+      const body = root.querySelector('.fs-platform-body');
+      body.innerHTML = `<div data-translation-confirmation class="fs-member-card"><span class="fs-member-copy"><strong>Confirm ${escapeHtml(preview.newProjectName)}</strong><small>${preview.pageCount} pages · Required credits: ${preview.requiredCredits}</small><small>Available: ${creditLabel(preview.availableCredits)} · Remaining after translation: ${creditLabel(preview.remainingCredits)}</small><small>The original screenplay will not change. Future edits will not sync between the two projects.</small></span></div><div class="fs-dialog-actions"><button class="fs-action" data-back>Back</button><button class="fs-action fs-action-primary" data-confirm>Confirm translation — ${preview.requiredCredits} credits</button></div>`;
+      body.querySelector('[data-back]').onclick = () => openTranslation(script);
+      body.querySelector('[data-confirm]').onclick = (event) => begin(event.currentTarget);
+    };
+    select.onchange = refresh;
+    refresh();
   }
 
   async function openShare() {
