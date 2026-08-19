@@ -358,6 +358,7 @@ const ANALYSIS_PDF_RENDERER = path.join(ROOT, "analysis_pdf.py");
 const CANVAS_QUOTE_PDF_RENDERER = path.join(ROOT, "canvas_quote_pdf.py");
 const RECURRENTE_API = (process.env.RECURRENTE_API_URL || "https://app.recurrente.com/api").replace(/\/$/, "");
 const SESSION_COOKIE = "filmscript_sid";
+const SHARED_SESSION_COOKIE = "filmscript_shared_sid";
 // Preview mode is intentionally local-only. The fixed ids make the preview
 // URL stable, which is useful for opening the same workspace from Codex while
 // keeping the preview database completely separate from AWS/local accounts.
@@ -4873,6 +4874,32 @@ function sessionCookie(value, maxAge = 30 * 24 * 60 * 60) {
   return `${SESSION_COOKIE}=${encodeURIComponent(value)}; Path=/; HttpOnly; SameSite=${sameSite}; Max-Age=${maxAge}${secure ? "; Secure" : ""}`;
 }
 
+function sharedSessionCookie(value, maxAge = 30 * 24 * 60 * 60) {
+  const configuredDomain = String(process.env.SESSION_COOKIE_DOMAIN || "").trim().replace(/^\.+/, "");
+  // This cookie is intentionally opt-in. Production uses the FilmScript parent
+  // domain so its first-party Vercel proxy can carry an authenticated request
+  // to the API; local and preview environments keep host-only cookies.
+  if (!configuredDomain || !/^[a-z0-9.-]+$/i.test(configuredDomain)) return null;
+  let sameSite = String(process.env.SESSION_COOKIE_SAMESITE || "Lax").trim();
+  if (!["Lax", "Strict", "None"].includes(sameSite)) sameSite = "Lax";
+  const secure = process.env.SESSION_COOKIE_SECURE === "true" || backendUrl().startsWith("https://");
+  return `${SHARED_SESSION_COOKIE}=${encodeURIComponent(value)}; Domain=.${configuredDomain}; Path=/; HttpOnly; SameSite=${sameSite}; Max-Age=${maxAge}${secure ? "; Secure" : ""}`;
+}
+
+function setSessionCookies(res, value, maxAge = 30 * 24 * 60 * 60) {
+  const cookies = [sessionCookie(value, maxAge), sharedSessionCookie(value, maxAge)].filter(Boolean);
+  res.setHeader("Set-Cookie", cookies);
+}
+
+function setSharedSessionCookie(res, value, maxAge = 30 * 24 * 60 * 60) {
+  if (res.__filmscriptSharedSessionCookieSet) return;
+  const cookie = sharedSessionCookie(value, maxAge);
+  if (!cookie) return;
+  const current = res.getHeader("Set-Cookie");
+  res.setHeader("Set-Cookie", current ? [...(Array.isArray(current) ? current : [current]), cookie] : [cookie]);
+  res.__filmscriptSharedSessionCookieSet = true;
+}
+
 function guestSessionCookie(value, maxAge = 24 * 60 * 60) {
   const secure = process.env.SESSION_COOKIE_SECURE === "true" || backendUrl().startsWith("https://");
   return `filmscript_guest=${encodeURIComponent(value)}; Path=/; HttpOnly; SameSite=Lax; Max-Age=${maxAge}${secure ? "; Secure" : ""}`;
@@ -4882,19 +4909,20 @@ function sessionContext(req, res, create = true) {
   const preview = previewModeEnabled(req);
   if (preview) ensureLocalPreviewWorkspace();
   const cookies = parseCookies(req);
-  const token = cookies[SESSION_COOKIE] || null;
+  const token = cookies[SESSION_COOKIE] || cookies[SHARED_SESSION_COOKIE] || null;
   const existing = token ? getSessionByToken(token) : null;
   if (existing && (!preview || (existing.userId === PREVIEW_USER_ID && existing.authMethod === "preview"))) {
+    if (existing.userId && existing.googleSub) setSharedSessionCookie(res, token);
     return { token, ...existing };
   }
   if (!preview && !create) return null;
   if (preview) {
     const created = createSession({ userId: PREVIEW_USER_ID, authMethod: "preview" });
-    res.setHeader("Set-Cookie", sessionCookie(created.token));
+    setSessionCookies(res, created.token);
     return { token: created.token, ...created.session };
   }
   const created = createSession();
-  res.setHeader("Set-Cookie", sessionCookie(created.token));
+  setSessionCookies(res, created.token);
   return { token: created.token, ...created.session };
 }
 
@@ -6466,7 +6494,7 @@ async function handleGoogleCallback(req, res, requestUrl) {
     if (!profileResponse.ok || !profile.email || profile.email_verified === false) throw new Error("Google did not return a verified email address");
     connectGoogleIdentity(pending.sessionId, profile);
     const rotatedToken = rotateSessionToken(pending.sessionId);
-    if (rotatedToken) res.setHeader("Set-Cookie", sessionCookie(rotatedToken));
+    if (rotatedToken) setSessionCookies(res, rotatedToken);
     // A successful OAuth flow must always land in the authenticated workspace.
     // Never leave the user on the public Features/Pricing landing page.
     const invitationReturn = /^\/App\.dc\.html\?invitation=[A-Za-z0-9_-]+$/.test(pending.returnTo) ? pending.returnTo : "/App.dc.html";
@@ -6478,9 +6506,10 @@ async function handleGoogleCallback(req, res, requestUrl) {
 }
 
 function handleLogout(req, res) {
-  const token = parseCookies(req)[SESSION_COOKIE];
+  const cookies = parseCookies(req);
+  const token = cookies[SESSION_COOKIE] || cookies[SHARED_SESSION_COOKIE];
   deleteSessionByToken(token);
-  json(res, 200, { ok: true }, { "Set-Cookie": sessionCookie("", 0) });
+  json(res, 200, { ok: true }, { "Set-Cookie": [sessionCookie("", 0), sharedSessionCookie("", 0)].filter(Boolean) });
 }
 
 async function handleScriptImport(req, res) {

@@ -17,12 +17,12 @@ const freePort = () => new Promise((resolve, reject) => {
   });
 });
 
-async function startServer(dataDir) {
+async function startServer(dataDir, environment = {}) {
   const port = await freePort();
   const url = `http://127.0.0.1:${port}`;
   const child = spawn(process.execPath, ["server.js"], {
     cwd: ROOT,
-    env: { ...process.env, PORT: String(port), API_URL: url, PUBLIC_APP_URL: url, CORS_ORIGINS: url, FILMSCRIPT_DATA_DIR: dataDir },
+    env: { ...process.env, ...environment, PORT: String(port), API_URL: url, PUBLIC_APP_URL: url, CORS_ORIGINS: url, FILMSCRIPT_DATA_DIR: dataDir },
     stdio: "ignore",
   });
   for (let attempt = 0; attempt < 80; attempt += 1) {
@@ -50,18 +50,26 @@ test("project-files aliases retain authenticated screenplay and production route
   `], { cwd: ROOT, env: { ...process.env, FILMSCRIPT_DATA_DIR: dataDir }, encoding: "utf8" });
   assert.equal(bootstrap.status, 0, bootstrap.stderr);
   const cookie = `filmscript_sid=${encodeURIComponent(bootstrap.stdout.trim().split("\n").at(-1))}`;
-  const running = await startServer(dataDir);
+  const running = await startServer(dataDir, { SESSION_COOKIE_DOMAIN: "filmscript.test" });
   t.after(async () => { await stopServer(running.child); await fs.rm(dataDir, { recursive: true, force: true }); });
 
   const create = await fetch(`${running.url}/api/project-files`, {
     method: "POST", headers: { Cookie: cookie, "Content-Type": "application/json" }, body: JSON.stringify({ title: "Alias screenplay" }),
   });
   assert.equal(create.status, 201);
+  const sharedCookieHeader = create.headers.get("set-cookie") || "";
+  assert.match(sharedCookieHeader, /filmscript_shared_sid=/);
+  assert.match(sharedCookieHeader, /Domain=.filmscript.test/);
   const scriptId = (await create.json()).script.id;
 
   const list = await fetch(`${running.url}/api/project-files`, { headers: { Cookie: cookie } });
   assert.equal(list.status, 200);
   assert.equal((await list.json()).scripts[0].id, scriptId);
+
+  const sharedToken = sharedCookieHeader.match(/filmscript_shared_sid=([^;]+)/)?.[1];
+  assert.ok(sharedToken);
+  const sharedOnlyList = await fetch(`${running.url}/api/project-files`, { headers: { Cookie: `filmscript_shared_sid=${sharedToken}` } });
+  assert.equal(sharedOnlyList.status, 200);
 
   const screenplay = await fetch(`${running.url}/api/project-files/${scriptId}`, { headers: { Cookie: cookie } });
   assert.equal(screenplay.status, 200);
