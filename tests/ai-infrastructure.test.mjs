@@ -10,15 +10,16 @@ import { AI_MODELS, modelForTask, publicAIJob, routeAIRequest } from "../ai-rout
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 
-test("Lumière routes work to the configured tiers and only falls back for retryable Sol failures", async () => {
-  assert.equal(modelForTask("analysis", {}), AI_MODELS.sol);
+test("Lumière uses Terra for Analysis and Breakdown, while Sol keeps retryable fallback coverage", async () => {
+  assert.equal(modelForTask("analysis", {}), AI_MODELS.terra);
+  assert.equal(modelForTask("breakdown", {}), AI_MODELS.terra);
   assert.equal(modelForTask("translation", {}), AI_MODELS.sol);
   assert.equal(modelForTask("chat", {}), AI_MODELS.luna);
   assert.equal(modelForTask("unknown", {}), AI_MODELS.luna);
 
   const calls = [];
   const fallback = await routeAIRequest({
-    task: "breakdown",
+    task: "translation",
     request: { prompt: "scene" },
     invoke: async ({ model }) => {
       calls.push(model);
@@ -39,7 +40,7 @@ test("Lumière routes work to the configured tiers and only falls back for retry
       throw Object.assign(new Error("bad input"), { status: 422, code: "invalid_input" });
     },
   }), /bad input/);
-  assert.deepEqual(noFallbackCalls, [AI_MODELS.sol]);
+  assert.deepEqual(noFallbackCalls, [AI_MODELS.terra]);
 
   const publicJob = publicAIJob({ id: "job_safe", input: { creditReservationId: "private" }, internalPrimaryModel: AI_MODELS.sol, internalCompletedModel: AI_MODELS.terra, usedFallback: true });
   assert.deepEqual(publicJob, { id: "job_safe" });
@@ -67,8 +68,8 @@ test("durable jobs are idempotent, permission scoped, and build context without 
     const server = await import("./server.js");
     const platform = await import("./platform-database.js");
     const sourceHash = "source-hash";
-    const created = platform.createAIJob({ projectId, requestedByUserId: owner.id, type: "analysis", sourceScriptId: projectId, sourceScriptVersionId: now, sourceContentHash: sourceHash, internalPrimaryModel: "gpt-5.6-sol", reservedCredits: 1, idempotencyKey: "same-request", input: { language: "en", creditReservationId: "private" }, outputSchemaVersion: 1 });
-    const duplicate = platform.createAIJob({ projectId, requestedByUserId: owner.id, type: "analysis", sourceScriptId: projectId, sourceScriptVersionId: now, sourceContentHash: sourceHash, internalPrimaryModel: "gpt-5.6-sol", reservedCredits: 1, idempotencyKey: "same-request", input: { language: "en" }, outputSchemaVersion: 1 });
+    const created = platform.createAIJob({ projectId, requestedByUserId: owner.id, type: "analysis", sourceScriptId: projectId, sourceScriptVersionId: now, sourceContentHash: sourceHash, internalPrimaryModel: "gpt-5.6-terra", reservedCredits: 1, idempotencyKey: "same-request", input: { language: "en", creditReservationId: "private" }, outputSchemaVersion: 1 });
+    const duplicate = platform.createAIJob({ projectId, requestedByUserId: owner.id, type: "analysis", sourceScriptId: projectId, sourceScriptVersionId: now, sourceContentHash: sourceHash, internalPrimaryModel: "gpt-5.6-terra", reservedCredits: 1, idempotencyKey: "same-request", input: { language: "en" }, outputSchemaVersion: 1 });
     platform.updateAIJob(created.id, { status: "failed", stage: "failed", errorCode: "provider_unavailable" });
     const retried = platform.retryAIJob(created.id, owner.id);
     const context = server.__aiInfrastructureTesting.buildAuthorizedLumiereContext(owner.id, projectId);
