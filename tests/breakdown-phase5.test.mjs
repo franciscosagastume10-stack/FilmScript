@@ -40,3 +40,15 @@ test('Breakdown protects structured manual work and updates completed scenes pro
   assert.match(platform, /breakdown\.progress/);
   assert.doesNotMatch(workspace, /gpt-5\.6-(?:sol|terra|luna)/i);
 });
+
+test('Breakdown keeps cards concise while exposing accessible, working detail controls', async () => {
+  const workspace = await fs.readFile(path.join(ROOT, 'breakdown-workspace.js'), 'utf8');
+  assert.doesNotMatch(workspace, /Unassigned/);
+  assert.doesNotMatch(workspace, /<h1>\$\{this\.t\('Breakdown'/);
+  assert.match(workspace, /class="element-open" data-action="edit-element"/);
+  assert.match(workspace, /aria-label="\$\{escapeHtml\(`\$\{this\.t\('Open details for'/);
+  assert.match(workspace, /\.filter\(\(card\) => card\.elements\.length\)/);
+  assert.match(workspace, /const populatedDepartments = \[\.\.\.departments\.values\(\)\]\.filter/);
+  assert.match(workspace, /min-height:42px/);
+  assert.match(workspace, /:focus-visible/);
+});
