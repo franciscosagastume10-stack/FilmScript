@@ -46,6 +46,14 @@ test("Lumière uses Terra for Analysis and Breakdown, while Sol keeps retryable 
   assert.deepEqual(publicJob, { id: "job_safe" });
 });
 
+test("Breakdown retries a truncated structured response once without changing its primary Terra route", () => {
+  const server = fs.readFileSync(path.join(ROOT, "server.js"), "utf8");
+  assert.match(server, /const breakdownTask = canPatch \? "breakdown_scene" : "breakdown"/);
+  assert.match(server, /maxTokens: retry \? 2400 : 1800/);
+  assert.match(server, /error\?\.code !== "lumiere_invalid_json"/);
+  assert.match(server, /result = await requestBreakdown\(true\)/);
+});
+
 test("durable jobs are idempotent, permission scoped, and build context without Budget data", () => {
   const dataDir = fs.mkdtempSync(path.join(os.tmpdir(), "filmscript-ai-infrastructure-"));
   const source = `

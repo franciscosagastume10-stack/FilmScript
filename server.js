@@ -4445,22 +4445,32 @@ async function analyzeProject(scriptId, sid, language = 'en', { includeManual = 
     if (aiJobId) updateAIJob(aiJobId, { status: "processing", stage: "generating", progress: 10 + Math.round((i / Math.max(1, pending.length)) * 75) });
       const canPatch = !!scene.previousText && !!scene.breakdown;
     try {
-      const result = canPatch
-        ? await requestLumiereForTask("breakdown_scene", {
-            maxTokens: 1800,
-            jsonMode: true,
-            system: `${BREAKDOWN_UPDATE_SYSTEM_PROMPT}\n\n${lumiereLanguageInstruction(language)}`,
-            messages: [{ role: "user", content: JSON.stringify({ previousScene: scene.previousText, updatedScene: scene.text, existingBreakdown: scene.breakdown, metadata: { sceneId: scene.id, sceneNumber: index + 1, sceneHeading: scene.title } }) }],
-          }, { jobId: aiJobId })
-        : await requestLumiereForTask("breakdown", {
-            maxTokens: 1800,
-            jsonMode: true,
-            system: `${BREAKDOWN_SYSTEM_PROMPT}\n\n${lumiereLanguageInstruction(language)}`,
-            messages: [{ role: "user", content: JSON.stringify({ scene: scene.text, metadata: { sceneId: scene.id, sceneNumber: index + 1, sceneHeading: scene.title } }) }],
-          }, { jobId: aiJobId });
+      const breakdownTask = canPatch ? "breakdown_scene" : "breakdown";
+      const breakdownSystem = canPatch ? BREAKDOWN_UPDATE_SYSTEM_PROMPT : BREAKDOWN_SYSTEM_PROMPT;
+      const breakdownInput = canPatch
+        ? { previousScene: scene.previousText, updatedScene: scene.text, existingBreakdown: scene.breakdown, metadata: { sceneId: scene.id, sceneNumber: index + 1, sceneHeading: scene.title } }
+        : { scene: scene.text, metadata: { sceneId: scene.id, sceneNumber: index + 1, sceneHeading: scene.title } };
+      const requestBreakdown = (retry = false) => requestLumiereForTask(breakdownTask, {
+        maxTokens: retry ? 2400 : 1800,
+        jsonMode: true,
+        system: `${breakdownSystem}\n\n${lumiereLanguageInstruction(language)}${retry ? "\n\nThe previous response was incomplete. Return the complete required JSON object only, with concise values." : ""}`,
+        messages: [{ role: "user", content: JSON.stringify(breakdownInput) }],
+      }, { jobId: aiJobId });
+      let result = await requestBreakdown();
       recordUsage(result.usage);
-      const raw = result.content.filter((block) => block.type === "text").map((block) => block.text).join("");
-      const payload = parseBreakdownJson(raw);
+      let raw = result.content.filter((block) => block.type === "text").map((block) => block.text).join("");
+      let payload;
+      try {
+        payload = parseBreakdownJson(raw);
+      } catch (error) {
+        if (error?.code !== "lumiere_invalid_json") throw error;
+        // A compact retry turns a transient truncated object into a usable
+        // scene result without charging or overwriting manual work twice.
+        result = await requestBreakdown(true);
+        recordUsage(result.usage);
+        raw = result.content.filter((block) => block.type === "text").map((block) => block.text).join("");
+        payload = parseBreakdownJson(raw);
+      }
       let savedOutput = false;
       mutatePreproductionProject(scriptId, sid, (freshProject) => {
         const current = freshProject.scenes?.[scene.id];
