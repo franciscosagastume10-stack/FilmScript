@@ -643,7 +643,8 @@ test("budget prioritizes active data and presents empty states without empty tab
   assert.match(budget, /syncStatusText\(\)/);
   assert.doesNotMatch(budget, /onclick="event\.stopPropagation\(\)"/);
   assert.match(budget, /event\.target\.classList\?\.contains\('modal-backdrop'\)/);
-  assert.match(editor, /productionHeaderVisible: workMode !== 'budget'/);
+  assert.match(editor, /translationMode: workMode === 'translation'/);
+  assert.match(editor, /productionHeaderVisible: !\['translation', 'budget', 'calendar'\]\.includes\(workMode\)/);
 });
 
 test("work modes, narrative Analysis, and prominent budget totals animate without ignoring reduced motion", async () => {
