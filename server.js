@@ -57,6 +57,8 @@ import {
   backfillOwners,
   authorizeSharedProject,
   collaborationDelta,
+  getCollaborationDocument,
+  getCollaborationEntity,
   createAIJob,
   createComment,
   createInvitation,
@@ -85,6 +87,8 @@ import {
   revokeInvitation,
   rotateInvitationToken,
   saveCollaborationOperation,
+  saveCollaborationDocument,
+  saveCollaborationEntity,
   saveLocationPlan,
   setProjectArchived,
   transferProjectOwnership,
@@ -98,6 +102,7 @@ import { filterDepartmentFinancialData, filterFinancialData, canAccessModule, ca
 import { invitationEmail, invitationMailer } from "./invitation-mailer.js";
 import { AI_MODELS, modelForTask, publicAIJob, routeAIRequest } from "./ai-router.js";
 import { CollaborationRooms, applyVersionedPatch, throttleIntervalForEvent } from "./collaboration-engine.js";
+import { ScriptDocumentRegistry, decodeUpdate, encodeUpdate } from "./realtime-collaboration.js";
 import { createLocationPlan, updatePinnedMeasurements } from "./location-plan-model.js";
 import {
   TRANSLATION_LANGUAGES,
@@ -3712,6 +3717,11 @@ async function handleSceneShotsPatch(req, res, scriptId, sceneId) {
     || project.manualShotScenes?.find((entry) => entry.id === sceneId);
   if (!scene) return json(res, 404, { error: "scene not found" });
   const previousShots = Array.isArray(scene.shots) ? scene.shots : [];
+  if (Array.isArray(body.operations)) {
+    const allowed = new Set(["size","angle","focalLength","estimatedMinutes","movement","description","sourceExcerpt","userEdited"]); const shotsById = new Map(previousShots.map((shot) => [shot.id, shot]));
+    for (const operation of body.operations.slice(0, 500)) { const shot = shotsById.get(String(operation?.id || "")); if (!shot) continue; for (const [field,value] of Object.entries(operation.patch || {})) if (allowed.has(field)) shot[field] = value; }
+    scene.shots = previousShots; scene.shotsUpdatedAt = new Date().toISOString(); savePreproduction(db); return json(res, 200, { ok:true, shots:filterDepartmentFinancialData(publicShotListScene({shots:scene.shots}).shots,projectAccess(sid,scriptId)) });
+  }
   const previousAssets = new Map(previousShots.flatMap((shot) => {
     const asset = cleanReferenceAsset(shot.referenceAsset);
     return asset ? [[shot.id, asset]] : [];
@@ -6581,15 +6591,16 @@ async function handleScript(req, res, id) {
   const hasTitleRoom = !!body.titleRoom && typeof body.titleRoom === "object" && !Array.isArray(body.titleRoom);
   const hasCharacterNames = !!body.characterNames && typeof body.characterNames === "object" && !Array.isArray(body.characterNames);
   if (!hasBlocks && !hasChat && !hasTitle && !hasTitleRoom && !hasCharacterNames) return json(res, 400, { error: "blocks, chat, title, titleRoom or characterNames must be provided" });
+  if (hasBlocks) {
+    const documentId = `script:${id}`; const result = scriptDocuments.replace(id, documentId, body.blocks);
+    broadcastCollaboration(id, "script.crdt", { module:"script", documentId, update:encodeUpdate(result.update), version:result.version, actorUserId:sid }, String(req.headers["x-filmscript-client-id"] || ""));
+    recordActivity({ projectId:id, module:"script", actorUserId:sid, entityType:"script", entityId:id, action:"content.committed", summary:"Screenplay content was edited." });
+    return json(res, 200, { ok:true, collaboration:"crdt", version:result.version });
+  }
   if (hasTitle) {
     const title = body.title.trim().slice(0, 160);
     if (!title) return json(res, 400, { error: "title must not be empty" });
     script.title = title;
-  }
-  if (hasBlocks) {
-    script.blocks = body.blocks.slice(0, 5000).map((block) => ({ type: String(block.type || "action").slice(0, 24), text: String(block.text || "").slice(0, 20000) }));
-    const coverTitle = String(script.blocks.find((block) => block.type === "title")?.text || "").trim();
-    if (coverTitle) script.title = coverTitle.slice(0, 160);
   }
   if (hasChat) script.chat = body.chat.slice(0, 250).map((message) => ({ who: message?.who === "w" ? "w" : "l", text: String(message?.text || "").slice(0, 10000) })).filter((message) => message.text.trim());
   if (hasTitleRoom) {
@@ -6747,6 +6758,16 @@ async function handleCanvasBoards(req, res, scriptId, boardId = "") {
     return json(res, 200, { ok: true, board: removed });
   }
   const existing = context.workspace.boards[index];
+  if (Array.isArray(body.elementOperations)) {
+    const allowed = new Set(["positionX","positionY","width","height","rotation","zIndex","content","metadata","status","locked","hidden","groupId","sceneId"]);
+    const elements = new Map((existing.elements || []).map((element) => [element.id, element]));
+    for (const operation of body.elementOperations.slice(0, 500)) {
+      const element = elements.get(String(operation?.id || "")); if (!element) continue;
+      for (const [field,value] of Object.entries(operation.patch || {})) if (allowed.has(field)) element[field] = value;
+      element.updatedAt = new Date().toISOString();
+    }
+    const board = normalizeBoard({ ...existing, elements:[...elements.values()], updatedAt:new Date().toISOString() }); context.workspace.boards[index] = board; saveCanvasContext(context); return json(res, 200, { board });
+  }
   const board = normalizeBoard({ ...existing, ...body, id: existing.id, createdAt: existing.createdAt, updatedAt: new Date().toISOString() });
   context.workspace.boards[index] = board;
   saveCanvasContext(context);
@@ -7334,15 +7355,19 @@ function roomSubscribers(projectId) {
 
 function broadcastCollaboration(projectId, type, payload, exceptClientId = null) {
   const subscribers = roomSubscribers(projectId);
-  const event = `event: ${type}\ndata: ${JSON.stringify(payload)}\n\n`;
-  for (const [clientId, response] of subscribers) {
+  const module = String(payload?.module || payload?.entity?.module || (type === "script.crdt" ? "script" : ""));
+  for (const [clientId, subscriber] of subscribers) {
     if (clientId === exceptClientId) continue;
-    try { response.write(event); } catch { subscribers.delete(clientId); }
+    if (module && !canAccessModule(subscriber.access, module, "view")) continue;
+    const safePayload = filterFinancialData(payload, subscriber.access);
+    const event = `event: ${type}\ndata: ${JSON.stringify(safePayload)}\n\n`;
+    try { subscriber.response.write(event); } catch { subscribers.delete(clientId); }
   }
 }
 
 function collaborationIdentity(req, userId) {
-  const clientId = String(req.headers["x-filmscript-client-id"] || "").replace(/[^a-zA-Z0-9_-]/g, "").slice(0, 80) || `client_${crypto.randomBytes(8).toString("hex")}`;
+  const queryClientId = new URL(req.url, "http://localhost").searchParams.get("clientId");
+  const clientId = String(req.headers["x-filmscript-client-id"] || queryClientId || "").replace(/[^a-zA-Z0-9_-]/g, "").slice(0, 80) || `client_${crypto.randomBytes(8).toString("hex")}`;
   const user = getUser(userId);
   return { clientId, userId, name: user?.name || "Collaborator", picture: user?.picture || null };
 }
@@ -7350,7 +7375,11 @@ function collaborationIdentity(req, userId) {
 async function handleProjectMembers(req, res, projectId, membershipId = null) {
   const sid = sessionId(req, res); if (!sid) return googleRequired(res);
   try {
-    if (req.method === "GET") return json(res, 200, { members: listMembers(projectId, sid), invitations: listInvitations(projectId, sid), access: projectAccess(sid, projectId), billingOwnerId: projectBillingOwnerId(projectId), emailDelivery: invitationMailer.configured ? "configured" : "copy_link" });
+    if (req.method === "GET") {
+      const liveByUser = new Map(collaborationRooms.presence(projectId).map((person) => [person.userId, person]));
+      const members = listMembers(projectId, sid).map((member) => { const live = liveByUser.get(member.userId); return { ...member, collaboration: live ? { state: live.state, module: live.module, color: live.color } : { state: "disconnected", module: null, color: null } }; });
+      return json(res, 200, { members, invitations: listInvitations(projectId, sid), access: projectAccess(sid, projectId), billingOwnerId: projectBillingOwnerId(projectId), emailDelivery: invitationMailer.configured ? "configured" : "copy_link" });
+    }
     const body = JSON.parse(await readBody(req, 256 * 1024) || "{}");
     if (req.method === "POST") {
       const invitation = createInvitation(projectId, sid, body);
@@ -7530,25 +7559,27 @@ async function handleCollaborationEvents(req, res, projectId) {
   collaborationRooms.sweep();
   const identity = collaborationIdentity(req, sid);
   res.writeHead(200, { "Content-Type": "text/event-stream", "Cache-Control": "no-cache, no-transform", Connection: "keep-alive", "X-Accel-Buffering": "no" });
-  const subscribers = roomSubscribers(projectId); subscribers.set(identity.clientId, res);
+  const access = projectAccess(sid, projectId);
+  const subscribers = roomSubscribers(projectId); subscribers.set(identity.clientId, { response: res, access });
   const presence = collaborationRooms.join(projectId, { ...identity, module: String(new URL(req.url, "http://localhost").searchParams.get("module") || "script"), selection: null });
   res.write(`retry: 2000\nevent: connected\ndata: ${JSON.stringify({ clientId: identity.clientId, presence: collaborationRooms.presence(projectId) })}\n\n`);
   broadcastCollaboration(projectId, "presence.joined", presence, identity.clientId);
   const heartbeat = setInterval(() => { try { res.write(": keepalive\n\n"); } catch {} }, 25_000);
   heartbeat.unref?.();
-  req.on("close", () => { clearInterval(heartbeat); subscribers.delete(identity.clientId); collaborationRooms.leave(projectId, identity.clientId); broadcastCollaboration(projectId, "presence.left", { clientId: identity.clientId }); });
+  req.on("close", () => { clearInterval(heartbeat); subscribers.delete(identity.clientId); const disconnected = collaborationRooms.disconnect(projectId, identity.clientId); if (disconnected) broadcastCollaboration(projectId, "presence.updated", disconnected); });
 }
 
 async function handleCollaborationPresence(req, res, projectId) {
   const sid = sessionId(req, res); if (!sid) return googleRequired(res);
   if (!projectAccess(sid, projectId)) return permissionRequired(res);
   let body; try { body = JSON.parse(await readBody(req, 64 * 1024)); } catch { return json(res, 400, { error: "invalid_request_body" }); }
-  const identity = collaborationIdentity(req, sid); const type = ["presence.updated", "selection.updated", "cursor.updated"].includes(body.type) ? body.type : "presence.updated";
+  const identity = collaborationIdentity(req, sid); const type = ["presence.updated", "selection.updated", "cursor.updated", "canvas.drag"].includes(body.type) ? body.type : "presence.updated";
   const throttleKey = `${projectId}:${identity.clientId}:${type}`; const interval = throttleIntervalForEvent(type); const timestamp = Date.now();
   if (interval && timestamp - (collaborationThrottle.get(throttleKey) || 0) < interval) return json(res, 202, { throttled: true });
   collaborationThrottle.set(throttleKey, timestamp);
-  let client = collaborationRooms.update(projectId, identity.clientId, { module: body.module, sceneId: body.sceneId || null, selectedObjectId: body.selectedObjectId || null, selection: body.selection || null });
-  if (!client) client = collaborationRooms.join(projectId, { ...identity, module: body.module || "script", sceneId: body.sceneId || null, selectedObjectId: body.selectedObjectId || null, selection: body.selection || null });
+  const presencePatch = { module: body.module, sceneId: body.sceneId || null, selectedObjectId: body.selectedObjectId || null, selection: body.selection || null, temporaryPosition: type === "canvas.drag" ? body.temporaryPosition || null : null };
+  let client = collaborationRooms.update(projectId, identity.clientId, presencePatch);
+  if (!client) client = collaborationRooms.join(projectId, { ...identity, module: body.module || "script", ...presencePatch });
   broadcastCollaboration(projectId, type, client, identity.clientId);
   return json(res, 200, { presence: client });
 }
@@ -7563,13 +7594,48 @@ async function handleCollaborationOperations(req, res, projectId) {
   }
   let body; try { body = JSON.parse(await readBody(req, 512 * 1024)); } catch { return json(res, 400, { error: "invalid_request_body" }); }
   try { requireProjectPermission(sid, projectId, body.module, "edit"); } catch (error) { return permissionRequired(res, error); }
-  const result = applyVersionedPatch(body.current || { id: body.entityId, version: body.baseVersion || 0 }, body);
+  const stored = getCollaborationEntity(projectId, body.documentId || projectId, body.entityId);
+  const result = applyVersionedPatch(stored?.value || body.current || { id: body.entityId, version: 0 }, body);
+  if (result.changedFields.length) saveCollaborationEntity({ projectId, documentId: body.documentId || projectId, module: body.module, entityType: body.entityType, entityId: body.entityId, value: result.entity, version: result.entity.version });
   const operationId = saveCollaborationOperation({ ...body, projectId, actorUserId: sid, committedVersion: result.entity.version, conflicts: result.conflicts });
-  const payload = { id: operationId, entity: result.entity, changedFields: result.changedFields, conflicts: result.conflicts, stale: result.stale };
+  const payload = { id: operationId, module: body.module, documentId: body.documentId || projectId, entityType: body.entityType, entityId: body.entityId, entity: result.entity, changedFields: result.changedFields, conflicts: result.conflicts, stale: result.stale };
   broadcastCollaboration(projectId, result.conflicts.length ? "content.conflict" : "content.operation", payload, String(req.headers["x-filmscript-client-id"] || ""));
   if (result.changedFields.length) recordActivity({ projectId, module: body.module, actorUserId: sid, entityType: body.entityType, entityId: body.entityId, action: "content.committed", summary: `${body.entityType || "Project content"} was updated.` });
   return json(res, result.conflicts.length ? 409 : 200, payload);
 }
+
+const scriptDocuments = new ScriptDocumentRegistry({
+  load: getCollaborationDocument,
+  save: saveCollaborationDocument,
+  initialBlocks: (projectId) => loadScripts().scripts[projectId]?.blocks || [],
+  materialize: (projectId, blocks) => {
+    const scripts = loadScripts(); const script = scripts.scripts[projectId]; if (!script) return;
+    script.blocks = blocks; script.updatedAt = new Date().toISOString();
+    const coverTitle = String(blocks.find((block) => block.type === "title")?.text || "").trim(); if (coverTitle) script.title = coverTitle.slice(0, 160);
+    saveScripts(scripts);
+  },
+});
+
+async function handleScriptCollaboration(req, res, projectId) {
+  const sid = sessionId(req, res); if (!sid) return googleRequired(res);
+  const documentId = `script:${projectId}`;
+  try { requireProjectPermission(sid, projectId, "script", req.method === "GET" ? "view" : "edit"); } catch (error) { return permissionRequired(res, error); }
+  if (req.method === "GET") return json(res, 200, { documentId, update: encodeUpdate(scriptDocuments.snapshot(projectId, documentId)) });
+  let body; try { body = JSON.parse(await readBody(req, 12 * 1024 * 1024)); } catch { return json(res, 400, { error: "invalid_request_body" }); }
+  try {
+    const update = decodeUpdate(body.update); const result = scriptDocuments.apply(projectId, documentId, update);
+    const payload = { module: "script", documentId, update: encodeUpdate(update), version: result.version, actorUserId: sid };
+    broadcastCollaboration(projectId, "script.crdt", payload, String(req.headers["x-filmscript-client-id"] || ""));
+    return json(res, 200, { ok: true, version: result.version });
+  } catch (error) { return json(res, error.status || 422, { error: error.message }); }
+}
+
+const roomSweepTimer = setInterval(() => {
+  const result = collaborationRooms.sweep();
+  for (const transition of collaborationRooms.lastTransitions || []) broadcastCollaboration(transition.projectId, "presence.updated", transition.client);
+  for (const projectId of result) { collaborationSubscribers.delete(projectId); scriptDocuments.closeProject(projectId); for (const key of collaborationThrottle.keys()) if (key.startsWith(`${projectId}:`)) collaborationThrottle.delete(key); }
+}, 30_000);
+roomSweepTimer.unref?.();
 
 function translationEntityMap(script) {
   const map = {}; let counter = 0;
@@ -7818,6 +7884,8 @@ export function requestHandler(req, res) {
       const parts = pathname.split("/"); handleProjectLifecycle(req, res, parts[3], parts[4]).catch((err) => json(res, err.status || 500, { error: err.code || err.message }));
     } else if (req.method === "GET" && pathname === "/api/scripts") {
       handleScriptsList(req, res);
+    } else if ((req.method === "GET" || req.method === "POST") && /^\/api\/projects\/scr_[a-f0-9]+\/collaboration\/script$/.test(pathname)) {
+      handleScriptCollaboration(req, res, pathname.split("/")[3]).catch((err) => json(res, err.status || 500, { error: err.message }));
     } else if ((req.method === "GET" || req.method === "POST" || req.method === "DELETE") && /^\/api\/scripts\/scr_[a-f0-9]+$/.test(pathname)) {
       handleScript(req, res, pathname.split("/").pop()).catch((err) => json(res, err.status || 500, { error: err.message }));
     } else if ((req.method === "GET" || req.method === "PATCH") && /^\/api\/scripts\/scr_[a-f0-9]+\/canvas$/.test(pathname)) {

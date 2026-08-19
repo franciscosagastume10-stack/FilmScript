@@ -233,7 +233,8 @@ test("account-owned screenplay interactions survive reloads and a server restart
   const storedResponse = await fetch(`${running.url}/api/scripts/${scriptId}`, { headers: { Cookie: ownerCookie } });
   assert.equal(storedResponse.status, 200);
   const stored = (await storedResponse.json()).script;
-  assert.deepEqual(stored.blocks, blocks);
+  assert.deepEqual(stored.blocks.map(({ type, text }) => ({ type, text })), blocks);
+  assert.ok(stored.blocks.every((block) => /^blk_/.test(block.id)), "collaborative screenplay blocks keep stable IDs");
   assert.deepEqual(stored.chat, chat);
   assert.deepEqual(stored.characterNames, characterNames);
   assert.equal(stored.title, "Editable Cover");
@@ -466,7 +467,8 @@ test("account-owned screenplay interactions survive reloads and a server restart
   assert.equal(reloadedScriptResponse.status, 200);
   const reloadedScript = (await reloadedScriptResponse.json()).script;
   assert.deepEqual(reloadedScript.chat, chat);
-  assert.deepEqual(reloadedScript.blocks, blocks);
+  assert.deepEqual(reloadedScript.blocks.map(({ type, text }) => ({ type, text })), blocks);
+  assert.ok(reloadedScript.blocks.every((block) => /^blk_/.test(block.id)));
   assert.deepEqual(reloadedScript.characterNames, characterNames);
   assert.equal(reloadedScript.title, "Editable Cover");
 

@@ -200,6 +200,7 @@
     },
     createBoard: (scriptId, board) => request(pathFor(scriptId, '/boards'), jsonOptions('POST', board)),
     updateBoard: (scriptId, boardId, patch) => request(pathFor(scriptId, `/boards/${encodeURIComponent(boardId)}`), jsonOptions('PATCH', patch)),
+    updateBoardElements: (scriptId, boardId, elementOperations) => request(pathFor(scriptId, `/boards/${encodeURIComponent(boardId)}`), jsonOptions('PATCH', { elementOperations })),
     deleteBoard: (scriptId, boardId) => request(pathFor(scriptId, `/boards/${encodeURIComponent(boardId)}`), { method: 'DELETE' }),
     generateStoryboardImage: (scriptId, options) => request(pathFor(scriptId, '/images/generate'), jsonOptions('POST', typeof options === 'string' ? { prompt: options } : (options || {}))),
     createQuote: (scriptId, quote) => request(pathFor(scriptId, '/quotes'), jsonOptions('POST', quote)),

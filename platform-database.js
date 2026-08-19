@@ -61,6 +61,7 @@ export function runPlatformMigrations() {
   const migrations = [
     [10, "010_collaboration_platform.sql"],
     [11, "011_collaboration_access_foundation.sql"],
+    [12, "012_realtime_collaboration.sql"],
   ];
   for (const [version, filename] of migrations) {
     if (current >= version && (version !== 10 || hasColumn("users", "theme")) && (version !== 11 || hasColumn("project_memberships", "department_ids_json"))) continue;
@@ -469,6 +470,35 @@ export function saveCollaborationOperation(input) {
 
 export function collaborationDelta(projectId, documentId, sinceVersion = 0, limit = 500) {
   return db.prepare(`SELECT * FROM collaboration_operations WHERE project_id=? AND document_id=? AND committed_version>? ORDER BY committed_version ASC LIMIT ?`).all(projectId, documentId, Number(sinceVersion)||0, Math.min(1000, Math.max(1, Number(limit)||500))).map((row) => ({ id: row.id, projectId: row.project_id, documentId: row.document_id, module: row.module, entityType: row.entity_type, entityId: row.entity_id, actorUserId: row.actor_user_id, baseVersion: row.base_version, committedVersion: row.committed_version, operationType: row.operation_type, patch: jsonParse(row.patch_json, {}), createdAt: row.created_at }));
+}
+
+export function getCollaborationDocument(projectId, documentId) {
+  const row = db.prepare("SELECT * FROM collaboration_documents WHERE project_id=? AND document_id=?").get(projectId, documentId);
+  if (!row) return null;
+  return { projectId: row.project_id, documentId: row.document_id, module: row.module, snapshot: new Uint8Array(row.snapshot_blob), version: row.version, updatedAt: row.updated_at };
+}
+
+export function saveCollaborationDocument(projectId, documentId, module, snapshot) {
+  const current = db.prepare("SELECT version FROM collaboration_documents WHERE project_id=? AND document_id=?").get(projectId, documentId);
+  const version = Number(current?.version || 0) + 1; const updatedAt = nowIso();
+  db.prepare(`INSERT INTO collaboration_documents (project_id,document_id,module,snapshot_blob,version,updated_at) VALUES (?,?,?,?,?,?)
+    ON CONFLICT(project_id,document_id) DO UPDATE SET module=excluded.module,snapshot_blob=excluded.snapshot_blob,version=excluded.version,updated_at=excluded.updated_at`)
+    .run(projectId, documentId, module, Buffer.from(snapshot), version, updatedAt);
+  return { version, updatedAt };
+}
+
+export function getCollaborationEntity(projectId, documentId, entityId) {
+  const row = db.prepare("SELECT * FROM collaboration_entities WHERE project_id=? AND document_id=? AND entity_id=?").get(projectId, documentId, entityId);
+  if (!row) return null;
+  return { projectId: row.project_id, documentId: row.document_id, module: row.module, entityType: row.entity_type, entityId: row.entity_id, value: jsonParse(row.value_json, {}), fieldVersions: jsonParse(row.field_versions_json, {}), version: row.version, updatedAt: row.updated_at };
+}
+
+export function saveCollaborationEntity(input) {
+  const updatedAt = nowIso();
+  db.prepare(`INSERT INTO collaboration_entities (project_id,document_id,module,entity_type,entity_id,value_json,field_versions_json,version,updated_at) VALUES (?,?,?,?,?,?,?,?,?)
+    ON CONFLICT(project_id,document_id,entity_id) DO UPDATE SET module=excluded.module,entity_type=excluded.entity_type,value_json=excluded.value_json,field_versions_json=excluded.field_versions_json,version=excluded.version,updated_at=excluded.updated_at`)
+    .run(input.projectId, input.documentId, input.module, input.entityType, input.entityId, JSON.stringify(input.value || {}), JSON.stringify(input.fieldVersions || {}), Number(input.version) || 0, updatedAt);
+  return { ...input, updatedAt };
 }
 
 export function listLocationPlans(projectId, userId) {

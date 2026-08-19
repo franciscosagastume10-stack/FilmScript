@@ -62,6 +62,9 @@
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ shots }),
     }),
+    saveShotFields: (scriptId, sceneId, operations) => request(`/api/scripts/${encodeURIComponent(scriptId)}/preproduction/scenes/${encodeURIComponent(sceneId)}/shots`, {
+      method: 'PATCH', headers: { 'Content-Type':'application/json' }, body:JSON.stringify({ operations }),
+    }),
     uploadShotReference: (scriptId, { sceneId, shotId = '', file }) => request(`/api/scripts/${encodeURIComponent(scriptId)}/preproduction/shotlist/references`, {
       method: 'POST',
       headers: {

@@ -14,6 +14,8 @@
     ['lavender','Lavender','#d9c7ef'],['sky','Sky','#bcdff1'],['rose','Rose','#f0c4cf'],['sun','Sun','#f3dc8c'],
   ];
   const state = { me: null, profile: null, notifications: [], presence: [], eventSource: null };
+  let lastUserActivityAt = Date.now();
+  const currentModule = () => ({ editor:'script', shotlist:'shot_list' }[new URLSearchParams(location.search).get('view') || 'script'] || new URLSearchParams(location.search).get('view') || 'script');
 
   const escapeHtml = (value) => String(value ?? '').replace(/[&<>"']/g, (char) => ({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' })[char]);
   const api = {
@@ -33,6 +35,7 @@
     locationPlans: () => request(`/api/projects/${projectId}/location-plans`),
     createLocationPlan: (body) => request(`/api/projects/${projectId}/location-plans`, { method:'POST', body:JSON.stringify(body) }),
     saveLocationPlan: (plan, expectedVersion) => request(`/api/projects/${projectId}/location-plans/${plan.id}`, { method:'PATCH', body:JSON.stringify({ plan, expectedVersion }) }),
+    collaborate: (body) => request(`/api/projects/${projectId}/collaboration/operations`, { method:'POST', headers:{ 'X-FilmScript-Client-Id':clientId }, body:JSON.stringify(body) }),
   };
 
   function applyTheme(theme, persist = false) {
@@ -149,7 +152,8 @@
     const access = result.access || {}; const canManage = ['owner','co_owner','admin'].includes(access.projectRole); const canManageFinancial = (access.financialPermissions || []).includes('financial.manage_access'); const canAssignLeaders = ['owner','co_owner'].includes(access.projectRole);
     const people = result.members.map((member) => {
       const actions = member.projectRole === 'owner' || !canManage ? '' : `<details class="fs-context"><summary aria-label="Actions for ${escapeHtml(member.name || 'collaborator')}">•••</summary><div class="fs-context-menu"><button data-edit-member="${member.id}">Edit role and permissions</button>${canAssignLeaders ? `<button data-member-role="${member.id}:admin">Promote to Admin</button><button data-member-role="${member.id}:co_owner">Promote to Co owner</button>` : ''}${access.projectRole === 'owner' ? `<button data-transfer="${member.id}">Transfer ownership</button>` : ''}<button data-member-status="${member.id}:suspended">Suspend access</button><button class="fs-danger-text" data-member-status="${member.id}:removed">Remove from project</button></div></details>`;
-      return `<article class="fs-people-row" data-member-id="${member.id}">${avatar(member)}<span class="fs-member-copy"><strong>${escapeHtml(member.name || member.email || 'Collaborator')}</strong><small>${escapeHtml(member.email || member.username || 'FilmScript member')}</small><span class="fs-access-summary">${escapeHtml(permissionSummary(member.modulePermissions))}</span></span><span class="fs-people-meta"><strong>${escapeHtml(label(member.cinematicRole || 'Collaborator'))}</strong><small>${escapeHtml(roleLabels[member.projectRole] || label(member.projectRole))}</small></span><span class="fs-finance-summary${financialLabel(member.financialPermissions) === 'No financial access' ? '' : ' has-access'}">${escapeHtml(financialLabel(member.financialPermissions))}</span><span class="fs-status fs-status-${member.status}">${escapeHtml(label(member.status))}</span>${actions}</article>`;
+      const collaboration = member.collaboration || { state:'disconnected', module:null };
+      return `<article class="fs-people-row" data-member-id="${member.id}">${avatar({ ...member, color:collaboration.color })}<span class="fs-member-copy"><strong>${escapeHtml(member.name || member.email || 'Collaborator')}</strong><small>${escapeHtml(member.email || member.username || 'FilmScript member')}</small><span class="fs-access-summary">${escapeHtml(permissionSummary(member.modulePermissions))}</span></span><span class="fs-people-meta"><strong>${escapeHtml(label(member.cinematicRole || 'Collaborator'))}</strong><small>${escapeHtml(roleLabels[member.projectRole] || label(member.projectRole))}</small></span><span class="fs-finance-summary${financialLabel(member.financialPermissions) === 'No financial access' ? '' : ' has-access'}">${escapeHtml(financialLabel(member.financialPermissions))}</span><span class="fs-status fs-presence-${escapeHtml(collaboration.state)}">${escapeHtml(label(collaboration.state))}${collaboration.module ? ` · ${escapeHtml(label(collaboration.module))}` : ''}</span>${actions}</article>`;
     }).join('');
     const pending = (result.invitations || []).filter((invitation) => invitation.status !== 'accepted').map((invitation) => `<article class="fs-invitation-row"><span class="fs-invite-mark" aria-hidden="true"></span><span class="fs-member-copy"><strong>${escapeHtml(invitation.invitedEmail || invitation.invitedUsername || 'Secure guest link')}</strong><small>${escapeHtml(label(invitation.cinematicRole || 'Collaborator'))} · ${escapeHtml(roleLabels[invitation.projectRole] || label(invitation.projectRole))}</small><span class="fs-access-summary">${escapeHtml((invitation.permissionSummary || []).join(', ') || 'No module access')}</span></span><span class="fs-finance-summary">${escapeHtml(invitation.financialSummary)}</span><span class="fs-invite-expiry"><strong>${escapeHtml(label(invitation.status))}</strong><small>${invitation.expiresAt ? `Expires ${escapeHtml(new Date(invitation.expiresAt).toLocaleDateString())}` : 'No expiration'}</small></span>${canManage ? `<details class="fs-context"><summary aria-label="Invitation actions">•••</summary><div class="fs-context-menu"><button data-copy-invite="${invitation.id}">Copy invitation link</button>${result.emailDelivery === 'configured' ? `<button data-resend-invite="${invitation.id}">Resend invitation</button>` : ''}<button data-edit-invite="${invitation.id}">Edit access</button><button class="fs-danger-text" data-revoke-invite="${invitation.id}">Revoke invitation</button></div></details>` : ''}</article>`).join('');
     const content = `<div class="fs-dashboard-toolbar"><div><p class="fs-eyebrow">PROJECT SETTINGS</p><h3>People</h3></div>${canManage ? '<button class="fs-action fs-action-primary" data-new-invite>Invite people</button>' : ''}</div><section class="fs-people-section">${people || '<div class="fs-empty-access"><strong>No collaborators yet</strong><p>Invite someone when you are ready to share the project.</p></div>'}</section><section class="fs-pending-section"><div class="fs-section-title"><h3>Pending Invitations</h3><span>${(result.invitations || []).filter((item) => item.status === 'pending').length}</span></div>${pending || '<div class="fs-empty-access"><strong>No pending invitations</strong><p>New invitations will appear here until they are accepted.</p></div>'}</section>`;
@@ -240,30 +244,60 @@
     const container = document.querySelector('.fs-live-avatars'); if (!container) return;
     const unique = [...new Map(state.presence.map((person) => [person.userId, person])).values()].slice(0,5);
     container.innerHTML = unique.map((person) => `<button class="fs-live-avatar" style="--collaborator-color:${escapeHtml(person.color)}" title="${escapeHtml(person.name)} · ${escapeHtml(person.module || 'Project')} · ${escapeHtml(person.state || 'active')}">${person.picture ? `<img src="${escapeHtml(person.picture)}" alt="${escapeHtml(person.name)}">` : escapeHtml(person.name?.charAt(0) || 'C')}</button>`).join('');
+    document.querySelectorAll('[data-collaborator-active]').forEach((node) => { node.removeAttribute('data-collaborator-active'); node.style.removeProperty('--collaborator-color'); });
+    for (const person of state.presence) { if (person.clientId === clientId || person.state === 'disconnected') continue; const selector = person.module === 'breakdown' && person.sceneId ? `[data-scene-id="${CSS.escape(person.sceneId)}"]` : person.module === 'shot_list' && person.selectedObjectId ? `[data-shot-id="${CSS.escape(person.selectedObjectId)}"]` : ''; if (selector) document.querySelectorAll(selector).forEach((node) => { node.dataset.collaboratorActive = person.name; node.style.setProperty('--collaborator-color',person.color); }); }
+    renderRemoteCursors();
+  }
+
+  function renderRemoteCursors() {
+    document.querySelectorAll('.fs-remote-caret,.fs-remote-selection').forEach((node) => node.remove());
+    for (const person of state.presence) {
+      if (person.clientId === clientId || person.module !== 'script' || person.state === 'disconnected' || !person.selection?.blockId) continue;
+      const block = document.querySelector(`[data-block-id="${CSS.escape(person.selection.blockId)}"]`); if (!block) continue;
+      const walker = document.createTreeWalker(block, NodeFilter.SHOW_TEXT, { acceptNode:(node) => node.parentElement?.matches?.('[data-marker],[data-dialogue-marker]') ? NodeFilter.FILTER_REJECT : NodeFilter.FILTER_ACCEPT });
+      let remaining = Math.max(0, Number(person.selection.anchorOffset) || 0); let target = null; let text;
+      while ((text = walker.nextNode())) { if (remaining <= text.data.length) { target = text; break; } remaining -= text.data.length; }
+      if (!target) target = block.firstChild; if (!target) continue;
+      const range = document.createRange(); try { range.setStart(target, Math.min(remaining, target.textContent?.length || 0)); range.collapse(true); } catch { continue; }
+      const rect = range.getBoundingClientRect(); if (!rect.width && !rect.height) continue;
+      const caret = document.createElement('span'); caret.className = 'fs-remote-caret'; caret.style.cssText = `--collaborator-color:${person.color};left:${rect.left}px;top:${rect.top}px;height:${Math.max(16, rect.height)}px`; caret.innerHTML = `<span>${escapeHtml(person.name)}</span>`; document.body.appendChild(caret);
+      if (!person.selection.collapsed && Number(person.selection.focusOffset) !== Number(person.selection.anchorOffset)) {
+        const textNodes = []; const focusWalker = document.createTreeWalker(block, NodeFilter.SHOW_TEXT, { acceptNode:(node) => node.parentElement?.matches?.('[data-marker],[data-dialogue-marker]') ? NodeFilter.FILTER_REJECT : NodeFilter.FILTER_ACCEPT }); let focusText;
+        while ((focusText = focusWalker.nextNode())) textNodes.push(focusText);
+        const locate = (offset) => { let left = Math.max(0, Number(offset) || 0); for (const node of textNodes) { if (left <= node.data.length) return [node,left]; left -= node.data.length; } return [textNodes.at(-1), textNodes.at(-1)?.data.length || 0]; };
+        const [anchorNode,anchorOffset] = locate(person.selection.anchorOffset); const [focusNode,focusOffset] = locate(person.selection.focusOffset);
+        if (anchorNode && focusNode) { const selected = document.createRange(); try { if (Number(person.selection.anchorOffset) <= Number(person.selection.focusOffset)) { selected.setStart(anchorNode,anchorOffset); selected.setEnd(focusNode,focusOffset); } else { selected.setStart(focusNode,focusOffset); selected.setEnd(anchorNode,anchorOffset); } for (const box of selected.getClientRects()) { const mark=document.createElement('span'); mark.className='fs-remote-selection'; mark.style.cssText=`--collaborator-color:${person.color};left:${box.left}px;top:${box.top}px;width:${box.width}px;height:${box.height}px`; document.body.appendChild(mark); } } catch {} }
+      }
+    }
   }
 
   function connectCollaboration() {
     if (!projectId || typeof EventSource === 'undefined') return;
-    const url = new URL(resolve(`/api/projects/${projectId}/collaboration/events`), location.href); url.searchParams.set('module', params.get('view') || 'script');
+    if (state.eventSource) state.eventSource.close();
+    const url = new URL(resolve(`/api/projects/${projectId}/collaboration/events`), location.href); url.searchParams.set('module', currentModule()); url.searchParams.set('clientId', clientId);
     state.eventSource = new EventSource(url, { withCredentials:true });
     state.eventSource.addEventListener('connected', (event) => { state.presence = JSON.parse(event.data).presence || []; renderPresence(); });
     state.eventSource.addEventListener('presence.joined', (event) => { const person = JSON.parse(event.data); state.presence = [...state.presence.filter((item) => item.clientId !== person.clientId), person]; renderPresence(); });
     state.eventSource.addEventListener('presence.updated', (event) => { const person = JSON.parse(event.data); state.presence = [...state.presence.filter((item) => item.clientId !== person.clientId), person]; renderPresence(); });
     state.eventSource.addEventListener('presence.left', (event) => { const person = JSON.parse(event.data); state.presence = state.presence.filter((item) => item.clientId !== person.clientId); renderPresence(); });
-    ['ai.job.completed','content.operation','content.conflict','comment.created'].forEach((type) => state.eventSource.addEventListener(type, (event) => { let detail={};try{detail=JSON.parse(event.data)}catch{}window.dispatchEvent(new CustomEvent(`filmscript:${type}`,{detail})) }));
+    ['ai.job.completed','content.operation','content.conflict','comment.created','script.crdt','canvas.drag'].forEach((type) => state.eventSource.addEventListener(type, (event) => { let detail={};try{detail=JSON.parse(event.data)}catch{}window.dispatchEvent(new CustomEvent(`filmscript:${type}`,{detail})) }));
     document.addEventListener('visibilitychange', () => { if (!document.hidden) sendPresence({ type:'presence.updated' }); });
+    const activity = () => { const wasIdle = Date.now() - lastUserActivityAt > 90_000; lastUserActivityAt = Date.now(); if (wasIdle) sendPresence({ type:'presence.updated' }); };
+    ['pointerdown','keydown','wheel'].forEach((type) => document.addEventListener(type, activity, { passive:true }));
+    const heartbeat = setInterval(() => { if (!document.hidden && Date.now() - lastUserActivityAt < 90_000) sendPresence({ type:'presence.updated' }); }, 16_000); heartbeat.unref?.();
+    addEventListener('scroll', renderRemoteCursors, { passive:true, capture:true }); addEventListener('resize', renderRemoteCursors, { passive:true });
   }
 
   let presenceTimer = 0;
   function sendPresence(detail = {}) {
     if (!projectId || document.hidden) return;
-    clearTimeout(presenceTimer); presenceTimer = setTimeout(() => request(`/api/projects/${projectId}/collaboration/presence`, { method:'POST', headers:{ 'X-FilmScript-Client-Id':clientId }, body:JSON.stringify({ type:detail.type || 'presence.updated', module:params.get('view') || 'script', ...detail }) }).catch(() => {}), detail.type === 'cursor.updated' ? 80 : 120);
+    clearTimeout(presenceTimer); presenceTimer = setTimeout(() => request(`/api/projects/${projectId}/collaboration/presence`, { method:'POST', headers:{ 'X-FilmScript-Client-Id':clientId }, body:JSON.stringify({ type:detail.type || 'presence.updated', module:currentModule(), ...detail }) }).catch(() => {}), detail.type === 'cursor.updated' ? 80 : 120);
   }
 
   function mountHub() {
     const host = document.querySelector('.v5-top-actions') || document.querySelector('.fs-app-topbar > div:last-child'); if (!host || document.querySelector('.fs-platform-hub')) return;
     const hub = document.createElement('div'); hub.className = 'fs-platform-hub';
-    hub.innerHTML = `${projectId ? '<button class="fs-platform-button fs-manage-people" data-people title="People and access" aria-label="People and access"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M16 19v-1.5a4 4 0 0 0-4-4H7a4 4 0 0 0-4 4V19"></path><circle cx="9.5" cy="7" r="3"></circle><path d="M17 5.2a3 3 0 0 1 0 5.6M21 19v-1.5a4 4 0 0 0-3-3.87"></path></svg></button>' : ''}<button class="fs-platform-button" data-bell title="Notifications" aria-label="Notifications"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9"></path><path d="M10 21h4"></path></svg><span class="fs-notification-badge" hidden></span></button>`;
+    hub.innerHTML = `${projectId ? '<span class="fs-live-avatars" aria-label="Active collaborators"></span><button class="fs-platform-button fs-manage-people" data-people title="People and access" aria-label="People and access"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M16 19v-1.5a4 4 0 0 0-4-4H7a4 4 0 0 0-4 4V19"></path><circle cx="9.5" cy="7" r="3"></circle><path d="M17 5.2a3 3 0 0 1 0 5.6M21 19v-1.5a4 4 0 0 0-3-3.87"></path></svg></button>' : ''}<button class="fs-platform-button" data-bell title="Notifications" aria-label="Notifications"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9"></path><path d="M10 21h4"></path></svg><span class="fs-notification-badge" hidden></span></button>`;
     host.prepend(hub); hub.querySelector('[data-bell]').onclick = openNotifications; hub.querySelector('[data-people]')?.addEventListener('click', openMembers);
   }
 
@@ -291,10 +325,10 @@
 
   async function init() {
     try { state.me = await api.me(); const local = localStorage.getItem('filmscript_theme_v2'); applyTheme(state.me.theme || local || 'filmscript'); } catch { applyTheme(localStorage.getItem('filmscript_theme_v2') || 'filmscript'); }
-    mountHub(); mountMobileNav(); syncResponsiveChrome(); addEventListener('resize', syncResponsiveChrome, { passive:true }); injectProfileControls(); refreshNotifications();
+    mountHub(); mountMobileNav(); syncResponsiveChrome(); addEventListener('resize', syncResponsiveChrome, { passive:true }); injectProfileControls(); refreshNotifications(); connectCollaboration();
     const invitation = params.get('invitation'); if (invitation) request('/api/invitations/accept', { method:'POST', body:JSON.stringify({ token:invitation }) }).then((result) => location.replace(`Editor%20v5.dc.html?script=${encodeURIComponent(result.membership.projectId)}`)).catch((error) => dialog('Invitation unavailable', error.message, '<div class="fs-dialog-actions"><button class="fs-action" onclick="location.href=\'App.dc.html\'">Back to projects</button></div>'));
   }
 
-  window.filmscriptPlatform = { api, clientId, openTranslation, openMembers, openActivity, openThemes, openShare, openLocationPlan, sendPresence, applyTheme };
+  window.filmscriptPlatform = { api, clientId, openTranslation, openMembers, openActivity, openThemes, openShare, openLocationPlan, sendPresence, sendOperation:(body) => api.collaborate(body), applyTheme };
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', init); else init();
 })();

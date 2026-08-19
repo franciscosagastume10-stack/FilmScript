@@ -6,11 +6,14 @@
     "dev": "./scripts/run-node.sh --env-file=.env server.js",
     "preview": "./scripts/preview-server.sh",
     "start": "./scripts/run-node.sh server.js",
-    "build:netlify": "./scripts/run-node.sh scripts/build-netlify.mjs",
-    "build:vercel": "./scripts/run-node.sh scripts/build-netlify.mjs",
+    "build:realtime": "./scripts/run-node.sh scripts/build-realtime.mjs",
+    "build:netlify": "npm run build:realtime && ./scripts/run-node.sh scripts/build-netlify.mjs",
+    "build:vercel": "npm run build:realtime && ./scripts/run-node.sh scripts/build-netlify.mjs",
     "build:sites": "./scripts/run-node.sh scripts/build-sites.mjs",
     "recurrente:webhook": "./scripts/run-node.sh --env-file=.env scripts/register-recurrente-webhook.mjs",
     "test": "./scripts/run-node.sh --test tests/*.test.mjs"
+    ,"typecheck": "./scripts/run-node.sh node_modules/typescript/bin/tsc -p jsconfig.collaboration.json"
+    ,"lint": "./scripts/run-node.sh node_modules/eslint/bin/eslint.js collaboration-engine.js realtime-collaboration.js realtime-client-source.js platform-client.js canvas-workspace.js"
   },
   "engines": {
     "node": ">=22 <25"
@@ -21,6 +24,13 @@
     "mammoth": "^1.12.0",
     "react": "18.3.1",
     "react-dom": "18.3.1",
-    "xlsx": "https://cdn.sheetjs.com/xlsx-0.20.3/xlsx-0.20.3.tgz"
+    "xlsx": "https://cdn.sheetjs.com/xlsx-0.20.3/xlsx-0.20.3.tgz",
+    "yjs": "^13.6.32"
+  },
+  "devDependencies": {
+    "@types/node": "^24.13.3",
+    "esbuild": "^0.25.12",
+    "eslint": "^9.39.5",
+    "typescript": "^5.9.3"
   }
 }

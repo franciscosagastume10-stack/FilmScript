@@ -30,6 +30,7 @@ export function applyVersionedPatch(entity, operation) {
 
 export function throttleIntervalForEvent(type) {
   if (type === "cursor.updated") return 80;
+  if (type === "canvas.drag") return 80;
   if (type === "selection.updated") return 120;
   if (type === "presence.updated") return 15_000;
   return 0;
@@ -45,28 +46,36 @@ export class CollaborationRooms {
   }
   join(projectId, client) {
     const room = this.room(projectId); const timestamp = this.now();
-    room.clients.set(client.clientId, { ...client, color: collaboratorColor(client.userId || client.clientId), state: "active", lastSeenAt: timestamp });
+    const existing = room.clients.get(client.clientId) || {};
+    room.clients.set(client.clientId, { ...existing, ...client, color: collaboratorColor(client.userId || client.clientId), state: "active", connected: true, lastSeenAt: timestamp, disconnectedAt: null });
     room.lastActiveAt = timestamp; room.sequence += 1;
     return room.clients.get(client.clientId);
   }
   update(projectId, clientId, patch) {
     const room = this.rooms.get(projectId); const client = room?.clients.get(clientId);
     if (!client) return null;
-    Object.assign(client, patch, { lastSeenAt: this.now(), state: "active" }); room.lastActiveAt = this.now(); room.sequence += 1;
+    Object.assign(client, patch, { lastSeenAt: this.now(), state: "active", connected: true, disconnectedAt: null }); room.lastActiveAt = this.now(); room.sequence += 1;
     return client;
   }
   leave(projectId, clientId) {
     const room = this.rooms.get(projectId); if (!room) return false;
     const removed = room.clients.delete(clientId); room.lastActiveAt = this.now(); room.sequence += removed ? 1 : 0; return removed;
   }
+  disconnect(projectId, clientId) {
+    const room = this.rooms.get(projectId); const client = room?.clients.get(clientId); if (!client) return null;
+    const timestamp = this.now(); Object.assign(client, { state: "disconnected", connected: false, disconnectedAt: timestamp });
+    room.lastActiveAt = timestamp; room.sequence += 1; return client;
+  }
   sweep() {
-    const timestamp = this.now(); const expired = [];
+    const timestamp = this.now(); const expired = []; this.lastTransitions = [];
     for (const [projectId, room] of this.rooms) {
-      for (const client of room.clients.values()) if (timestamp - client.lastSeenAt >= this.idleMs) client.state = "idle";
-      if (!room.clients.size && timestamp - room.lastActiveAt >= this.expireMs) { this.rooms.delete(projectId); expired.push(projectId); }
+      for (const client of room.clients.values()) if (client.connected && client.state !== "idle" && timestamp - client.lastSeenAt >= this.idleMs) {
+        client.state = "idle"; this.lastTransitions.push({ projectId, client: { ...client } });
+      }
+      const hasConnectedClients = [...room.clients.values()].some((client) => client.connected);
+      if (!hasConnectedClients && timestamp - room.lastActiveAt >= this.expireMs) { this.rooms.delete(projectId); expired.push(projectId); }
     }
     return expired;
   }
   presence(projectId) { return [...(this.rooms.get(projectId)?.clients.values() || [])]; }
 }
-
