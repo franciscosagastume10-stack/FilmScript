@@ -32,6 +32,7 @@
 <script defer src="./calendar-client.js?v=20260727-calendar3"></script>
 <script type="module" src="./calendar-workspace.js?v=20260801-calendar-glass1"></script>
 <script defer src="./platform-client.js?v=20260819-platform6"></script>
+<script defer src="./assets/vendor/realtime-collaboration.bundle.js?v=20260819-collab1"></script>
 <link rel="stylesheet" href="./filmscript-controls.css?v=20260716-typography1">
 <link rel="stylesheet" href="./platform-ui.css?v=20260819-platform6">
 <link rel="prefetch" href="./App.dc.html" as="document">
@@ -1168,7 +1169,7 @@
         <sc-if value="{{ breakdownGenerationActive }}" hint-placeholder-val="false"><section class="v5-breakdown-generation-progress" aria-live="polite" aria-label="Lumiere breakdown generation progress"><div class="v5-breakdown-generation-spark" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="m12 2.8 1.65 5.55L19.2 10l-5.55 1.65L12 17.2l-1.65-5.55L4.8 10l5.55-1.65Z"></path></svg></div><div class="v5-breakdown-generation-copy"><strong>Generating your full breakdown</strong><span>{{ breakdownGenerationText }}</span><div class="v5-breakdown-generation-track" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="{{ breakdownGenerationPercent }}"><i style="--breakdown-progress: {{ breakdownGenerationPercent }}%;"></i></div></div><div class="v5-breakdown-generation-count">{{ breakdownGenerationCount }}</div></section></sc-if>
 
         <div class="v5-breakdown-scroll">
-          <div class="v5-breakdown-sheet {{ breakdownSheetState }}" onClick="{{ breakdownActivateEditing }}" onKeyDown="{{ breakdownSheetKeyDown }}" aria-label="Breakdown sheet. Click any field to edit.">
+          <div class="v5-breakdown-sheet {{ breakdownSheetState }}" data-scene-id="{{ breakdownSceneId }}" onClick="{{ breakdownActivateEditing }}" onKeyDown="{{ breakdownSheetKeyDown }}" aria-label="Breakdown sheet. Click any field to edit.">
             <div class="v5-breakdown-sheet-header">
               <div class="v5-breakdown-meta-group">
                 <div class="v5-breakdown-meta-row"><strong class="v5-breakdown-meta-label">Scene #</strong><span class="v5-breakdown-value">{{ breakdownSceneNo }}</span></div>
@@ -1371,7 +1372,7 @@
                     <div style="display: grid; grid-template-columns: {{ scene.gridColumns }}; column-gap: 10px; padding: 13px 18px 9px; border-bottom: 1px solid var(--sheet-line, #B9B3A7); color: var(--muted, #888780); font-size: 9.5px; font-weight: 800; letter-spacing: 1.25px; text-transform: uppercase;"><span>Shot</span><span>Reference</span><span>Size</span><span>Angle</span><span>Lens</span><span>Time</span><span>Movement</span><span>Description</span><sc-if value="{{ shotListEditing }}" hint-placeholder-val="false"><span style="text-align: right;">Order</span></sc-if></div>
                     <sc-if value="{{ scene.hasShots }}" hint-placeholder-val="true">
                       <sc-for list="{{ scene.rows }}" as="shot" hint-placeholder-count="3">
-                        <div class="v5-shotlist-row" style="display: grid; grid-template-columns: {{ scene.gridColumns }}; column-gap: 10px; min-height: 70px; align-items: start; padding: 13px 18px; border-bottom: {{ shot.borderBottom }};">
+                        <div class="v5-shotlist-row" data-shot-id="{{ shot.id }}" style="display: grid; grid-template-columns: {{ scene.gridColumns }}; column-gap: 10px; min-height: 70px; align-items: start; padding: 13px 18px; border-bottom: {{ shot.borderBottom }};">
                           <span style="display: inline-flex; width: 34px; height: 24px; align-items: center; justify-content: center; border-radius: 999px; background: var(--accent-soft, rgba(186,117,23,.11)); font-size: 11.5px; font-weight: 800; color: var(--accent, #BA7517);">{{ shot.number }}</span>
                           <div class="v5-shot-reference-stack {{ shot.referenceStackClass }}">
                             <sc-if value="{{ shot.referenceImage }}" hint-placeholder-val="false">
@@ -2649,12 +2650,14 @@ class Component extends DCLogic {
       window.setTimeout(() => this._resumeAnalysisBackground(), 0);
     });
     this._autoFit = true;
-    this._selHandler = () => this._syncActive();
+    this._selHandler = () => { this._syncActive(); this._broadcastEditorSelection(); };
     this._remoteScriptHandler = (event) => {
       if (event?.detail?.module !== 'script' || event?.detail?.entityId !== (this.state.activeScriptId || this._activeScriptId) || this.state.dirty) return;
       this._loadImportedScript();
     };
+    this._structuredCollaborationHandler = (event) => this._applyStructuredCollaboration(event.detail);
     window.addEventListener('filmscript:content.operation', this._remoteScriptHandler);
+    window.addEventListener('filmscript:content.operation', this._structuredCollaborationHandler);
     document.addEventListener('selectionchange', this._selHandler);
     this._resizeHandler = () => { if (this._autoFit) this.fillPage(1); };
     window.addEventListener('resize', this._resizeHandler);
@@ -2840,11 +2843,13 @@ class Component extends DCLogic {
   }
 
   _coverBlocksFromState() {
-    const blocks = [{ type: 'title', text: String(this.state.docTitle || 'Untitled screenplay').trim() }];
-    if (String(this.state.tpCredit || '').trim()) blocks.push({ type: 'title_credit', text: String(this.state.tpCredit).trim() });
-    if (String(this.state.tpAuthor || '').trim()) blocks.push({ type: 'title_author', text: String(this.state.tpAuthor).trim() });
-    if (String(this.state.tpDate || '').trim()) blocks.push({ type: 'title_date', text: String(this.state.tpDate).trim() });
-    if (String(this.state.tpContact || '').trim()) blocks.push({ type: 'title_contact', text: String(this.state.tpContact).trim() });
+    const existing = new Map((this._importedBlocks || []).filter((block) => String(block.type).startsWith('title')).map((block) => [block.type, block.id]));
+    const item = (type, text) => ({ id: existing.get(type) || `blk_${crypto.randomUUID().replaceAll('-', '')}`, type, text });
+    const blocks = [item('title', String(this.state.docTitle || 'Untitled screenplay').trim())];
+    if (String(this.state.tpCredit || '').trim()) blocks.push(item('title_credit', String(this.state.tpCredit).trim()));
+    if (String(this.state.tpAuthor || '').trim()) blocks.push(item('title_author', String(this.state.tpAuthor).trim()));
+    if (String(this.state.tpDate || '').trim()) blocks.push(item('title_date', String(this.state.tpDate).trim()));
+    if (String(this.state.tpContact || '').trim()) blocks.push(item('title_contact', String(this.state.tpContact).trim()));
     return blocks;
   }
 
@@ -2880,7 +2885,43 @@ class Component extends DCLogic {
         activeScene: 1,
       });
       if (recovery) this._toast('Recovered the latest local screenplay changes.');
+      this._connectScriptRealtime(stored.id, recovery?.blocks || null);
     } catch (error) { this.setState({ toast: 'Could not open this screenplay.' }); }
+  }
+
+  async _connectScriptRealtime(scriptId, recoveryBlocks = null) {
+    if (!window.FilmScriptRealtime?.connectScript || this._realtimeScript?.projectId === scriptId) return;
+    try {
+      this._realtimeScript?.destroy?.();
+      this._realtimeScript = await window.FilmScriptRealtime.connectScript(scriptId, {
+        clientId: window.filmscriptPlatform?.clientId,
+        onBlocks: (blocks, origin) => { if (origin !== 'local') this._applyRealtimeScriptBlocks(blocks); },
+      });
+      if (recoveryBlocks?.length) this._realtimeScript.syncBlocks(recoveryBlocks);
+    } catch (error) { window.setTimeout(() => this._connectScriptRealtime(scriptId, recoveryBlocks), 2000); }
+  }
+
+  _applyRealtimeScriptBlocks(blocks) {
+    if (!Array.isArray(blocks) || this._realtimeApplying) return;
+    this._realtimeApplying = true;
+    const content = blocks.filter((block) => !String(block.type).startsWith('title') && block.type !== 'pagebreak');
+    const nodes = Array.from(document.querySelectorAll('[data-fs-page] [data-type]'));
+    const sameShape = nodes.length === content.length && nodes.every((node, index) => node.dataset.blockId === content[index].id && node.dataset.type === content[index].type);
+    if (sameShape) nodes.forEach((node, index) => {
+      const current = Array.from(node.childNodes).filter((child) => !child.matches?.('[data-marker],[data-dialogue-marker]')).map((child) => child.textContent || '').join('').trim();
+      if (current === content[index].text) return;
+      const markers = Array.from(node.querySelectorAll(':scope > [data-marker],:scope > [data-dialogue-marker]')).map((marker) => marker.cloneNode(true));
+      node.textContent = content[index].text; markers.forEach((marker) => node.appendChild(marker));
+    });
+    else { this._importedBlocks = blocks; this._pagesCache = null; this.forceUpdate(); }
+    this._importedBlocks = blocks; this._realtimeApplying = false;
+  }
+
+  _broadcastEditorSelection() {
+    if (this.state.workMode !== 'editor' || !window.filmscriptPlatform?.sendPresence) return;
+    const selection = window.getSelection(); const block = this._currentBlock(); if (!selection?.anchorNode || !block?.dataset?.blockId) return;
+    const offset = (node, value) => { try { const range = document.createRange(); range.setStart(node, 0); range.setEnd(value, value === selection.anchorNode ? selection.anchorOffset : selection.focusOffset); return Math.max(0, range.toString().length); } catch { return 0; } };
+    window.filmscriptPlatform.sendPresence({ type:'cursor.updated', sceneId:block.closest?.('[data-scene-id]')?.dataset?.sceneId || null, selection:{ blockId:block.dataset.blockId, anchorOffset:offset(block, selection.anchorNode), focusOffset:offset(block, selection.focusNode), collapsed:selection.isCollapsed } });
   }
 
   _workModeStorageKey(scriptId = this.state.activeScriptId || this._activeScriptId || new URLSearchParams(window.location.search).get('script')) {
@@ -2904,6 +2945,7 @@ class Component extends DCLogic {
       if (mode === 'canvas' && canvasTool === 'shotlist') url.searchParams.set('tool', 'shotlist');
       else url.searchParams.delete('tool');
       window.history.replaceState(window.history.state, '', `${url.pathname}${url.search}${url.hash}`);
+      window.filmscriptPlatform?.sendPresence?.({ type:'presence.updated', module:mode === 'editor' ? 'script' : mode === 'shotlist' ? 'shot_list' : mode });
     } catch (e) {}
   }
 
@@ -3401,14 +3443,22 @@ class Component extends DCLogic {
 
   _saveBreakdownField(sceneId, section, key, value) {
     const savedValue = this._dedupeBreakdownFieldValue(section, value);
+    const sceneBefore = (Array.isArray(this.state.productionProject?.scenes) ? this.state.productionProject.scenes : Object.values(this.state.productionProject?.scenes || {})).find((scene) => scene.id === sceneId);
+    const previousValue = String(sceneBefore?.breakdownForm?.[section]?.[key] ?? '');
     this._updateBreakdownFormLocal(sceneId, section, key, savedValue);
+    window.filmscriptPlatform?.sendPresence?.({ type:'selection.updated', module:'breakdown', sceneId, selectedObjectId:sceneId, selection:{ section,key } });
     const scriptId = this.state.activeScriptId || this._activeScriptId;
     if (!scriptId || !sceneId || !window.filmscriptPreproduction) return Promise.resolve();
     this.setState({ breakdownFormSaving: true });
     const previous = this._pendingBreakdownSave || Promise.resolve();
-    const task = previous.catch(() => {}).then(() => window.filmscriptPreproduction.saveScene(scriptId, sceneId, {
-      [section]: { [key]: savedValue },
-    }));
+    const documentId = `breakdown:${sceneId}:${section}`; const entityKey = `${documentId}:${sceneId}`; const baseVersion = this._collaborationVersions?.get(entityKey) || 0;
+    const task = previous.catch(() => {}).then(async () => {
+      if (window.filmscriptPlatform?.sendOperation) {
+        const result = await window.filmscriptPlatform.sendOperation({ module:'breakdown', documentId, entityType:'breakdown_card', entityId:sceneId, baseVersion, current:{ id:sceneId, version:baseVersion, [key]:previousValue }, previous:{ [key]:previousValue }, patch:{ [key]:savedValue }, operationType:'field.set' });
+        if (!this._collaborationVersions) this._collaborationVersions = new Map(); this._collaborationVersions.set(entityKey, result.entity?.version || baseVersion);
+      }
+      return window.filmscriptPreproduction.saveScene(scriptId, sceneId, { [section]: { [key]: savedValue } });
+    });
     this._pendingBreakdownSave = task;
     task.catch(() => this._toast('Could not save the breakdown changes.')).finally(() => {
       if (this._pendingBreakdownSave === task) {
@@ -3417,6 +3467,26 @@ class Component extends DCLogic {
       }
     });
     return task;
+  }
+
+  _applyStructuredCollaboration(detail) {
+    if (!detail?.module || !detail.entityId || !detail.entity) return;
+    const entityKey = `${detail.documentId}:${detail.entityId}`; if (!this._collaborationVersions) this._collaborationVersions = new Map(); this._collaborationVersions.set(entityKey, detail.entity.version || 0);
+    if (detail.module === 'breakdown') {
+      const section = String(detail.documentId || '').split(':')[2]; if (!section) return;
+      this.setState((state) => {
+        const update = (scene) => scene?.id !== detail.entityId ? scene : { ...scene, breakdownForm:{ ...(scene.breakdownForm || {}), [section]:{ ...(scene.breakdownForm?.[section] || {}), ...Object.fromEntries((detail.changedFields || []).map((field) => [field,detail.entity[field]])) } } };
+        const scenes = Array.isArray(state.productionProject?.scenes) ? state.productionProject.scenes.map(update) : Object.fromEntries(Object.entries(state.productionProject?.scenes || {}).map(([id,scene]) => [id,update(scene)]));
+        return { productionProject:{ ...state.productionProject, scenes } };
+      });
+    }
+    if (detail.module === 'shot_list') this.setState((state) => {
+      const sceneId = String(detail.documentId || '').split(':')[1]; const scenes = Array.isArray(state.productionProject?.scenes) ? state.productionProject.scenes : Object.values(state.productionProject?.scenes || {});
+      const scene = scenes.find((item) => item.id === sceneId); if (!scene) return null;
+      const shots = (scene.shots || []).map((shot) => shot.id === detail.entityId ? { ...shot, ...Object.fromEntries((detail.changedFields || []).map((field) => [field,detail.entity[field]])) } : shot);
+      const update = (item) => item.id === sceneId ? { ...item, shots } : item; const nextScenes = Array.isArray(state.productionProject?.scenes) ? scenes.map(update) : Object.fromEntries(Object.entries(state.productionProject?.scenes || {}).map(([id,item]) => [id,update(item)]));
+      return { productionProject:{ ...state.productionProject, scenes:nextScenes } };
+    });
   }
 
   activateBreakdownEditing(event) {
@@ -4504,9 +4574,24 @@ class Component extends DCLogic {
   _updateShotField(sceneId, shotIndex, key, value, persist = false) {
     const shots = this._shotsForScene(sceneId);
     if (!shots[shotIndex]) return;
+    const previousValue = shots[shotIndex][key]; const shotId = shots[shotIndex].id;
+    window.filmscriptPlatform?.sendPresence?.({ type:'selection.updated', module:'shot_list', sceneId, selectedObjectId:shotId, selection:{ field:key } });
     shots[shotIndex] = { ...shots[shotIndex], [key]: String(value ?? ''), userEdited: true };
     this._replaceSceneShotsLocal(sceneId, shots);
-    if (persist) this._persistShots(sceneId, shots);
+    if (persist) this._persistShotField(sceneId, shotId, key, previousValue, String(value ?? ''), shots);
+  }
+
+  async _persistShotField(sceneId, shotId, key, previousValue, value, shots) {
+    const scriptId = this.state.activeScriptId || this._activeScriptId; const entityKey = `shot_list:${sceneId}:${shotId}`; const baseVersion = this._collaborationVersions?.get(entityKey) || 0;
+    try {
+      if (window.filmscriptPlatform?.sendOperation) {
+        const result = await window.filmscriptPlatform.sendOperation({ module:'shot_list', documentId:`shot_list:${sceneId}`, entityType:'shot_list_item', entityId:shotId, baseVersion, current:{ id:shotId, version:baseVersion, [key]:previousValue }, previous:{ [key]:previousValue }, patch:{ [key]:value }, operationType:'field.set' });
+        if (!this._collaborationVersions) this._collaborationVersions = new Map(); this._collaborationVersions.set(entityKey, result.entity?.version || baseVersion);
+      }
+      this.setState({ shotListSaving:true, shotListSaveError:false });
+      const saved = await window.filmscriptPreproduction.saveShotFields(scriptId, sceneId, [{ id:shotId, patch:{ [key]:value, userEdited:true } }]);
+      if (Array.isArray(saved?.shots)) this._replaceSceneShotsLocal(sceneId, saved.shots); this.setState({ shotListSaving:false, shotListLastSavedAt:Date.now() }); return saved;
+    } catch (error) { this._toast(error?.message || 'This shot changed for another collaborator. Review their edit before replacing it.'); }
   }
 
   _commitShotMinutes(sceneId, shotIndex, value, input) {
@@ -4535,7 +4620,7 @@ class Component extends DCLogic {
     }
     shots[shotIndex] = { ...shots[shotIndex], estimatedMinutes: nextMinutes, userEdited: true };
     this._replaceSceneShotsLocal(sceneId, shots);
-    this._persistShots(sceneId, shots);
+    this._persistShotField(sceneId, shots[shotIndex].id, 'estimatedMinutes', original, nextMinutes, shots);
   }
 
   openShotTime(sceneId, shotIndex, event) {
@@ -5161,7 +5246,9 @@ class Component extends DCLogic {
     const est = (b) => Math.max(1, Math.ceil((b.text.length || 1) / (CW[b.type] || 60))) + (MARG[b.type] || 0);
     const CAP = 42;
     const pageBlocks = []; let cur = []; let lines = 0;
-    for (const b of blocks) {
+    for (const [sourceIndex, sourceBlock] of blocks.entries()) {
+      const b = sourceBlock;
+      if (!b.id) b.id = `blk_${crypto.randomUUID().replaceAll('-', '')}`;
       if (coverTypes.has(b.type)) continue;
       if (b.type === 'pagebreak') continue;
       const cost = est(b);
@@ -5192,7 +5279,7 @@ class Component extends DCLogic {
           marker += `<span data-dialogue-marker contenteditable="false" style="${this._dialogueMarkerStyle()}">${dialogueNo}</span>`;
           extra += ` data-dialogue-no="${dialogueNo}"`;
         }
-        return `<div data-type="${b.type}"${extra} style="${this._styleFor(b.type)}">${this._esc(b.text) || '<br>'}${marker}</div>`;
+        return `<div data-type="${b.type}" data-block-id="${this._esc(b.id)}"${extra} style="${this._styleFor(b.type)}">${this._esc(b.text) || '<br>'}${marker}</div>`;
       }).join('');
       return {
         no: pi + 1,
@@ -5366,6 +5453,8 @@ class Component extends DCLogic {
   _onEditorInput() {
     this._onWritingActivity();
     this._touch();
+    clearTimeout(this._realtimeInputTimer);
+    this._realtimeInputTimer = setTimeout(() => this._realtimeScript?.syncBlocks?.(this._scriptBlocksForSave()), 90);
     const block = this._currentBlock();
     if (block?.dataset?.type === 'scene') this._normalizeSceneHeading(block);
     if (block?.dataset?.type === 'character') {
@@ -5729,11 +5818,12 @@ class Component extends DCLogic {
         const type = String(node.dataset.type || 'action');
         const text = String(clone.innerText || clone.textContent || '').replace(/\u00a0/g, ' ').trim();
         blocks.push({
+          id: node.dataset.blockId || (node.dataset.blockId = `blk_${crypto.randomUUID().replaceAll('-', '')}`),
           type,
           text: type === 'character' ? text.toLocaleUpperCase('en-US') : text,
         });
       });
-      if (pageIndex < pages.length - 1) blocks.push({ type: 'pagebreak', text: '' });
+      if (pageIndex < pages.length - 1) blocks.push({ id:`blk_page_${pageIndex}`, type: 'pagebreak', text: '' });
     });
     return blocks;
   }
@@ -5742,7 +5832,8 @@ class Component extends DCLogic {
     const scriptId = this.state.activeScriptId || this._activeScriptId;
     if (!scriptId || !window.filmscriptScripts?.saveBlocks) return;
     const blocks = this._scriptBlocksForSave();
-    await window.filmscriptScripts.saveBlocks(scriptId, blocks);
+    if (this._realtimeScript) { this._realtimeScript.syncBlocks(blocks); await this._realtimeScript.flush(); }
+    else await window.filmscriptScripts.saveBlocks(scriptId, blocks);
     this._importedBlocks = blocks;
     this._clearScriptRecovery(scriptId, blocks);
     window.dispatchEvent(new CustomEvent('filmscript:script-saved', { detail: { scriptId } }));
@@ -5751,7 +5842,7 @@ class Component extends DCLogic {
   _scriptBlocksForSave() {
     const contentBlocks = this._collectEditorBlocks();
     return this.state.tpEnabled
-      ? [...this._coverBlocksFromState(), { type: 'pagebreak', text: '' }, ...contentBlocks]
+      ? [...this._coverBlocksFromState(), { id:(this._importedBlocks || []).find((block) => block.type === 'pagebreak')?.id || 'blk_cover_break', type: 'pagebreak', text: '' }, ...contentBlocks]
       : contentBlocks;
   }
 
@@ -7513,6 +7604,8 @@ Write Lumiere's next reply only:`;
   // ---------- lifecycle ----------
   componentWillUnmount() {
     this._unmounted = true;
+    this._realtimeScript?.destroy?.();
+    clearTimeout(this._realtimeInputTimer);
     this._hideCharacterPredictions();
     window.filmscriptSounds?.stop('workMode');
     this._flushChatSave(true);
@@ -7523,6 +7616,7 @@ Write Lumiere's next reply only:`;
     }
     if (this._selHandler) document.removeEventListener('selectionchange', this._selHandler);
     if (this._remoteScriptHandler) window.removeEventListener('filmscript:content.operation', this._remoteScriptHandler);
+    if (this._structuredCollaborationHandler) window.removeEventListener('filmscript:content.operation', this._structuredCollaborationHandler);
     if (this._resizeHandler) window.removeEventListener('resize', this._resizeHandler);
     if (this._editorZoomWheelHandler && this._canvas) this._canvas.removeEventListener('wheel', this._editorZoomWheelHandler);
     if (this._editorZoomKeyHandler) document.removeEventListener('keydown', this._editorZoomKeyHandler, true);
@@ -8940,6 +9034,7 @@ Write Lumiere's next reply only:`;
               : '',
       shotListGenerating: productionProgress,
       breakdownSceneNo: breakdownSceneIndex + 1,
+      breakdownSceneId: breakdownScene.id || '',
       breakdownSceneTotal: productionScenesRaw.length,
       breakdownSceneHeading: breakdownHeading,
       breakdownProjectTitle: this.state.docTitle,
