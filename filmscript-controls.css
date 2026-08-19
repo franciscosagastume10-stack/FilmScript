@@ -15,6 +15,15 @@ textarea {
   font-family: var(--fs-font-text) !important;
 }
 
+/* Product controls are deliberately decisive: actions and navigation should
+   read at a glance, without changing the screenplay's own typographic voice. */
+button,
+[role="button"],
+.fs-menuitem,
+.fs-navlink {
+  font-weight: 700 !important;
+}
+
 body {
   font-synthesis: none;
   text-rendering: optimizeLegibility;
@@ -133,7 +142,7 @@ h4, h5, h6 { font-weight: 700 !important; }
 
 .fs-outline-control--primary {
   --fs-frame-bg: var(--accent, #BA7517);
-  color: #1A1A1A;
+  color: #fff;
 }
 
 .fs-outline-control--secondary {

@@ -48,6 +48,10 @@
   };
   window.filmscriptBilling = {
     me: () => api('/api/me'),
+    // A deliberately small, read-only endpoint used by the persistent credit
+    // indicator next to the account avatar. Keeping it here means every
+    // screen reads the same entitlement state as Lumiere itself.
+    credits: () => api('/api/credits'),
     updateProfile: (nameOrPayload) => {
       const payload = typeof nameOrPayload === 'string' ? { name: nameOrPayload } : { ...(nameOrPayload || {}) };
       // Profile onboarding only edits gender and birthday. Ignore a blank name
@@ -68,6 +72,19 @@
       if (tracking.sessionId) payload.sessionId = tracking.sessionId;
       if (tracking.attribution) payload.attribution = tracking.attribution;
       const result = await api('/api/checkout', {
+        method: 'POST',
+        body: JSON.stringify(payload),
+      });
+      return { ...result, checkoutUrl: checkoutUrlForLanguage(result.checkoutUrl, nextLanguage) };
+    },
+    switchPlan: async (plan, language = null) => {
+      const nextLanguage = normalizeLanguage(language || document.documentElement.lang || window.filmscriptLanguage?.get?.());
+      const tracking = window.filmscriptFunnel?.context?.() || {};
+      const payload = { plan, language: nextLanguage, confirm: true };
+      if (tracking.visitorId) payload.visitorId = tracking.visitorId;
+      if (tracking.sessionId) payload.sessionId = tracking.sessionId;
+      if (tracking.attribution) payload.attribution = tracking.attribution;
+      const result = await api('/api/subscription/switch', {
         method: 'POST',
         body: JSON.stringify(payload),
       });

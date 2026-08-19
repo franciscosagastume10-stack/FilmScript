@@ -37,9 +37,14 @@
     try { window.localStorage.setItem(cacheKey(scriptId), JSON.stringify(calendar)); } catch { /* Storage can be unavailable in private browsing. */ }
     return { ok: true, calendar, storage: "local" };
   };
-  const missingCalendarRoute = (error) => Number(error?.status) === 404;
+  // Some deployed API revisions expose the production workspace but reject
+  // the newer Calendar PATCH route with 405. Treat both responses as an
+  // unavailable optional route: the calendar stays fully usable and is saved
+  // on the device until account-backed Calendar persistence is available.
+  const missingCalendarRoute = (error) => [404, 405].includes(Number(error?.status));
 
-  // Older production API releases did not expose the dedicated Calendar route.
+  // Older production API releases did not expose the dedicated Calendar route
+  // (or only allowed GET on it).
   // Keep the production workspace usable (and never surface a dead-end 404)
   // while that service is being rolled forward. As soon as the route exists,
   // every request automatically returns to account-backed persistence.

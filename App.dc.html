@@ -3,24 +3,32 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="icon" href="./assets/filmscript-favicon.svg?v=20260813" type="image/svg+xml">
+<link rel="shortcut icon" href="./assets/filmscript-favicon.svg?v=20260813" type="image/svg+xml">
+<!-- Vercel Web Analytics: production page views and navigation. -->
+<script defer src="/_vercel/insights/script.js"></script>
 <style>html[data-filmscript-auth-pending] body { visibility: hidden; pointer-events: none; }</style>
 <script>document.documentElement.setAttribute('data-filmscript-auth-pending', '');</script>
 <script src="./support.js"></script>
+<script defer src="./seamless-navigation.js?v=20260728-route1"></script>
 <script src="./runtime-config.js?v=20260710-auth1"></script>
-<script src="./funnel-tracking.js?v=20260716-erp1"></script>
-<script src="./scripts-access-guard.js?v=20260713-auth-guard1"></script>
+<script defer src="./funnel-tracking.js?v=20260716-erp1"></script>
+<script defer src="./scripts-access-guard.js?v=20260713-auth-guard1"></script>
 <script src="./theme-preference.js?v=20260712-theme1"></script>
-<script src="./language-preference.js?v=20260716-language-choice1"></script>
-<script src="./ui-sounds.js?v=20260713-profile-option1"></script>
-<script src="./billing-client.js?v=20260716-profile-safe1"></script>
-<script src="./profile-onboarding.js?v=20260727-profile3"></script>
-<script src="./lumiere-client.js?v=20260720-openrouter1"></script>
-<script src="./lumiere-preferences.js?v=20260713-taste1"></script>
-<script src="./pdf-import.js"></script>
-<script src="./scripts-client.js?v=20260710-auth1"></script>
-<script src="./preproduction-client.js?v=20260713-language1"></script>
+<script defer src="./language-preference.js?v=20260731-plan-credits4"></script>
+<script defer src="./ui-sounds.js?v=20260728-calendar-complete1"></script>
+<script defer src="./billing-client.js?v=20260716-profile-safe1"></script>
+<script defer src="./credit-indicator.js?v=20260801-credit-panel1"></script>
+<script defer src="./profile-onboarding.js?v=20260727-profile3"></script>
+<script defer src="./lumiere-client.js?v=20260731-plan-entitlements2"></script>
+<script defer src="./lumiere-preferences.js?v=20260713-taste1"></script>
+<script defer src="./pdf-import.js"></script>
+<script defer src="./scripts-client.js?v=20260710-auth1"></script>
+<script defer src="./preproduction-client.js?v=20260731-plan-entitlements2"></script>
+<script defer src="./platform-client.js?v=20260819-platform5"></script>
 <link rel="stylesheet" href="./auth-modal.css?v=20260712-auth2">
 <link rel="stylesheet" href="./filmscript-controls.css?v=20260716-typography1">
+<link rel="stylesheet" href="./platform-ui.css?v=20260819-platform5">
 </head>
 <body>
 <x-dc>
@@ -31,7 +39,17 @@
 <style>
   * { box-sizing: border-box; }
   html, body { margin: 0; padding: 0; }
-  body { font-family: "Helvetica Neue", Helvetica, Arial, sans-serif; }
+  @view-transition { navigation: auto; }
+  @keyframes fs-route-out { to { opacity: 0; transform: scale(.997); } }
+  @keyframes fs-route-in { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: none; } }
+  ::view-transition-old(root) { animation: fs-route-out .14s ease both; }
+  ::view-transition-new(root) { animation: fs-route-in .24s cubic-bezier(.2,.8,.2,1) both; }
+  html.fs-route-leave body { opacity: 0; transition: opacity .13s ease; }
+  html.fs-route-enter body { opacity: 0; }
+  html.fs-route-enter.fs-route-enter-active body { opacity: 1; transition: opacity .22s ease; }
+  @media (prefers-reduced-motion: reduce) { ::view-transition-old(root), ::view-transition-new(root) { animation: none; } }
+  :root { --fs-font-text: "SF Pro Text", -apple-system, BlinkMacSystemFont, "Helvetica Neue", Arial, sans-serif; --fs-font-display: "SF Pro Display", "SF Pro Text", -apple-system, BlinkMacSystemFont, "Helvetica Neue", Arial, sans-serif; }
+  body { font-family: var(--fs-font-text); }
   .fs-brand-mark { min-width: 118px; height: 32px; flex: 0 0 118px; display: flex; align-items: center; cursor: pointer; }
   .fs-brand-word { display: block; color: #FFFEF9; font-family: "SF Pro Display", "SF Pro Text", -apple-system, BlinkMacSystemFont, "Helvetica Neue", Arial, sans-serif; font-size: 21px; font-weight: 900; line-height: 1; letter-spacing: -1px; opacity: .98; transition: opacity .16s ease, transform .16s ease; }
   .fs-brand-mark:hover .fs-brand-word { opacity: .78; transform: translateY(-1px); }
@@ -39,6 +57,19 @@
   @keyframes fs-dot { 0%,60%,100% { opacity: .25; transform: translateY(0); } 30% { opacity: 1; transform: translateY(-2px); } }
   @keyframes fs-glow { 0%,100% { box-shadow: 0 0 0 0 rgba(239,159,39,.55); } 50% { box-shadow: 0 0 0 4px rgba(239,159,39,0); } }
   @keyframes fs-rise { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: translateY(0); } }
+  @keyframes fs-script-loader-page { 0%, 100% { transform: translateY(0) rotate(0deg); } 50% { transform: translateY(-7px) rotate(-2deg); } }
+  @keyframes fs-script-loader-shimmer { 0% { transform: translateX(-120%); } 100% { transform: translateX(120%); } }
+  .fs-scripts-loading { min-height: 255px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 10px; border: 1px solid var(--soft, #e4e2d8); border-radius: 22px; background: var(--surface, #FFFEF9); overflow: hidden; position: relative; animation: fs-rise .35s ease both; }
+  .fs-scripts-loading::after { content: ''; position: absolute; inset: 0; width: 45%; background: linear-gradient(90deg, transparent, rgba(194, 126, 22, .10), transparent); animation: fs-script-loader-shimmer 1.65s ease-in-out infinite; }
+  .fs-scripts-loading-pages { height: 54px; width: 68px; position: relative; z-index: 1; }
+  .fs-scripts-loading-pages span { position: absolute; width: 34px; height: 43px; border: 1.5px solid #b67a22; border-radius: 5px; background: #fffdf7; box-shadow: 0 7px 14px rgba(65, 44, 20, .08); animation: fs-script-loader-page 1.15s ease-in-out infinite; }
+  .fs-scripts-loading-pages span:nth-child(1) { left: 7px; top: 7px; opacity: .62; animation-delay: -.22s; }
+  .fs-scripts-loading-pages span:nth-child(2) { left: 16px; top: 3px; opacity: .8; animation-delay: -.11s; }
+  .fs-scripts-loading-pages span:nth-child(3) { left: 25px; top: 0; }
+  .fs-scripts-loading-title { position: relative; z-index: 1; font-size: 15px; font-weight: 700; color: var(--ink, #2C2C2A); }
+  .fs-scripts-loading-copy { position: relative; z-index: 1; font-size: 12px; color: var(--muted, #888780); }
+  .fs-scripts-load-error { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 15px 16px; border: 1px solid rgba(169, 82, 67, .25); background: rgba(169, 82, 67, .08); border-radius: 16px; color: var(--ink, #2C2C2A); font-size: 13px; }
+  .fs-scripts-load-error button { border: 1px solid var(--ink, #2C2C2A); background: transparent; color: var(--ink, #2C2C2A); border-radius: 999px; padding: 7px 11px; cursor: pointer; font: inherit; font-weight: 700; white-space: nowrap; }
   @keyframes fs-pop { from { opacity: 0; transform: translateY(8px) scale(.97); } to { opacity: 1; transform: translateY(0) scale(1); } }
   @keyframes fs-fade { from { opacity: 0; } to { opacity: 1; } }
   @keyframes fs-sheet { from { opacity: 0; transform: translateY(14px) scale(.985); } to { opacity: 1; transform: translateY(0) scale(1); } }
@@ -158,6 +189,24 @@
     font-family: "Helvetica Neue", Helvetica, Arial, sans-serif;
     filter: none !important;
   }
+  @media (max-width: 700px) {
+    .fs-scripts-dashboard { position: relative; isolation: isolate; padding: 30px 20px 44px !important; background-size: cover !important; background-position: center !important; background-attachment: scroll !important; }
+    .fs-scripts-dashboard::before { content: ""; position: absolute; inset: 0; z-index: 0; pointer-events: none; background: color-mix(in srgb, var(--bg, #F5F0E8) 87%, transparent); }
+    .fs-scripts-dashboard > * { position: relative; z-index: 1; }
+    .fs-scripts-hero { min-height: 0 !important; padding-right: 0 !important; }
+    .fs-scripts-hero [aria-label] { font-size: clamp(31px, 10vw, 39px) !important; max-width: 290px; }
+    .fs-scripts-hero > div[style*="font-size: 14px"] { max-width: 300px !important; font-size: 14px !important; }
+    .fs-scripts-actions { position: static !important; display: flex; flex-wrap: wrap; gap: 9px; margin-top: 23px; }
+    .fs-scripts-actions .fs-scripts-action { position: static !important; width: auto !important; height: 42px !important; min-height: 42px !important; flex: 1 1 142px; padding: 0 14px !important; }
+    .fs-scripts-actions .fs-scripts-action > div { height: 42px !important; }
+    .fs-scripts-import-note { position: static !important; width: 100% !important; margin-top: 2px; text-align: left !important; }
+    .fs-scripts-list-head { align-items: flex-start !important; flex-direction: column; gap: 12px !important; margin-bottom: 16px !important; }
+    .fs-scripts-search { width: 100% !important; }
+    .fs-scripts-grid { grid-template-columns: repeat(2, minmax(0, 1fr)) !important; gap: 12px !important; }
+    .fs-scripts-grid .fs-script-card { min-height: 178px !important; padding: 14px !important; }
+    .fs-scripts-grid .fs-script-card-title { font-size: 14px !important; }
+    .fs-scripts-grid .fs-script-card-meta { font-size: 10.5px !important; }
+  }
   @keyframes fs-pulse { 0% { transform: scale(.7); opacity: .28; } 100% { transform: scale(1.9); opacity: 0; } }
   @keyframes fs-paywall-in { 0% { opacity: 0; transform: translateY(10px) scale(.97); } 100% { opacity: 1; transform: translateY(0) scale(1); } }
   .fs-paywall-in { animation: fs-paywall-in .45s cubic-bezier(.2,.9,.3,1.2) both; }
@@ -184,6 +233,11 @@
   .fs-account-menu::before { content: ""; position: absolute; inset: 0; z-index: 0; pointer-events: none; background: var(--surface, #FFFEF9); border: 1.4px solid var(--line, #2C2C2A); border-radius: 14px 13px 15px 12px; filter: url(#fs-sketch); }
   .fs-account-menu > * { position: relative; z-index: 1; }
   .fs-profile-sheet { animation: fs-sheet .34s cubic-bezier(.2,.8,.25,1.08) both; }
+  [data-testid="account-details-panel"] { font-family: var(--fs-font-text); -webkit-font-smoothing: antialiased; text-rendering: optimizeLegibility; }
+  [data-testid="account-details-panel"] * { font-family: inherit; }
+  [data-testid="account-details-panel"] [style*="font-size: 20px"] { font-family: var(--fs-font-display); font-weight: 800 !important; letter-spacing: -.45px; }
+  [data-testid="account-details-panel"] [style*="font-size: 10px"] { font-weight: 700; letter-spacing: 1.1px !important; }
+  [data-testid="account-details-panel"] input { font-weight: 500; letter-spacing: -.08px; }
   .fs-profile-sheet > div:first-child > div:first-child { animation: fs-avatar 3.8s ease-in-out infinite; }
   .fs-profile-sheet [style*="border: 1px solid var(--soft"] { transition: transform .18s ease, border-color .18s ease, background-color .18s ease; }
   .fs-profile-sheet [style*="border: 1px solid var(--soft"]:hover { transform: translateX(3px); border-color: var(--accent, #BA7517) !important; background: rgba(186,117,23,.035); }
@@ -202,7 +256,7 @@
   <svg width="0" height="0" style="position: absolute;"><defs><filter id="fs-sketch" x="-6%" y="-22%" width="112%" height="144%"><feTurbulence type="fractalNoise" baseFrequency="0.014" numOctaves="2" seed="7" result="n"></feTurbulence><feDisplacementMap in="SourceGraphic" in2="n" scale="2.6" xChannelSelector="R" yChannelSelector="G"></feDisplacementMap></filter></defs></svg>
 
   <!-- ============ TOPBAR ============ -->
-  <div style="height: 44px; flex: 0 0 44px; background: var(--chrome, #2C2C2A); display: flex; align-items: center; padding: 0 16px; gap: 16px; user-select: none;">
+  <div class="fs-app-topbar" style="height: 44px; flex: 0 0 44px; background: var(--chrome, #2C2C2A); display: flex; align-items: center; padding: 0 16px; gap: 16px; user-select: none;">
     <div class="fs-brand-mark" data-filmscript-brand onClick="{{ goScripts }}" role="link" aria-label="FilmScript, go to scripts"><span class="fs-brand-word">FilmScript</span></div>
 
     <div style="flex: 1;"></div>
@@ -230,11 +284,11 @@
             <div class="fs-menuitem" onClick="{{ goScripts }}">My scripts</div>
             <div class="fs-menuitem" onClick="{{ openAccountDetails }}">Account details</div>
             <div class="fs-menuitem" data-filmscript-open-profile>Personal profile</div>
-            <sc-if value="{{ isLumierePlan }}" hint-placeholder-val="{{ false }}"><div class="fs-menuitem" onClick="{{ openLumierePreferences }}">Personalize Lumiere</div></sc-if>
+            <sc-if value="{{ hasPaidPlan }}" hint-placeholder-val="{{ false }}"><div class="fs-menuitem" onClick="{{ openLumierePreferences }}">Personalize Lumiere</div></sc-if>
             <div class="fs-menuitem" onClick="{{ openTerms }}">Terms & conditions</div>
             <div style="height: 1px; background: var(--soft, #e4e2d8); margin: 6px 0;"></div>
-            <sc-if value="{{ isBasicPlan }}" hint-placeholder-val="{{ false }}">
-              <div class="fs-menuitem" onClick="{{ upgradeToLumiere }}">Upgrade to FilmScript Pro</div>
+            <sc-if value="{{ isCreatorPlan }}" hint-placeholder-val="{{ false }}">
+              <div class="fs-menuitem" onClick="{{ upgradeToFull }}">Upgrade to Full</div>
             </sc-if>
             <sc-if value="{{ noPlan }}" hint-placeholder-val="{{ true }}">
               <div class="fs-menuitem" onClick="{{ goLandingFromAccount }}">Choose a plan</div>
@@ -266,7 +320,7 @@
 
   <sc-if value="{{ accountDetailsOpen }}" hint-placeholder-val="{{ false }}">
   <div data-testid="account-details-overlay" onClick="{{ closeAccountDetails }}" style="position: fixed; inset: 0; z-index: 1200; isolation: isolate; pointer-events: auto; background: rgba(35,35,34,.28); display: flex; align-items: center; justify-content: center; padding: 24px;">
-    <div data-testid="account-details-panel" class="fs-profile-sheet" onClick="{{ stop }}" style="position: relative; z-index: 1; width: min(520px, 100%); max-height: 88vh; overflow-y: auto; background: var(--surface, #FFFEF9); border: 1.5px solid var(--line, #2C2C2A); border-radius: 20px; padding: 26px; filter: url(#fs-sketch); box-shadow: 0 18px 55px rgba(35,35,34,.2);">
+    <div data-testid="account-details-panel" class="fs-profile-sheet" onClick="{{ stop }}" style="position: relative; z-index: 1; width: min(520px, 100%); max-height: 88vh; overflow-y: auto; background: var(--surface, #FFFEF9); border: 1.5px solid var(--line, #2C2C2A); border-radius: 20px; padding: 26px; box-shadow: 0 18px 55px rgba(35,35,34,.2);">
       <div style="display: flex; align-items: center; gap: 14px;"><div style="width: 46px; height: 46px; border-radius: 50%; background: var(--accent, #BA7517); color: #FFFEF9; display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 17px;">{{ userInitial }}</div><div style="flex: 1;"><div style="font-size: 20px; font-weight: 700; color: var(--ink, #2C2C2A);">Your account</div><div style="font-size: 12.5px; color: var(--muted, #888780); margin-top: 4px;">Connected securely with Google.</div></div><div onClick="{{ closeAccountDetails }}" style="font-size: 22px; color: var(--muted, #888780); cursor: pointer;">×</div></div>
       <div style="margin-top: 24px; display: grid; gap: 9px;"><div style="padding: 14px; border: 1px solid var(--soft, #E4E2D8); border-radius: 13px;"><div style="display: flex; justify-content: space-between;"><div style="font-size: 10px; text-transform: uppercase; letter-spacing: 1.2px; color: var(--muted, #888780);">Name</div><div onClick="{{ saveProfileName }}" style="font-size: 11px; color: var(--accent, #BA7517); font-weight: 700; cursor: pointer;">{{ profileSaveLabel }}</div></div><input value="{{ profileNameDraft }}" onInput="{{ onProfileName }}" aria-label="Name" style="width: 100%; margin-top: 7px; padding: 0; border: none; outline: none; background: transparent; color: var(--ink, #2C2C2A); font-size: 14px; font-family: inherit;"></div><div style="padding: 14px; border: 1px solid var(--soft, #E4E2D8); border-radius: 13px;"><div style="font-size: 10px; text-transform: uppercase; letter-spacing: 1.2px; color: var(--muted, #888780);">Email</div><div style="margin-top: 5px; font-size: 14px; color: var(--ink, #2C2C2A); word-break: break-word;">{{ userEmail }}</div></div></div>
       <button type="button" class="fs-profile-lumiere" onClick="{{ openLumierePreferences }}"><span style="width: 34px; height: 34px; flex: 0 0 34px; display: grid; place-items: center; border-radius: 10px 11px 9px 10px; color: var(--accent, #BA7517); background: rgba(186,117,23,.1);"><svg viewBox="0 0 24 24" style="width: 18px; height: 18px;" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3.2l.8 2.1 2.2.7 1.9-1.1 1.7 1.7-1.1 2 .6 2.1 2.2.8-.1 2.3-2.2.7-.7 2.2 1.1 1.9-1.7 1.7-1.9-1.1-2.2.6-.8 2.2-2.3-.1-.7-2.2-2.1-.7-2 1.1-1.7-1.7 1.1-1.9-.6-2.2-2.2-.8.1-2.3 2.2-.7.7-2.1-1.1-2 1.7-1.7 2 1.1 2.1-.7.8-2.1z"></path><circle cx="12" cy="12" r="3"></circle></svg></span><span style="min-width: 0; flex: 1;"><span style="display: block; font-size: 13px; font-weight: 650;">Personalize Lumiere</span><span style="display: block; margin-top: 3px; color: var(--muted, #888780); font-size: 11.5px; line-height: 1.4;">Directors, films and the kind of feedback that serves your voice.</span></span><span aria-hidden="true" style="color: var(--accent, #BA7517);">→</span></button>
@@ -275,18 +329,19 @@
     </div>
   </div>
   </sc-if>
-  <sc-if value="{{ termsOpen }}" hint-placeholder-val="{{ false }}"><div onClick="{{ closeTerms }}" style="position: fixed; inset: 0; z-index: 80; background: rgba(35,35,34,.28); display: flex; align-items: center; justify-content: center; padding: 24px;"><div onClick="{{ stop }}" style="width: min(620px, 100%); max-height: 88vh; overflow-y: auto; background: var(--surface, #FFFEF9); border: 1.5px solid var(--line, #2C2C2A); border-radius: 20px; padding: 30px; filter: url(#fs-sketch);"><div style="display: flex; justify-content: space-between;"><div><div style="font-size: 10px; letter-spacing: 1.8px; text-transform: uppercase; color: var(--accent, #BA7517); font-weight: 700;">FilmScript</div><div style="font-size: 25px; font-weight: 700; color: var(--ink, #2C2C2A); margin-top: 7px;">Terms & conditions</div></div><div onClick="{{ closeTerms }}" style="font-size: 22px; color: var(--muted, #888780); cursor: pointer;">×</div></div><div style="margin-top: 24px; display: grid; gap: 17px; color: var(--ink, #2C2C2A); font-size: 13.5px; line-height: 1.6;"><div><b>Your writing stays yours.</b><div style="color: var(--muted, #888780);">You retain ownership of scripts and notes created in FilmScript.</div></div><div><b>Lumiere is an assistant.</b><div style="color: var(--muted, #888780);">It offers suggestions and analysis. You decide what belongs in your work.</div></div><div><b>Lumiere credits and usage limits.</b><div style="color: var(--muted, #888780);">FilmScript Pro includes 100 Lumiere credits per monthly billing period. A rolling 8-hour session allows 20 credits and each week allows 60; both windows reset automatically. Credits reset with each monthly renewal, do not roll over, and have no cash value. When a window or the monthly allowance is reached, new Lumiere generations pause until the next reset; you can wait for its reset or purchase 80 extra credits for $5. Your scripts and existing production documents stay available. Free and Basic plans include no Lumiere credits.</div></div><div><b>Subscriptions.</b><div style="color: var(--muted, #888780);">Paid plans renew monthly through Recurrente and can be canceled from your account menu.</div></div><div><b>Fair use.</b><div style="color: var(--muted, #888780);">Use FilmScript only with material you have permission to use.</div></div></div><div style="margin-top: 26px; text-align: right;"><div onClick="{{ closeTerms }}" style="display: inline-block; padding: 10px 17px; border-radius: 10px; background: var(--ink, #2C2C2A); color: var(--surface, #FFFEF9); font-size: 13px; font-weight: 600; cursor: pointer;">I understand</div></div></div></div></sc-if>
+  <sc-if value="{{ termsOpen }}" hint-placeholder-val="{{ false }}"><div onClick="{{ closeTerms }}" style="position: fixed; inset: 0; z-index: 80; background: rgba(35,35,34,.28); display: flex; align-items: center; justify-content: center; padding: 24px;"><div onClick="{{ stop }}" style="width: min(620px, 100%); max-height: 88vh; overflow-y: auto; background: var(--surface, #FFFEF9); border: 1.5px solid var(--line, #2C2C2A); border-radius: 20px; padding: 30px; filter: url(#fs-sketch);"><div style="display: flex; justify-content: space-between;"><div><div style="font-size: 10px; letter-spacing: 1.8px; text-transform: uppercase; color: var(--accent, #BA7517); font-weight: 700;">FilmScript</div><div style="font-size: 25px; font-weight: 700; color: var(--ink, #2C2C2A); margin-top: 7px;">Terms & conditions</div></div><div onClick="{{ closeTerms }}" style="font-size: 22px; color: var(--muted, #888780); cursor: pointer;">×</div></div><div style="margin-top: 24px; display: grid; gap: 17px; color: var(--ink, #2C2C2A); font-size: 13.5px; line-height: 1.6;"><div><b>Your writing stays yours.</b><div style="color: var(--muted, #888780);">You retain ownership of scripts and notes created in FilmScript.</div></div><div><b>Lumiere is an assistant.</b><div style="color: var(--muted, #888780);">It offers suggestions and analysis. You decide what belongs in your work.</div></div><div><b>Credits and limits.</b><div style="color: var(--muted, #888780);">Free includes a small set of Lumiere prompts, plus one AI script analysis, one AI breakdown, and one AI storyboard or shot list per account. Those grants are not restored by deleting a script. Creator includes AI text tools and 100 image credits every monthly billing cycle. Full includes 1,000 image credits every monthly billing cycle; every AI image in Imagine, Boards, or Shot List uses 3 credits. Unused image credits do not roll over and have no cash value.</div></div><div><b>Subscriptions.</b><div style="color: var(--muted, #888780);">Creator and Full renew monthly through Recurrente and can be canceled from your account menu.</div></div><div><b>Fair use.</b><div style="color: var(--muted, #888780);">Use FilmScript only with material you have permission to use.</div></div></div><div style="margin-top: 26px; text-align: right;"><div onClick="{{ closeTerms }}" style="display: inline-block; padding: 10px 17px; border-radius: 10px; background: var(--ink, #2C2C2A); color: var(--surface, #FFFEF9); font-size: 13px; font-weight: 600; cursor: pointer;">I understand</div></div></div></div></sc-if>
 
   <!-- ============ SCRIPTS DASHBOARD (horizontal, half page) ============ -->
   <sc-if value="{{ isScripts }}" hint-placeholder-val="{{ true }}">
-  <div class="fs-scripts-background" onMouseMove="{{ onScriptsPointer }}" onMouseLeave="{{ onScriptsPointerLeave }}" style="--fs-parallax-x: {{ parallaxX }}px; --fs-parallax-y: {{ parallaxY }}px; flex: 1; min-height: 0; display: flex; flex-direction: column; overflow-y: auto; padding: 48px 56px 64px; background-color: var(--bg, #F5F0E8); background-image: {{ scriptsBackgroundImage }}; background-size: cover; background-position: center; background-attachment: fixed; transition: background-color .3s ease, background-image .3s ease;">
+  <div class="fs-scripts-background fs-scripts-dashboard" onMouseMove="{{ onScriptsPointer }}" onMouseLeave="{{ onScriptsPointerLeave }}" style="--fs-parallax-x: {{ parallaxX }}px; --fs-parallax-y: {{ parallaxY }}px; flex: 1; min-height: 0; display: flex; flex-direction: column; overflow-y: auto; padding: 48px 56px 64px; background-color: var(--bg, #F5F0E8); background-image: {{ scriptsBackgroundImage }}; background-size: cover; background-position: center; background-attachment: fixed; transition: background-color .3s ease, background-image .3s ease;">
 
     <!-- left pane: handwritten greeting + new script -->
-    <div style="position: relative; width: min(100%, 1220px); margin: 0 auto; min-height: 155px; padding-right: 386px;">
+    <div class="fs-scripts-hero" style="position: relative; width: min(100%, 1220px); margin: 0 auto; min-height: 155px; padding-right: 386px;">
       <div style="font-size: 10px; letter-spacing: 1.8px; text-transform: uppercase; color: var(--accent, #BA7517); font-weight: 700; margin-bottom: 13px;">Writing desk</div>
       <div aria-label="{{ greeting }}" style="font-family: var(--fs-font-display); font-weight: 900; font-size: clamp(31px, 3.25vw, 46px); line-height: 1.12; letter-spacing: -.75px; color: var(--ink, #2C2C2A); animation: fs-rise .32s ease both;"><span>{{ greetingTyped }}</span><span class="fs-type-caret" aria-hidden="true">|</span></div>
       <div style="font-size: 14px; color: var(--muted, #888780); margin-top: 13px; max-width: 490px; line-height: 1.55; animation: fs-rise .5s ease both .09s;">{{ homeSub }}</div>
-      <button type="button" onClick="{{ newScript }}" class="fs-double-outline fs-outline-control fs-outline-control--primary" style="position: absolute; right: 0; top: 28px; width: 176px; height: 44px; animation: fs-rise .5s ease both .16s;">
+      <div class="fs-scripts-actions" style="position: absolute; right: 0; top: 28px; width: 366px;">
+      <button type="button" onClick="{{ newScript }}" class="fs-double-outline fs-outline-control fs-outline-control--primary fs-scripts-action" style="position: absolute; right: 0; top: 0; width: 176px; height: 44px; animation: fs-rise .5s ease both .16s;">
         <div style="position: relative; height: 100%; display: flex; align-items: center; justify-content: center; gap: 9px; color: #1A1A1A;">
           <span style="position: relative; width: 15px; height: 15px;">
             <span style="position: absolute; top: 50%; left: 0; width: 15px; height: 1.6px; background: currentColor; transform: translateY(-50%);"></span>
@@ -295,14 +350,15 @@
           <span style="font-size: 13.5px; font-weight: 600;">New script</span>
         </div>
       </button>
-      <button type="button" onClick="{{ importScript }}" class="fs-double-outline fs-outline-control fs-outline-control--secondary" style="--fs-frame-bg: {{ importButtonBackground }}; position: absolute; right: 190px; top: 28px; width: 176px; height: 44px; animation: fs-rise .5s ease both .22s;">
+      <button type="button" onClick="{{ importScript }}" class="fs-double-outline fs-outline-control fs-outline-control--secondary fs-scripts-action" style="--fs-frame-bg: {{ importButtonBackground }}; position: absolute; left: 0; top: 0; width: 176px; height: 44px; animation: fs-rise .5s ease both .22s;">
         <div style="position: relative; height: 100%; display: flex; align-items: center; justify-content: center; gap: 9px; color: var(--ink, #2C2C2A);">
           <svg viewBox="0 0 20 20" style="width: 16px; height: 16px;" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M10 3.4 Q10.2 7.5 10 12.2 M6.8 9.2 Q9 12.3 10 12.4 Q11 12.3 13.2 9.2 M4 13.6 L4 15.8 Q4 16.6 4.8 16.6 L15.2 16.6 Q16 16.6 16 15.8 L16 13.6"></path></svg>
           <span style="font-size: 13.5px; font-weight: 600;">Import script</span>
         </div>
       </button>
+      </div>
       <sc-if value="{{ importNoteOn }}" hint-placeholder-val="false">
-        <div role="status" aria-live="polite" style="position: absolute; right: 0; top: 86px; width: 366px; font-size: 11.5px; color: var(--muted, #888780); line-height: 1.45; text-align: right; animation: fs-rise .5s ease both .28s;">{{ importNote }}</div>
+        <div role="status" aria-live="polite" class="fs-scripts-import-note" style="position: absolute; right: 0; top: 86px; width: 366px; font-size: 11.5px; color: var(--muted, #888780); line-height: 1.45; text-align: right; animation: fs-rise .5s ease both .28s;">{{ importNote }}</div>
       </sc-if>
     </div>
 
@@ -311,15 +367,22 @@
 
     <!-- right pane: scripts list -->
     <div style="width: min(100%, 1220px); margin: 0 auto;">
-      <div style="display: flex; align-items: center; gap: 16px; margin-bottom: 18px; animation: fs-rise .5s ease both .1s;">
+      <div class="fs-scripts-list-head" style="display: flex; align-items: center; gap: 16px; margin-bottom: 18px; animation: fs-rise .5s ease both .1s;">
         <div style="flex: 1;"><div style="font-size: 24px; letter-spacing: -.55px; color: var(--ink, #2C2C2A); font-weight: 700;">Your scripts</div><div style="font-size: 12px; color: var(--muted, #888780); margin-top: 5px;">{{ scriptSummary }}</div></div>
-        <div style="width: 196px; display: flex; align-items: center; gap: 7px; padding: 7px 10px; border: 1.2px solid var(--soft, #e4e2d8); border-radius: 10px; background: var(--surface, #FFFEF9);">
+        <div class="fs-scripts-search" style="width: 196px; display: flex; align-items: center; gap: 7px; padding: 7px 10px; border: 1.2px solid var(--soft, #e4e2d8); border-radius: 10px; background: var(--surface, #FFFEF9);">
           <span style="font-size: 15px; color: var(--muted, #888780); line-height: 1;">⌕</span>
           <input value="{{ scriptsSearch }}" onInput="{{ onScriptsSearch }}" placeholder="Search scripts" aria-label="Search scripts" style="width: 100%; min-width: 0; border: none; outline: none; background: transparent; color: var(--ink, #2C2C2A); font: inherit; font-size: 12px;">
         </div>
       </div>
-      <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)); gap: 16px;">
-        <sc-for list="{{ cards }}" as="card" hint-placeholder-count="5">
+  <div class="fs-scripts-grid" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)); gap: 16px;">
+    <sc-if value="{{ showScriptsLoading }}" hint-placeholder-val="false">
+      <div class="fs-scripts-loading" style="grid-column: 1 / -1;" role="status" aria-live="polite">
+        <div class="fs-scripts-loading-pages" aria-hidden="true"><span></span><span></span><span></span></div>
+        <div class="fs-scripts-loading-title">Opening your writing desk</div>
+        <div class="fs-scripts-loading-copy">Syncing your scripts securely.</div>
+      </div>
+    </sc-if>
+    <sc-for list="{{ cards }}" as="card" hint-placeholder-count="5">
           <div onClick="{{ card.open }}" onKeyDown="{{ card.onKey }}" role="button" tabindex="0" aria-label="{{ card.openLabel }}" class="fsx-lift fs-script-card" style="position: relative; min-height: 224px; padding: 18px; cursor: pointer; border-radius: 15px; animation: fs-rise .35s ease both {{ card.delay }}; display: flex; flex-direction: column;">
             <div style="position: relative; width: 55px; flex: 0 0 55px;">
               <svg viewBox="0 0 62 84" style="width: 55px; height: auto; display: block;">
@@ -338,17 +401,27 @@
                 <sc-if value="{{ card.menuOpen }}" hint-placeholder-val="false">
                   <div class="fs-script-card-menu" style="position: absolute; z-index: 10; right: 0; top: 30px; width: 126px; padding: 6px; background: var(--surface, #FFFEF9); border: 1.3px solid var(--line, #2C2C2A); border-radius: 10px 9px 11px 8px; color: var(--ink, #2C2C2A); font-size: 12px; font-weight: 600; letter-spacing: 0; white-space: nowrap;">
                     <div onClick="{{ card.rename }}" style="padding: 6px 7px; border-radius: 6px; cursor: pointer;">Rename</div>
+                    <div onClick="{{ card.translate }}" style="padding: 6px 7px; border-radius: 6px; cursor: pointer;">Translate Script</div>
                     <div onClick="{{ card.remove }}" style="padding: 6px 7px; border-radius: 6px; cursor: pointer; color: #B33B32;">Delete script</div>
                   </div>
                 </sc-if>
               </div>
             </sc-if>
           </div>
-        </sc-for>
-        <sc-if value="{{ noSearchResults }}" hint-placeholder-val="false">
-          <div style="padding: 30px 6px; color: var(--muted, #888780); font-size: 13px;">No scripts match “{{ scriptsSearch }}”.</div>
-        </sc-if>
+    </sc-for>
+    <sc-if value="{{ scriptsLoadError }}" hint-placeholder-val="false">
+      <div class="fs-scripts-load-error" style="grid-column: 1 / -1;">
+        <span>{{ scriptsLoadError }}</span>
+        <button type="button" onClick="{{ retryScripts }}">Try again</button>
       </div>
+    </sc-if>
+    <sc-if value="{{ noSearchResults }}" hint-placeholder-val="false">
+      <div style="padding: 30px 6px; color: var(--muted, #888780); font-size: 13px;">No scripts match “{{ scriptsSearch }}”.</div>
+    </sc-if>
+    <sc-if value="{{ noScriptsYet }}" hint-placeholder-val="false">
+      <div style="grid-column: 1 / -1; padding: 30px 6px; color: var(--muted, #888780); font-size: 13px;">No scripts yet. Start a new page when you’re ready.</div>
+    </sc-if>
+  </div>
     </div>
   </div>
   </sc-if>
@@ -589,11 +662,11 @@
           <span style="position: absolute; inset: -10px; border-radius: 50%; background: var(--accent, #BA7517); opacity: .14; animation: fs-pulse 2.2s ease-out infinite;"></span>
           <svg viewBox="0 0 24 24" style="width: 100%; height: 100%; position: relative;" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="5.5" y="10.5" width="13" height="9" rx="2.4"></rect><path d="M8 10.5 V7.8 Q8 4.2 12 4.2 Q16 4.2 16 7.8 V10.5"></path></svg>
         </div>
-        <div style="font-size: 17px; font-weight: 700; color: var(--ink, #2C2C2A);">Lumiere requires FilmScript Pro</div>
+        <div style="font-size: 17px; font-weight: 700; color: var(--ink, #2C2C2A);">Lumiere requires FilmScript Creator</div>
         <div style="font-size: 13px; line-height: 1.55; color: var(--muted, #888780); max-width: 245px;">Your screenplay and existing production documents remain available to edit and export. An active plan is required only to generate new work with Lumiere.</div>
-        <div onClick="{{ openCheckoutLumiere }}" style="position: relative; margin-top: 6px; padding: 12px 20px; cursor: pointer;">
+        <div onClick="{{ openCheckoutCreator }}" style="position: relative; margin-top: 6px; padding: 12px 20px; cursor: pointer;">
           <svg viewBox="0 0 180 44" preserveAspectRatio="none" style="position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none;"><path d="{{ unlockBtnPath }}" style="fill: var(--accent, #BA7517); stroke: var(--accent, #BA7517);" stroke-width="1.6" stroke-linejoin="round"></path></svg>
-          <span style="position: relative; font-size: 13.5px; font-weight: 600; color: #FFFEF9;">View FilmScript Pro · $19.99 / month</span>
+          <span style="position: relative; font-size: 13.5px; font-weight: 600; color: #FFFEF9;">View Creator · $24.99 / month</span>
         </div>
         <div style="font-size: 10.5px; line-height: 1.45; color: var(--muted, #888780); max-width: 230px;">Canceling never deletes your scripts or existing production documents.</div>
       </div>
@@ -618,7 +691,7 @@
     <div style="max-width: 1160px; margin: 0 auto;">
       <div style="display: flex; align-items: flex-start; justify-content: space-between; gap: 24px; padding-bottom: 24px; border-bottom: 1px solid var(--soft, #e4e2d8);"><div><div style="font-size: 10px; font-weight: 700; letter-spacing: 1.6px; color: var(--accent, #BA7517); text-transform: uppercase;">Active screenplay</div><div style="font-size: 28px; font-weight: 700; color: var(--ink, #2C2C2A); margin-top: 8px;">{{ activeScriptTitle }}</div><div style="font-size: 13px; color: var(--muted, #888780); margin-top: 6px;">Breakdown, stripboard and shot lists stay connected to this script.</div></div><div onClick="{{ closePreproduction }}" style="font-size: 24px; color: var(--muted, #888780); cursor: pointer; padding: 5px 9px;">×</div></div>
       <div style="display: flex; gap: 8px; margin: 24px 0 32px;"><div onClick="{{ showBreakdown }}" style="padding: 10px 14px; border-radius: 9px; cursor: pointer; font-size: 13px; font-weight: 700; background: {{ breakdownTabBg }}; color: {{ breakdownTabColor }};">Breakdown</div><div onClick="{{ showStripboard }}" style="padding: 10px 14px; border-radius: 9px; cursor: pointer; font-size: 13px; font-weight: 700; background: {{ stripboardTabBg }}; color: {{ stripboardTabColor }};">Stripboard</div><div onClick="{{ showShots }}" style="padding: 10px 14px; border-radius: 9px; cursor: pointer; font-size: 13px; font-weight: 700; background: {{ shotsTabBg }}; color: {{ shotsTabColor }};">Shot lists</div></div>
-      <sc-if value="{{ preproAccessNotice }}" hint-placeholder-val="false"><div style="margin: -12px 0 24px; padding: 14px 16px; display: flex; align-items: center; gap: 14px; background: var(--surface, #FFFEF9); border: 1px solid var(--soft, #e4e2d8); border-radius: 13px 15px 12px 14px;"><span style="width: 8px; height: 8px; flex: 0 0 8px; border-radius: 50%; background: var(--accent, #BA7517); box-shadow: 0 0 0 5px rgba(186,117,23,.1);"></span><div style="flex: 1;"><div style="font-size: 13px; font-weight: 700; color: var(--ink, #2C2C2A);">Your existing production work stays yours.</div><div style="font-size: 11.5px; line-height: 1.55; color: var(--muted, #888780); margin-top: 3px;">Keep editing and exporting existing documents. FilmScript Pro is required only for new Lumiere generation.</div></div><button type="button" onClick="{{ openCheckoutLumiere }}" style="height: 34px; padding: 0 12px; border: 1px solid var(--soft, #e4e2d8); border-radius: 9px; background: transparent; color: var(--ink, #2C2C2A); font-family: inherit; font-size: 11px; font-weight: 650; cursor: pointer;">View FilmScript Pro</button></div></sc-if>
+      <sc-if value="{{ preproAccessNotice }}" hint-placeholder-val="false"><div style="margin: -12px 0 24px; padding: 14px 16px; display: flex; align-items: center; gap: 14px; background: var(--surface, #FFFEF9); border: 1px solid var(--soft, #e4e2d8); border-radius: 13px 15px 12px 14px;"><span style="width: 8px; height: 8px; flex: 0 0 8px; border-radius: 50%; background: var(--accent, #BA7517); box-shadow: 0 0 0 5px rgba(186,117,23,.1);"></span><div style="flex: 1;"><div style="font-size: 13px; font-weight: 700; color: var(--ink, #2C2C2A);">Your existing production work stays yours.</div><div style="font-size: 11.5px; line-height: 1.55; color: var(--muted, #888780); margin-top: 3px;">Keep editing and exporting existing documents. Creator unlocks ongoing Lumiere text generation.</div></div><button type="button" onClick="{{ openCheckoutCreator }}" style="height: 34px; padding: 0 12px; border: 1px solid var(--soft, #e4e2d8); border-radius: 9px; background: transparent; color: var(--ink, #2C2C2A); font-family: inherit; font-size: 11px; font-weight: 650; cursor: pointer;">View Creator</button></div></sc-if>
       <sc-if value="{{ preproLoading }}" hint-placeholder-val="false"><div style="padding: 54px; text-align: center; color: var(--muted, #888780);">Loading production plan…</div></sc-if>
       <sc-if value="{{ preproEmpty }}" hint-placeholder-val="false"><div style="max-width: 600px; margin: 72px auto; text-align: center; padding: 42px; background: var(--surface, #FFFEF9); border: 1.4px solid var(--line, #2C2C2A); border-radius: 16px; filter: url(#fs-sketch);"><div style="font-size: 26px; font-weight: 700; color: var(--ink, #2C2C2A);">{{ preproEmptyTitle }}</div><div style="font-size: 14px; line-height: 1.6; color: var(--muted, #888780); margin: 14px auto 24px; max-width: 480px;">{{ preproEmptyText }}</div><div onClick="{{ preproPrimaryAction }}" style="display: inline-block; padding: 12px 17px; background: var(--accent, #BA7517); border-radius: 10px; color: #1A1A1A; font-size: 13px; font-weight: 700; cursor: pointer;">{{ preproEmptyAction }}</div></div></sc-if>
       <sc-if value="{{ preproProgress }}" hint-placeholder-val="false"><div style="margin-bottom: 22px; padding: 13px 15px; background: var(--surface, #FFFEF9); border: 1px solid var(--soft, #e4e2d8); border-radius: 12px; color: var(--ink, #2C2C2A); font-size: 13px;"><strong>{{ preproMessage }}</strong><span style="color: var(--muted, #888780);"> · {{ preproCompleted }} of {{ preproTotal }}</span></div></sc-if>
@@ -716,6 +789,7 @@ class Component extends DCLogic {
     input: '',
     loading: false,
     plan: null,
+    billingPlan: null,
     pendingPlan: null,
     checkoutOpen: false,
     checkoutPlan: null,
@@ -727,8 +801,12 @@ class Component extends DCLogic {
     profileNameDraft: '',
     profileSaving: false,
     profileSaved: false,
-    importedScripts: [],
-    scriptsSearch: '',
+    entitlements: null,
+  importedScripts: [],
+  scriptsSearch: '',
+  scriptsLoading: true,
+  scriptsLoaded: false,
+  scriptsLoadError: '',
     parallaxX: 0,
     parallaxY: 0,
     scriptMenuId: null,
@@ -752,7 +830,14 @@ class Component extends DCLogic {
 
   async componentDidMount() {
     const scriptsAccessGranted = await window.filmscriptScriptsAccess?.ready;
-    if (!scriptsAccessGranted) return;
+    if (scriptsAccessGranted === false) {
+      this.setState({
+        scriptsLoading: false,
+        scriptsLoaded: true,
+        scriptsLoadError: 'Sign in to sync your scripts.'
+      });
+      return;
+    }
     if (this.state.screen === 'editor') { window.location.replace('Editor v5.dc.html'); return; }
     window.filmscriptSounds?.preload('profile');
     window.filmscriptSounds?.preload('scriptOpen');
@@ -760,12 +845,17 @@ class Component extends DCLogic {
     window.filmscriptSounds?.preload('lightModeOn');
     const params = new URLSearchParams(window.location.search);
     this._accountReturnTo = params.get('returnTo') || '';
-    this._refreshBilling(params.get('payment') === 'success', params.get('checkout_id')).then((me) => {
-      if (me?.authenticated && params.get('profile') === '1') this.setState({ accountDetailsOpen: true });
-    });
-    this._loadScripts();
+    // Complete the account refresh before querying user-owned scripts.  On an OAuth
+    // return this avoids racing the new session cookie / identity hydration.
+    const me = await this._refreshBilling(params.get('payment') === 'success', params.get('checkout_id'));
+    if (me?.authenticated && params.get('profile') === '1') this.setState({ accountDetailsOpen: true });
+    await this._loadScripts({ retries: 5 });
     this._typeGreeting();
-    this._proRequiredHandler = () => this._requireLumierePlan();
+    this._proRequiredHandler = (event) => {
+      const detail = event?.detail || {};
+      if (detail.checkoutPlan === 'full') return this._startCheckout('full');
+      return this._requireLumierePlan(detail.message);
+    };
     this._languageHandler = () => this._typeGreeting();
     window.addEventListener('filmscript:pro-required', this._proRequiredHandler);
     window.addEventListener('filmscript:language-change', this._languageHandler);
@@ -817,25 +907,94 @@ class Component extends DCLogic {
     if (pending && window.filmscriptScripts) window.filmscriptScripts.saveChat(pending.scriptId, pending.chat).catch(() => {});
   }
 
-  async _loadScripts() {
-    try { this.setState({ importedScripts: (await window.filmscriptScripts.list()).scripts || [] }); }
-    catch (e) { if (e?.status === 401) this.setState({ authOpen: true, importedScripts: [] }); }
+  async _waitForScriptsClient(timeout = 2200) {
+    if (window.filmscriptScripts?.list) return true;
+    const startedAt = Date.now();
+    while (Date.now() - startedAt < timeout) {
+      await new Promise((resolve) => window.setTimeout(resolve, 40));
+      if (window.filmscriptScripts?.list) return true;
+    }
+    return false;
+  }
+
+  async _loadScripts({ retries = 2 } = {}) {
+    this.setState({ scriptsLoading: true, scriptsLoaded: false, scriptsLoadError: '' });
+    const clientReady = await this._waitForScriptsClient();
+    if (!clientReady) {
+      this.setState({
+        scriptsLoading: false,
+        scriptsLoaded: true,
+        scriptsLoadError: 'Your scripts are taking longer than expected. Please try again.'
+      });
+      return false;
+    }
+
+    for (let attempt = 0; attempt <= retries; attempt += 1) {
+      try {
+        const result = await window.filmscriptScripts.list();
+        this.setState({
+          importedScripts: result?.scripts || [],
+          scriptsLoading: false,
+          scriptsLoaded: true,
+          scriptsLoadError: ''
+        });
+        return true;
+      } catch (e) {
+        // The first request after Google OAuth can briefly arrive before the
+        // authenticated session is visible to the API. Retry it in place instead
+        // of leaving the Scripts home blank until the user refreshes the page.
+        const retryable = !e?.status || e.status === 401 || e.status === 429 || e.status >= 500;
+        if (retryable && attempt < retries) {
+          await new Promise((resolve) => window.setTimeout(resolve, 240 * (attempt + 1)));
+          continue;
+        }
+        const requiresLogin = e?.status === 401;
+        this.setState({
+          authOpen: requiresLogin ? true : this.state.authOpen,
+          importedScripts: requiresLogin ? [] : this.state.importedScripts,
+          scriptsLoading: false,
+          scriptsLoaded: true,
+          scriptsLoadError: requiresLogin
+            ? 'Your session has ended. Please sign in again.'
+            : 'We could not sync your scripts. Please try again.'
+        });
+        return false;
+      }
+    }
+    this.setState({
+      scriptsLoading: false,
+      scriptsLoaded: true,
+      scriptsLoadError: 'We could not sync your scripts. Please try again.'
+    });
+    return false;
   }
 
   async _refreshBilling(sync = false, checkoutId = null) {
     try {
       const me = await (sync ? window.filmscriptBilling.sync(checkoutId) : window.filmscriptBilling.me());
       const user = me.authenticated && me.email ? { name: me.name || me.email.split('@')[0], email: me.email, picture: me.picture || null, initial: (me.name || me.email).charAt(0).toUpperCase() } : null;
-      this.setState({ plan: me.plan || null, user, profileName: user?.name || '', profileNameDraft: user?.name || '', authOpen: user ? this.state.authOpen : true });
+      this.setState({ plan: this._canonicalPlan(me.plan), billingPlan: String(me.billingPlan || me.plan || '').trim().toLowerCase() || null, entitlements: me.entitlements || null, user, profileName: user?.name || '', profileNameDraft: user?.name || '', authOpen: user ? this.state.authOpen : true });
       return me;
     } catch (e) {}
   }
 
-  _hasLumiereAccess() {
-    return this.state.plan === 'lumiere';
+  _canonicalPlan(plan) {
+    // Existing subscriptions are presented as Creator while billing records migrate.
+    if (plan === 'full') return 'full';
+    if (plan === 'creator' || plan === 'basic' || plan === 'lumiere') return 'creator';
+    return null;
   }
 
-  _requireLumierePlan(message = 'FilmScript Pro at $19.99 / month is required to use Lumiere. Your scripts and manual production work remain available to edit and export.') {
+  _hasLumiereAccess() {
+    const entitlements = this.state.entitlements || {};
+    return !!this._canonicalPlan(this.state.plan)
+      || entitlements?.lumiereChat === true
+      || entitlements?.textGeneration === true
+      || !!entitlements?.lumiere?.chat
+      || !!entitlements?.capabilities?.lumiereChat;
+  }
+
+  _requireLumierePlan(message = 'FilmScript Creator at $24.99 / month unlocks ongoing Lumiere work. Your scripts and manual production work remain available to edit and export.') {
     if (this._hasLumiereAccess()) return true;
     this.setState({ paywallOpen: true, lumiereOpen: true, toast: message });
     return false;
@@ -1227,7 +1386,8 @@ class Component extends DCLogic {
     const delay = Math.max(0, 410 - elapsed);
     if (this._scriptTransitionTimer) window.clearTimeout(this._scriptTransitionTimer);
     this._scriptTransitionTimer = window.setTimeout(() => {
-      window.location.href = url;
+      if (window.filmscriptNavigate) window.filmscriptNavigate(url);
+      else window.location.href = url;
     }, delay);
   }
 
@@ -1639,7 +1799,7 @@ Write Lumiere's next reply only:`;
     const isScripts = screen === 'scripts';
     const isEditor = screen === 'editor';
 
-    const plan = this.state.plan || null;
+    const plan = this._canonicalPlan(this.state.plan);
     const prepro = this.state.preproProject;
     const preproTab = this.state.preproTab;
     const preproScenesRaw = Object.values(prepro?.scenes || {});
@@ -1652,18 +1812,20 @@ Write Lumiere's next reply only:`;
         : ['Plan how your film will look', 'Generate practical camera coverage for every scene.', 'Generate shot lists with Lumiere'];
     const preproHasData = preproTab === 'breakdown' ? hasBreakdown : preproTab === 'stripboard' ? hasBreakdown : hasShots;
     const preproScenes = preproScenesRaw.map((scene) => ({ title: scene.title, status: scene.status || 'needs_review', summary: preproTab === 'breakdown' ? (scene.breakdown?.synopsis || 'Waiting for analysis.') : preproTab === 'stripboard' ? (scene.strip?.location || 'Unassigned location') : (scene.shots?.[0]?.description || 'Waiting for camera suggestions.'), detail: preproTab === 'breakdown' ? `${scene.breakdown?.elements?.length || 0} production elements` : preproTab === 'stripboard' ? `${scene.strip?.status || 'unscheduled'}` : `${scene.shots?.length || 0} proposed shots` }));
-    const onLumierePlan = plan === 'lumiere';
+    const hasPaidPlan = !!plan;
+    const hasFreeLumiereGrant = this._hasLumiereAccess() && !hasPaidPlan;
+    const onLumierePlan = hasPaidPlan || hasFreeLumiereGrant;
     const lumiereUnlocked = onLumierePlan;
     const lumiereLocked = !onLumierePlan;
     const showFreeCounter = false;
-    const hasPlan = !!plan;
-    const noPlan = !plan;
-    const isBasicPlan = plan === 'basic';
-    const isLumierePlan = plan === 'lumiere';
-    const planLabel = plan === 'lumiere' ? 'FilmScript Pro · $19.99 / month' : plan === 'basic' ? 'FilmScript Basic · $12.99 / month' : 'Free';
+    const hasPlan = hasPaidPlan;
+    const noPlan = !hasPaidPlan;
+    const isCreatorPlan = plan === 'creator';
+    const isFullPlan = plan === 'full';
+    const planLabel = isFullPlan ? 'FilmScript Full · $39.99 / month' : isCreatorPlan ? 'FilmScript Creator · $24.99 / month' : 'Free';
     const checkoutPlanKey = this.state.checkoutPlan;
-    const checkoutPlanName = checkoutPlanKey === 'lumiere' ? 'FilmScript Pro' : checkoutPlanKey === 'basic' ? 'FilmScript Basic' : 'Free';
-    const checkoutPlanPrice = checkoutPlanKey === 'lumiere' ? '$19.99 / month' : '$12.99 / month';
+    const checkoutPlanName = checkoutPlanKey === 'full' ? 'FilmScript Full' : checkoutPlanKey === 'creator' ? 'FilmScript Creator' : 'Free';
+    const checkoutPlanPrice = checkoutPlanKey === 'full' ? '$39.99 / month' : checkoutPlanKey === 'creator' ? '$24.99 / month' : '$0 / month';
     const checkoutConfirmStep = this.state.checkoutStep !== 'success';
     const checkoutSuccessStep = this.state.checkoutStep === 'success';
     const checkoutHasLink = !!checkoutPlanKey;
@@ -1694,6 +1856,7 @@ Write Lumiere's next reply only:`;
         open: () => this.openStoredScript(s),
         toggleMenu: (event) => this.toggleScriptMenu(event, s.id),
         rename: (event) => this.renameStoredScript(event, s),
+        translate: (event) => { event.stopPropagation(); this.setState({ scriptMenuId: null }); window.filmscriptPlatform?.openTranslation(s); },
         remove: (event) => this.deleteStoredScript(event, s),
       })),
     ];
@@ -1746,7 +1909,7 @@ Write Lumiere's next reply only:`;
       isLanding, isScripts, isEditor,
       preproOpen: this.state.preproOpen, preproLoading: this.state.preproLoading, preproHasData, preproEmpty: !this.state.preproLoading && !preproHasData, preproScenes,
       preproAccessNotice: !onLumierePlan,
-      preproEmptyTitle: emptyCopy[0], preproEmptyText: emptyCopy[1], preproEmptyAction: onLumierePlan ? emptyCopy[2] : 'View FilmScript Pro', preproPrimaryAction: onLumierePlan ? () => this.analyzePreproduction() : () => this._startCheckout('lumiere'), preproProgress: prepro?.analysis?.status === 'running' || prepro?.analysis?.status === 'queued', preproMessage: prepro?.analysis?.message || '', preproCompleted: prepro?.analysis?.completed || 0, preproTotal: prepro?.analysis?.total || 0,
+      preproEmptyTitle: emptyCopy[0], preproEmptyText: emptyCopy[1], preproEmptyAction: onLumierePlan ? emptyCopy[2] : 'View Creator', preproPrimaryAction: onLumierePlan ? () => this.analyzePreproduction() : () => this._startCheckout('creator'), preproProgress: prepro?.analysis?.status === 'running' || prepro?.analysis?.status === 'queued', preproMessage: prepro?.analysis?.message || '', preproCompleted: prepro?.analysis?.completed || 0, preproTotal: prepro?.analysis?.total || 0,
       activeScriptTitle: this._importedTitle || 'Active screenplay', breakdownTabBg: preproTab === 'breakdown' ? 'var(--accent, #BA7517)' : 'transparent', breakdownTabColor: 'var(--ink, #2C2C2A)', stripboardTabBg: preproTab === 'stripboard' ? 'var(--accent, #BA7517)' : 'transparent', stripboardTabColor: 'var(--ink, #2C2C2A)', shotsTabBg: preproTab === 'shots' ? 'var(--accent, #BA7517)' : 'transparent', shotsTabColor: 'var(--ink, #2C2C2A)',
       features,
       underlinePath: this._roughLineH(300, 3.2, 4242),
@@ -1766,8 +1929,8 @@ Write Lumiere's next reply only:`;
       openingAriaLabel: `Opening ${this._formatOpeningTitle(this.state.openingScriptTitle)} in the editor`,
       openingSheetPath: this._roughPath(228, 292, 2.4, 9341, 18),
       scriptsBackgroundImage: dark
-        ? "linear-gradient(rgba(18,18,17,.76), rgba(18,18,17,.88)), url('./assets/writer-desk-sketch-dark.png')"
-        : "linear-gradient(rgba(245,240,232,.84), rgba(245,240,232,.92)), url('./assets/writer-desk-sketch.png')",
+        ? "linear-gradient(rgba(18,18,17,.76), rgba(18,18,17,.88)), url('./assets/writer-desk-sketch-dark.jpg')"
+        : "linear-gradient(rgba(245,240,232,.84), rgba(245,240,232,.92)), url('./assets/writer-desk-sketch.jpg')",
       importButtonBackground: dark ? 'rgba(42,42,39,.5)' : 'transparent',
       lumiereOpen: this.state.lumiereOpen,
       lumiereClosed: !this.state.lumiereOpen,
@@ -1778,10 +1941,15 @@ Write Lumiere's next reply only:`;
       homeSub: this._greetingNow().sub,
       greeting: this._greetingNow().hi,
       greetingTyped: this.state.greetingTyped,
-      cards, thumbLines, messages, scriptsSearch, noSearchResults: cards.length === 0, scriptCount: cardData.length, scriptPlural: cardData.length === 1 ? '' : 's', scriptSummary: window.filmscriptLanguage?.get() === 'es' ? `${cardData.length} ${cardData.length === 1 ? 'guion listo' : 'guiones listos'} para trabajar.` : `${cardData.length} screenplay${cardData.length === 1 ? '' : 's'} ready to shape.`, scriptIndex, noIndex: scriptIndex.length === 0,
+      cards, thumbLines, messages, scriptsSearch,
+      scriptsLoading: Boolean(this.state.scriptsLoading),
+      scriptsLoadError: this.state.scriptsLoadError || '',
+      showScriptsLoading: Boolean(this.state.scriptsLoading) && cards.length === 0,
+      noSearchResults: Boolean(this.state.scriptsLoaded) && !this.state.scriptsLoading && Boolean((this.state.scriptsSearch || '').trim()) && cards.length === 0,
+      noScriptsYet: Boolean(this.state.scriptsLoaded) && !this.state.scriptsLoading && !this.state.scriptsLoadError && !String(this.state.scriptsSearch || '').trim() && cards.length === 0,
+      scriptCount: cardData.length, scriptPlural: cardData.length === 1 ? '' : 's', scriptSummary: window.filmscriptLanguage?.get() === 'es' ? `${cardData.length} ${cardData.length === 1 ? 'guion listo' : 'guiones listos'} para trabajar.` : `${cardData.length} screenplay${cardData.length === 1 ? '' : 's'} ready to shape.`, scriptIndex, noIndex: scriptIndex.length === 0,
       tools: ['Character analysis', 'Cliché detector', 'Scene suggestions', 'Narrative arc', 'Format checker'].map(label => ({ label, title: 'Run ' + label, onClick: () => this.runTool(label) })),
       check: '✓',
-      planB: ['Professional screenplay editor and PDF exports', 'Lumiere, your AI script assistant', 'Breakdowns, stripboards and shot lists', 'Cliché, format, character and arc analysis', 'Every FilmScript feature in one plan'],
       pages,
       barPath: this._roughPath(408, 56, 2.4, 555, 16),
       btnPath: this._roughPath(92, 32, 2, 333, 11),
@@ -1806,7 +1974,8 @@ Write Lumiere's next reply only:`;
       soundIconColor: this.state.soundOn ? accent : '#b6b4aa',
       goHome: () => { window.location.href = 'Features.dc.html'; },
       goLanding: () => { window.location.href = 'Features.dc.html'; },
-      goScripts: () => { this._loadScripts(); this.setState({ screen: 'scripts' }); },
+      goScripts: () => { this.setState({ screen: 'scripts', scriptsSearch: '' }); this._loadScripts({ retries: 5 }); },
+      retryScripts: () => this._loadScripts({ retries: 5 }),
       onScriptsPointer: (event) => this.onScriptsPointer(event),
       onScriptsPointerLeave: () => this.onScriptsPointerLeave(),
       goEditor: () => this._enterScript('Editor v5.dc.html', 'Untitled screenplay'),
@@ -1858,7 +2027,7 @@ Write Lumiere's next reply only:`;
       googleSignUp: () => { window.location.href = window.filmscriptBilling.googleSignInUrl(); },
       signOut: async () => { try { await window.filmscriptBilling.logout(); } catch (e) {} window.location.href = 'Features.dc.html'; },
 
-      plan, planLabel, hasPlan, noPlan, isBasicPlan, isLumierePlan,
+      plan, planLabel, hasPlan, noPlan, hasPaidPlan, isCreatorPlan, isFullPlan,
       lumiereUnlocked, lumiereLocked, showFreeCounter,
       unlockBtnPath: this._roughPath(180, 44, 2, 999, 14),
 
@@ -1887,17 +2056,22 @@ Write Lumiere's next reply only:`;
       openTerms: () => this.setState({ accountOpen: false, termsOpen: true }),
       closeTerms: () => this.setState({ termsOpen: false }),
       cancelPlan: () => { window.location.href = 'Subscription.dc.html?returnTo=App.dc.html'; },
-      upgradeToLumiere: () => this._startCheckout('lumiere'),
+      upgradeToFull: () => this._startCheckout('full'),
       goLandingFromAccount: () => { window.location.href = 'Pricing.dc.html'; },
 
-      chooseLumiere: () => this._startCheckout('lumiere'),
-      openCheckoutLumiere: () => { this.setState({ paywallOpen: false }); this._startCheckout('lumiere'); },
+      chooseCreator: () => this._startCheckout('creator'),
+      openCheckoutCreator: () => { this.setState({ paywallOpen: false }); this._startCheckout('creator'); },
 
       checkoutOpen: this.state.checkoutOpen,
       checkoutConfirmStep, checkoutSuccessStep, checkoutPlanName, checkoutPlanPrice, checkoutHasLink,
       openPayLink: async () => {
         try {
-          const result = await window.filmscriptBilling.checkout(this.state.checkoutPlan, this.state.user?.email);
+          const language = window.filmscriptLanguage?.get?.() || document.documentElement.lang || 'en';
+          const billingPlan = String(this.state.billingPlan || '').trim().toLowerCase();
+          const changingPlan = !!billingPlan && billingPlan !== this.state.checkoutPlan;
+          const result = changingPlan
+            ? await window.filmscriptBilling.switchPlan(this.state.checkoutPlan, language)
+            : await window.filmscriptBilling.checkout(this.state.checkoutPlan, this.state.user?.email, language);
           window.filmscriptBilling.trackCheckoutRedirected(this.state.checkoutPlan);
           window.location.href = result.checkoutUrl;
         }

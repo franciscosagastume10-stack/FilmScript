@@ -1,6 +1,8 @@
 # FilmScript on AWS
 
-This folder deploys the current FilmScript backend as one ECS Fargate task:
+This folder deploys the current FilmScript backend as one ECS Fargate task.
+The default task size is 0.5 vCPU and 1 GiB, selected from measured production
+usage rather than the original 1 vCPU and 2 GiB allocation:
 
 ```text
 Vercel static UI -> HTTPS ALB -> ECS Fargate
@@ -23,9 +25,23 @@ keeps the app working now with durable EFS storage while that migration is
 performed deliberately.
 
 The service is therefore fixed at **one task**. Its rolling deployment settings
-stop the old task before starting the new one, avoiding two writers on the same
-SQLite database. Do not increase `DesiredCount` until the database has moved to
-RDS PostgreSQL.
+keep the old task healthy while a replacement starts. This avoids a public API
+outage, but means two revisions can overlap briefly during a deployment. Do not
+increase the steady-state `DesiredCount` until the database has moved away from
+the single SQLite file, and keep deployments serialized.
+
+Container Insights is deliberately disabled. ECS still publishes the standard
+service CPU and memory metrics; the paid task-level metric set was materially
+more expensive than the application logs. Application logs are retained for
+seven days, while durable data remains protected by EFS backups.
+
+Collaboration uses one authenticated Server Sent Events stream per open
+project, with compact operation deltas instead of polling. Presence rooms are
+released five minutes after the last participant leaves, cursor updates are
+throttled, and no per-project compute resource is created. This keeps the
+single Fargate service and its existing load balancer as the only always-on
+collaboration cost. The application process also sweeps idle rooms rather than
+requiring a scheduler or another AWS service.
 
 ## Prerequisites
 
@@ -37,18 +53,29 @@ RDS PostgreSQL.
 
 ```json
 {
-  "OPENROUTER_API_KEY": "...",
+  "OPENAI_API_KEY": "...",
+  "FILMSCRIPT_AI_MODEL_LUNA": "gpt-5.6-luna",
+  "FILMSCRIPT_AI_MODEL_SOL": "gpt-5.6-sol",
+  "FILMSCRIPT_AI_MODEL_TERRA": "gpt-5.6-terra",
   "GOOGLE_CLIENT_ID": "...apps.googleusercontent.com",
   "GOOGLE_CLIENT_SECRET": "...",
   "RECURRENTE_SECRET_KEY": "...",
   "RECURRENTE_WEBHOOK_SECRET": "...",
-  "RECURRENTE_LUMIERE_PRODUCT_ID": "..."
+  "RECURRENTE_CREATOR_PRODUCT_ID": "...",
+  "RECURRENTE_FULL_PRODUCT_ID": "...",
+  "RECURRENTE_LUMIERE_PRODUCT_ID": "...",
+  "RECURRENTE_BASIC_PRODUCT_ID": "...",
+  "RECURRENTE_LUMIERE_RESET_PRODUCT_ID": "..."
 }
 ```
 
-Empty optional values must still be present as JSON keys because ECS resolves
-each key while starting the task. Never commit the real JSON or paste it into a
-browser-side Vercel variable.
+`RECURRENTE_CREATOR_PRODUCT_ID` is the `$24.99/month` text-AI product and
+`RECURRENTE_FULL_PRODUCT_ID` is the `$39.99/month` Full product. Full grants
+1,000 image credits each calendar month and each generated image costs 3.
+The three legacy values may remain empty only after the currently deployed task
+definition no longer references them; they preserve existing subscriptions
+during migration. Never commit the real JSON or paste it into a browser-side
+Vercel variable.
 
 ## Build and push the image
 
@@ -91,6 +118,10 @@ aws cloudformation deploy \
     ApiUrl=https://api.YOUR-DOMAIN \
     SessionCookieSameSite=Lax
 ```
+
+`TaskCpu=512` and `TaskMemory=1024` are the measured production defaults. They
+can be overridden during an update for a fast rollback without editing the
+template.
 
 Create a DNS Alias or CNAME for the API hostname to the
 `LoadBalancerDnsName` stack output. The certificate hostname, `ApiUrl`, and DNS

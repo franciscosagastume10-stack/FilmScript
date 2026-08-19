@@ -3,11 +3,14 @@ import io
 import json
 import sys
 import unicodedata
+import base64
 
 from reportlab.lib.colors import HexColor
 from reportlab.lib.pagesizes import A4, landscape
 from reportlab.pdfbase.pdfmetrics import stringWidth
 from reportlab.pdfgen import canvas
+from reportlab.lib.utils import ImageReader
+from PIL import Image
 
 
 PAGE_W, PAGE_H = landscape(A4)
@@ -21,7 +24,7 @@ LINE = HexColor("#CEC8BC")
 SOFT = HexColor("#F1ECE3")
 ACCENT = HexColor("#BA7517")
 ACCENT_SOFT = HexColor("#F6E9D7")
-COLUMN_WIDTHS = [48, 70, 82, 74, 62, 78, PAGE_W - 2 * MARGIN - 414]
+COLUMN_WIDTHS = [48, 82, 70, 82, 74, 62, 78, PAGE_W - 2 * MARGIN - 496]
 
 
 def safe_text(value):
@@ -59,11 +62,23 @@ def fit_text(value, width, font="Helvetica", size=8):
     return text.rstrip() + suffix
 
 
+def reference_image_reader(image_data):
+    """Make compact, print-ready thumbnails so image-heavy exports stay fast."""
+    raw = base64.b64decode(image_data)
+    with Image.open(io.BytesIO(raw)) as source:
+        source.thumbnail((360, 240), Image.Resampling.LANCZOS)
+        if source.mode not in ("RGB", "L"):
+            source = source.convert("RGB")
+        output = io.BytesIO()
+        source.save(output, format="JPEG", quality=80, optimize=True)
+    return ImageReader(io.BytesIO(output.getvalue()))
+
+
 def shot_row_height(shot):
-    widths = COLUMN_WIDTHS[1:]
+    widths = COLUMN_WIDTHS[2:]
     values = [shot.get("size"), shot.get("angle"), shot.get("focalLength"), f'{shot.get("estimatedMinutes") or 15} min', shot.get("movement"), shot.get("description")]
     line_counts = [len(wrap_text(value or "Not set", width - 16)) for value, width in zip(values, widths)]
-    return max(40, 18 + max(line_counts) * 10.4)
+    return max(62, 18 + max(line_counts) * 10.4)
 
 
 def paginate(scenes):
@@ -121,7 +136,7 @@ def draw_header(pdf, title, page_number, total_pages, scene_count, shot_count):
     pdf.drawRightString(PAGE_W - MARGIN, PAGE_H - 67, "FILMSCRIPT EXPORT")
 
     x = MARGIN
-    labels = ["SHOT", "SIZE", "ANGLE", "LENS", "TIME", "MOVEMENT", "DESCRIPTION"]
+    labels = ["SHOT", "REFERENCE", "SIZE", "ANGLE", "LENS", "TIME", "MOVEMENT", "DESCRIPTION"]
     pdf.setFillColor(MUTED)
     pdf.setFont("Helvetica-Bold", 6.8)
     for label, width in zip(labels, COLUMN_WIDTHS):
@@ -199,7 +214,23 @@ def draw_shot_row(pdf, item, y):
     pdf.setFont("Helvetica-Bold", 8)
     pdf.drawCentredString(MARGIN + 25, y - 20.7, shot_number)
 
-    x = MARGIN + COLUMN_WIDTHS[0]
+    reference_x = MARGIN + COLUMN_WIDTHS[0]
+    reference_width = COLUMN_WIDTHS[1]
+    image_data = shot.get("referenceImageData") or ""
+    if image_data:
+        try:
+            reader = reference_image_reader(image_data)
+            pdf.drawImage(reader, reference_x + 6, y - height + 7, reference_width - 12, height - 14, preserveAspectRatio=True, anchor="c", mask="auto")
+        except Exception:
+            image_data = ""
+    if not image_data:
+        pdf.setFillColor(SOFT)
+        pdf.roundRect(reference_x + 9, y - height + 17, reference_width - 18, 22, 6, stroke=0, fill=1)
+        pdf.setFillColor(MUTED)
+        pdf.setFont("Helvetica-Bold", 6.4)
+        pdf.drawCentredString(reference_x + reference_width / 2, y - height + 25, "NO REFERENCE")
+
+    x = MARGIN + COLUMN_WIDTHS[0] + COLUMN_WIDTHS[1]
     values = [
         (shot.get("size") or "Not set", "Helvetica-Bold", INK),
         (shot.get("angle") or "Not set", "Helvetica", INK),
@@ -208,7 +239,7 @@ def draw_shot_row(pdf, item, y):
         (shot.get("movement") or "Not set", "Helvetica", INK),
         (shot.get("description") or "No description", "Helvetica", MUTED),
     ]
-    for (value, font, color), width in zip(values, COLUMN_WIDTHS[1:]):
+    for (value, font, color), width in zip(values, COLUMN_WIDTHS[2:]):
         draw_text_lines(pdf, value, x + 8, y, width - 16, height, font=font, color=color)
         x += width
 

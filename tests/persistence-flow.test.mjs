@@ -52,7 +52,9 @@ const startServer = async (dataDir) => {
       PUBLIC_APP_URL: url,
       CORS_ORIGINS: url,
       FILMSCRIPT_DATA_DIR: dataDir,
-      OPENROUTER_API_KEY: "test-key",
+      // Keep server tests deterministic and offline. Paid/Free access is
+      // tested separately; this path exercises the provider-unavailable UI.
+      OPENAI_API_KEY: "",
       PDF_PYTHON: pdfPython,
     },
     stdio: ["ignore", "pipe", "pipe"],
@@ -547,7 +549,7 @@ test("account-owned screenplay interactions survive reloads and a server restart
 
   for (const documentName of ["breakdown", "stripboard", "shotlist"]) {
     const pdfResponse = await fetch(`${running.url}/api/scripts/${scriptId}/preproduction/${documentName}.pdf`, { headers: { Cookie: ownerCookie } });
-    assert.equal(pdfResponse.status, 200, `${documentName} should remain exportable without FilmScript Pro`);
+    assert.equal(pdfResponse.status, 200, `${documentName} should remain exportable without a paid plan`);
     assert.equal(pdfResponse.headers.get("content-type"), "application/pdf");
     assert.ok((await pdfResponse.arrayBuffer()).byteLength > 1_000);
   }
@@ -557,23 +559,21 @@ test("account-owned screenplay interactions survive reloads and a server restart
     headers: { "Content-Type": "application/json", Cookie: ownerCookie },
     body: JSON.stringify({ messages: [{ role: "user", content: "Analyze this screenplay." }] }),
   });
-  assert.equal(lumiereResponse.status, 403);
-  assert.equal((await lumiereResponse.json()).error, "filmscript_pro_required");
+  assert.equal(lumiereResponse.status, 503);
+  assert.equal((await lumiereResponse.json()).error, "openai_unavailable");
 
   const analysisResponse = await fetch(`${running.url}/api/scripts/${scriptId}/preproduction`, {
     method: "POST",
     headers: { "Content-Type": "application/json", Cookie: ownerCookie },
   });
-  assert.equal(analysisResponse.status, 403);
-  assert.equal((await analysisResponse.json()).error, "filmscript_pro_required");
+  assert.equal(analysisResponse.status, 202);
 
   const generationResponse = await fetch(`${running.url}/api/scripts/${scriptId}/preproduction/shotlists`, {
     method: "POST",
     headers: { "Content-Type": "application/json", Cookie: ownerCookie },
     body: JSON.stringify({ sceneId: secondScene.id }),
   });
-  assert.equal(generationResponse.status, 403);
-  assert.equal((await generationResponse.json()).error, "filmscript_pro_required");
+  assert.equal(generationResponse.status, 202);
 
   const otherScriptResponse = await fetch(`${running.url}/api/scripts/${scriptId}`, { headers: { Cookie: otherCookie } });
   assert.equal(otherScriptResponse.status, 404);

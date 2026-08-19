@@ -3,15 +3,20 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="icon" href="./assets/filmscript-favicon.svg?v=20260813" type="image/svg+xml">
+<link rel="shortcut icon" href="./assets/filmscript-favicon.svg?v=20260813" type="image/svg+xml">
+<!-- Vercel Web Analytics: production page views and navigation. -->
+<script defer src="/_vercel/insights/script.js"></script>
 <script src="./support.js"></script>
 <script src="./runtime-config.js?v=20260710-auth1"></script>
-<script src="./funnel-tracking.js?v=20260716-erp1"></script>
+<script defer src="./funnel-tracking.js?v=20260716-erp1"></script>
 <script src="./theme-preference.js?v=20260712-theme1"></script>
-<script src="./language-preference.js?v=20260716-credits1"></script>
-<script src="./ui-sounds.js?v=20260713-profile-option1"></script>
-<script src="./billing-client.js?v=20260716-profile-safe1"></script>
-<script src="./lumiere-client.js?v=20260720-openrouter1"></script>
-<script src="./lumiere-preferences.js?v=20260713-taste1"></script>
+<script defer src="./language-preference.js?v=20260731-plan-credits4"></script>
+<script defer src="./ui-sounds.js?v=20260728-calendar-complete1"></script>
+<script defer src="./billing-client.js?v=20260716-profile-safe1"></script>
+<script defer src="./credit-indicator.js?v=20260801-credit-panel1"></script>
+<script defer src="./lumiere-client.js?v=20260731-plan-entitlements2"></script>
+<script defer src="./lumiere-preferences.js?v=20260713-taste1"></script>
 <link rel="stylesheet" href="./auth-modal.css?v=20260712-auth2">
 <link rel="stylesheet" href="./filmscript-controls.css?v=20260716-typography1">
 </head>
@@ -48,6 +53,83 @@
   .fsx-bright:hover { filter: brightness(1.55); }
   .fsx-dim { transition: box-shadow .15s ease; }
   .fsx-dim:hover { box-shadow: inset 0 0 0 999px rgba(136,135,128,.09); }
+  /* Each plan uses one painted, hand-drawn frame.  The old parent fills sat
+     behind the rough frame as square blocks, and could cover the Full copy. */
+  .fs-pricing-card { display: flex !important; flex-direction: column; min-height: 100%; overflow: hidden; background: transparent !important; }
+  /* SVG displacement looks charming on paper, but anti-aliases into white
+     fragments on dark surfaces. Pricing uses a single clean organic frame. */
+  .fs-pricing-page .fs-double-outline::before,
+  .fs-pricing-page .fs-double-outline::after { filter: none !important; }
+  .fs-pricing-page .fs-double-outline::before { border-radius: 25px 22px 27px 21px; }
+  .fs-pricing-page .fs-double-outline::after { display: none; }
+  .fs-pricing-card::before { background: var(--fs-frame-bg) !important; border-width: 1.5px !important; }
+  /* The control itself must never paint a square fallback behind its frame. */
+  .fs-pricing-page .fs-outline-control {
+    isolation: isolate;
+    overflow: hidden;
+    border: 0 !important;
+    background: transparent !important;
+    box-shadow: none !important;
+  }
+  .fs-pricing-page .fs-outline-control::before {
+    background: var(--fs-frame-bg) !important;
+    box-shadow: none !important;
+  }
+  .fs-pricing-card .fs-plan-features { flex: 1 1 auto; }
+  .fs-pricing-card > .fs-outline-control { flex: 0 0 auto; margin-top: 27px !important; }
+  [data-testid="pricing-free"] { --fs-frame-bg: linear-gradient(145deg, #FFFDF8 0%, #F5EFE5 100%); --fs-frame-border: #D8CEC0; }
+  [data-testid="pricing-creator"] { --fs-frame-bg: linear-gradient(145deg, #FFF7EA 0%, #F0DFC6 100%); --fs-frame-border: #CFA26A; }
+  [data-testid="pricing-full"] { --fs-frame-bg: linear-gradient(145deg, #5C3820 0%, #8D561E 53%, #C08022 100%); --fs-frame-border: #4A2B17; box-shadow: 0 20px 44px rgba(102, 59, 20, .25), inset 0 1px 0 rgba(255,255,255,.22) !important; transform: translateY(-8px); }
+  /* Full is intentionally a single painted surface.  Removing the generic
+     pseudo-frame here prevents a rectangular underlay from peeking out at
+     the card edge and below the primary CTA. */
+  [data-testid="pricing-full"] {
+    background: linear-gradient(145deg, #5C3820 0%, #8D561E 53%, #C08022 100%) !important;
+    border: 1.5px solid #4A2B17 !important;
+    border-radius: 25px 22px 27px 21px;
+  }
+  [data-testid="pricing-full"]::before { display: none !important; }
+  [data-testid="pricing-full"] > *,
+  [data-testid="pricing-full"] [style*="color: var(--ink"],
+  [data-testid="pricing-full"] [style*="color: var(--muted"] { color: #FFFDF8 !important; }
+  [data-testid="pricing-full"] [style*="color: var(--accent"] { color: #FFE2A7 !important; }
+  /* The Full action keeps the same quiet outlined control as Free and
+     Creator. Its tint belongs to the plan card, not to a different button
+     shape or a square fill behind it. */
+  [data-testid="pricing-full"] .fs-outline-control--secondary {
+    --fs-frame-bg: rgba(255, 253, 248, .10);
+    --fs-frame-border: rgba(255, 239, 204, .80);
+    box-shadow: none !important;
+  }
+  [data-testid="pricing-full"] .fs-outline-control--secondary,
+  [data-testid="pricing-full"] .fs-outline-control--secondary span { color: #FFFDF8 !important; }
+  .fs-pricing-page button[style*="background: var(--accent"],
+  .fs-pricing-page .fs-outline-control--primary,
+  .fs-pricing-page .fs-outline-control--primary span { color: #fff !important; }
+  .fs-pricing-page button[style*="background: var(--accent"] * { color: #fff !important; }
+  /* In dark mode the plans become dark surfaces too.  Previously their
+     light fills stayed behind theme-aware light text, making two plans fade
+     away almost completely. */
+  html[data-filmscript-theme="dark"] [data-testid="pricing-free"] {
+    --fs-frame-bg: linear-gradient(145deg, #302F2B 0%, #252522 100%);
+    --fs-frame-border: #67655E;
+    box-shadow: 0 14px 28px rgba(0,0,0,.22) !important;
+  }
+  html[data-filmscript-theme="dark"] [data-testid="pricing-creator"] {
+    --fs-frame-bg: linear-gradient(145deg, #39342C 0%, #292825 100%);
+    --fs-frame-border: #8D704A;
+    box-shadow: 0 14px 28px rgba(0,0,0,.22) !important;
+  }
+  html[data-filmscript-theme="dark"] [data-testid="pricing-free"] [style*="color: var(--ink"],
+  html[data-filmscript-theme="dark"] [data-testid="pricing-creator"] [style*="color: var(--ink"] { color: #F5F3EC !important; }
+  html[data-filmscript-theme="dark"] [data-testid="pricing-free"] [style*="color: var(--muted"],
+  html[data-filmscript-theme="dark"] [data-testid="pricing-creator"] [style*="color: var(--muted"] { color: #BDB9AF !important; }
+  html[data-filmscript-theme="dark"] [data-testid="pricing-free"] .fs-outline-control--secondary,
+  html[data-filmscript-theme="dark"] [data-testid="pricing-creator"] .fs-outline-control--secondary {
+    --fs-frame-bg: #242421;
+    --fs-frame-border: #66645D;
+    color: #F5F3EC !important;
+  }
   ::-webkit-scrollbar { width: 9px; height: 9px; }
   ::-webkit-scrollbar-thumb { background: #b8b6ac; border-radius: 8px; }
   ::-webkit-scrollbar-track { background: transparent; }
@@ -76,24 +158,39 @@
   .fs-profile-sheet [style*="border: 1px solid var(--soft"]:hover { transform: translateX(3px); border-color: var(--accent, #BA7517) !important; background: rgba(186,117,23,.035); }
   .fs-navlink { transition: color .15s ease; }
   .fs-navlink:hover { color: #FFFEF9 !important; }
+  @media (max-width: 700px) {
+    .fs-marketing-topbar { height: 52px !important; flex-basis: 52px !important; padding: 0 15px !important; gap: 8px !important; }
+    .fs-marketing-nav { display: none !important; }
+    .fs-marketing-actions { margin-left: auto; }
+    .fs-marketing-actions [data-testid="pricing-signup-top"] { padding: 8px 13px !important; font-size: 12px !important; }
+    .fs-marketing-scroll { scroll-padding: 18px; }
+    .fs-pricing-intro { padding: 52px 20px 0 !important; text-align: left !important; }
+    .fs-pricing-intro h2 { max-width: 340px; margin-left: 0 !important; font-size: clamp(32px, 9vw, 39px) !important; letter-spacing: -1.15px !important; }
+    .fs-pricing-intro > p { margin: 16px 0 34px !important; font-size: 16px !important; }
+    [data-testid="pricing-plans"] { grid-template-columns: minmax(0, 1fr) !important; gap: 12px !important; }
+    .fs-pricing-card { padding: 23px 20px 21px !important; }
+    .fs-pricing-card .fs-price-amount { font-size: 40px !important; }
+    .fs-pricing-page [style*="max-width: 640px"] { padding: 72px 20px 0 !important; }
+    .fs-pricing-page [style*="padding: 90px 0 60px"] { padding: 62px 20px 42px !important; }
+  }
 </style>
 </helmet>
 
-<div style="--accent: {{ accent }}; --accent-hover: {{ accentHover }}; --bg: {{ bg }}; --chrome: {{ chrome }}; --surface: {{ surface }}; --ink: {{ ink }}; --muted: {{ muted }}; --line: {{ line }}; --soft: {{ soft }}; height: 100vh; width: 100%; position: relative; display: flex; flex-direction: column; background: var(--bg, #F5F0E8); color: var(--ink, #2C2C2A); overflow: hidden; font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;">
+<div class="fs-page-shell fs-pricing-page" style="--accent: {{ accent }}; --accent-hover: {{ accentHover }}; --bg: {{ bg }}; --chrome: {{ chrome }}; --surface: {{ surface }}; --ink: {{ ink }}; --muted: {{ muted }}; --line: {{ line }}; --soft: {{ soft }}; height: 100vh; width: 100%; position: relative; display: flex; flex-direction: column; background: var(--bg, #F5F0E8); color: var(--ink, #2C2C2A); overflow: hidden; font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;">
 
   <!-- hand-drawn sketch filter: wobbles the edges of any bordered element -->
   <svg width="0" height="0" style="position: absolute;"><defs><filter id="fs-sketch" x="-6%" y="-22%" width="112%" height="144%"><feTurbulence type="fractalNoise" baseFrequency="0.014" numOctaves="2" seed="7" result="n"></feTurbulence><feDisplacementMap in="SourceGraphic" in2="n" scale="2.6" xChannelSelector="R" yChannelSelector="G"></feDisplacementMap></filter></defs></svg>
 
   <!-- ============ TOPBAR ============ -->
-  <div style="height: 44px; flex: 0 0 44px; background: var(--chrome, #2C2C2A); display: flex; align-items: center; padding: 0 16px; gap: 16px; user-select: none;">
+  <div class="fs-marketing-topbar" style="height: 44px; flex: 0 0 44px; background: var(--chrome, #2C2C2A); display: flex; align-items: center; padding: 0 16px; gap: 16px; user-select: none;">
     <div class="fs-brand-mark" data-filmscript-brand onClick="{{ goScripts }}" role="link" aria-label="FilmScript, go to scripts"><span class="fs-brand-word">FilmScript</span></div>
 
-    <div style="flex: 1; display: flex; justify-content: center; gap: 8px;">
+    <div class="fs-marketing-nav" style="flex: 1; display: flex; justify-content: center; gap: 8px;">
       <div onClick="{{ navFeatures }}" class="fs-navlink" style="font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; font-size: 13px; font-weight: 500; line-height: 1; padding: 6px 14px; border-radius: 8px; cursor: pointer; color: #b9b8b2; background: transparent;">Features</div>
       <div onClick="{{ navPricing }}" style="font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; font-size: 13px; font-weight: 500; line-height: 1; padding: 6px 14px; border-radius: 8px; cursor: pointer; color: #FFFEF9; background: rgba(255,255,255,.12);">Pricing</div>
     </div>
 
-    <div style="display: flex; align-items: center; gap: 8px;">
+    <div class="fs-marketing-actions" style="display: flex; align-items: center; gap: 8px;">
       <div onClick="{{ toggleDark }}" title="Theme" class="fsx-bright" style="cursor: pointer; padding: 6px; color: #b9b8b2; display: flex; align-items: center;">
         <sc-if value="{{ darkMode }}" hint-placeholder-val="{{ false }}">
           <svg viewBox="0 0 20 20" style="width: 18px; height: 18px;" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><circle cx="10" cy="10" r="3.1"></circle><path d="M10 3.4 V5 M10 15 V16.6 M3.4 10 H5 M15 10 H16.6 M5.5 5.5 L6.6 6.6 M13.4 13.4 L14.5 14.5 M14.5 5.5 L13.4 6.6 M6.6 13.4 L5.5 14.5"></path></svg>
@@ -103,7 +200,7 @@
         </sc-if>
       </div>
       <sc-if value="{{ signedOut }}" hint-placeholder-val="{{ true }}">
-        <div onClick="{{ openAuth }}" class="fsx-scale" style="font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; font-size: 13px; font-weight: 600; color: #2C2C2A; background: #FFFEF9; padding: 7px 16px; border-radius: 999px; cursor: pointer;">Sign up</div>
+        <div data-testid="pricing-signup-top" onClick="{{ openAuth }}" class="fsx-scale" style="font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; font-size: 13px; font-weight: 600; color: #2C2C2A; background: #FFFEF9; padding: 7px 16px; border-radius: 999px; cursor: pointer;">Sign up</div>
       </sc-if>
       <sc-if value="{{ signedIn }}" hint-placeholder-val="{{ false }}">
         <div style="position: relative;">
@@ -114,11 +211,11 @@
             <div style="font-size: 11.5px; color: var(--muted, #888780); margin-top: 4px;">{{ planLabel }}</div>
             <div style="height: 1px; background: var(--soft, #e4e2d8); margin: 10px 0 6px;"></div>
             <div class="fs-menuitem" onClick="{{ openAccountDetails }}">Account details</div>
-            <sc-if value="{{ isLumierePlan }}" hint-placeholder-val="{{ false }}"><div class="fs-menuitem" onClick="{{ openLumierePreferences }}">Personalize Lumiere</div></sc-if>
+            <sc-if value="{{ hasPaidPlan }}" hint-placeholder-val="{{ false }}"><div class="fs-menuitem" onClick="{{ openLumierePreferences }}">Personalize Lumiere</div></sc-if>
             <div class="fs-menuitem" onClick="{{ openTerms }}">Terms & conditions</div>
             <div style="height: 1px; background: var(--soft, #e4e2d8); margin: 6px 0;"></div>
-            <sc-if value="{{ isBasicPlan }}" hint-placeholder-val="{{ false }}">
-              <div class="fs-menuitem" onClick="{{ upgradeToLumiere }}">Upgrade to FilmScript Pro</div>
+            <sc-if value="{{ isCreatorPlan }}" hint-placeholder-val="{{ false }}">
+              <div class="fs-menuitem" onClick="{{ upgradeToFull }}">Upgrade to Full</div>
             </sc-if>
             <sc-if value="{{ noPlan }}" hint-placeholder-val="{{ true }}">
               <div class="fs-menuitem" onClick="{{ goLandingFromAccount }}">Choose a plan</div>
@@ -161,7 +258,7 @@
   <div onClick="{{ closeTerms }}" style="position: fixed; inset: 0; z-index: 80; background: rgba(35,35,34,.28); display: flex; align-items: center; justify-content: center; padding: 24px; animation: fs-fade .2s ease both;">
     <div class="fs-profile-sheet" onClick="{{ stop }}" style="width: min(620px, 100%); max-height: min(720px, 88vh); overflow-y: auto; background: var(--surface, #FFFEF9); border: 1.5px solid var(--line, #2C2C2A); border-radius: 20px; padding: 30px; filter: url(#fs-sketch); box-shadow: 0 18px 55px rgba(35,35,34,.2);">
       <div style="display: flex; justify-content: space-between; align-items: flex-start; gap: 16px;"><div><div style="font-size: 10px; letter-spacing: 1.8px; text-transform: uppercase; color: var(--accent, #BA7517); font-weight: 700;">FilmScript</div><div style="font-size: 25px; font-weight: 700; letter-spacing: -.7px; color: var(--ink, #2C2C2A); margin-top: 7px;">Terms & conditions</div><div style="font-size: 12px; color: var(--muted, #888780); margin-top: 5px;">Last updated July 2026</div></div><div onClick="{{ closeTerms }}" style="font-size: 22px; line-height: 1; color: var(--muted, #888780); cursor: pointer;">×</div></div>
-      <div style="margin-top: 25px; display: grid; gap: 18px; color: var(--ink, #2C2C2A); font-size: 13.5px; line-height: 1.6;"><div><div style="font-weight: 700;">Your writing stays yours.</div><div style="color: var(--muted, #888780); margin-top: 4px;">You retain ownership of scripts, notes, and material created in FilmScript. We do not sell your writing.</div></div><div><div style="font-weight: 700;">Lumiere is an assistant.</div><div style="color: var(--muted, #888780); margin-top: 4px;">Lumiere offers editorial suggestions and analysis. You decide what belongs in your work and remain responsible for the final text.</div></div><div><div style="font-weight: 700;">Lumiere credits and usage limits.</div><div style="color: var(--muted, #888780); margin-top: 4px;">Free includes 3 questions per 8-hour session, 9 per week and 12 per month. Basic includes 45 per 8-hour session, 135 per week and 300 per month. Pro includes 100 per 8-hour session, 300 per week and 600 per month. Each window resets automatically, credits do not roll over and have no cash value. When a window or the monthly allowance is reached, new Lumiere generations pause until the next reset; you can wait for its reset or purchase 80 extra credits for $5. Your scripts and existing production documents stay available.</div></div><div><div style="font-weight: 700;">Paid plans renew monthly.</div><div style="color: var(--muted, #888780); margin-top: 4px;">Basic and Pro renew through Recurrente. You can cancel from your account menu. Access remains available according to the payment provider’s confirmed subscription status.</div></div><div><div style="font-weight: 700;">Fair use.</div><div style="color: var(--muted, #888780); margin-top: 4px;">Do not use FilmScript to upload material you do not have permission to use, or to interfere with the service or other writers.</div></div><div><div style="font-weight: 700;">Questions?</div><div style="color: var(--muted, #888780); margin-top: 4px;">Contact support if you need help with your account, billing, or your writing workspace.</div></div></div>
+      <div style="margin-top: 25px; display: grid; gap: 18px; color: var(--ink, #2C2C2A); font-size: 13.5px; line-height: 1.6;"><div><div style="font-weight: 700;">Your writing stays yours.</div><div style="color: var(--muted, #888780); margin-top: 4px;">You retain ownership of scripts, notes, and material created in FilmScript. We do not sell your writing.</div></div><div><div style="font-weight: 700;">Lumiere is an assistant.</div><div style="color: var(--muted, #888780); margin-top: 4px;">Lumiere offers editorial suggestions and analysis. You decide what belongs in your work and remain responsible for the final text.</div></div><div><div style="font-weight: 700;">Credits and limits.</div><div style="color: var(--muted, #888780); margin-top: 4px;">Free includes a small set of Lumiere prompts, plus one AI script analysis, one AI breakdown, and one AI storyboard or shot list per account. Those free grants are account-based and are not restored by deleting a script. Creator includes FilmScript’s AI text tools and 100 image credits each monthly billing cycle. Full includes 1,000 image credits each monthly billing cycle. Every AI image generated in Imagine, Boards, or Shot List uses 3 credits. Unused image credits do not roll over and have no cash value.</div></div><div><div style="font-weight: 700;">Paid plans renew monthly.</div><div style="color: var(--muted, #888780); margin-top: 4px;">Creator and Full renew through Recurrente. You can cancel or change your plan from your account menu. Access remains available according to the payment provider’s confirmed subscription status.</div></div><div><div style="font-weight: 700;">Fair use.</div><div style="color: var(--muted, #888780); margin-top: 4px;">Do not use FilmScript to upload material you do not have permission to use, or to interfere with the service or other writers.</div></div><div><div style="font-weight: 700;">Questions?</div><div style="color: var(--muted, #888780); margin-top: 4px;">Contact support if you need help with your account, billing, or your writing workspace.</div></div></div>
       <div style="margin-top: 28px; display: flex; justify-content: flex-end;"><div onClick="{{ closeTerms }}" style="padding: 10px 17px; border-radius: 10px; background: var(--ink, #2C2C2A); color: var(--surface, #FFFEF9); font-size: 13px; font-weight: 600; cursor: pointer;">I understand</div></div>
     </div>
   </div>
@@ -169,37 +266,37 @@
 
     <!-- ============ PRICING PAGE ============ -->
   <sc-if value="{{ isLanding }}" hint-placeholder-val="{{ true }}">
-  <div ref="{{ landingScrollRef }}" style="flex: 1; min-height: 0; overflow-y: auto;">
+  <div class="fs-marketing-scroll" ref="{{ landingScrollRef }}" style="flex: 1; min-height: 0; overflow-y: auto;">
 
     <!-- PRICING -->
-    <div style="max-width: 1180px; margin: 0 auto; padding: 84px 36px 0; text-align: center;">
+    <div class="fs-pricing-intro" style="max-width: 1180px; margin: 0 auto; padding: 84px 36px 0; text-align: center;">
       <div style="font-size: 12px; letter-spacing: 1.8px; text-transform: uppercase; color: var(--accent, #BA7517); font-weight: 600; animation: fs-rise .5s ease both;">Pricing</div>
       <h2 style="font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; font-weight: 700; font-size: 40px; letter-spacing: -1px; color: var(--ink, #2C2C2A); margin: 14px auto 0; line-height: 1.12; animation: fs-rise .5s ease both .07s;">Choose the workspace that fits your process.</h2>
-      <p style="font-size: 17px; color: var(--muted, #888780); max-width: 640px; margin: 18px auto 52px; animation: fs-rise .5s ease both .13s;">Start free, build your production manually with Basic, or unlock the full Lumiere workflow with Pro.</p>
+      <p style="font-size: 17px; color: var(--muted, #888780); max-width: 640px; margin: 18px auto 52px; animation: fs-rise .5s ease both .13s;">Start free, create with 100 monthly image credits in Creator, or unlock Full with 1,000.</p>
 
       <div data-testid="pricing-plans" style="display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 18px; text-align: left; align-items: stretch;">
         <div data-testid="pricing-free" class="fsx-card fs-double-outline fs-pricing-card" style="position: relative; padding: 30px 25px 28px; animation: fs-rise .55s ease both .15s;">
           <div style="font-size: 14px; font-weight: 700; color: var(--ink, #2C2C2A);">Free</div>
           <div style="display: flex; align-items: baseline; gap: 6px; margin-top: 16px;"><span class="fs-price-amount" style="font-size: 46px; color: var(--ink, #2C2C2A);">$0</span><span style="font-size: 14px; color: var(--muted, #888780);">/ month</span></div>
           <div style="font-size: 13.5px; line-height: 1.45; color: var(--muted, #888780); margin-top: 4px;">See the workspace before you commit.</div>
-          <div style="display: flex; flex-direction: column; gap: 10px; margin-top: 23px;"><sc-for list="{{ planFree }}" as="p" hint-placeholder-count="5"><div style="display: flex; gap: 9px; align-items: flex-start; font-size: 13px; line-height: 1.4; color: var(--ink, #2C2C2A);"><span style="color: var(--muted, #888780); flex: 0 0 auto;">{{ check }}</span>{{ p }}</div></sc-for></div>
+          <div class="fs-plan-features" style="display: flex; flex-direction: column; gap: 10px; margin-top: 23px;"><sc-for list="{{ planFree }}" as="p" hint-placeholder-count="5"><div style="display: flex; gap: 9px; align-items: flex-start; font-size: 13px; line-height: 1.4; color: var(--ink, #2C2C2A);"><span style="color: var(--muted, #888780); flex: 0 0 auto;">{{ check }}</span>{{ p }}</div></sc-for></div>
           <button type="button" onClick="{{ chooseFree }}" class="fs-double-outline fs-outline-control fs-outline-control--secondary" style="width: 100%; min-height: 46px; margin-top: 27px;"><span style="font-size: 14px; font-weight: 600;">Start for free</span></button>
         </div>
 
-        <div data-testid="pricing-basic" class="fsx-card fs-double-outline fs-pricing-card" style="position: relative; padding: 30px 25px 28px; animation: fs-rise .55s ease both .2s;">
-          <div style="display: flex; align-items: center; justify-content: space-between; gap: 8px;"><div style="font-size: 14px; font-weight: 700; color: var(--ink, #2C2C2A);">FilmScript Basic</div><div style="font-size: 10px; font-weight: 700; color: var(--accent, #BA7517); border: 1px solid var(--accent, #BA7517); border-radius: 999px; padding: 3px 8px; white-space: nowrap;">Manual control</div></div>
-          <div style="display: flex; align-items: baseline; gap: 6px; margin-top: 16px;"><span class="fs-price-amount" style="font-size: 46px; color: var(--ink, #2C2C2A);">$12.99</span><span style="font-size: 14px; color: var(--muted, #888780);">/ month</span></div>
-          <div style="font-size: 13.5px; line-height: 1.45; color: var(--muted, #888780); margin-top: 4px;">The complete manual production desk, without AI.</div>
-          <div style="display: flex; flex-direction: column; gap: 10px; margin-top: 23px;"><sc-for list="{{ planBasic }}" as="p" hint-placeholder-count="12"><div style="display: flex; gap: 9px; align-items: flex-start; font-size: 13px; line-height: 1.4; color: var(--ink, #2C2C2A);"><span style="color: var(--accent, #BA7517); flex: 0 0 auto;">{{ check }}</span>{{ p }}</div></sc-for></div>
-          <button type="button" onClick="{{ chooseBasic }}" class="fs-double-outline fs-outline-control fs-outline-control--secondary" style="width: 100%; min-height: 46px; margin-top: 27px;"><span style="font-size: 14px; font-weight: 600;">Choose Basic</span></button>
+        <div data-testid="pricing-creator" class="fsx-card fs-double-outline fs-pricing-card" style="position: relative; padding: 30px 25px 28px; animation: fs-rise .55s ease both .2s;">
+          <div style="display: flex; align-items: center; justify-content: space-between; gap: 8px;"><div style="font-size: 14px; font-weight: 700; color: var(--ink, #2C2C2A);">Creator</div><div style="font-size: 10px; font-weight: 700; color: var(--accent, #BA7517); border: 1px solid var(--accent, #BA7517); border-radius: 999px; padding: 3px 8px; white-space: nowrap;">100 image credits</div></div>
+          <div style="display: flex; align-items: baseline; gap: 6px; margin-top: 16px;"><span class="fs-price-amount" style="font-size: 46px; color: var(--ink, #2C2C2A);">$24.99</span><span style="font-size: 14px; color: var(--muted, #888780);">/ month</span></div>
+          <div style="font-size: 13.5px; line-height: 1.45; color: var(--muted, #888780); margin-top: 4px;">A complete creative workspace with AI writing and visual exploration.</div>
+          <div class="fs-plan-features" style="display: flex; flex-direction: column; gap: 10px; margin-top: 23px;"><sc-for list="{{ planCreator }}" as="p" hint-placeholder-count="14"><div style="display: flex; gap: 9px; align-items: flex-start; font-size: 13px; line-height: 1.4; color: var(--ink, #2C2C2A);"><span style="color: var(--accent, #BA7517); flex: 0 0 auto;">{{ check }}</span>{{ p }}</div></sc-for></div>
+          <button type="button" onClick="{{ chooseCreator }}" class="fs-double-outline fs-outline-control fs-outline-control--secondary" style="width: 100%; min-height: 46px; margin-top: 27px;"><span style="font-size: 14px; font-weight: 600;">Choose Creator</span></button>
         </div>
 
-        <div data-testid="pricing-pro" class="fsx-card fs-double-outline fs-pricing-card" style="position: relative; padding: 30px 25px 28px; border-color: var(--accent, #BA7517); animation: fs-rise .55s ease both .25s;">
-          <div style="display: flex; align-items: center; justify-content: space-between; gap: 8px;"><div style="font-size: 14px; font-weight: 700; color: var(--ink, #2C2C2A);">FilmScript Pro</div><div style="font-size: 10px; font-weight: 700; color: #FFFEF9; background: var(--accent, #BA7517); border-radius: 999px; padding: 3px 8px; white-space: nowrap;">Full studio</div></div>
-          <div style="display: flex; align-items: baseline; gap: 6px; margin-top: 16px;"><span class="fs-price-amount" style="font-size: 46px; color: var(--ink, #2C2C2A);">$19.99</span><span style="font-size: 14px; color: var(--muted, #888780);">/ month</span></div>
-          <div style="font-size: 13.5px; line-height: 1.45; color: var(--muted, #888780); margin-top: 4px;">Every FilmScript tool, plus Lumiere on every production pass.</div>
-          <div style="display: flex; flex-direction: column; gap: 10px; margin-top: 23px;"><sc-for list="{{ planPro }}" as="p" hint-placeholder-count="20"><div style="display: flex; gap: 9px; align-items: flex-start; font-size: 13px; line-height: 1.4; color: var(--ink, #2C2C2A);"><span style="color: var(--accent, #BA7517); flex: 0 0 auto;">{{ check }}</span>{{ p }}</div></sc-for></div>
-          <button type="button" onClick="{{ chooseLumiere }}" class="fs-double-outline fs-outline-control fs-outline-control--primary" style="width: 100%; min-height: 46px; margin-top: 27px;"><span style="font-size: 14px; font-weight: 600;">Choose Pro</span></button>
+        <div data-testid="pricing-full" class="fsx-card fs-double-outline fs-pricing-card" style="position: relative; padding: 30px 25px 28px; border-color: var(--accent, #BA7517); animation: fs-rise .55s ease both .25s;">
+          <div style="display: flex; align-items: center; justify-content: space-between; gap: 8px;"><div style="font-size: 14px; font-weight: 700; color: var(--ink, #2C2C2A);">Full</div><div style="font-size: 10px; font-weight: 700; color: #6A3D11; background: #FFE3AC; border-radius: 999px; padding: 3px 8px; white-space: nowrap;">Complete studio</div></div>
+          <div style="display: flex; align-items: baseline; gap: 6px; margin-top: 16px;"><span class="fs-price-amount" style="font-size: 46px; color: var(--ink, #2C2C2A);">$39.99</span><span style="font-size: 14px; color: var(--muted, #888780);">/ month</span></div>
+          <div style="font-size: 13.5px; line-height: 1.45; color: var(--muted, #888780); margin-top: 4px;">The full production studio, with image generation across FilmScript.</div>
+          <div class="fs-plan-features" style="display: flex; flex-direction: column; gap: 10px; margin-top: 23px;"><sc-for list="{{ planFull }}" as="p" hint-placeholder-count="16"><div style="display: flex; gap: 9px; align-items: flex-start; font-size: 13px; line-height: 1.4; color: var(--ink, #2C2C2A);"><span style="color: var(--accent, #BA7517); flex: 0 0 auto;">{{ check }}</span>{{ p }}</div></sc-for></div>
+          <button type="button" onClick="{{ chooseFull }}" class="fs-double-outline fs-outline-control fs-outline-control--secondary" style="width: 100%; min-height: 46px; margin-top: 27px;"><span style="font-size: 14px; font-weight: 600;">Choose Full</span></button>
         </div>
       </div>
     </div>
@@ -214,7 +311,7 @@
         </div>
         <div style="padding: 22px 4px; border-bottom: 1px solid var(--soft, #e4e2d8);">
           <div style="font-size: 16px; font-weight: 600; color: var(--ink, #2C2C2A);">Can I switch plans later?</div>
-          <div style="font-size: 14px; line-height: 1.55; color: var(--muted, #888780); margin-top: 8px;">Yes. Move from Free to Basic or Pro at any time. Your existing scripts and manual production work stay available.</div>
+          <div style="font-size: 14px; line-height: 1.55; color: var(--muted, #888780); margin-top: 8px;">Yes. Move between Free, Creator, and Full at any time. Your existing scripts and production work stay available.</div>
         </div>
         <div style="padding: 22px 4px; border-bottom: 1px solid var(--soft, #e4e2d8);">
           <div style="font-size: 16px; font-weight: 600; color: var(--ink, #2C2C2A);">What do my pages export to?</div>
@@ -222,7 +319,7 @@
         </div>
         <div style="padding: 22px 4px; border-bottom: 1px solid var(--soft, #e4e2d8);">
           <div style="font-size: 16px; font-weight: 600; color: var(--ink, #2C2C2A);">Which plan makes the production documents?</div>
-          <div style="font-size: 14px; line-height: 1.55; color: var(--muted, #888780); margin-top: 8px;">Basic includes manual breakdowns, shot lists, schedules and Budget. Pro adds Lumiere, automated analysis and AI-assisted production passes.</div>
+          <div style="font-size: 14px; line-height: 1.55; color: var(--muted, #888780); margin-top: 8px;">Free includes a limited AI introduction. Creator adds the AI text workflow. Full adds 1,000 monthly image credits for Imagine, Boards, and Shot List.</div>
         </div>
         <div style="padding: 22px 4px;">
           <div style="font-size: 16px; font-weight: 600; color: var(--ink, #2C2C2A);">Is there a free trial?</div>
@@ -271,6 +368,9 @@
         <div style="font-size: 11px; letter-spacing: 1.6px; text-transform: uppercase; color: var(--accent, #BA7517); font-weight: 600; text-align: center;">Confirm plan</div>
         <h2 style="font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; font-weight: 700; font-size: 24px; letter-spacing: -0.5px; color: var(--ink, #2C2C2A); margin: 12px 0 0; text-align: center;">{{ checkoutPlanName }}</h2>
         <div style="text-align: center; margin-top: 8px; font-size: 15px; color: var(--muted, #888780);">{{ checkoutPlanPrice }}</div>
+        <sc-if value="{{ checkoutIsPlanChange }}" hint-placeholder-val="{{ false }}">
+          <div style="margin-top: 18px; padding: 11px 13px; border: 1px solid var(--hair, #E7E4DA); border-radius: 11px; background: var(--soft, #EFEBE1); font-size: 12px; line-height: 1.48; color: var(--ink, #2C2C2A);">This replaces your current plan. Your FilmScript work stays exactly where it is; only your access changes.</div>
+        </sc-if>
 
         <sc-if value="{{ checkoutHasLink }}" hint-placeholder-val="{{ true }}">
         <div onClick="{{ openPayLink }}" class="fsx-lift" style="position: relative; text-align: center; margin-top: 24px; padding: 13px; cursor: pointer;">
@@ -325,6 +425,8 @@ class Component extends DCLogic {
     input: '',
     loading: false,
     plan: null,
+    billingPlan: null,
+    entitlements: null,
     pendingPlan: null,
     checkoutOpen: false,
     checkoutPlan: null,
@@ -349,7 +451,8 @@ class Component extends DCLogic {
     const billingParams = new URLSearchParams(window.location.search);
     const paymentSucceeded = billingParams.get('payment') === 'success';
     this._refreshBilling(paymentSucceeded, billingParams.get('checkout_id')).then((me) => {
-      if (paymentSucceeded && (me?.plan === 'lumiere' || me?.plan === 'basic')) this.setState({ checkoutOpen: true, checkoutPlan: me.plan, checkoutStep: 'success' });
+      const plan = this._canonicalPlan(me?.plan);
+      if (paymentSucceeded && plan) this.setState({ checkoutOpen: true, checkoutPlan: plan, checkoutStep: 'success' });
     });
     let tries = 0;
     const arm = () => {
@@ -364,7 +467,7 @@ class Component extends DCLogic {
     try {
       const me = await (sync ? window.filmscriptBilling.sync(checkoutId) : window.filmscriptBilling.me());
       const user = me.authenticated && me.email ? { name: me.name || me.email.split('@')[0], email: me.email, picture: me.picture || null, initial: (me.name || me.email).charAt(0).toUpperCase() } : null;
-      this.setState({ plan: me.plan || null, user, profileName: user?.name || '', profileNameDraft: user?.name || '' });
+      this.setState({ plan: this._canonicalPlan(me.plan), billingPlan: String(me.billingPlan || me.plan || '').trim().toLowerCase() || null, entitlements: me.entitlements || null, user, profileName: user?.name || '', profileNameDraft: user?.name || '' });
       return me;
     } catch (e) {}
   }
@@ -741,6 +844,22 @@ Write Lumiere's next reply only:`;
     this.setState({ plan });
   }
 
+  _canonicalPlan(plan) {
+    // Existing subscriptions are presented as Creator while billing migrates them.
+    if (plan === 'full') return 'full';
+    if (plan === 'creator' || plan === 'basic' || plan === 'lumiere') return 'creator';
+    return null;
+  }
+
+  _hasLumiereAccess() {
+    const entitlements = this.state.entitlements || {};
+    return !!this._canonicalPlan(this.state.plan)
+      || entitlements?.lumiereChat === true
+      || entitlements?.textGeneration === true
+      || !!entitlements?.lumiere?.chat
+      || !!entitlements?.capabilities?.lumiereChat;
+  }
+
   _startCheckout(plan) {
     window.filmscriptFunnel?.track?.('plan_selected', { plan, cycle: 'monthly' });
     if (!this.state.user) {
@@ -765,20 +884,23 @@ Write Lumiere's next reply only:`;
     const isScripts = screen === 'scripts';
     const isEditor = screen === 'editor';
 
-    const plan = this.state.plan || null;
-    const lumiereUnlocked = plan === 'lumiere';
+    const plan = this._canonicalPlan(this.state.plan);
+    const hasPaidPlan = !!plan;
+    const hasPlan = hasPaidPlan;
+    const noPlan = !hasPaidPlan;
+    const isCreatorPlan = plan === 'creator';
+    const isFullPlan = plan === 'full';
+    const lumiereUnlocked = this._hasLumiereAccess();
     const lumiereLocked = !lumiereUnlocked;
-    const hasPlan = !!plan;
-    const noPlan = !plan;
-    const isBasicPlan = plan === 'basic';
-    const isLumierePlan = plan === 'lumiere';
-    const planLabel = plan === 'lumiere' ? 'FilmScript Pro · $19.99 / month' : plan === 'basic' ? 'FilmScript Basic · $12.99 / month' : 'Free';
+    const planLabel = isFullPlan ? 'FilmScript Full · $39.99 / month' : isCreatorPlan ? 'FilmScript Creator · $24.99 / month' : 'Free';
     const checkoutPlanKey = this.state.checkoutPlan;
-    const checkoutPlanName = checkoutPlanKey === 'lumiere' ? 'FilmScript Pro' : checkoutPlanKey === 'basic' ? 'FilmScript Basic' : 'Free';
-    const checkoutPlanPrice = checkoutPlanKey === 'lumiere' ? '$19.99 / month' : '$12.99 / month';
+    const checkoutPlanName = checkoutPlanKey === 'full' ? 'FilmScript Full' : checkoutPlanKey === 'creator' ? 'FilmScript Creator' : 'Free';
+    const checkoutPlanPrice = checkoutPlanKey === 'full' ? '$39.99 / month' : checkoutPlanKey === 'creator' ? '$24.99 / month' : '$0 / month';
     const checkoutConfirmStep = this.state.checkoutStep !== 'success';
     const checkoutSuccessStep = this.state.checkoutStep === 'success';
     const checkoutHasLink = !!checkoutPlanKey;
+    const billingPlan = String(this.state.billingPlan || '').trim().toLowerCase();
+    const checkoutIsPlanChange = !!billingPlan && !!checkoutPlanKey && billingPlan !== checkoutPlanKey;
 
     const mkIcon = (paths) => React.createElement('svg', { viewBox: '0 0 24 24', width: '100%', height: '100%', fill: 'none', stroke: 'currentColor', strokeWidth: 1.5, strokeLinecap: 'round', strokeLinejoin: 'round' },
       paths.map((d, i) => React.createElement('path', { key: i, d })));
@@ -845,9 +967,9 @@ Write Lumiere's next reply only:`;
       cards, thumbLines, messages,
       tools: ['Character analysis', 'Cliché detector', 'Scene suggestions', 'Narrative arc', 'Format checker'].map(label => ({ label, title: 'Run ' + label, onClick: () => this.runTool(label) })),
       check: '✓',
-      planFree: ['Workspace preview with a clean writing surface', 'Explore the editor, Breakdown and Budget surfaces', 'See exactly what Basic and Pro unlock', '3 Lumiere chat questions per 8-hour session', 'No AI Analysis, Breakdown or generation passes'],
-      planBasic: ['Industry screenplay editor with standard formatting', 'Write, save and export screenplay PDFs', 'Title page, revisions, autosave and light/dark themes', 'Manual script Breakdown by scene', 'Manual cast, props, wardrobe, locations and production elements', 'Manual Stripboard and shooting schedule', 'Manual Calendar and Timeline planning', 'Manual Shot Lists with camera specs and notes', 'Budget Quick View and Budget Summary', 'Budget Breakdown, taxes and contingency controls', 'Finance Plan and weekly Cash Flow', 'Expense Report with receipts and compressed images', 'A4 PDF exports for production documents', '45 Lumiere chat questions per 8-hour session', 'AI Analysis, AI Breakdown and production generation are Pro features'],
-      planPro: ['Everything in FilmScript Basic', 'Lumiere AI writing companion inside the editor', '100 Lumiere questions per 8-hour session', '300 questions per week and 600 per month', 'Spelling and grammar assistance while you write', 'Cliché detector with sharper alternatives', 'Scene suggestions and narrative arc analysis', 'Character motivation and character arc analysis', 'WGA format and screenplay structure analysis', 'Full screenplay Analysis with evidence and production context', 'AI-assisted scene Breakdown and production tagging', 'AI-assisted Stripboard and schedule planning', 'AI-assisted Shot List coverage suggestions', 'AI-assisted shot generation with scene time budgets', 'Lumiere taste profile and creative preferences', 'Manual editing remains available on every AI result', 'Budget connected to Breakdown and Stripboard schedules', 'Cash Flow by week with payment timing and search', 'Expense Report variance, overruns and unexpected costs', 'Compressed receipt uploads linked to budget lines', 'Finance Plan, funding gap and contingency tracking', 'A4 PDF exports for every production document', 'Account persistence across scripts and production work', 'Priority access to the complete FilmScript workflow'],
+      planFree: ['Professional screenplay editor with standard formatting and PDF export', 'Manual Breakdown, Stripboard, Shot List, Budget, Canvas, and Calendar', 'Import a screenplay and organize scenes, cast, and production notes', 'Upload references and build mood boards manually', 'A small set of Lumiere prompts to explore the assistant', 'One AI script analysis, one AI breakdown, and one AI storyboard or shot list per account', 'Your scripts, boards, and production work remain exportable'],
+      planCreator: ['Everything in the Free workspace', '100 image credits in every monthly billing cycle', 'Every AI image uses 3 credits', 'Generate frames in Imagine, Boards, and Shot List', 'Lumiere inside the editor with expanded text limits', 'AI script analysis, scene breakdowns, and production suggestions', 'AI-assisted scheduling, shot coverage, and budget generation', 'Lumiere creative taste profile and consistent project feedback', 'Connected Budget, Cash Flow, expense reporting, and A4 exports', 'Use generated visuals across Imagine, Boards, Vault, and Shot List', 'Keep editing every AI result manually'],
+      planFull: ['Everything in Creator', '1,000 image credits in every monthly billing cycle', 'Every AI image uses 3 credits', 'Generate visual frames in Imagine, Boards, and Shot List', 'Choose Low, Medium, or High image quality for each generation', 'Highest Lumiere text limits for writing and production work', 'Deep script analysis, breakdowns, scheduling, and budget generation', 'Keep character and visual references connected across every scene', 'Use visuals across Imagine, Boards, Vault, and Shot List', 'Download, share, and keep editing every generated result', 'Connected Budget, Cash Flow, expense reporting, and A4 exports'],
       pages: this._buildPages(rough),
       barPath: this._roughPath(408, 56, 2.4, 555, 16),
       btnPath: this._roughPath(92, 32, 2, 333, 11),
@@ -918,9 +1040,9 @@ Write Lumiere's next reply only:`;
       closeAuth: () => this.setState({ authOpen: false }),
       stop: (e) => { e.stopPropagation(); },
       googleSignUp: () => { window.location.href = window.filmscriptBilling.googleSignInUrl(); },
-      signOut: async () => { try { await window.filmscriptBilling.logout(); } catch (e) {} this.setState({ user: null, plan: null, accountOpen: false }); },
+      signOut: async () => { try { await window.filmscriptBilling.logout(); } catch (e) {} this.setState({ user: null, plan: null, billingPlan: null, entitlements: null, accountOpen: false }); },
 
-      plan, planLabel, hasPlan, noPlan, isBasicPlan, isLumierePlan,
+      plan, planLabel, hasPlan, noPlan, hasPaidPlan, isCreatorPlan, isFullPlan,
       lumiereUnlocked, lumiereLocked,
       unlockBtnPath: this._roughPath(180, 44, 2, 999, 14),
 
@@ -946,7 +1068,7 @@ Write Lumiere's next reply only:`;
       openTerms: () => this.setState({ accountOpen: false, termsOpen: true }),
       closeTerms: () => this.setState({ termsOpen: false }),
       cancelPlan: () => { window.location.href = 'Subscription.dc.html?returnTo=Pricing.dc.html'; },
-      upgradeToLumiere: () => this._startCheckout('lumiere'),
+      upgradeToFull: () => this._startCheckout('full'),
       goLandingFromAccount: () => this.setState({ accountOpen: false }),
       goPricing: () => this.setState({ accountOpen: false }),
 
@@ -954,17 +1076,21 @@ Write Lumiere's next reply only:`;
         if (!this.state.user) return this.setState({ authOpen: true, pendingPlan: null, accountOpen: false });
         window.location.href = 'App.dc.html';
       },
-      chooseBasic: () => this._startCheckout('basic'),
-      chooseLumiere: () => this._startCheckout('lumiere'),
-      openCheckoutBasic: () => this._startCheckout('basic'),
-      openCheckoutLumiere: () => this._startCheckout('lumiere'),
+      chooseCreator: () => this._startCheckout('creator'),
+      chooseFull: () => this._startCheckout('full'),
+      openCheckoutCreator: () => this._startCheckout('creator'),
+      openCheckoutFull: () => this._startCheckout('full'),
 
       checkoutOpen: this.state.checkoutOpen,
-      checkoutConfirmStep, checkoutSuccessStep, checkoutPlanName, checkoutPlanPrice, checkoutHasLink,
+      checkoutConfirmStep, checkoutSuccessStep, checkoutPlanName, checkoutPlanPrice, checkoutHasLink, checkoutIsPlanChange,
       openPayLink: async () => {
         try {
           const language = window.filmscriptLanguage?.get?.() || document.documentElement.lang || 'en';
-          const result = await window.filmscriptBilling.checkout(this.state.checkoutPlan, this.state.user?.email, language);
+          const billingPlan = String(this.state.billingPlan || '').trim().toLowerCase();
+          const changingPlan = !!billingPlan && billingPlan !== this.state.checkoutPlan;
+          const result = changingPlan
+            ? await window.filmscriptBilling.switchPlan(this.state.checkoutPlan, language)
+            : await window.filmscriptBilling.checkout(this.state.checkoutPlan, this.state.user?.email, language);
           window.filmscriptBilling.trackCheckoutRedirected(this.state.checkoutPlan);
           window.location.href = result.checkoutUrl;
         } catch (e) { this.setState({ toast: e.message }); }

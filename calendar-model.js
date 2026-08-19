@@ -444,7 +444,9 @@ function computeCalendar(value, projectTitle = "Untitled screenplay", referenceD
   const deliveryTask = computedTasks.find((task) => task.kind === "delivery")
     || [...computedTasks].reverse().find((task) => task.phaseId === "delivery")
     || computedTasks.at(-1);
-  const criticalTasks = computedTasks.filter((task) => task.critical);
+  // A completed zero-slack task should no longer compete for attention in the
+  // active critical path. Its history is still retained in the schedule.
+  const criticalTasks = computedTasks.filter((task) => task.critical && task.status !== "done");
   const completedCount = computedTasks.filter((task) => task.status === "done").length;
   const totalWeight = computedTasks.reduce((sum, task) => sum + Math.max(1, task.durationDays), 0);
   const progress = totalWeight

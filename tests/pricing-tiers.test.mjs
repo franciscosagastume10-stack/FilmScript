@@ -11,23 +11,26 @@ const app = fs.readFileSync(path.join(root, 'App.dc.html'), 'utf8');
 const editor = fs.readFileSync(path.join(root, 'Editor v5.dc.html'), 'utf8');
 const server = fs.readFileSync(path.join(root, 'server.js'), 'utf8');
 
-test('pricing exposes Free, Basic and Pro with distinct prices and actions', () => {
+test('pricing exposes Free, Creator and Full with distinct prices and actions', () => {
   assert.match(pricing, /data-testid="pricing-free"/);
-  assert.match(pricing, /data-testid="pricing-basic"/);
-  assert.match(pricing, /data-testid="pricing-pro"/);
+  assert.match(pricing, /data-testid="pricing-creator"/);
+  assert.match(pricing, /data-testid="pricing-full"/);
   assert.match(pricing, /\$0/);
-  assert.match(pricing, /\$12\.99/);
-  assert.match(pricing, /\$19\.99/);
-  assert.match(pricing, /onClick="\{\{ chooseBasic \}\}"/);
-  assert.match(pricing, /planBasic:/);
-  assert.match(pricing, /planPro:/);
+  assert.match(pricing, /\$24\.99/);
+  assert.match(pricing, /\$39\.99/);
+  assert.match(pricing, /onClick="\{\{ chooseCreator \}\}"/);
+  assert.match(pricing, /onClick="\{\{ chooseFull \}\}"/);
+  assert.match(pricing, /planCreator:/);
+  assert.match(pricing, /planFull:/);
 });
 
-test('Basic keeps manual production language while Pro lists the complete workflow', () => {
-  assert.match(pricing, /The complete manual production desk, without AI/);
-  assert.match(pricing, /No Analysis, Lumiere chat or AI generation/);
-  assert.match(pricing, /Cash Flow by week with payment timing and search/);
-  assert.match(pricing, /Compressed receipt uploads linked to budget lines/);
+test('Creator includes 100 image credits while Full adds the complete image-credit workflow', () => {
+  assert.match(pricing, /100 image credits in every monthly billing cycle/);
+  assert.match(pricing, /Everything in Creator/);
+  assert.match(pricing, /1,000 image credits in every monthly billing cycle/);
+  assert.match(pricing, /Every AI image uses 3 credits/);
+  assert.match(pricing, /Connected Budget, Cash Flow, expense reporting, and A4 exports/);
+  assert.match(pricing, /The full production studio, with image generation across FilmScript/);
 });
 
 test('marketing headers do not render the decorative three-line menu', () => {
@@ -36,8 +39,29 @@ test('marketing headers do not render the decorative three-line menu', () => {
   }
 });
 
-test('Lumiere entitlement stays Pro-only without clearing the Basic tier', () => {
-  assert.match(server, /subscription\?\.plan === "lumiere" && subscription\?\.status === "active"/);
+test('the current billing and entitlement layer recognizes Creator and Full without clearing an active plan', () => {
+  assert.match(server, /BILLING_PLAN_KEYS = Object\.freeze\(\["creator", "full"\]\)/);
+  assert.match(server, /function paidPlanHasTextAccess\(userId\)/);
+  assert.match(server, /\["creator", "full"\]\.includes\(lumierePlanKey\(userId\)\)/);
   assert.doesNotMatch(app, /setState\(\{ plan: null, paywallOpen/);
   assert.doesNotMatch(editor, /setState\(\{ plan: null, paywallOpen/);
+});
+
+test('a Google account can hold only one paid plan and confirms a plan change', () => {
+  assert.match(server, /error: "plan_change_required"/);
+  assert.match(server, /async function handlePlanSwitch/);
+  assert.match(server, /\/api\/subscription\/switch/);
+  assert.match(server, /method: "DELETE"/);
+  assert.match(pricing, /checkoutIsPlanChange/);
+  assert.match(pricing, /switchPlan\(this\.state\.checkoutPlan, language\)/);
+});
+
+test('legacy billing plans use the explicit switch flow when moving to Creator or Full', () => {
+  for (const source of [pricing, features, app]) {
+    assert.match(source, /billingPlan: null/);
+    assert.match(source, /billingPlan: String\(me\.billingPlan \|\| me\.plan \|\| ''\)\.trim\(\)\.toLowerCase\(\) \|\| null/);
+    assert.match(source, /const changingPlan = !!billingPlan && billingPlan !== this\.state\.checkoutPlan/);
+  }
+  assert.match(pricing, /const checkoutIsPlanChange = !!billingPlan && !!checkoutPlanKey && billingPlan !== checkoutPlanKey/);
+  assert.match(server, /function mayApplySubscriptionCreate/);
 });

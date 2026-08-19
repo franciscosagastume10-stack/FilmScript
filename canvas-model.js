@@ -64,6 +64,9 @@ function normalizeAsset(value = {}) {
     size: integer(value.size, 0, 0, 12 * 1024 * 1024),
     width: integer(value.width, 0, 0, 12000),
     height: integer(value.height, 0, 0, 12000),
+    source: text(value.source || "upload", 40).toLowerCase(),
+    prompt: text(value.prompt, 3200),
+    generation: objectValue(value.generation, 12000),
     createdAt: dateText(value.createdAt, nowIso()),
   };
 }

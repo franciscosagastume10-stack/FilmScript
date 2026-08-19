@@ -27,7 +27,11 @@ Before horizontally scaling the backend, migrate the database contract to RDS
 PostgreSQL. Do not increase ECS `DesiredCount` while SQLite is active.
 
 See [aws/README.md](aws/README.md) for AWS deployment and
-[docs/VERCEL.md](docs/VERCEL.md) for the frontend checklist.
+[docs/VERCEL.md](docs/VERCEL.md) for the frontend checklist. The collaboration,
+permissions, AI routing, migration, and manual QA guide is in
+[docs/COLLABORATION_PLATFORM.md](docs/COLLABORATION_PLATFORM.md). The isolated
+online development environment and production promotion procedure are recorded
+in [docs/DEVELOPMENT_ENVIRONMENT.md](docs/DEVELOPMENT_ENVIRONMENT.md).
 
 ## Local development
 

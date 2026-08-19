@@ -11,13 +11,15 @@ RUN npm ci --omit=dev \
   && python3 -m venv /opt/filmscript-venv \
   && /opt/filmscript-venv/bin/pip install --no-cache-dir -r requirements.txt
 
-# The container can run FilmScript as a complete single-origin app. This also
-# includes every backend module used by server.js and every frontend asset, so
-# the same image works on ECS, Render, Railway, Fly.io, or a Docker host.
-COPY *.js *.html *.css *.py ./
-COPY assets ./assets
-COPY scripts ./scripts
-COPY docs ./docs
+# Production serves the frontend from Vercel. Keep the API image intentionally
+# small and copy only runtime modules and PDF workers; public HTML/assets,
+# build scripts, documentation and source-only helpers do not belong in the
+# internet-facing backend container.
+COPY server.js database.js budget-model.js budget-import-model.js calendar-model.js analysis-model.js ./
+COPY reference-storage.js canvas-model.js canvas-storage.js s3-storage.js ./
+COPY platform-database.js permissions-model.js ai-router.js collaboration-engine.js location-plan-model.js translation-policy.js ./
+COPY migrations ./migrations
+COPY *.py ./
 
 RUN mkdir -p /data && chown node:node /data
 

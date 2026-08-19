@@ -34,6 +34,7 @@ textarea {
 .fs-site-shell {
   min-height: 100vh;
   min-height: 100dvh;
+  overflow-x: clip;
 }
 
 .fs-topbar {
@@ -44,11 +45,14 @@ textarea {
 .fs-home-scroll {
   scroll-behavior: smooth;
   scrollbar-gutter: stable;
+  overscroll-behavior-y: contain;
+  overflow-x: clip;
 }
 
 .fs-home {
   width: 100%;
-  overflow: hidden;
+  max-width: 100%;
+  overflow-x: clip;
 }
 
 .fs-home-hero {
@@ -74,10 +78,38 @@ textarea {
   margin: 16px auto 0;
   color: var(--ink, #2C2C2A);
   font-size: clamp(54px, 7.5vw, 88px);
-  font-weight: 760;
-  letter-spacing: -4.2px;
+  font-family: "SF Pro Display", "SF Pro Text", -apple-system, BlinkMacSystemFont, "Helvetica Neue", Arial, sans-serif;
+  font-weight: 800;
+  letter-spacing: -3.7px;
   line-height: .98;
   text-wrap: balance;
+}
+
+.fs-home-title-line {
+  display: inline-block;
+  white-space: nowrap;
+}
+
+.fs-home-login {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 36px;
+  padding: 0 15px;
+  border: 0;
+  border-radius: 999px;
+  color: #2C2C2A;
+  background: #FFFEF9;
+  font-family: "SF Pro Display", "SF Pro Text", -apple-system, BlinkMacSystemFont, "Helvetica Neue", Arial, sans-serif;
+  font-size: 13px;
+  font-weight: 700;
+  line-height: 1;
+  white-space: nowrap;
+  -webkit-appearance: none;
+  appearance: none;
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
+  cursor: pointer;
 }
 
 .fs-home-lede {
@@ -92,6 +124,93 @@ textarea {
 
 .fs-home-hero .fs-cta-row {
   margin-top: 34px;
+}
+
+.fs-landing-cta {
+  appearance: none;
+  min-width: 158px;
+  min-height: 50px;
+  padding: 0 23px;
+  border: 1px solid transparent;
+  border-radius: 15px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  font: 700 15px/1 "SF Pro Text", -apple-system, BlinkMacSystemFont, "Helvetica Neue", Arial, sans-serif;
+  letter-spacing: -.12px;
+  cursor: pointer;
+  box-shadow: 0 1px 0 rgba(255,255,255,.34) inset, 0 7px 18px rgba(44,44,42,.08);
+  transition: transform .2s cubic-bezier(.2,.8,.2,1), box-shadow .2s ease, background-color .2s ease, border-color .2s ease;
+}
+
+.fs-landing-cta:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 1px 0 rgba(255,255,255,.38) inset, 0 12px 25px rgba(44,44,42,.13);
+}
+
+.fs-landing-cta:active {
+  transform: translateY(0) scale(.985);
+}
+
+.fs-landing-cta:focus-visible {
+  outline: 3px solid color-mix(in srgb, var(--accent, #BA7517) 30%, transparent);
+  outline-offset: 3px;
+}
+
+.fs-landing-cta--primary {
+  color: #fff;
+  background: var(--accent, #BA7517);
+  border-color: color-mix(in srgb, var(--accent, #BA7517) 78%, #2C2C2A);
+}
+
+.fs-landing-cta--primary:hover {
+  color: #fff;
+  background: var(--accent-hover, #D98B20);
+}
+
+.fs-landing-cta--secondary {
+  color: var(--ink, #2C2C2A);
+  background: color-mix(in srgb, var(--surface, #FFFEF9) 90%, transparent);
+  border-color: color-mix(in srgb, var(--line, #2C2C2A) 45%, transparent);
+}
+
+.fs-landing-cta--secondary:hover {
+  color: var(--ink, #2C2C2A);
+  border-color: color-mix(in srgb, var(--line, #2C2C2A) 72%, transparent);
+  background: var(--surface, #FFFEF9);
+}
+
+.fs-hero-plan-cta {
+  appearance: none;
+  margin-top: 20px;
+  padding: 2px 4px;
+  border: 0;
+  background: transparent;
+  color: var(--ink, #2C2C2A);
+  font: 650 13px/1.4 "SF Pro Text", -apple-system, BlinkMacSystemFont, "Helvetica Neue", Arial, sans-serif;
+  letter-spacing: -.04px;
+  cursor: pointer;
+  transition: color .18s ease, transform .18s cubic-bezier(.2,.8,.2,1);
+}
+
+.fs-hero-plan-cta:hover {
+  color: var(--accent, #BA7517);
+  transform: translateY(-1px);
+}
+
+.fs-hero-plan-cta:focus-visible {
+  outline: 2px solid var(--accent, #BA7517);
+  outline-offset: 4px;
+  border-radius: 6px;
+}
+
+.fs-hero-audience {
+  margin: 8px auto 0;
+  color: var(--muted, #888780);
+  font-size: 12.5px;
+  font-weight: 520;
+  letter-spacing: .02px;
 }
 
 .fs-hero-stage {
@@ -214,7 +333,7 @@ textarea {
   font-size: 12px;
   font-weight: 600;
   letter-spacing: .08px;
-  transition: color .18s ease, border-color .18s ease;
+  transition: color .18s ease, border-color .18s ease, transform .22s cubic-bezier(.2,.8,.2,1);
 }
 
 .fs-suite-nav a:hover,
@@ -222,6 +341,7 @@ textarea {
   border-bottom-color: var(--accent, #BA7517);
   color: var(--ink, #2C2C2A);
   outline: none;
+  transform: translateY(-2px);
 }
 
 .fs-suite-section {
@@ -267,11 +387,19 @@ textarea {
   min-height: 438px;
   scroll-margin-top: 24px;
   isolation: isolate;
-  transition: transform .24s cubic-bezier(.2,.8,.2,1);
+  transition: transform .28s cubic-bezier(.2,.8,.2,1), filter .28s ease;
 }
 
 .fs-feature-card:hover {
   transform: translateY(-3px);
+}
+
+.fs-feature-card:target {
+  animation: fs-feature-arrival .78s cubic-bezier(.16,1,.3,1) both;
+}
+
+.fs-feature-card:target > .fs-card-frame path {
+  animation: fs-feature-frame-arrival 1s cubic-bezier(.16,1,.3,1) both;
 }
 
 .fs-feature-card--wide {
@@ -327,6 +455,25 @@ textarea {
   height: 100%;
   min-height: 236px;
   overflow: visible;
+}
+
+.fs-hero-lumiere-note,
+.fs-lumiere-message {
+  transform-box: fill-box;
+  transform-origin: center;
+  transition: transform .45s cubic-bezier(.16,1,.3,1);
+}
+
+.fs-hero-stage:hover .fs-hero-lumiere-note {
+  transform: translateY(-3px) rotate(-.2deg);
+}
+
+#lumiere:hover .fs-lumiere-message--feedback {
+  transform: translate(-2px, -2px) rotate(-.18deg);
+}
+
+#lumiere:hover .fs-lumiere-message--prompt {
+  transform: translate(2px, -3px) rotate(.14deg);
 }
 
 .fs-svg-ink {
@@ -397,7 +544,7 @@ textarea {
 
 .fs-connection-flow {
   display: grid;
-  grid-template-columns: repeat(5, minmax(0, 1fr));
+  grid-template-columns: repeat(6, minmax(0, 1fr));
   gap: 12px;
   align-items: center;
   margin-top: 34px;
@@ -405,9 +552,59 @@ textarea {
 
 .fs-flow-step {
   position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
   min-height: 72px;
   padding: 17px 12px 14px;
   color: var(--ink, #2C2C2A);
+  text-decoration: none;
+  cursor: pointer;
+  isolation: isolate;
+  transition: transform .3s cubic-bezier(.16,1,.3,1), color .2s ease;
+}
+
+.fs-flow-step-copy {
+  position: relative;
+  z-index: 1;
+}
+
+.fs-flow-step:hover {
+  color: var(--accent, #BA7517);
+  transform: translateY(-5px);
+}
+
+.fs-flow-step:active {
+  transform: translateY(-1px) scale(.985);
+}
+
+.fs-flow-step:focus-visible {
+  outline: 3px solid color-mix(in srgb, var(--accent, #BA7517) 28%, transparent);
+  outline-offset: 4px;
+}
+
+.fs-flow-step:hover > .fs-card-frame path,
+.fs-flow-step:focus-visible > .fs-card-frame path {
+  stroke: var(--accent, #BA7517);
+}
+
+.fs-flow-link-mark {
+  position: absolute;
+  z-index: 2;
+  top: 13px;
+  right: 13px;
+  color: var(--accent, #BA7517);
+  font-size: 12px;
+  font-weight: 800;
+  opacity: 0;
+  transform: translate(-4px, 4px);
+  transition: opacity .2s ease, transform .3s cubic-bezier(.16,1,.3,1);
+}
+
+.fs-flow-step:hover .fs-flow-link-mark,
+.fs-flow-step:focus-visible .fs-flow-link-mark {
+  opacity: 1;
+  transform: translate(0, 0);
 }
 
 .fs-flow-step strong {
@@ -422,6 +619,17 @@ textarea {
   color: var(--muted, #888780);
   font-size: 10.5px;
   line-height: 1.35;
+}
+
+@keyframes fs-feature-arrival {
+  0% { transform: translateY(18px) scale(.987); filter: saturate(.8); }
+  56% { transform: translateY(-5px) scale(1.004); filter: saturate(1.08); }
+  100% { transform: translateY(0) scale(1); filter: saturate(1); }
+}
+
+@keyframes fs-feature-frame-arrival {
+  0%, 100% { stroke: var(--ink, #2C2C2A); }
+  42% { stroke: var(--accent, #BA7517); }
 }
 
 .fs-final-cta {
@@ -490,6 +698,10 @@ textarea {
     padding-right: 42px;
     padding-left: 42px;
   }
+
+  .fs-connection-flow {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
 }
 
 @media (max-width: 700px) {
@@ -526,9 +738,23 @@ textarea {
   }
 
   .fs-home-title {
-    font-size: clamp(46px, 14vw, 64px);
-    letter-spacing: -2.7px;
+    max-width: 350px;
+    font-size: clamp(48px, 14vw, 60px);
+    font-weight: 800;
+    letter-spacing: -2.15px;
+    line-height: .95;
+    text-wrap: initial;
   }
+
+.fs-home-title-line {
+  display: block;
+}
+
+.fs-home-login {
+  min-height: 34px;
+  padding: 0 14px;
+  font-size: 12px;
+}
 
   .fs-home-lede {
     font-size: 17px;
@@ -539,7 +765,7 @@ textarea {
     gap: 12px !important;
   }
 
-  .fs-cta-row .fs-outline-control {
+  .fs-cta-row .fs-landing-cta {
     flex: 0 0 auto;
     width: min(100%, 280px);
   }
@@ -572,8 +798,28 @@ textarea {
   }
 
   .fs-suite-nav {
-    gap: 4px 14px;
+    justify-content: flex-start;
+    flex-wrap: nowrap;
+    gap: 4px 18px;
+    width: 100%;
     margin-top: 24px;
+    padding: 0 20px 8px;
+    overflow-x: auto;
+    scroll-snap-type: x proximity;
+    scrollbar-width: none;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .fs-suite-nav::-webkit-scrollbar {
+    display: none;
+  }
+
+  .fs-suite-nav a {
+    flex: 0 0 auto;
+    min-height: 40px;
+    display: inline-flex;
+    align-items: center;
+    scroll-snap-align: start;
   }
 
   .fs-suite-section {
@@ -598,7 +844,7 @@ textarea {
   .fs-feature-card--narrow,
   .fs-feature-card--third {
     grid-column: 1 / -1;
-    min-height: 420px;
+    min-height: 0;
   }
 
   .fs-feature-card-content {
@@ -611,23 +857,42 @@ textarea {
 
   .fs-feature-visual,
   .fs-feature-visual > svg {
-    min-height: 218px;
+    min-height: 0;
   }
 
-  #editor .fs-feature-visual,
-  #analysis .fs-feature-visual,
-  #budget .fs-feature-visual,
-  #calendar .fs-feature-visual {
-    overflow: hidden;
+  .fs-feature-visual {
+    flex: none;
+    width: 100%;
+    min-width: 0;
+    overflow: visible;
+  }
+
+  .fs-feature-visual > svg {
+    width: 100%;
+    height: auto;
+    max-width: none;
+    transform: none;
   }
 
   #editor .fs-feature-visual > svg,
-  #analysis .fs-feature-visual > svg,
+  #analysis .fs-feature-visual > svg {
+    aspect-ratio: 620 / 250;
+  }
+
+  #lumiere .fs-feature-visual > svg,
+  #imagine .fs-feature-visual > svg {
+    aspect-ratio: 430 / 250;
+  }
+
+  #breakdown .fs-feature-visual > svg,
+  #stripboard .fs-feature-visual > svg,
+  #shot-list .fs-feature-visual > svg {
+    aspect-ratio: 360 / 250;
+  }
+
   #budget .fs-feature-visual > svg,
   #calendar .fs-feature-visual > svg {
-    width: 154%;
-    max-width: none;
-    transform: translateX(-17.5%);
+    aspect-ratio: 520 / 250;
   }
 
   .fs-connection-section {
@@ -635,13 +900,13 @@ textarea {
   }
 
   .fs-connection-flow {
-    grid-template-columns: 1fr;
-    gap: 8px;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 9px;
   }
 
   .fs-flow-step {
-    min-height: 58px;
-    padding: 13px 18px 11px;
+    min-height: 72px;
+    padding: 15px 14px 13px;
   }
 
   .fs-final-cta {
@@ -650,6 +915,81 @@ textarea {
 
   .fs-home-footer {
     padding-top: 64px;
+  }
+}
+
+/* Keep the production flow legible and compact on touch devices. */
+@media (max-width: 700px) {
+  .fs-connection-section {
+    padding: 84px 20px 0;
+    text-align: left;
+  }
+
+  .fs-connection-section h2 {
+    font-size: clamp(34px, 10vw, 46px);
+    line-height: .98;
+    letter-spacing: -1.6px;
+    text-wrap: balance;
+  }
+
+  .fs-connection-section p {
+    margin-top: 15px;
+    font-size: 17px;
+    line-height: 1.45;
+  }
+
+  .fs-connection-flow {
+    grid-template-columns: 1fr;
+    gap: 10px;
+    margin-top: 28px;
+  }
+
+  .fs-flow-step {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    align-items: center;
+    justify-content: stretch;
+    width: 100%;
+    height: 88px;
+    min-height: 88px;
+    padding: 18px 23px 16px;
+    overflow: hidden;
+    opacity: 1 !important;
+    transform: none !important;
+  }
+
+  .fs-flow-step-copy {
+    display: block;
+    min-width: 0;
+    visibility: visible;
+    opacity: 1;
+    color: var(--ink) !important;
+  }
+
+  .fs-flow-step strong {
+    color: var(--ink) !important;
+    font-size: 17px;
+    font-weight: 700;
+    line-height: 1.1;
+  }
+
+  .fs-flow-step small {
+    display: block;
+    margin-top: 4px;
+    color: var(--muted) !important;
+    font-size: 12px;
+    font-weight: 600;
+    line-height: 1.2;
+  }
+
+  .fs-flow-link-mark {
+    position: relative;
+    top: auto;
+    right: auto;
+    z-index: 1;
+    margin-left: 16px;
+    opacity: 1;
+    transform: none;
   }
 }
 

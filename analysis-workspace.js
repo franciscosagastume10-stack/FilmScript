@@ -456,9 +456,9 @@ class FilmScriptAnalysis extends HTMLElement {
     if (this.analysisStarting) return 'Preparing a fresh reading…';
     if (['queued', 'running', 'updating'].includes(analysis.status)) return analysis.statusMessage || 'Updating analysis…';
     if (analysis.status === 'complete') return `Analysis updated · Last updated ${relativeTime(analysis.deep?.generatedAt || analysis.updatedAt)}`;
-    if (analysis.status === 'stale') return this.proActive ? 'Updating analysis… Previous deep results are clearly marked.' : 'Basic metrics are current. Deep analysis belongs to an earlier script version.';
+    if (analysis.status === 'stale') return this.proActive ? 'Updating analysis… Previous deep results are clearly marked.' : 'Live metrics are current. A previous Lumiere reading belongs to an earlier script version.';
     if (analysis.status === 'error' || analysis.status === 'interrupted') return analysis.statusMessage || 'Lumiere could not finish this pass.';
-    if (analysis.status === 'insufficient') return 'Basic metrics update as you write.';
+    if (analysis.status === 'insufficient') return 'Live metrics update as you write.';
     return 'Live screenplay analysis';
   }
 
@@ -488,7 +488,7 @@ class FilmScriptAnalysis extends HTMLElement {
 
   waitingBlock(label) {
     if (!this.analysis?.hasEnoughContent) return `<div class="calm-state">More screenplay context is needed before Lumiere can interpret ${escapeHtml(label.toLowerCase())}.</div>`;
-    if (!this.proActive && !this.analysis?.deep && !this.analysis?.previousDeep) return `<div class="calm-state">FilmScript Pro is required for new Lumiere ${escapeHtml(label.toLowerCase())} analysis.</div>`;
+    if (!this.proActive && !this.analysis?.deep && !this.analysis?.previousDeep) return `<div class="calm-state">Creator or Full unlocks a new Lumiere ${escapeHtml(label.toLowerCase())} analysis.</div>`;
     return `<div class="calm-state"><span class="reading-dot"></span>Lumiere is reading the current draft…</div>`;
   }
 
@@ -857,7 +857,7 @@ class FilmScriptAnalysis extends HTMLElement {
     const visibleError = this.error || analysisFailure;
     const data = this.normalizeInsightData(deep, metrics);
     const deepReady = !!deep;
-    const access = !this.proActive ? `<div class="pro-note">${icon('sparkle')}<span>Your existing insights and exports remain available. FilmScript Pro is required only for a new Lumiere reading.</span></div>` : '';
+    const access = !this.proActive ? `<div class="pro-note">${icon('sparkle')}<span>Your existing insights and exports remain available. Creator or Full unlocks a new Lumiere reading.</span></div>` : '';
     const shouldAnimateEntry = this._animateEntry;
     const statusClass = String(data.status.label || 'Developing').toLowerCase().replace(/[^a-z]+/g, '-');
     const updatedAt = deep?.generatedAt || analysis.updatedAt;
