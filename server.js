@@ -537,6 +537,12 @@ function publicAIJobLink(job) {
   return `/Editor%20v5.dc.html?script=${encodeURIComponent(job.projectId)}&view=${encodeURIComponent(view)}`;
 }
 
+function updateAndBroadcastAIJob(jobId, patch = {}) {
+  const job = updateAIJob(jobId, patch);
+  if (job) broadcastCollaboration(job.projectId, "ai.job.updated", { module: moduleForAIJob(job.type) || "script", job: publicAIJob(job) });
+  return job;
+}
+
 function finalizeDurableAIJob(job, { succeeded, output = null, error = null, settledCredits = null } = {}) {
   const current = getAIJobInternal(job.id) || job;
   const next = updateAIJob(job.id, succeeded
@@ -8695,7 +8701,7 @@ async function runTranslationJob(jobId, requesterId, billingOwnerId, { managed =
   const job = getAIJobInternal(jobId) || getAIJob(jobId, requesterId, true); if (!job) return { ok: false, errorCode: "job_not_found" };
   const script = loadScripts().scripts[job.sourceScriptId]; const reservationId = job.input?.creditReservationId || `translation:${job.id}`;
   try {
-    updateAIJob(job.id, { status: "processing", stage: "validating", progress: 5 });
+    updateAndBroadcastAIJob(job.id, { status: "processing", stage: "validating", progress: 5 });
     if (!script || hashText(JSON.stringify(script.blocks || [])) !== job.sourceContentHash) throw Object.assign(new Error("The source screenplay changed before translation started."), { code: "corrupt_script", status: 409 });
     const language = job.input.targetLanguage; const entityMap = translationEntityMap(script); const packet = screenplayTranslationPacket(script.blocks, Object.fromEntries(Object.entries(entityMap).map(([key, value]) => [key, value.occurrences])));
     const translated = []; let usedFallback = false; let completedModel = modelForTask("translation");
@@ -8703,7 +8709,7 @@ async function runTranslationJob(jobId, requesterId, billingOwnerId, { managed =
     for (let index = 0; index < packet.length; index += chunkSize) {
       if (!projectPermission(requesterId, script.id, "script", "edit")) throw Object.assign(new Error("Project access was revoked."), { code: "permission_denied", status: 403 });
       const chunk = packet.slice(index, index + chunkSize);
-      updateAIJob(job.id, { status: "processing", stage: "translating", progress: 10 + Math.round((index / Math.max(1, packet.length)) * 70) });
+      updateAndBroadcastAIJob(job.id, { status: "processing", stage: "translating", progress: 10 + Math.round((index / Math.max(1, packet.length)) * 70) });
       const response = await requestLumiereForTask("translation", {
         maxTokens: 8000, jsonMode: true,
         system: `You are Lumiere translating a professional screenplay into ${language}. Preserve every block id, type, order, scene number, note relationship, and screenplay convention. Translate descriptive scene heading terms while preserving proper names. Preserve character voice, tone, slang, humor, insults, subtext, and period language. Return JSON with one blocks array. Entity glossary: ${JSON.stringify(entityMap)}`,
@@ -8713,20 +8719,20 @@ async function runTranslationJob(jobId, requesterId, billingOwnerId, { managed =
       translated.push(...validateTranslatedBlocks(parsed.blocks, chunk));
       usedFallback ||= response.usedFallback; completedModel = response.internalCompletedModel || completedModel;
     }
-    updateAIJob(job.id, { status: "saving", stage: "saving", progress: 90, internalCompletedModel: completedModel, usedFallback });
+    updateAndBroadcastAIJob(job.id, { status: "saving", stage: "saving", progress: 90, internalCompletedModel: completedModel, usedFallback });
     const scripts = loadScripts(); const timestamp = new Date().toISOString(); const translatedId = `scr_${crypto.randomBytes(10).toString("hex")}`;
     const title = translatedProjectName(script.title, language);
     scripts.scripts[translatedId] = { ...script, id: translatedId, userId: billingOwnerId, title, filename: null, source: "translation", text: translated.map((block) => block.text).join("\n"), blocks: translated, chat: [], titleRoom: {}, characterNames: script.characterNames || {}, translatedFromProjectId: script.id, translatedFromScriptId: script.id, sourceLanguage: job.input.sourceLanguage || null, targetLanguage: language, sourceScriptVersionId: job.sourceScriptVersionId, sourceContentHash: job.sourceContentHash, translatedAt: timestamp, createdAt: timestamp, updatedAt: timestamp };
     saveScripts(scripts);
     settleTextCredits(billingOwnerId, reservationId);
-    updateAIJob(job.id, { status: "completed", stage: "completed", progress: 100, settledCredits: job.reservedCredits, output: { projectId: translatedId, scriptId: translatedId, title, targetLanguage: language }, internalCompletedModel: completedModel, usedFallback });
+    updateAndBroadcastAIJob(job.id, { status: "completed", stage: "completed", progress: 100, settledCredits: job.reservedCredits, output: { projectId: translatedId, scriptId: translatedId, title, targetLanguage: language }, internalCompletedModel: completedModel, usedFallback });
     recordActivity({ projectId: script.id, module: "script", actorUserId: requesterId, actorType: "lumiere", entityType: "translation", entityId: job.id, action: "ai.job.completed", summary: `Translation to ${language} completed.` });
-    createAICompletionNotification({ userId: requesterId, projectId: script.id, kind: "translation", message: `${title} was created as an independent project.`, deepLink: `/Editor%20v5.dc.html?id=${encodeURIComponent(translatedId)}` });
+    createAICompletionNotification({ userId: requesterId, projectId: script.id, kind: "translation", message: `${title} was created as an independent project.`, deepLink: `/Editor%20v5.dc.html?script=${encodeURIComponent(translatedId)}&view=editor` });
     broadcastCollaboration(script.id, "ai.job.completed", { job: publicAIJob(getAIJob(job.id, requesterId, true)) });
     return { ok: true, successfulOutputs: 1, settledCredits: job.reservedCredits, output: { projectId: translatedId, scriptId: translatedId, title, targetLanguage: language } };
   } catch (error) {
     releaseTextCredits(billingOwnerId, reservationId);
-    updateAIJob(job.id, { status: "failed", stage: "failed", errorCode: error.code || "translation_failed" });
+    updateAndBroadcastAIJob(job.id, { status: "failed", stage: "failed", errorCode: error.code || "translation_failed" });
     createNotification({ userId: requesterId, projectId: job.projectId, type: "translation_failed", title: "Translation could not be completed", message: "Your credits were returned. You can retry when ready.", deepLink: `/App.dc.html` });
     return { ok: false, errorCode: error.code || "translation_failed" };
   }
