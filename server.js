@@ -118,6 +118,7 @@ import { ScriptDocumentRegistry, decodeUpdate, encodeUpdate } from "./realtime-c
 import { createLocationPlan, updatePinnedMeasurements } from "./location-plan-model.js";
 import {
   TRANSLATION_LANGUAGES,
+  screenplayPageCount,
   screenplayTranslationPacket,
   translatedProjectName,
   translationCreditCost,
@@ -588,7 +589,7 @@ function finalizeDurableAIJob(job, { succeeded, output = null, error = null, set
 
 function createDurableAIJob({ type, projectId, requesterId, sourceScriptVersionId, sourceContentHash, reservedCredits = 0, input = {} }) {
   const idempotencyKey = hashText(JSON.stringify({ type, projectId, requesterId, sourceScriptVersionId, sourceContentHash, input: {
-    language: input.language || null, sceneId: input.sceneId || null, includeManual: !!input.includeManual, regenerate: !!input.regenerate,
+    language: input.language || null, targetLanguage: input.targetLanguage || null, sceneId: input.sceneId || null, includeManual: !!input.includeManual, regenerate: !!input.regenerate,
   } }));
   const idempotent = findAIJobByIdempotency(idempotencyKey);
   if (idempotent) return { job: idempotent, created: false, allowed: true };
@@ -7542,7 +7543,7 @@ function handleScriptsList(req, res) {
   const accessible = new Set(listAccessibleProjectIds(sid));
   const scripts = Object.values(loadScripts().scripts).filter((script) => accessible.has(script.id)).sort((a, b) => b.updatedAt.localeCompare(a.updatedAt)).map((script) => {
     const access = projectAccess(sid, script.id);
-    return { id: script.id, title: script.title, source: script.source, createdAt: script.createdAt, updatedAt: script.updatedAt, pages: script.blocks?.length ? script.blocks.filter((block) => block.type === "pagebreak").length + 1 : null, state: projectState(script.id), access: access ? { projectRole: access.projectRole, cinematicRole: access.cinematicRole, modulePermissions: access.modulePermissions } : null };
+    return { id: script.id, title: script.title, source: script.source, createdAt: script.createdAt, updatedAt: script.updatedAt, pages: screenplayPageCount(script.blocks, script.text), state: projectState(script.id), access: access ? { projectRole: access.projectRole, cinematicRole: access.cinematicRole, modulePermissions: access.modulePermissions } : null };
   });
   json(res, 200, { scripts });
 }
@@ -8750,16 +8751,53 @@ const roomSweepTimer = setInterval(() => {
 }, 30_000);
 roomSweepTimer.unref?.();
 
+const TRANSLATION_HEADING_WORDS = new Set([
+  "int", "ext", "day", "night", "morning", "afternoon", "evening", "dawn", "dusk", "continuous", "later", "same", "time",
+  "house", "home", "apartment", "office", "room", "street", "road", "car", "truck", "van", "station", "school", "hospital",
+  "casa", "hogar", "apartamento", "oficina", "habitación", "habitacion", "calle", "carretera", "coche", "camioneta", "estación", "estacion", "escuela", "hospital",
+  "maison", "appartement", "bureau", "chambre", "rue", "route", "voiture", "gare", "école", "ecole",
+  "casa", "apartamento", "escritório", "escritorio", "quarto", "rua", "estrada", "carro", "estação", "estacao",
+  "haus", "wohnung", "büro", "buro", "zimmer", "straße", "strasse", "auto", "bahnhof", "schule",
+  "the", "and", "with", "from", "into", "de", "del", "la", "el", "los", "las", "y", "e", "of", "a", "an", "to", "in", "on", "at", "und",
+  "fade", "cut", "dissolve", "back", "angle", "close", "wide", "over", "end",
+]);
+
+const escapeTranslationRegExp = (value) => String(value || "").replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+const normalizedTranslationEntity = (value) => String(value || "").replace(/\s+/g, " ").trim();
+
+// A preservation map is deliberately built before the model request. It
+// includes screenplay character cues plus likely uppercase/title-case proper
+// nouns, while filtering ordinary heading language so "CASA DE NILA" can
+// naturally become "NILA'S HOUSE" rather than freezing the whole slugline.
 function translationEntityMap(script) {
+  const definitions = new Map();
+  const add = (raw, kind) => {
+    const name = normalizedTranslationEntity(raw);
+    const key = name.toLocaleLowerCase("en-US");
+    if (name.length < 2 || name.length > 120 || TRANSLATION_HEADING_WORDS.has(key)) return;
+    const prior = definitions.get(key);
+    if (!prior || kind === "character") definitions.set(key, { name, kind: prior?.kind === "character" ? "character" : kind });
+  };
+  const blocks = Array.isArray(script?.blocks) ? script.blocks : [];
+  for (const block of blocks) {
+    const text = String(block?.text || "");
+    if (block?.type === "character") add(text.replace(/\s*\([^)]*\)\s*$/, ""), "character");
+    // Imported screenplays commonly use all caps for people, cities, brands,
+    // companies, and fictional places. Preserve the meaningful tokens rather
+    // than whole scene headings, whose descriptive words must be translated.
+    for (const match of text.matchAll(/\b[\p{Lu}][\p{Lu}\p{M}'’.-]{2,}\b/gu)) add(match[0], "proper_noun");
+    // Title case proper nouns in action lines are often not all caps. Ignore
+    // the sentence-opening word, where ordinary prose is ambiguous.
+    for (const match of text.matchAll(/\b[\p{Lu}][\p{Ll}\p{M}'’-]{2,}\b/gu)) if (match.index > 0) add(match[0], "proper_noun");
+  }
   const map = {}; let counter = 0;
-  (script.blocks || []).forEach((block, index) => {
-    if (block.type !== "character") return;
-    const name = String(block.text || "").replace(/\s*\([^)]*\)\s*$/, "").trim();
-    if (!name) return;
-    let entry = Object.entries(map).find(([, value]) => value.name.toLowerCase() === name.toLowerCase());
-    if (!entry) { const entityId = `entity_${++counter}`; map[entityId] = { name, occurrences: [] }; entry = [entityId, map[entityId]]; }
-    entry[1].occurrences.push(index);
-  });
+  for (const definition of [...definitions.values()].slice(0, 240)) {
+    const occurrences = [];
+    const matcher = new RegExp(`(^|[^\\p{L}\\p{N}])${escapeTranslationRegExp(definition.name)}(?=$|[^\\p{L}\\p{N}])`, "iu");
+    blocks.forEach((block, index) => { if (matcher.test(String(block?.text || ""))) occurrences.push(index); });
+    if (!occurrences.length) continue;
+    map[`entity_${++counter}`] = { ...definition, occurrences };
+  }
   return map;
 }
 
@@ -8859,7 +8897,7 @@ async function runTranslationJob(jobId, requesterId, billingOwnerId, { managed =
   try {
     updateAndBroadcastAIJob(job.id, { status: "processing", stage: "validating", progress: 5 });
     if (!script || hashText(JSON.stringify(script.blocks || [])) !== job.sourceContentHash) throw Object.assign(new Error("The source screenplay changed before translation started."), { code: "corrupt_script", status: 409 });
-    const language = job.input.targetLanguage; const entityMap = translationEntityMap(script); const packet = screenplayTranslationPacket(script.blocks, Object.fromEntries(Object.entries(entityMap).map(([key, value]) => [key, value.occurrences])));
+    const language = job.input.targetLanguage; const entityMap = translationEntityMap(script); const packet = screenplayTranslationPacket(script.blocks, entityMap);
     const translated = []; let usedFallback = false; let completedModel = modelForTask("translation");
     const chunkSize = 80; const chunks = Math.max(1, Math.ceil(packet.length / chunkSize));
     for (let index = 0; index < packet.length; index += chunkSize) {
@@ -8868,7 +8906,7 @@ async function runTranslationJob(jobId, requesterId, billingOwnerId, { managed =
       updateAndBroadcastAIJob(job.id, { status: "processing", stage: "translating", progress: 10 + Math.round((index / Math.max(1, packet.length)) * 70) });
       const response = await requestLumiereForTask("translation", {
         maxTokens: 8000, jsonMode: true,
-        system: `You are Lumiere translating a professional screenplay into ${language}. Preserve every block id, type, order, scene number, note relationship, and screenplay convention. Translate descriptive scene heading terms while preserving proper names. Preserve character voice, tone, slang, humor, insults, subtext, and period language. Return JSON with one blocks array. Entity glossary: ${JSON.stringify(entityMap)}`,
+        system: `You are Lumiere translating a professional screenplay into ${language}. Preserve every block id, type, order, scene number, revision detail, note relationship, and screenplay convention. Translate descriptive scene heading terms, including technical screenplay terms such as INT., EXT., DAY, and NIGHT, into their natural screenplay equivalent in ${language}. Preserve character voice, tone, slang, humor, insults, subtext, formality, period language, and meaning; be natural, never mechanically literal. Every entity in the glossary is an exact protected proper noun: preserve its spelling wherever it occurs. Do not freeze a whole heading just because it contains an entity. For example, when translating CASA DE NILA into English, keep NILA but translate the descriptive language as NILA'S HOUSE. Return JSON with one blocks array and no prose. Entity glossary: ${JSON.stringify(entityMap)}`,
         messages: [{ role: "user", content: JSON.stringify({ blocks: chunk }) }],
       }, { jobId: job.id });
       const raw = response.content.map((item) => item.text || "").join(""); const parsed = parseBreakdownJson(raw);
@@ -8878,8 +8916,9 @@ async function runTranslationJob(jobId, requesterId, billingOwnerId, { managed =
     updateAndBroadcastAIJob(job.id, { status: "saving", stage: "saving", progress: 90, internalCompletedModel: completedModel, usedFallback });
     const scripts = loadScripts(); const timestamp = new Date().toISOString(); const translatedId = `scr_${crypto.randomBytes(10).toString("hex")}`;
     const title = translatedProjectName(script.title, language);
-    scripts.scripts[translatedId] = { ...script, id: translatedId, userId: billingOwnerId, title, filename: null, source: "translation", text: translated.map((block) => block.text).join("\n"), blocks: translated, chat: [], titleRoom: {}, characterNames: script.characterNames || {}, translatedFromProjectId: script.id, translatedFromScriptId: script.id, sourceLanguage: job.input.sourceLanguage || null, targetLanguage: language, sourceScriptVersionId: job.sourceScriptVersionId, sourceContentHash: job.sourceContentHash, translatedAt: timestamp, createdAt: timestamp, updatedAt: timestamp };
+    scripts.scripts[translatedId] = { ...script, id: translatedId, userId: billingOwnerId, title, filename: null, source: "translation", text: translated.map((block) => block.text).join("\n"), blocks: translated, chat: [], titleRoom: {}, characterNames: script.characterNames || {}, translatedFromProjectId: script.id, translatedFromScriptId: script.id, translationRelationship: { mode: "independent", synchronization: "none" }, sourceLanguage: job.input.sourceLanguage || null, targetLanguage: language, sourceScriptVersionId: job.sourceScriptVersionId, sourceContentHash: job.sourceContentHash, translatedAt: timestamp, createdAt: timestamp, updatedAt: timestamp };
     saveScripts(scripts);
+    backfillOwners();
     settleTextCredits(billingOwnerId, reservationId);
     updateAndBroadcastAIJob(job.id, { status: "completed", stage: "completed", progress: 100, settledCredits: job.reservedCredits, output: { projectId: translatedId, scriptId: translatedId, title, targetLanguage: language }, internalCompletedModel: completedModel, usedFallback });
     recordActivity({ projectId: script.id, module: "script", actorUserId: requesterId, actorType: "lumiere", entityType: "translation", entityId: job.id, action: "ai.job.completed", summary: `Translation to ${language} completed.` });
@@ -8901,7 +8940,7 @@ async function handleTranslation(req, res, scriptId) {
   let body; try { body = JSON.parse(await readBody(req, 64 * 1024)); } catch { return json(res, 400, { error: "invalid_request_body" }); }
   const targetLanguage = TRANSLATION_LANGUAGES.find((language) => language.toLowerCase() === String(body.targetLanguage || "").toLowerCase());
   if (!targetLanguage) return json(res, 422, { error: "unsupported_language", message: "Choose English, Spanish, French, Portuguese, or German." });
-  const pageCount = script.blocks?.length ? script.blocks.filter((block) => block.type === "pagebreak").length + 1 : Math.max(1, Math.ceil(String(script.text || "").length / 3000));
+  const pageCount = screenplayPageCount(script.blocks, script.text);
   const requiredCredits = translationCreditCost(pageCount); const available = creditsSummary(script.userId);
   if (req.method === "GET" || body.preview === true) return json(res, 200, { sourceScriptName: script.title, pageCount, targetLanguage, newProjectName: translatedProjectName(script.title, targetLanguage), requiredCredits, availableCredits: available.unlimited ? null : available.remaining, remainingCredits: available.unlimited ? null : Math.max(0, Number(available.remaining || 0) - requiredCredits), createsIndependentProject: true });
   const sourceContentHash = hashText(JSON.stringify(script.blocks || []));
@@ -8916,7 +8955,7 @@ async function handleTranslation(req, res, scriptId) {
   });
   if (!scheduled.allowed) return json(res, 402, { error: "insufficient_credits", message: "There are not enough FilmScript AI credits for this translation.", requiredCredits, availableCredits: scheduled.available });
   if (scheduled.created) scheduleDurableAIJob(scheduled.job.id);
-  return json(res, 202, { job: publicAIJob(scheduled.job), sourceScriptName: script.title, pageCount, requiredCredits, availableCredits: available.unlimited ? null : available.remaining, newProjectName: translatedProjectName(script.title, targetLanguage) });
+  return json(res, 202, { job: publicAIJob(scheduled.job), sourceScriptName: script.title, pageCount, requiredCredits, availableCredits: available.unlimited ? null : available.remaining, remainingCredits: available.unlimited ? null : Math.max(0, Number(available.remaining || 0) - requiredCredits), newProjectName: translatedProjectName(script.title, targetLanguage), createsIndependentProject: true });
 }
 
 async function handleAIJob(req, res, jobId) {
@@ -9303,6 +9342,12 @@ export const __aiInfrastructureTesting = Object.freeze({
   reserveTextCredits,
   settleTextCredits,
   releaseTextCredits,
+});
+
+// Translation preparation stays server-side. This small pure seam verifies
+// that named entities are established before any provider request is made.
+export const __translationTesting = Object.freeze({
+  translationEntityMap,
 });
 
 // Pure Shot List seams: generation itself remains server-only, while these
