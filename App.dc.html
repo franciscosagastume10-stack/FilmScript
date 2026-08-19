@@ -940,7 +940,7 @@ class Component extends DCLogic {
         });
         return true;
       } catch (e) {
-        console.error('FilmScript script list sync failed', { status: e?.status || null, code: e?.code || null });
+        console.error(`FilmScript script list sync failed: status=${e?.status || 'network'} code=${e?.code || 'unknown'}`);
         // The first request after Google OAuth can briefly arrive before the
         // authenticated session is visible to the API. Retry it in place instead
         // of leaving the Scripts home blank until the user refreshes the page.
