@@ -13,7 +13,7 @@
     "recurrente:webhook": "./scripts/run-node.sh --env-file=.env scripts/register-recurrente-webhook.mjs",
     "test": "./scripts/run-node.sh --test tests/*.test.mjs"
     ,"typecheck": "./scripts/run-node.sh node_modules/typescript/bin/tsc -p jsconfig.collaboration.json"
-    ,"lint": "./scripts/run-node.sh node_modules/eslint/bin/eslint.js collaboration-engine.js realtime-collaboration.js realtime-client-source.js platform-client.js canvas-workspace.js"
+    ,"lint": "./scripts/run-node.sh node_modules/eslint/bin/eslint.js collaboration-engine.js realtime-collaboration.js realtime-client-source.js platform-client.js canvas-workspace.js breakdown-workspace.js"
   },
   "engines": {
     "node": ">=22 <25"

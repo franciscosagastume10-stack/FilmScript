@@ -1,0 +1,42 @@
+import assert from 'node:assert/strict';
+import fs from 'node:fs/promises';
+import path from 'node:path';
+import test from 'node:test';
+
+const ROOT = path.resolve(new URL('..', import.meta.url).pathname);
+
+test('Phase 5 Breakdown derives scene and department views from one Liquid Glass workspace', async () => {
+  const [workspace, editor, build] = await Promise.all([
+    fs.readFile(path.join(ROOT, 'breakdown-workspace.js'), 'utf8'),
+    fs.readFile(path.join(ROOT, 'Editor v5.dc.html'), 'utf8'),
+    fs.readFile(path.join(ROOT, 'scripts/build-netlify.mjs'), 'utf8'),
+  ]);
+  assert.match(editor, /film-script-breakdown/);
+  assert.match(build, /"breakdown-workspace\.js"/);
+  assert.match(workspace, /By Scene/);
+  assert.match(workspace, /By Department/);
+  assert.match(workspace, /switching views never makes a copy of it/);
+  assert.match(workspace, /backdrop-filter:blur\(22px\)/);
+  for (const label of ['Cast', 'Background', 'Props', 'Wardrobe', 'Makeup', 'Locations', 'Vehicles', 'Animals', 'VFX', 'SFX', 'Stunts', 'Sound', 'Camera', 'Lighting', 'Grip', 'Special Equipment', 'Production Notes']) {
+    assert.match(workspace, new RegExp(label));
+  }
+});
+
+test('Breakdown protects structured manual work and updates completed scenes progressively', async () => {
+  const [server, workspace, platform] = await Promise.all([
+    fs.readFile(path.join(ROOT, 'server.js'), 'utf8'),
+    fs.readFile(path.join(ROOT, 'breakdown-workspace.js'), 'utf8'),
+    fs.readFile(path.join(ROOT, 'platform-client.js'), 'utf8'),
+  ]);
+  assert.match(server, /ensureBreakdownElementIds/);
+  assert.match(server, /mergeGeneratedBreakdown/);
+  assert.match(server, /manualEditsPreserved/);
+  assert.match(server, /Generating Breakdown ·/);
+  assert.match(server, /breakdown\.progress/);
+  assert.match(workspace, /entityType: 'breakdown_element'/);
+  assert.match(workspace, /sendOperation/);
+  assert.match(workspace, /uploadBreakdownImage/);
+  assert.match(workspace, /scene-loading/);
+  assert.match(platform, /breakdown\.progress/);
+  assert.doesNotMatch(workspace, /gpt-5\.6-(?:sol|terra|luna)/i);
+});

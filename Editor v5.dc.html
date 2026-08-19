@@ -27,6 +27,7 @@
 <script defer src="./canvas-workspace.js?v=20260819-phase1c1"></script>
 <script defer src="./analysis-client.js?v=20260820-project-files1"></script>
     <script type="module" src="./analysis-workspace.js?v=20260731-plan-entitlements2"></script>
+<script type="module" src="./breakdown-workspace.js?v=20260819-phase5-breakdown1"></script>
 <script defer src="./budget-client.js?v=20260820-project-files1"></script>
 <script type="module" src="./budget-workspace.js?v=20260801-budget-glass1"></script>
 <script defer src="./calendar-client.js?v=20260820-project-files1"></script>
@@ -1116,6 +1117,7 @@
       </sc-if>
       <sc-if value="{{ productionAccessNotice }}" hint-placeholder-val="false"><div class="v5-access-note" data-testid="production-access-notice"><div style="width: 8px; height: 8px; flex: 0 0 8px; border-radius: 50%; background: var(--accent, #BA7517); box-shadow: 0 0 0 5px var(--accent-soft, rgba(186,117,23,.11));"></div><div class="v5-access-note-copy"><div style="font-size: 9.5px; font-weight: 750; letter-spacing: 1.2px; text-transform: uppercase; color: var(--accent, #BA7517);">Lumiere pass used</div><div style="font-size: 13.5px; font-weight: 700; color: var(--ink, #2C2C2A); margin-top: 4px;">Your existing production work stays yours.</div><div style="font-size: 11.5px; line-height: 1.55; color: var(--muted, #888780); margin-top: 4px;">Keep editing breakdowns, stripboards, shot lists, budgets, and calendars. Creator unlocks more Lumiere; Full also includes 1,000 image credits each month.</div></div><button type="button" class="v5-access-note-action" onClick="{{ goPricing }}">View plans</button></div></sc-if>
       <sc-if value="{{ productionLoading }}" hint-placeholder-val="false"><div style="padding: 72px; text-align: center; color: var(--muted, #888780);">Loading screenplay data…</div></sc-if>
+      <sc-if value="{{ breakdownMode }}" hint-placeholder-val="false"><film-script-breakdown script-id="{{ activeScriptId }}" project-title="{{ docTitle }}" pro-active="{{ analysisUnlocked }}"></film-script-breakdown></sc-if>
       <sc-if value="{{ breakdownStartVisible }}" hint-placeholder-val="false">
         <section class="v5-breakdown-start" aria-labelledby="breakdown-start-title">
           <div class="v5-breakdown-start-head">
@@ -8829,7 +8831,7 @@ Write Lumiere's next reply only:`;
       productionHeaderVisible: workMode !== 'budget' && workMode !== 'calendar' && !(['canvas', 'imagine'].includes(workMode) && !shotListMode),
       workModeEyebrow: workMode === 'budget' || workMode === 'calendar' ? 'Connected production' : ['canvas','imagine'].includes(workMode) ? 'Canvas' : 'Connected preproduction',
       workModeTitle: modeTitles[workMode] || 'Editor',
-      productionMaxWidth: workMode === 'calendar' || (['canvas','imagine'].includes(workMode) && !shotListMode) ? 'none' : '1120px',
+      productionMaxWidth: workMode === 'calendar' || (['canvas','imagine'].includes(workMode) && !shotListMode) ? 'none' : workMode === 'breakdown' ? '1440px' : '1120px',
       productionShellClass: workMode === 'calendar' ? 'v5-production-shell-calendar' : (['canvas','imagine'].includes(workMode) && !shotListMode) ? 'v5-production-shell-canvas' : '',
       productionShellPadding: workMode === 'calendar' ? '12px 14px 24px' : (['canvas','imagine'].includes(workMode) && !shotListMode) ? '0' : '38px 48px 64px',
       productionInnerHeight: workMode === 'calendar' || (['canvas','imagine'].includes(workMode) && !shotListMode) ? '100%' : 'auto',
@@ -8842,15 +8844,16 @@ Write Lumiere's next reply only:`;
       productionRefreshDisabled,
       refreshCurrentMode: () => this.refreshCurrentMode(),
       productionLoading: this.state.productionLoading,
-      productionEmpty,
+      productionEmpty: productionEmpty && workMode !== 'breakdown',
       productionEmptyTitle: emptyByMode[productionEmptyMode]?.title || '',
       productionEmptyText: emptyByMode[productionEmptyMode]?.text || '',
       productionEmptyAction: canUseProductionAi ? (emptyByMode[productionEmptyMode]?.action || '') : 'View plans',
       productionEmptyActionHandler: canUseProductionAi ? () => this.analyzeProduction() : () => { window.location.href = 'Pricing.dc.html'; },
-      productionProgress,
+      productionProgress: productionProgress && workMode !== 'breakdown',
       productionProgressText,
       productionHasData,
-      breakdownStartVisible,
+      breakdownMode: workMode === 'breakdown',
+      breakdownStartVisible: false,
       breakdownManualStarting: this.state.breakdownManualStarting,
       breakdownManualLabel: this.state.breakdownManualStarting ? 'Creating sheets…' : 'Start manual breakdown',
       breakdownStartManual: () => this.startManualBreakdown(),
@@ -8860,7 +8863,7 @@ Write Lumiere's next reply only:`;
       canvasWorkspaceVisible: (workMode === 'canvas' && !shotListMode) || workMode === 'imagine',
       canvasInitialView: workMode === 'imagine' ? 'imagine' : 'home',
       canvasBack: () => this.openCanvasHome(),
-      breakdownHasData: workMode === 'breakdown' && productionHasData,
+      breakdownHasData: false,
       stripboardHasData: workMode === 'stripboard' && productionHasData,
       stripboardMotionClass: this.state.stripboardEntering ? 'v5-stripboard-entering' : '',
       shotListHasData: shotListMode && productionHasData,

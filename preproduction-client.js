@@ -35,7 +35,7 @@
     analyze: (scriptId, options = {}) => request(`/api/project-files/${encodeURIComponent(scriptId)}/preproduction`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ language: interfaceLanguage(), ...(options?.includeManual === true ? { includeManual: true } : {}) }),
+      body: JSON.stringify({ language: interfaceLanguage(), ...(options?.includeManual === true ? { includeManual: true } : {}), ...(options?.sceneId ? { sceneId: String(options.sceneId) } : {}) }),
     }),
     createManualBreakdown: (scriptId) => request(`/api/project-files/${encodeURIComponent(scriptId)}/preproduction/manual-breakdown`, {
       method: 'POST',
@@ -47,6 +47,17 @@
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(changes || {}),
     }),
+    uploadBreakdownImage: (scriptId, { sceneId, elementId, file }) => request(`/api/project-files/${encodeURIComponent(scriptId)}/preproduction/breakdown/images`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': file.type,
+        'X-Scene-Id': encodeURIComponent(sceneId),
+        'X-Element-Id': encodeURIComponent(elementId),
+        'X-Filename': encodeURIComponent(file.name || 'breakdown image'),
+      },
+      body: file,
+    }),
+    breakdownImageUrl: (scriptId, assetId) => resolve(`/api/project-files/${encodeURIComponent(scriptId)}/preproduction/breakdown/images/${encodeURIComponent(assetId)}`),
     saveStripboard: (scriptId, changes = {}) => request(`/api/project-files/${encodeURIComponent(scriptId)}/preproduction/stripboard`, {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },

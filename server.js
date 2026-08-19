@@ -615,9 +615,10 @@ function createDurableAIJob({ type, projectId, requesterId, sourceScriptVersionI
 // Webhooks invalidate this cache immediately. Between webhook events, avoid a
 // full provider reconciliation every time the account UI refreshes.
 const BILLING_VERIFICATION_TTL_MS = 5 * 60_000;
-// Version 5 backfills cast found directly in screenplay scenes.  This keeps
-// Cast ID reliable even when a prior AI pass missed a character cue.
-const BREAKDOWN_EXTRACTION_VERSION = 5;
+// Version 6 also gives every production element a durable identity.  The
+// identity belongs to the shared Breakdown record (not to its current view),
+// so editing a card in By Scene is reflected immediately in By Department.
+const BREAKDOWN_EXTRACTION_VERSION = 6;
 const CAST_NUMBERING_VERSION = 1;
 const SCRIPT_ANALYSIS_REVISION = 5;
 const BREAKDOWN_CATEGORIES = new Set([
@@ -632,6 +633,9 @@ const BREAKDOWN_CATEGORIES = new Set([
   "special_effects",
   "visual_effects",
   "sound",
+  "camera",
+  "lighting",
+  "grip",
   "stunts",
   "equipment",
   "greenery",
@@ -2015,10 +2019,43 @@ function publicReferenceAsset(value) {
 function publicShotListScene(scene) {
   return {
     ...scene,
+    breakdown: publicBreakdown(scene?.breakdown),
     referenceAsset: publicReferenceAsset(scene?.referenceAsset),
     shots: (Array.isArray(scene?.shots) ? scene.shots : []).map((shot) => ({
       ...shot,
       referenceAsset: publicReferenceAsset(shot?.referenceAsset),
+    })),
+  };
+}
+
+function breakdownElementId(sceneId, element, index = 0) {
+  const identity = [sceneId, breakdownComparisonCategory(element?.category), breakdownElementNameKey(element?.name), index].join("|");
+  return `brk_${crypto.createHash("sha256").update(identity).digest("hex").slice(0, 20)}`;
+}
+
+function ensureBreakdownElementIds(breakdown, scene) {
+  if (!breakdown || !Array.isArray(breakdown.elements)) return breakdown;
+  const used = new Set();
+  return {
+    ...breakdown,
+    elements: breakdown.elements.map((element, index) => {
+      const existingId = String(element?.id || "");
+      const id = /^brk_[a-f0-9]{20}$/.test(existingId) && !used.has(existingId)
+        ? existingId
+        : breakdownElementId(scene?.id || breakdown.sceneId || "scene", element, index);
+      used.add(id);
+      return { ...element, id, imageAsset: cleanReferenceAsset(element?.imageAsset) };
+    }),
+  };
+}
+
+function publicBreakdown(breakdown) {
+  if (!breakdown || typeof breakdown !== "object") return breakdown || null;
+  return {
+    ...breakdown,
+    elements: (Array.isArray(breakdown.elements) ? breakdown.elements : []).map((element) => ({
+      ...element,
+      imageAsset: publicReferenceAsset(element?.imageAsset),
     })),
   };
 }
@@ -2067,16 +2104,16 @@ function syncProject(script, project) {
   // all share one source of truth.
   Object.values(syncedProject.scenes).forEach((scene) => {
     if (!scene.breakdown || scene.breakdown.generated === false) return;
-    scene.breakdown = ensureExplicitCast({
+    scene.breakdown = ensureBreakdownElementIds(ensureExplicitCast({
       ...scene.breakdown,
       elements: dedupeBreakdownElements(scene.breakdown.elements),
       productionNotes: cleanBreakdownNotes(scene.breakdown.productionNotes),
       safetyNotes: cleanBreakdownNotes(scene.breakdown.safetyNotes),
-    }, scene);
+    }, scene), scene);
   });
   if (Number(syncedProject.breakdownExtractionVersion || 0) < BREAKDOWN_EXTRACTION_VERSION) {
     Object.values(syncedProject.scenes).forEach((scene) => {
-      if (scene.breakdown && scene.breakdown.generated !== false) scene.breakdown = ensureExplicitCast(scene.breakdown, scene);
+      if (scene.breakdown && scene.breakdown.generated !== false) scene.breakdown = ensureBreakdownElementIds(ensureExplicitCast(scene.breakdown, scene), scene);
     });
     syncedProject.breakdownExtractionVersion = BREAKDOWN_EXTRACTION_VERSION;
   }
@@ -2637,6 +2674,68 @@ function applyBreakdownPatch(scene, payload) {
 
 const BREAKDOWN_METADATA_FIELDS = new Set(["scriptPage", "pageCount", "estimatedTime", "sceneDescription", "set", "location", "sequence", "scriptDay", "intExt", "dayNight"]);
 const BREAKDOWN_CELL_FIELDS = new Set(["cast", "extras", "props", "stunts", "vehicles_animals", "special_fx", "wardrobe", "makeup_hair", "set_dressing", "greenery", "equipment", "notes", "music", "sound"]);
+const BREAKDOWN_ELEMENT_FIELDS = new Set(["category", "name", "description", "quantity", "notes", "assignee", "status", "budgetLink", "calendarLink", "canvasLink"]);
+
+function cleanBreakdownElementField(field, value) {
+  if (field === "quantity") return Math.max(1, Math.min(9999, Math.round(Number(value) || 1)));
+  if (field === "category") {
+    const category = normalizeBreakdownCategory(value);
+    return BREAKDOWN_CATEGORIES.has(category) ? category : "production_notes";
+  }
+  if (field === "status") return ["open", "in_progress", "ready", "blocked"].includes(String(value)) ? String(value) : "open";
+  const limit = ["description", "notes"].includes(field) ? 4000 : 500;
+  return String(value ?? "").replace(/\s+/g, " ").trim().slice(0, limit);
+}
+
+function applyBreakdownElementOperations(scene, operations) {
+  const breakdown = scene.breakdown ||= { sceneId: scene.id, sceneHeading: scene.title, synopsis: "", elements: [], productionNotes: [], safetyNotes: [], generated: "manual", source: "manual" };
+  const elements = Array.isArray(breakdown.elements) ? breakdown.elements : [];
+  const byId = new Map(elements.map((element) => [String(element?.id || ""), element]));
+  const applied = [];
+  for (const operation of (Array.isArray(operations) ? operations : []).slice(0, 100)) {
+    const action = String(operation?.action || "patch");
+    const id = String(operation?.id || operation?.element?.id || "");
+    if (action === "add") {
+      const candidate = operation?.element && typeof operation.element === "object" ? operation.element : {};
+      const name = cleanBreakdownElementField("name", candidate.name);
+      if (!name) continue;
+      const nextId = /^brk_[a-f0-9]{20}$/.test(id) && !byId.has(id) ? id : breakdownElementId(scene.id, candidate, elements.length);
+      const element = {
+        id: nextId,
+        category: cleanBreakdownElementField("category", candidate.category),
+        name,
+        description: cleanBreakdownElementField("description", candidate.description),
+        quantity: cleanBreakdownElementField("quantity", candidate.quantity),
+        notes: cleanBreakdownElementField("notes", candidate.notes),
+        assignee: cleanBreakdownElementField("assignee", candidate.assignee),
+        status: cleanBreakdownElementField("status", candidate.status),
+        budgetLink: cleanBreakdownElementField("budgetLink", candidate.budgetLink),
+        calendarLink: cleanBreakdownElementField("calendarLink", candidate.calendarLink),
+        canvasLink: cleanBreakdownElementField("canvasLink", candidate.canvasLink),
+        sourceExcerpt: "",
+        confidence: 1,
+        userEdited: true,
+      };
+      elements.push(element); byId.set(nextId, element); applied.push({ action, id: nextId });
+      continue;
+    }
+    const current = byId.get(id);
+    if (!current) continue;
+    if (action === "remove") {
+      const index = elements.indexOf(current);
+      if (index >= 0) elements.splice(index, 1);
+      byId.delete(id); applied.push({ action, id });
+      continue;
+    }
+    const patch = operation?.patch && typeof operation.patch === "object" ? operation.patch : {};
+    for (const [field, value] of Object.entries(patch)) if (BREAKDOWN_ELEMENT_FIELDS.has(field)) current[field] = cleanBreakdownElementField(field, value);
+    current.userEdited = true;
+    current.updatedAt = new Date().toISOString();
+    applied.push({ action: "patch", id });
+  }
+  breakdown.elements = ensureBreakdownElementIds({ ...breakdown, elements: dedupeBreakdownElements(elements) }, scene).elements;
+  return applied;
+}
 
 function headingBreakdownMetadata(title) {
   const heading = String(title || "").replace(/\s+\d+\s*$/, "").trim();
@@ -2734,10 +2833,11 @@ async function handlePreproductionScenePatch(req, res, scriptId, sceneId) {
   form.cells ||= {};
   for (const [key, value] of Object.entries(body.metadata || {})) if (BREAKDOWN_METADATA_FIELDS.has(key)) form.metadata[key] = String(value ?? "").slice(0, 12000);
   for (const [key, value] of Object.entries(body.cells || {})) if (BREAKDOWN_CELL_FIELDS.has(key)) form.cells[key] = String(value ?? "").slice(0, 12000);
+  const elementOperations = applyBreakdownElementOperations(scene, body.elementOperations);
   form.userEdited = true;
   form.updatedAt = new Date().toISOString();
   savePreproduction(db);
-  json(res, 200, { ok: true, breakdownForm: form });
+  json(res, 200, { ok: true, breakdownForm: form, elementOperations, elements: publicBreakdown(scene.breakdown)?.elements || [] });
 }
 
 async function handleBreakdownPdf(req, res, scriptId) {
@@ -3574,6 +3674,19 @@ function referenceAssetsForScene(scene) {
   ].filter(Boolean);
 }
 
+function breakdownImageAssetsForScene(scene) {
+  return (Array.isArray(scene?.breakdown?.elements) ? scene.breakdown.elements : [])
+    .map((element) => cleanReferenceAsset(element?.imageAsset)).filter(Boolean);
+}
+
+function findBreakdownImageAsset(project, assetId) {
+  for (const scene of Object.values(project?.scenes || {})) {
+    const asset = breakdownImageAssetsForScene(scene).find((candidate) => candidate.id === assetId);
+    if (asset) return asset;
+  }
+  return null;
+}
+
 function findReferenceAsset(project, assetId) {
   const scenes = [
     ...Object.values(project?.scenes || {}),
@@ -3641,6 +3754,60 @@ async function handleShotReferenceUpload(req, res, scriptId) {
   }
   if (previousAsset) referenceStorage.remove(previousAsset).catch((error) => console.error("Could not remove replaced reference:", error.message));
   return json(res, 201, { ok: true, asset: publicReferenceAsset(asset), target: shotId ? "shot" : "scene", project: authorizedProjectPayload(project, sid, scriptId) });
+}
+
+async function handleBreakdownElementImageUpload(req, res, scriptId) {
+  const sid = sessionId(req, res);
+  if (!sid) return googleRequired(res);
+  const script = loadScripts().scripts[scriptId];
+  if (!script || !projectPermission(sid, scriptId, 'breakdown', 'edit')) return json(res, 404, { error: 'script not found' });
+  const sceneId = decodedHeader(req.headers['x-scene-id']);
+  const elementId = decodedHeader(req.headers['x-element-id']);
+  if (!/^sc_[a-f0-9]+$/.test(sceneId) || !/^brk_[a-f0-9]{20}$/.test(elementId)) return json(res, 400, { error: 'valid scene and Breakdown element are required' });
+  const mimeType = String(req.headers['content-type'] || '').split(';')[0].trim().toLowerCase();
+  if (!['image/webp', 'image/jpeg', 'image/png'].includes(mimeType)) return json(res, 415, { error: 'image must be a PNG, JPEG, or WebP file' });
+  let data;
+  try { data = await readBodyBuffer(req, 6 * 1024 * 1024); }
+  catch (error) { return json(res, error.status || 400, { error: error.status === 413 ? 'image must be under 6 MB' : error.message }); }
+  if (!data.length || !validateImagePayload(data, mimeType)) return json(res, 415, { error: 'image content does not match its type' });
+  const db = loadPreproduction();
+  const project = db.projects[scriptId] = syncProject(script, db.projects[scriptId]);
+  const scene = project.scenes?.[sceneId];
+  const element = scene?.breakdown?.elements?.find((candidate) => candidate.id === elementId);
+  if (!element) return json(res, 404, { error: 'Breakdown element not found' });
+  const id = `ref_${crypto.randomBytes(12).toString('hex')}`;
+  const filename = safeFilename(decodedHeader(req.headers['x-filename'], 'breakdown image')).slice(0, 140) || 'breakdown image';
+  const stored = await referenceStorage.put({ scriptId, assetId: id, mimeType, data });
+  const asset = { id, provider: stored.provider, key: stored.key, mimeType, filename, size: data.length, createdAt: new Date().toISOString() };
+  const previous = cleanReferenceAsset(element.imageAsset);
+  element.imageAsset = asset; element.userEdited = true; element.updatedAt = asset.createdAt;
+  project.updatedAt = asset.createdAt;
+  try { savePreproduction(db); }
+  catch (error) { await referenceStorage.remove(asset).catch(() => {}); throw error; }
+  if (previous) referenceStorage.remove(previous).catch((error) => console.error('Could not remove replaced Breakdown image:', error.message));
+  const imageAsset = publicReferenceAsset(asset);
+  broadcastCollaboration(scriptId, 'content.operation', {
+    module: 'breakdown', documentId: `breakdown:${sceneId}:elements`, entityType: 'breakdown_element', entityId: elementId,
+    entity: { id: elementId, imageAsset }, changedFields: ['imageAsset'], metadata: { sceneId, sceneLabel: scene.title || '' },
+  }, String(req.headers['x-filmscript-client-id'] || ''));
+  return json(res, 201, { ok: true, asset: imageAsset, project: authorizedProjectPayload(project, sid, scriptId) });
+}
+
+async function handleBreakdownElementImageAsset(req, res, scriptId, assetId) {
+  const sid = sessionId(req, res);
+  if (!sid) return googleRequired(res);
+  const script = loadScripts().scripts[scriptId];
+  if (!script || !projectPermission(sid, scriptId, 'breakdown', 'view')) return json(res, 404, { error: 'script not found' });
+  const asset = findBreakdownImageAsset(loadPreproduction().projects[scriptId], assetId);
+  if (!asset) return json(res, 404, { error: 'Breakdown image not found' });
+  try {
+    const data = await referenceStorage.get(asset);
+    res.writeHead(200, { 'Content-Type': asset.mimeType, 'Content-Length': data.length, 'Cache-Control': 'private, max-age=3600', ETag: `"${asset.id}"` });
+    res.end(data);
+  } catch (error) {
+    if (error?.code === 'ENOENT') return json(res, 404, { error: 'Breakdown image not found' });
+    throw error;
+  }
 }
 
 // Canvas is a per-account visual library. An image can be created in Imagine,
@@ -4154,10 +4321,50 @@ function preserveManualBreakdownForm(form) {
   return { metadata, cells, ...(Object.keys(metadata).length || Object.keys(cells).length ? { userEdited: true } : {}) };
 }
 
+function breakdownDiff(previous, next, patch = null) {
+  const before = Array.isArray(previous?.elements) ? previous.elements : [];
+  const after = Array.isArray(next?.elements) ? next.elements : [];
+  const byKey = (elements) => new Map(elements.map((element) => [breakdownElementKey(element), element]).filter(([key]) => key));
+  const beforeByKey = byKey(before); const afterByKey = byKey(after);
+  const changed = (a, b) => ["category", "name", "description", "quantity", "sourceExcerpt"].some((field) => String(a?.[field] ?? "") !== String(b?.[field] ?? ""));
+  const newElements = after.filter((element) => !beforeByKey.has(breakdownElementKey(element))).map((element) => ({ id: element.id, name: element.name, category: element.category }));
+  const removedElements = before.filter((element) => !afterByKey.has(breakdownElementKey(element)) && element.userEdited !== true).map((element) => ({ id: element.id, name: element.name, category: element.category }));
+  const modifiedElements = after.filter((element) => {
+    const prior = beforeByKey.get(breakdownElementKey(element));
+    return prior && changed(prior, element);
+  }).map((element) => ({ id: element.id, name: element.name, category: element.category }));
+  const manualEditsPreserved = before.filter((element) => element.userEdited === true).filter((element) => {
+    const current = afterByKey.get(breakdownElementKey(element));
+    return current && current.userEdited === true;
+  }).map((element) => ({ id: element.id, name: element.name, category: element.category }));
+  return {
+    newElements: patch?.add?.length ? patch.add.map((element) => ({ id: element.id, name: element.name, category: element.category })) : newElements,
+    modifiedElements: patch?.update?.length ? patch.update.map((entry) => ({ name: entry.changes?.name || entry.target?.name || "Element", category: entry.changes?.category || entry.target?.category || "" })) : modifiedElements,
+    removedElements: patch?.remove?.length ? patch.remove.map((element) => ({ name: element.name || "Element", category: element.category || "" })) : removedElements,
+    manualEditsPreserved,
+    generatedAt: new Date().toISOString(),
+  };
+}
+
+function mergeGeneratedBreakdown(previous, generated, scene) {
+  const previousElements = Array.isArray(previous?.elements) ? previous.elements : [];
+  const generatedElements = Array.isArray(generated?.elements) ? generated.elements : [];
+  const generatedByKey = new Map(generatedElements.map((element) => [breakdownElementKey(element), element]));
+  for (const manual of previousElements.filter((element) => element?.userEdited === true)) {
+    const key = breakdownElementKey(manual);
+    if (!key) continue;
+    // A user-edited element is a deliberate production decision. It wins over
+    // a fresh model pass, including when the model no longer finds it.
+    generatedByKey.set(key, { ...manual, id: manual.id || breakdownElementId(scene.id, manual) });
+  }
+  return ensureBreakdownElementIds({ ...generated, elements: dedupeBreakdownElements([...generatedByKey.values()]) }, scene);
+}
+
 async function analyzeProject(scriptId, sid, language = 'en', { includeManual = false, onlySceneId = null, freeAllowance = false, freeAllowanceReservationId = null, billingUserId = sid, textReservationId = null, aiJobId = null } = {}) {
   let freeAllowanceSettled = false;
   let textReservationSettled = false;
   let successfulOutputs = 0;
+  let finalBreakdownAnalysis = null;
   const settleFreeAllowance = () => {
     if (!freeAllowance || !freeAllowanceReservationId || freeAllowanceSettled) return false;
     freeAllowanceSettled = settleFreeAllowanceReservation(billingUserId, "breakdown", freeAllowanceReservationId);
@@ -4177,7 +4384,14 @@ async function analyzeProject(scriptId, sid, language = 'en', { includeManual = 
     savePreproduction(db);
     return { ok: true, noop: true, successfulOutputs: 0, settledCredits: 0 };
   }
-  project.analysis = { status: "running", total: pending.length, completed: 0, message: "Preparing scenes" };
+  project.analysis = {
+    status: "running",
+    total: all.length,
+    completed: Math.max(0, all.length - pending.length),
+    pendingTotal: pending.length,
+    currentSceneId: null,
+    message: "Preparing scenes",
+  };
   savePreproduction(db);
   if (aiJobId) updateAIJob(aiJobId, { status: "processing", stage: "preparing", progress: 8 });
   for (let i = 0; i < pending.length; i++) {
@@ -4186,8 +4400,8 @@ async function analyzeProject(scriptId, sid, language = 'en', { includeManual = 
       mutatePreproductionProject(scriptId, sid, (freshProject) => {
         freshProject.analysis = {
           status: "interrupted",
-          total: pending.length,
-          completed: i,
+          total: all.length,
+          completed: Math.max(0, all.length - pending.length + i),
           message: "FilmScript Creator or Full is required to continue the breakdown. Existing work was preserved.",
         };
       });
@@ -4197,15 +4411,28 @@ async function analyzeProject(scriptId, sid, language = 'en', { includeManual = 
       mutatePreproductionProject(scriptId, sid, (freshProject) => {
         freshProject.analysis = {
           status: "interrupted",
-          total: pending.length,
-          completed: i,
+          total: all.length,
+          completed: Math.max(0, all.length - pending.length + i),
           message: "Your Lumiere prompt allowance is currently empty. It refreshes automatically with your plan.",
         };
       });
       return { ok: false, errorCode: "insufficient_credits" };
     }
     mutatePreproductionProject(scriptId, sid, (freshProject) => {
-      freshProject.analysis = { status: "running", total: pending.length, completed: i, message: `Analyzing scene ${index + 1} of ${all.length}` };
+      const current = freshProject.scenes?.[scene.id];
+      if (current && current.contentHash === scene.contentHash) current.status = "generating";
+      freshProject.analysis = {
+        status: "running",
+        total: all.length,
+        completed: Math.max(0, all.length - pending.length + i),
+        pendingTotal: pending.length,
+        currentSceneId: scene.id,
+        message: `Generating Breakdown · ${Math.max(0, all.length - pending.length + i)} of ${all.length} scenes`,
+      };
+    });
+    broadcastCollaboration(scriptId, "breakdown.progress", {
+      module: "breakdown", scriptId, sceneId: scene.id,
+      analysis: { status: "running", total: all.length, completed: Math.max(0, all.length - pending.length + i), pendingTotal: pending.length, currentSceneId: scene.id },
     });
     if (aiJobId) updateAIJob(aiJobId, { status: "processing", stage: "generating", progress: 10 + Math.round((i / Math.max(1, pending.length)) * 75) });
       const canPatch = !!scene.previousText && !!scene.breakdown;
@@ -4230,24 +4457,26 @@ async function analyzeProject(scriptId, sid, language = 'en', { includeManual = 
       mutatePreproductionProject(scriptId, sid, (freshProject) => {
         const current = freshProject.scenes?.[scene.id];
         if (current && current.contentHash === scene.contentHash) {
-          // Manual fields are an intentional override. Retain only the values
-          // the user entered so Lumiere can populate the untouched cells.
-          const manualForm = current.breakdown?.source === 'manual' || current.breakdown?.generated === 'manual'
-            ? preserveManualBreakdownForm(current.breakdownForm)
-            : null;
+          // Manual fields and element edits are deliberate production choices.
+          // Keep them when a scene is regenerated; Lumiere fills only the gaps.
+          const previousBreakdown = current.breakdown ? JSON.parse(JSON.stringify(current.breakdown)) : null;
+          const manualForm = preserveManualBreakdownForm(current.breakdownForm);
           if (canPatch) {
             const applied = applyBreakdownPatch(current, payload);
-            current.breakdown = ensureExplicitCast(applied.breakdown, current);
+            current.breakdown = ensureBreakdownElementIds(ensureExplicitCast(applied.breakdown, current), current);
             current.lastPatch = applied.patch;
+            current.breakdownDiff = breakdownDiff(previousBreakdown, current.breakdown, applied.patch);
             current.reviewRequired = applied.patch.warnings.length > 0;
             current.status = current.reviewRequired ? "needs_review" : "synced";
           } else {
-            current.breakdown = ensureExplicitCast(validateBreakdown(payload, current), current);
+            const generated = ensureExplicitCast(validateBreakdown(payload, current), current);
+            current.breakdown = mergeGeneratedBreakdown(previousBreakdown, generated, current);
             current.lastPatch = null;
+            current.breakdownDiff = breakdownDiff(previousBreakdown, current.breakdown);
             current.reviewRequired = false;
             current.status = "synced";
           }
-          if (manualForm) current.breakdownForm = manualForm;
+          if (manualForm.userEdited) current.breakdownForm = manualForm;
           current.previousText = null;
           current.strip = current.strip || { day: null, location: current.breakdown?.elements?.find((element) => element.category === "locations")?.name || "Unassigned", status: "unscheduled" };
           current.shots = Array.isArray(current.shots) ? current.shots : [];
@@ -4255,7 +4484,19 @@ async function analyzeProject(scriptId, sid, language = 'en', { includeManual = 
           successfulOutputs += 1;
           savedOutput = true;
         }
-        freshProject.analysis = { ...freshProject.analysis, status: "running", total: pending.length, completed: i + 1 };
+        freshProject.analysis = {
+          ...freshProject.analysis,
+          status: "running",
+          total: all.length,
+          completed: Math.max(0, all.length - pending.length + i + 1),
+          pendingTotal: pending.length,
+          currentSceneId: null,
+          message: `Generating Breakdown · ${Math.max(0, all.length - pending.length + i + 1)} of ${all.length} scenes`,
+        };
+      });
+      broadcastCollaboration(scriptId, "breakdown.progress", {
+        module: "breakdown", scriptId, sceneId: scene.id,
+        analysis: { status: "running", total: all.length, completed: Math.max(0, all.length - pending.length + i + 1), pendingTotal: pending.length, currentSceneId: null },
       });
       // Parsing and persistence are both part of a completed generation. If
       // either fails, the catch path leaves the allowance untouched.
@@ -4269,7 +4510,19 @@ async function analyzeProject(scriptId, sid, language = 'en', { includeManual = 
           current.status = "needs_review";
           current.reviewRequired = false;
         }
-        freshProject.analysis = { ...freshProject.analysis, status: "running", total: pending.length, completed: i + 1 };
+        freshProject.analysis = {
+          ...freshProject.analysis,
+          status: "running",
+          total: all.length,
+          completed: Math.max(0, all.length - pending.length + i + 1),
+          pendingTotal: pending.length,
+          currentSceneId: null,
+          message: `Generating Breakdown · ${Math.max(0, all.length - pending.length + i + 1)} of ${all.length} scenes`,
+        };
+      });
+      broadcastCollaboration(scriptId, "breakdown.progress", {
+        module: "breakdown", scriptId, sceneId: scene.id,
+        analysis: { status: "running", total: all.length, completed: Math.max(0, all.length - pending.length + i + 1), pendingTotal: pending.length, currentSceneId: null },
       });
     }
   }
@@ -4277,7 +4530,9 @@ async function analyzeProject(scriptId, sid, language = 'en', { includeManual = 
     const currentScenes = Object.values(freshProject.scenes || {});
     const needsReview = currentScenes.filter((scene) => scene.status === "needs_review" || scene.status === "outdated").length;
     freshProject.analysis = { status: needsReview ? "needs_review" : "complete", total: currentScenes.length, completed: currentScenes.length - needsReview, message: needsReview ? `${needsReview} scenes need review` : "Breakdown complete" };
+    finalBreakdownAnalysis = freshProject.analysis;
   });
+  broadcastCollaboration(scriptId, "breakdown.progress", { module: "breakdown", scriptId, analysis: finalBreakdownAnalysis || { status: "complete", total: all.length, completed: all.length, pendingTotal: 0, currentSceneId: null } });
   if (successfulOutputs > 0) settleFreeAllowance();
   if (!freeAllowance && textReservationId && successfulOutputs > 0) {
     textReservationSettled = settleTextCredits(billingUserId, textReservationId, successfulOutputs);
@@ -4380,8 +4635,10 @@ async function handlePreproduction(req, res, scriptId) {
       if (freeReservation && !freeReservation.allowed) return lumierePlanRequired(res, { feature: "your one Free AI Breakdown" });
       project.analysis = {
         status: "queued",
-        total: pendingTotal,
-        completed: 0,
+        total: Object.values(project.scenes).length,
+        completed: Math.max(0, Object.values(project.scenes).length - pendingTotal),
+        pendingTotal,
+        currentSceneId: sceneId,
         message: includeManual ? "Lumiere is preparing your manual breakdown" : "Starting analysis",
       };
       try {
@@ -7794,6 +8051,7 @@ const PUBLIC_STATIC_FILES = new Set([
   "analysis-model.js",
   "analysis-client.js",
   "analysis-workspace.js",
+  "breakdown-workspace.js",
   "budget-model.js",
   "budget-client.js",
   "budget-workspace.js",
@@ -8732,6 +8990,11 @@ export function requestHandler(req, res) {
       handleAnalysisPdf(req, res, pathname.split("/")[3]).catch((err) => json(res, err.status || 500, { error: err.message }));
     } else if ((req.method === "GET" || req.method === "POST" || req.method === "PATCH") && /^\/api\/scripts\/scr_[a-f0-9]+\/analysis$/.test(pathname)) {
       handleScriptAnalysis(req, res, pathname.split("/")[3]).catch((err) => json(res, err.status || 500, { error: err.message }));
+    } else if (req.method === "POST" && /^\/api\/scripts\/scr_[a-f0-9]+\/preproduction\/breakdown\/images$/.test(pathname)) {
+      handleBreakdownElementImageUpload(req, res, pathname.split("/")[3]).catch((err) => json(res, err.status || 500, { error: err.message }));
+    } else if (req.method === "GET" && /^\/api\/scripts\/scr_[a-f0-9]+\/preproduction\/breakdown\/images\/ref_[a-f0-9]+$/.test(pathname)) {
+      const parts = pathname.split("/");
+      handleBreakdownElementImageAsset(req, res, parts[3], parts[7]).catch((err) => json(res, err.status || 500, { error: err.message }));
     } else if (req.method === "PATCH" && /^\/api\/scripts\/scr_[a-f0-9]+\/preproduction\/scenes\/sc_[a-f0-9]+$/.test(pathname)) {
       const parts = pathname.split("/");
       handlePreproductionScenePatch(req, res, parts[3], parts[6]).catch((err) => json(res, err.status || 500, { error: err.message }));
