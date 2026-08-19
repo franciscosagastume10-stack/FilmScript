@@ -99,9 +99,10 @@ test('Analysis has Spanish copy for its empty state, focus cards, drawers, and d
   const language = read('language-preference.js');
   const analysis = read('analysis-workspace.js');
   for (const [english, spanish] of [
-    ['Choose how to read your screenplay', 'Elige cómo leer tu guion'],
-    ['Quick analysis', 'Análisis rápido'],
-    ['Deep analysis', 'Análisis profundo'],
+    ['Your screenplay is ready to read', 'Tu guion está listo para leerse'],
+    ['Analyze', 'Analizar'],
+    ['Reanalyze', 'Volver a analizar'],
+    ['Your script has changed since this analysis was generated.', 'Tu guion ha cambiado desde que se generó este análisis.'],
     ['Lumiere focus', 'Enfoque de Lumiere'],
     ['Analysis summary', 'Resumen del análisis'],
     ['Explore further', 'Explorar más'],
@@ -121,10 +122,13 @@ test('Analysis has Spanish copy for its empty state, focus cards, drawers, and d
   assert.match(analysis, /filmscript:language-change/);
   assert.match(analysis, /filmscriptLanguage\?\.t\?\.\(sourceQuestion, 'es'\)/);
   for (const status of [
-    'Lumiere is finding the story priorities and production impact',
-    'The screenplay changed while Lumiere was reading it',
-    'The previous analysis was interrupted. Start it again when ready.',
-    'Preparing the current screenplay for Lumiere',
+    'Reading screenplay',
+    'Identifying scenes',
+    'Mapping characters',
+    'Reviewing locations',
+    'Evaluating production requirements',
+    'Building analysis',
+    'Finalizing results',
   ]) assert.match(language, new RegExp(`'${status.replace(/[.*+?^${}()|[\\]\\]/g, '\\$&')}'`));
 });
 

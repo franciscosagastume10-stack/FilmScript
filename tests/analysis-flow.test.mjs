@@ -6,7 +6,7 @@ import os from "node:os";
 import path from "node:path";
 import test from "node:test";
 
-import { buildAnalysisSnapshot, normalizeEmotionalArc } from "../analysis-model.js";
+import { buildAnalysisSnapshot, diffAnalysisScenes, normalizeEmotionalArc, sceneContentHashes } from "../analysis-model.js";
 
 const ROOT = path.resolve(new URL("..", import.meta.url).pathname);
 
@@ -82,6 +82,48 @@ test("Analysis derives live metrics and preserves stable scene IDs when scenes m
   assert.equal(withCover.metrics.pages, 2, "the cover is not counted as a screenplay page");
   assert.equal(withCover.sceneIndex[0].page, 1, "the first scene starts on screenplay page 1");
   assert.equal(withCover.metrics.words, first.metrics.words, "cover words are excluded from screenplay analysis");
+});
+
+test("Analysis scopes a re-read to changed and added scenes while removing deleted scene output", () => {
+  const initialBlocks = [
+    { type: "scene", text: "INT. APARTMENT - DAY" },
+    { type: "action", text: "MARA studies the letter in silence." },
+    { type: "scene", text: "EXT. STATION - NIGHT" },
+    { type: "action", text: "JON waits for the last train." },
+  ];
+  const first = buildAnalysisSnapshot({ id: "scr_incremental", updatedAt: "v1", blocks: initialBlocks });
+  const prior = { sceneContentHashes: sceneContentHashes(first) };
+  const next = buildAnalysisSnapshot({
+    id: "scr_incremental",
+    updatedAt: "v2",
+    blocks: [
+      ...initialBlocks.slice(0, 2),
+      { type: "scene", text: "EXT. STATION - NIGHT" },
+      { type: "action", text: "JON waits for the last train, then tears up the ticket." },
+      { type: "scene", text: "INT. DINER - DAWN" },
+      { type: "action", text: "MARA arrives with the torn half of the letter." },
+    ],
+  }, first);
+  const changed = diffAnalysisScenes(next, prior);
+  assert.equal(changed.changedSceneIds.length, 2, "only the edited and newly added scenes are sent to Lumiere");
+  assert.equal(changed.addedSceneIds.length, 1);
+  assert.equal(changed.unchangedSceneIds.length, 1);
+  assert.equal(changed.deletedSceneIds.length, 0);
+
+  const deleted = buildAnalysisSnapshot({ id: "scr_incremental", updatedAt: "v3", blocks: initialBlocks.slice(0, 2) }, next);
+  const deletion = diffAnalysisScenes(deleted, { sceneContentHashes: sceneContentHashes(next) });
+  assert.equal(deletion.changedSceneIds.length, 0);
+  assert.equal(deletion.deletedSceneIds.length, 2, "removed scenes are pruned without a replacement model request");
+});
+
+test("Analysis workspace keeps generation explicit and exposes real job stages without model names", async () => {
+  const source = await fs.readFile(path.join(ROOT, "analysis-workspace.js"), "utf8");
+  assert.match(source, /data-action="start-analysis"[^>]*>\$\{icon\('sparkle'\)\}Analyze/);
+  assert.match(source, /Your script has changed since this analysis was generated\./);
+  for (const stage of ["Reading screenplay", "Identifying scenes", "Mapping characters", "Reviewing locations", "Evaluating production requirements", "Building analysis", "Finalizing results"]) {
+    assert.match(source, new RegExp(stage));
+  }
+  assert.doesNotMatch(source, /gpt-5\.6-(?:sol|terra|luna)/i);
 });
 
 test("Emotional Arc detects valence-shaped data and restores dramatic intensity", () => {

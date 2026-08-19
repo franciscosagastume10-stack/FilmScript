@@ -39,7 +39,7 @@ import {
 import { computeBudget, createBudgetTemplate, normalizeBudget } from "./budget-model.js";
 import { applyBudgetImport, buildBudgetImportCatalog, normalizeBudgetImportProposal } from "./budget-import-model.js";
 import { computeCalendar, createCalendarTemplate, normalizeCalendar } from "./calendar-model.js";
-import { buildAnalysisSnapshot, hashText, normalizeEmotionalArc } from "./analysis-model.js";
+import { buildAnalysisSnapshot, diffAnalysisScenes, hashText, normalizeEmotionalArc } from "./analysis-model.js";
 import { referenceStorage } from "./reference-storage.js";
 import {
   createCanvasWorkspace,
@@ -619,7 +619,7 @@ const BILLING_VERIFICATION_TTL_MS = 5 * 60_000;
 // Cast ID reliable even when a prior AI pass missed a character cue.
 const BREAKDOWN_EXTRACTION_VERSION = 5;
 const CAST_NUMBERING_VERSION = 1;
-const SCRIPT_ANALYSIS_REVISION = 4;
+const SCRIPT_ANALYSIS_REVISION = 5;
 const BREAKDOWN_CATEGORIES = new Set([
   "cast",
   "extras",
@@ -834,6 +834,7 @@ function plannedShotMinutes(shots) {
 const SCRIPT_ANALYSIS_SYSTEM_PROMPT = `You are Lumiere, the central screenplay insights system inside FilmScript.
 
 Read only the structured screenplay scenes supplied by FilmScript. Behave like a concise creative collaborator who has read the screenplay, not an analytics dashboard. Never invent scenes, characters, events, page numbers, dialogue, production requirements, or story beats. Do not rewrite the screenplay and do not impose one writing formula.
+Be constructively critical: identify specific strengths only when the screenplay evidence earns them, and prioritize concrete weaknesses, structural gaps, character issues, inconsistencies, and production concerns over generic praise.
 
 Return only valid JSON with this exact top-level shape:
 {
@@ -4598,7 +4599,8 @@ function syncScriptAnalysis(project, script) {
   const snapshot = buildAnalysisSnapshot(script, previous);
   const { sourceScenes, ...persistedSnapshot } = snapshot;
   const deepCurrent = isCurrentScriptAnalysisDeep(previous.deep, snapshot.contentHash);
-  const jobActive = activeScriptAnalysisJobs.has(script.id);
+  const jobActive = activeScriptAnalysisJobs.has(script.id)
+    || !!activeAIJobForProject(script.id, ["analysis"]);
   let status = previous.status || "idle";
   if (!snapshot.hasEnoughContent) status = "insufficient";
   else if (deepCurrent) status = "complete";
@@ -4620,7 +4622,7 @@ function syncScriptAnalysis(project, script) {
 
 function sanitizeScriptAnalysisDeepForDisplay(deep, sceneIndex) {
   if (!deep) return null;
-  const { model: _internalModel, ...displayDeep } = deep;
+  const { model: _internalModel, sceneContentHashes: _sceneContentHashes, sceneResults: _sceneResults, ...displayDeep } = deep;
   const sceneById = new Map((sceneIndex || []).map((scene) => [scene.id, scene]));
   const display = (value, limit) => analysisDisplayText(value, sceneById, limit);
   const evidence = (item) => ({
@@ -4790,14 +4792,22 @@ function publicScriptAnalysis(analysis) {
     statusMessage: analysis.statusMessage || "",
     targetHash: analysis.targetHash || "",
     updatedAt: analysis.updatedAt,
+    failure: analysis.lastFailure || null,
+    metadata: {
+      scriptVersion: analysis.scriptVersion,
+      generatedAt: analysis.deep?.generatedAt || null,
+      lastModifiedRelevantScene: analysis.deep?.lastModifiedRelevantScene || null,
+      state: current ? "updated" : analysis.deep ? "outdated" : "not_generated",
+    },
     deep: current ? deepWithFeedback : null,
     previousDeep: !current && deepWithFeedback ? { ...deepWithFeedback, current: false } : null,
     feedback: analysis.feedback,
   };
 }
 
-function analysisScenePackets(snapshot) {
-  const scenes = snapshot.sourceScenes || [];
+function analysisScenePackets(snapshot, sceneIds = null) {
+  const wanted = sceneIds instanceof Set ? sceneIds : Array.isArray(sceneIds) ? new Set(sceneIds) : null;
+  const scenes = (snapshot.sourceScenes || []).filter((scene) => !wanted || wanted.has(scene.id));
   const perSceneBudget = Math.max(1, Math.min(12000, Math.floor(180000 / Math.max(1, scenes.length))));
   return scenes.map((scene) => {
     const blocks = [];
@@ -4823,6 +4833,141 @@ function analysisScenePackets(snapshot) {
   });
 }
 
+const ANALYSIS_JOB_STAGES = Object.freeze({
+  reading_screenplay: { progress: 8, message: "Reading screenplay" },
+  identifying_scenes: { progress: 20, message: "Identifying scenes" },
+  mapping_characters: { progress: 32, message: "Mapping characters" },
+  reviewing_locations: { progress: 44, message: "Reviewing locations" },
+  evaluating_production_requirements: { progress: 58, message: "Evaluating production requirements" },
+  building_analysis: { progress: 72, message: "Building analysis" },
+  finalizing_results: { progress: 92, message: "Finalizing results" },
+});
+
+function analysisEntryTouchesScenes(entry, sceneIds) {
+  if (!entry || !sceneIds?.size) return false;
+  if (sceneIds.has(entry.sceneId)) return true;
+  return Array.isArray(entry.sceneIds) && entry.sceneIds.some((sceneId) => sceneIds.has(sceneId));
+}
+
+function uniqueAnalysisEntries(items, limit = 20) {
+  const seen = new Set();
+  return (items || []).filter(Boolean).filter((item) => {
+    const key = String(item.id || `${item.sceneId || ""}:${item.title || item.label || ""}:${item.referenceText || ""}`);
+    if (seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  }).slice(0, limit);
+}
+
+function analysisPriorityWeight(item) {
+  return item?.priority === "high" ? 0 : item?.priority === "medium" ? 1 : 2;
+}
+
+function deterministicAnalysisStatus(issues = [], production = []) {
+  if (issues.some((item) => item?.priority === "high") || production.some((item) => item?.priority === "high")) {
+    return { label: "Needs Attention", reason: "The updated scenes contain production or story decisions that need attention." };
+  }
+  if (issues.length || production.length) {
+    return { label: "Developing", reason: "The current draft has focused opportunities to strengthen before production." };
+  }
+  return { label: "Production Ready", reason: "No material issue was found in the currently analyzed scenes." };
+}
+
+function mergeIncrementalScriptAnalysis(snapshot, previousDeep, partialDeep, changes) {
+  const replaceScenes = new Set([...(changes?.changedSceneIds || []), ...(changes?.deletedSceneIds || [])]);
+  const previous = previousDeep && typeof previousDeep === "object" ? previousDeep : {};
+  const partial = partialDeep && typeof partialDeep === "object" ? partialDeep : {};
+  const withoutReplaced = (items) => (Array.isArray(items) ? items : []).filter((item) => !analysisEntryTouchesScenes(item, replaceScenes));
+  const mergedList = (path, limit, { rankPriority = false } = {}) => {
+    const from = (source) => path.reduce((value, key) => value?.[key], source) || [];
+    const values = uniqueAnalysisEntries([...withoutReplaced(from(previous)), ...(from(partial) || [])], limit * 3);
+    if (rankPriority) values.sort((a, b) => analysisPriorityWeight(a) - analysisPriorityWeight(b));
+    return values.slice(0, limit);
+  };
+  const scenesById = new Map((snapshot.sceneIndex || []).map((scene) => [scene.id, scene]));
+  const normaliseFlow = uniqueAnalysisEntries([
+    ...withoutReplaced(previous.storyFlow?.points),
+    ...(partial.storyFlow?.points || []),
+  ], Math.max(1, snapshot.sceneIndex?.length || 1)).filter((point) => scenesById.has(point.sceneId));
+  const flowByScene = new Map(normaliseFlow.map((point) => [point.sceneId, point]));
+  const flow = normalizeEmotionalArc((snapshot.sceneIndex || []).map((scene) => flowByScene.get(scene.id) || {
+    sceneId: scene.id,
+    sceneNumber: scene.sceneNumber,
+    heading: scene.heading,
+    page: scene.page,
+    value: 50,
+    label: "Awaiting scene reading",
+    explanation: "This scene is retained from the current screenplay structure.",
+    marker: "",
+    confidence: 0,
+  }));
+  const working = mergedList(["overview", "working"], 3);
+  const needsAttention = mergedList(["overview", "needsAttention"], 3, { rankPriority: true });
+  const productionImpact = mergedList(["overview", "productionImpact"], 3, { rankPriority: true });
+  const clarity = mergedList(["storyClarity", "points"], 4).map((item) => ({
+    ...item,
+    stage: item.stage || (item.sceneNumber <= Math.ceil((snapshot.sceneIndex?.length || 1) / 4) ? "Start" : "Development"),
+  }));
+  const sceneIssues = mergedList(["sceneIssues"], 10, { rankPriority: true });
+  const keyMoments = mergedList(["keyMoments"], 8);
+  const complexScenes = mergedList(["productionOverview", "complexScenes"], 8, { rankPriority: true });
+  const contextual = partial.contextualQuestions && Object.values(partial.contextualQuestions).some((items) => Array.isArray(items) && items.length)
+    ? partial.contextualQuestions
+    : previous.contextualQuestions || { story: [], characters: [], production: [] };
+  const hashes = changes?.sceneContentHashes || {};
+  const lastChangedId = [...(changes?.changedSceneIds || []), ...(changes?.deletedSceneIds || [])].at(-1) || null;
+  const lastScene = scenesById.get(lastChangedId) || null;
+  const confidenceValues = [...flow, ...keyMoments].map((item) => Number(item?.confidence || 0)).filter((value) => value > 0);
+  const confidence = confidenceValues.length
+    ? Number((confidenceValues.reduce((total, value) => total + value, 0) / confidenceValues.length).toFixed(3))
+    : 0;
+  const statusSummary = deterministicAnalysisStatus(needsAttention, productionImpact);
+  const generatedAt = new Date().toISOString();
+  const primary = needsAttention[0] || working[0] || null;
+  return {
+    ...previous,
+    ...partial,
+    analysisId: partial.analysisId || previous.analysisId || `ana_${crypto.randomBytes(10).toString("hex")}`,
+    revision: SCRIPT_ANALYSIS_REVISION,
+    projectId: snapshot.projectId,
+    scriptId: snapshot.scriptId,
+    scriptVersion: snapshot.scriptVersion,
+    contentHash: snapshot.contentHash,
+    sceneIds: [...snapshot.sceneIds],
+    sceneContentHashes: hashes,
+    lastModifiedRelevantScene: lastScene ? {
+      id: lastScene.id,
+      sceneNumber: lastScene.sceneNumber,
+      heading: lastScene.heading,
+      contentHash: lastScene.contentHash,
+      updatedAt: generatedAt,
+    } : previous.lastModifiedRelevantScene || null,
+    statusSummary,
+    overview: { working, needsAttention, productionImpact },
+    storyClarity: {
+      summary: partial.storyClarity?.summary || previous.storyClarity?.summary || "Scene-level results were recomputed for the current screenplay.",
+      points: clarity,
+    },
+    storyFlow: { points: flow, takeaway: partial.storyFlow?.takeaway || previous.storyFlow?.takeaway || null },
+    sceneIssues,
+    keyMoments,
+    productionOverview: {
+      locations: { count: snapshot.metrics?.locations?.length || 0, sceneIds: (snapshot.sceneIndex || []).filter((scene) => scene.location).map((scene) => scene.id) },
+      characters: { count: snapshot.metrics?.characters?.length || 0, sceneIds: (snapshot.sceneIndex || []).map((scene) => scene.id) },
+      nightScenes: { count: Number(snapshot.metrics?.nightScenes || 0), sceneIds: (snapshot.sceneIndex || []).filter((scene) => scene.dayNight === "NIGHT").map((scene) => scene.id) },
+      complexScenes,
+    },
+    contextualQuestions: contextual,
+    confidence,
+    pacing: flow,
+    moments: keyMoments.map((moment) => ({ ...moment, key: analysisMomentKey(moment.title), label: moment.title, reason: moment.explanation })),
+    emotionalArc: flow,
+    suggestions: needsAttention.map((item) => ({ id: item.id, text: item.explanation, sceneIds: item.sceneIds })),
+    insight: primary ? { id: `ins_${primary.id}`, text: primary.explanation, sceneIds: primary.sceneIds } : null,
+    generatedAt,
+  };
+}
+
 async function runScriptAnalysis(scriptId, sid, targetHash, requestedLanguage = 'en', { freeAllowance = false, freeAllowanceReservationId = null, billingUserId = sid, textReservationId = null, aiJobId = null } = {}) {
   let freeAllowanceSettled = false;
   let textReservationSettled = false;
@@ -4838,60 +4983,93 @@ async function runScriptAnalysis(scriptId, sid, targetHash, requestedLanguage = 
   let project = db.projects[scriptId] = syncProject(script, db.projects[scriptId]);
   let { analysis, snapshot } = syncScriptAnalysis(project, script);
   if (snapshot.contentHash !== targetHash || !snapshot.hasEnoughContent) { savePreproduction(db); return { ok: false, errorCode: "corrupt_script" }; }
+  const progress = (stage) => {
+    const detail = ANALYSIS_JOB_STAGES[stage];
+    if (!detail) return;
+    analysis.statusMessage = detail.message;
+    if (aiJobId) updateAIJob(aiJobId, { status: "processing", stage, progress: detail.progress });
+    savePreproduction(db);
+  };
   analysis.status = "running";
-  analysis.statusMessage = "Lumiere is finding the story priorities and production impact";
   analysis.targetHash = targetHash;
-  savePreproduction(db);
-  if (aiJobId) updateAIJob(aiJobId, { status: "processing", stage: "analyzing", progress: 10 });
+  progress("reading_screenplay");
 
   try {
-    if (!process.env.OPENAI_API_KEY) throw Object.assign(new Error('OpenAI API key is not configured.'), { status: 503 });
-    const requestContent = JSON.stringify({
-      projectId: snapshot.projectId,
-      scriptId: snapshot.scriptId,
-      scriptVersion: snapshot.scriptVersion,
-      contentHash: snapshot.contentHash,
-      metrics: snapshot.metrics,
-      scenes: analysisScenePackets(snapshot),
-      userCorrections: analysis.feedback || {},
-      writerMemory: analysis.feedback?.artisticDecisions || [],
-      requestedLanguage: normalizeLumiereLanguage(requestedLanguage),
-    });
-    if (!freeAllowance && !hasLumiereCredits(billingUserId)) {
-      analysis.status = "interrupted";
-      analysis.statusMessage = "Your Lumiere prompt allowance is currently empty. It refreshes automatically with your plan.";
-      savePreproduction(db);
-      return { ok: false, errorCode: "insufficient_credits" };
-    }
-    let response = await requestLumiereForTask("analysis", {
-      maxTokens: 12000,
-      jsonMode: true,
-      system: `${SCRIPT_ANALYSIS_SYSTEM_PROMPT}\n\n${lumiereLanguageInstruction(requestedLanguage)}`,
-      messages: [{ role: "user", content: requestContent }],
-    }, { jobId: aiJobId });
-    recordUsage(response.usage);
-    let raw = response.content.filter((block) => block.type === "text").map((block) => block.text).join("");
-    let payload;
-    try {
-      payload = parseBreakdownJson(raw);
-    } catch (firstError) {
+    // The scene snapshot is the durable source of truth. The model receives
+    // only added or changed scenes; deleted scenes are removed locally and
+    // global counts are recomputed from the current screenplay below.
+    const changes = diffAnalysisScenes(snapshot, analysis.deep);
+    const changedSceneIds = changes.changedSceneIds.length
+      ? changes.changedSceneIds
+      : (!changes.deletedSceneIds.length ? snapshot.sceneIds : []);
+    progress("identifying_scenes");
+    const packets = analysisScenePackets(snapshot, new Set(changedSceneIds));
+    progress("mapping_characters");
+    const characterIndex = snapshot.characterIndex || [];
+    progress("reviewing_locations");
+    const locationIndex = snapshot.locationIndex || [];
+    progress("evaluating_production_requirements");
+    let deep;
+    let modelWasCalled = false;
+    if (packets.length) {
+      if (!process.env.OPENAI_API_KEY) throw Object.assign(new Error('OpenAI API key is not configured.'), { status: 503 });
       if (!freeAllowance && !hasLumiereCredits(billingUserId)) {
         analysis.status = "interrupted";
         analysis.statusMessage = "Your Lumiere prompt allowance is currently empty. It refreshes automatically with your plan.";
         savePreproduction(db);
         return { ok: false, errorCode: "insufficient_credits" };
       }
-      response = await requestLumiereForTask("analysis", {
-        maxTokens: 16000,
+      const requestContent = JSON.stringify({
+        projectId: snapshot.projectId,
+        scriptId: snapshot.scriptId,
+        scriptVersion: snapshot.scriptVersion,
+        contentHash: snapshot.contentHash,
+        metrics: snapshot.metrics,
+        changeSet: {
+          changedSceneIds,
+          addedSceneIds: changes.addedSceneIds,
+          deletedSceneIds: changes.deletedSceneIds,
+          fullRefresh: changes.fullRefresh,
+        },
+        characters: characterIndex,
+        locations: locationIndex,
+        scenes: packets,
+        userCorrections: analysis.feedback || {},
+        writerMemory: analysis.feedback?.artisticDecisions || [],
+        requestedLanguage: normalizeLumiereLanguage(requestedLanguage),
+      });
+      progress("building_analysis");
+      let response = await requestLumiereForTask("analysis", {
+        maxTokens: Math.min(16000, Math.max(3200, packets.length * 2200)),
         jsonMode: true,
-        system: `${SCRIPT_ANALYSIS_SYSTEM_PROMPT}\n\n${lumiereLanguageInstruction(requestedLanguage)}\nThe previous pass did not produce complete JSON. Make this retry especially compact and complete.`,
+        system: `${SCRIPT_ANALYSIS_SYSTEM_PROMPT}\n\n${lumiereLanguageInstruction(requestedLanguage)}\nOnly evaluate the supplied changed or added scenes. Do not speculate about unsupplied scenes; FilmScript will safely merge these scene results with unchanged analysis.`,
         messages: [{ role: "user", content: requestContent }],
       }, { jobId: aiJobId });
       recordUsage(response.usage);
-      raw = response.content.filter((block) => block.type === "text").map((block) => block.text).join("");
-      payload = parseBreakdownJson(raw);
+      let raw = response.content.filter((block) => block.type === "text").map((block) => block.text).join("");
+      let payload;
+      try {
+        payload = parseBreakdownJson(raw);
+      } catch {
+        response = await requestLumiereForTask("analysis", {
+          maxTokens: 16000,
+          jsonMode: true,
+          system: `${SCRIPT_ANALYSIS_SYSTEM_PROMPT}\n\n${lumiereLanguageInstruction(requestedLanguage)}\nOnly evaluate the supplied changed or added scenes. The previous pass did not produce complete JSON. Make this retry especially compact and complete.`,
+          messages: [{ role: "user", content: requestContent }],
+        }, { jobId: aiJobId });
+        recordUsage(response.usage);
+        raw = response.content.filter((block) => block.type === "text").map((block) => block.text).join("");
+        payload = parseBreakdownJson(raw);
+      }
+      const partialDeep = validateScriptAnalysisDeep(payload, snapshot, response);
+      deep = mergeIncrementalScriptAnalysis(snapshot, analysis.deep, partialDeep, changes);
+      modelWasCalled = true;
+    } else {
+      // Deleting a scene needs no model call: remove the old scene output and
+      // deterministically recompute the global screenplay metrics instead.
+      deep = mergeIncrementalScriptAnalysis(snapshot, analysis.deep, null, changes);
     }
-    const deep = validateScriptAnalysisDeep(payload, snapshot, response);
+    progress("finalizing_results");
 
     const currentScript = loadScripts().scripts[scriptId];
     if (!currentScript || !projectPermission(sid, scriptId, "analysis", "edit")) return { ok: false, errorCode: "permission_denied" };
@@ -4907,6 +5085,7 @@ async function runScriptAnalysis(scriptId, sid, targetHash, requestedLanguage = 
       current.analysis.statusMessage = "Analysis updated";
       current.analysis.targetHash = "";
       current.analysis.deepUpdatedAt = deep.generatedAt;
+      delete current.analysis.lastFailure;
     } else {
       current.analysis.status = "stale";
       current.analysis.statusMessage = "The screenplay changed while Lumiere was reading it";
@@ -4914,10 +5093,16 @@ async function runScriptAnalysis(scriptId, sid, targetHash, requestedLanguage = 
     savePreproduction(db);
     // Retries, malformed JSON, stale source text, and failed persistence must
     // never cost the writer. Charge the single analysis only after it lands.
-    if (didApply && !freeAllowance && !textReservationId) consumeLumiereCredit(billingUserId);
-    if (didApply) settleFreeAllowance();
-    if (didApply && !freeAllowance && textReservationId) textReservationSettled = settleTextCredits(billingUserId, textReservationId, 1);
-    return { ok: didApply, applied: didApply, successfulOutputs: didApply ? 1 : 0, settledCredits: textReservationSettled ? 1 : 0 };
+    if (didApply && modelWasCalled && !freeAllowance && !textReservationId) consumeLumiereCredit(billingUserId);
+    if (didApply && modelWasCalled) settleFreeAllowance();
+    if (didApply && modelWasCalled && !freeAllowance && textReservationId) textReservationSettled = settleTextCredits(billingUserId, textReservationId, 1);
+    return {
+      ok: didApply,
+      applied: didApply,
+      successfulOutputs: didApply && modelWasCalled ? 1 : 0,
+      settledCredits: textReservationSettled ? 1 : 0,
+      output: { changedSceneIds, removedSceneIds: changes.deletedSceneIds, deterministicMetricsRecomputed: true },
+    };
   } catch (error) {
     console.error(`Script analysis failed for ${scriptId}:`, error.message);
     const currentScript = loadScripts().scripts[scriptId];
@@ -4928,6 +5113,7 @@ async function runScriptAnalysis(scriptId, sid, targetHash, requestedLanguage = 
     current.analysis.status = current.analysis.deep ? "stale" : "error";
     current.analysis.statusMessage = lumiereFailureMessage(error);
     current.analysis.targetHash = "";
+    current.analysis.lastFailure = { code: error.code || "analysis_failed", message: current.analysis.statusMessage, at: new Date().toISOString() };
     savePreproduction(db);
     return { ok: false, errorCode: error.code || "analysis_failed", message: error.message };
   }
@@ -4946,7 +5132,7 @@ async function handleScriptAnalysis(req, res, scriptId) {
   if (!script || !projectPermission(sid, scriptId, "analysis", req.method === "GET" ? "view" : "edit") || (req.method === "POST" && !canUseLumiereAction(projectAccess(sid, scriptId), "analysis"))) return json(res, 404, { error: "script not found" });
   const db = loadPreproduction();
   const project = db.projects[scriptId] = syncProject(script, db.projects[scriptId]);
-  const { analysis } = syncScriptAnalysis(project, script);
+  const { analysis, snapshot } = syncScriptAnalysis(project, script);
 
   let repairedInterruptedAnalysis = false;
   const activeAnalysisJob = activeAIJobForProject(scriptId, ["analysis"]);
@@ -4959,7 +5145,7 @@ async function handleScriptAnalysis(req, res, scriptId) {
 
   if (req.method === "GET") {
     if (repairedInterruptedAnalysis) savePreproduction(db);
-    return json(res, 200, { analysis: publicScriptAnalysis(analysis) });
+    return json(res, 200, { analysis: publicScriptAnalysis(analysis), job: activeAnalysisJob ? publicAIJob(activeAnalysisJob) : null });
   }
 
   if (req.method === "POST") {
@@ -4970,6 +5156,7 @@ async function handleScriptAnalysis(req, res, scriptId) {
     if (!process.env.OPENAI_API_KEY) {
       analysis.status = analysis.deep ? "stale" : "error";
       analysis.statusMessage = "Lumiere is not configured on this server. Add OPENAI_API_KEY and restart FilmScript.";
+      analysis.lastFailure = { code: "openai_not_configured", message: analysis.statusMessage, at: new Date().toISOString() };
       savePreproduction(db);
       return json(res, 503, { error: "openai_not_configured", message: analysis.statusMessage, analysis: publicScriptAnalysis(analysis) });
     }
@@ -4995,8 +5182,9 @@ async function handleScriptAnalysis(req, res, scriptId) {
       analysis.feedback.deepDirection = analysisOptions.answers && typeof analysisOptions.answers === "object" ? analysisOptions.answers : {};
       analysis.feedback.requestedLanguage = requestedLanguage;
       analysis.status = "queued";
-    analysis.statusMessage = "Preparing the current screenplay for Lumiere";
+      analysis.statusMessage = "Reading screenplay";
       analysis.targetHash = analysis.contentHash;
+      const changes = diffAnalysisScenes(snapshot, analysis.deep);
       try {
         savePreproduction(db);
         const scheduled = createDurableAIJob({
@@ -5010,6 +5198,9 @@ async function handleScriptAnalysis(req, res, scriptId) {
             language: requestedLanguage, billingUserId,
             freeAllowance: access.free,
             freeAllowanceReservationId: freeReservation?.reservationId || null,
+            changedSceneIds: changes.changedSceneIds,
+            addedSceneIds: changes.addedSceneIds,
+            deletedSceneIds: changes.deletedSceneIds,
           },
         });
         if (!scheduled.allowed) {

@@ -687,7 +687,7 @@ test("Analysis uses one Lumiere insights contract with screenplay evidence and p
     fs.readFile(path.join(ROOT, "Editor v5.dc.html"), "utf8"),
   ]);
 
-  assert.match(server, /SCRIPT_ANALYSIS_REVISION = 4/);
+  assert.match(server, /SCRIPT_ANALYSIS_REVISION = 5/);
   assert.match(server, /"overview"/);
   assert.match(server, /"storyClarity"/);
   assert.match(server, /"storyFlow"/);
@@ -718,7 +718,14 @@ test("Analysis uses one Lumiere insights contract with screenplay evidence and p
   assert.match(editor, /analysisBackgroundVisible/);
   assert.match(editor, /_scheduleAnalysisBackgroundPoll/);
   assert.match(editor, /Lumiere is analyzing/);
-  assert.match(analysis, /data-action="start-quick"/);
+  assert.match(analysis, /data-action="start-analysis"/);
+  assert.match(analysis, /data-action="reanalyze"/);
+  assert.match(analysis, /analysis-processing-glass/);
+  assert.match(analysis, /Your script has changed since this analysis was generated\./);
+  assert.match(server, /diffAnalysisScenes/);
+  assert.match(server, /changedSceneIds/);
+  assert.match(server, /sceneContentHashes/);
+  assert.match(server, /deterministicMetricsRecomputed/);
   assert.match(analysis, /const waitingForUser = this\.analysis\.hasEnoughContent/);
   assert.match(analysis, /load\(\{ startAnalysis: true \}\)/);
   assert.doesNotMatch(editor, /Mount the Analysis element first[\s\S]*refreshFromEditor/);
