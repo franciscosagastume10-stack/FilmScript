@@ -74,6 +74,7 @@ import {
   listActivity,
   listComments,
   listLocationPlans,
+  listSharedProjects,
   listMembers,
   listInvitations,
   listNotifications,
@@ -83,6 +84,7 @@ import {
   projectState,
   recordActivity,
   requireProjectPermission,
+  requestSharedProjectAccess,
   resolveComment,
   revokeSharedProject,
   revokeInvitation,
@@ -97,6 +99,7 @@ import {
   updateAIJob,
   updateMembership,
   updateInvitation,
+  updateSharedProject,
   updateUserPlatformProfile,
   userPlatformProfile,
 } from "./platform-database.js";
@@ -359,6 +362,8 @@ const CANVAS_QUOTE_PDF_RENDERER = path.join(ROOT, "canvas_quote_pdf.py");
 const RECURRENTE_API = (process.env.RECURRENTE_API_URL || "https://app.recurrente.com/api").replace(/\/$/, "");
 const SESSION_COOKIE = "filmscript_sid";
 const SHARED_SESSION_COOKIE = "filmscript_shared_sid";
+const SHARED_PROJECT_ACCESS_COOKIE = "filmscript_shared_project_access";
+const sharedProjectAccessSecret = process.env.FILMSCRIPT_SHARED_PROJECT_ACCESS_SECRET || crypto.randomBytes(32).toString("hex");
 // Preview mode is intentionally local-only. The fixed ids make the preview
 // URL stable, which is useful for opening the same workspace from Codex while
 // keeping the preview database completely separate from AWS/local accounts.
@@ -4905,6 +4910,34 @@ function guestSessionCookie(value, maxAge = 24 * 60 * 60) {
   return `filmscript_guest=${encodeURIComponent(value)}; Path=/; HttpOnly; SameSite=Lax; Max-Age=${maxAge}${secure ? "; Secure" : ""}`;
 }
 
+function sharedProjectAccessCookie(slug, maxAge = 8 * 60 * 60) {
+  const expiresAt = Date.now() + maxAge * 1000;
+  const payload = Buffer.from(JSON.stringify({ slug, expiresAt })).toString("base64url");
+  const signature = crypto.createHmac("sha256", sharedProjectAccessSecret).update(payload).digest("base64url");
+  const secure = process.env.SESSION_COOKIE_SECURE === "true" || backendUrl().startsWith("https://");
+  return `${SHARED_PROJECT_ACCESS_COOKIE}=${encodeURIComponent(`${payload}.${signature}`)}; Path=/; HttpOnly; SameSite=Lax; Max-Age=${maxAge}${secure ? "; Secure" : ""}`;
+}
+
+function hasSharedProjectAccessCookie(req, slug) {
+  const token = parseCookies(req)[SHARED_PROJECT_ACCESS_COOKIE];
+  if (!token) return false;
+  const [payload, signature] = String(token).split(".");
+  if (!payload || !signature) return false;
+  const expected = crypto.createHmac("sha256", sharedProjectAccessSecret).update(payload).digest("base64url");
+  const supplied = Buffer.from(signature); const expectedBuffer = Buffer.from(expected);
+  if (supplied.length !== expectedBuffer.length || !crypto.timingSafeEqual(supplied, expectedBuffer)) return false;
+  try {
+    const parsed = JSON.parse(Buffer.from(payload, "base64url").toString("utf8"));
+    return parsed?.slug === slug && Number(parsed.expiresAt) > Date.now();
+  } catch { return false; }
+}
+
+function setSharedProjectAccessCookie(res, slug) {
+  const cookie = sharedProjectAccessCookie(slug);
+  const current = res.getHeader("Set-Cookie");
+  res.setHeader("Set-Cookie", current ? [...(Array.isArray(current) ? current : [current]), cookie] : [cookie]);
+}
+
 function sessionContext(req, res, create = true) {
   const preview = previewModeEnabled(req);
   if (preview) ensureLocalPreviewWorkspace();
@@ -6505,8 +6538,9 @@ async function handleGoogleCallback(req, res, requestUrl) {
     if (rotatedToken) setSessionCookies(res, rotatedToken);
     // A successful OAuth flow must always land in the authenticated workspace.
     // Never leave the user on the public Features/Pricing landing page.
-    const invitationReturn = /^\/App\.dc\.html\?invitation=[A-Za-z0-9_-]+$/.test(pending.returnTo) ? pending.returnTo : "/App.dc.html";
-    redirect(res, withQuery(invitationReturn, "signin", "success"));
+    const allowedReturn = /^\/App\.dc\.html\?invitation=[A-Za-z0-9_-]+$/.test(pending.returnTo)
+      || /^\/SharedProject\.html\?s=[A-Za-z0-9_-]{24,}$/.test(pending.returnTo);
+    redirect(res, withQuery(allowedReturn ? pending.returnTo : "/App.dc.html", "signin", "success"));
   } catch (error) {
     console.error("Google OAuth error:", error.message);
     redirect(res, withQuery(pending.returnTo, "signin", "error"));
@@ -7548,50 +7582,129 @@ async function handleNotifications(req, res, notificationId = null) {
 async function handleSharedProjects(req, res, projectId, sharedId = null) {
   const sid = sessionId(req, res); if (!sid) return googleRequired(res);
   try {
+    if (req.method === "GET") {
+      const sharedProjects = listSharedProjects(projectId, sid).map((shared) => ({ ...shared, url: `${publicAppUrl()}/SharedProject.html?s=${encodeURIComponent(shared.slug)}` }));
+      return json(res, 200, { sharedProjects });
+    }
     if (req.method === "POST") {
       const body = JSON.parse(await readBody(req, 128 * 1024) || "{}");
       const shared = createSharedProject(projectId, sid, body);
       return json(res, 201, { sharedProject: { ...shared, url: `${publicAppUrl()}/SharedProject.html?s=${encodeURIComponent(shared.slug)}` } });
+    }
+    if (req.method === "PATCH" && sharedId) {
+      const body = JSON.parse(await readBody(req, 128 * 1024) || "{}");
+      const shared = updateSharedProject(sharedId, sid, body);
+      if (shared.projectId !== projectId) return json(res, 404, { error: "shared_project_not_found" });
+      return json(res, 200, { sharedProject: { ...shared, url: `${publicAppUrl()}/SharedProject.html?s=${encodeURIComponent(shared.slug)}` } });
     }
     if (req.method === "DELETE" && sharedId) { revokeSharedProject(sharedId, sid); return json(res, 200, { ok: true }); }
     return json(res, 405, { error: "method_not_allowed" });
   } catch (error) { return permissionRequired(res, error); }
 }
 
+const sharedContentKey = (module) => ({ shot_list: "shotList", location_plan: "locationPlans" }[module] || module);
+
+function publicSharedAsset(slug, asset) {
+  return {
+    id: asset.id, filename: asset.filename, mimeType: asset.mimeType, size: asset.size,
+    width: asset.width, height: asset.height, source: asset.source, createdAt: asset.createdAt,
+    path: `/api/shared/${encodeURIComponent(slug)}/assets/${encodeURIComponent(asset.id)}`,
+  };
+}
+
+function sourceSharedAccess(shared) {
+  return projectAccess(shared.createdByUserId, shared.projectId);
+}
+
+function currentSharedSections(shared, access) {
+  return shared.sections.filter((section) => section?.canView && canAccessModule(access, section.module, "view")
+    && (section.module !== "budget" || canViewFinancialData(access)));
+}
+
 function sharedProjectContent(shared) {
   const scripts = loadScripts(); const script = scripts.scripts[shared.projectId];
   const preproduction = loadPreproduction().projects?.[shared.projectId] || {};
-  const ownerAccess = projectAccess(script?.userId, shared.projectId);
+  const ownerAccess = sourceSharedAccess(shared);
   const anonymousAccess = { status: "active", financialPermissions: ["financial.no_access"], financialDepartmentIds: [] };
   const content = {};
-  for (const section of shared.sections.filter((item) => item.canView)) {
+  const sections = currentSharedSections(shared, ownerAccess);
+  const canvas = getCanvasWorkspace(shared.projectId, script?.userId || shared.createdByUserId) || null;
+  const canvasAssets = Array.isArray(canvas?.assets) ? canvas.assets : [];
+  for (const section of sections) {
     if (section.module === "script") content.script = { title: script?.title || shared.projectTitle, blocks: script?.blocks || [], updatedAt: script?.updatedAt || null };
-    else if (section.module === "analysis") content.analysis = filterFinancialData(preproduction.analysis || null, anonymousAccess);
+    else if (section.module === "analysis") content.analysis = filterFinancialData(preproduction.scriptAnalysis || preproduction.analysis || null, anonymousAccess);
     else if (section.module === "breakdown") content.breakdown = filterFinancialData({ scenes: preproduction.scenes || {}, updatedAt: preproduction.updatedAt }, anonymousAccess);
     else if (section.module === "shot_list") content.shotList = filterFinancialData({ scenes: Object.fromEntries(Object.entries(preproduction.scenes || {}).map(([sceneId, scene]) => [sceneId, { id: scene.id, title: scene.title, shots: scene.shots || [] }])) }, anonymousAccess);
     else if (section.module === "stripboard") content.stripboard = filterFinancialData({ scenes: preproduction.scenes || {}, order: preproduction.stripboardOrder || [] }, anonymousAccess);
     else if (section.module === "calendar") content.calendar = filterFinancialData(preproduction.calendar || null, anonymousAccess);
-    else if (section.module === "budget") content.budget = ownerAccess && canUseLumiereAction ? preproduction.budget || null : null;
-    else if (section.module === "canvas") content.canvas = getCanvasWorkspace(shared.projectId, script.userId) || null;
-    else if (section.module === "location_plan") content.locationPlans = listLocationPlans(shared.projectId, script.userId);
-    else if (section.module === "imagine") content.imagine = filterFinancialData((getCanvasWorkspace(shared.projectId, script.userId) || {}).assets || [], anonymousAccess);
-    else if (section.module === "files") content.files = [];
+    else if (section.module === "budget") content.budget = filterDepartmentFinancialData(preproduction.budget || null, ownerAccess);
+    else if (section.module === "canvas") {
+      const publicWorkspace = canvas ? publicCanvasWorkspace(canvas, { scriptId: shared.projectId, userId: script?.userId || shared.createdByUserId }) : null;
+      content.canvas = filterFinancialData({ ...publicWorkspace, assets: canvasAssets.map((asset) => publicSharedAsset(shared.slug, asset)) }, anonymousAccess);
+    } else if (section.module === "location_plan") content.locationPlans = listLocationPlans(shared.projectId, shared.createdByUserId).map((plan) => filterFinancialData(plan, anonymousAccess));
+    else if (section.module === "imagine") content.imagine = canvasAssets.map((asset) => publicSharedAsset(shared.slug, asset));
+    else if (section.module === "files") content.files = canvasAssets.filter((asset) => section.fileIds?.includes(asset.id)).map((asset) => publicSharedAsset(shared.slug, asset));
   }
-  return content;
+  const sourceUpdatedAt = [script?.updatedAt, preproduction.updatedAt, canvas?.updatedAt, ...(content.locationPlans?.map((plan) => plan.updatedAt) || [])].filter(Boolean).sort().at(-1) || shared.updatedAt;
+  return { content, sections, sourceUpdatedAt };
+}
+
+function sharedProjectRequestContext(req, res, slug, password = null) {
+  const session = sessionContext(req, res, false);
+  const user = session?.userId ? getUser(session.userId) : null;
+  const passwordAuthorized = hasSharedProjectAccessCookie(req, slug);
+  const shared = authorizeSharedProject(slug, { email: user?.email, emailVerified: user?.emailVerified === true, password, passwordAuthorized });
+  if (shared.accessMode === "password" && !passwordAuthorized && password) setSharedProjectAccessCookie(res, slug);
+  return { shared, user, session };
 }
 
 async function handlePublicSharedProject(req, res, slug) {
-  const session = sessionContext(req, res, false);
-  const user = session?.userId ? getUser(session.userId) : null;
-  const url = new URL(req.url, "http://localhost");
-  let password = url.searchParams.get("password");
+  let password = null;
   if (req.method === "POST") {
-    try { password = JSON.parse(await readBody(req, 16 * 1024) || "{}").password || password; } catch {}
+    try { password = JSON.parse(await readBody(req, 16 * 1024) || "{}").password || null; } catch { return json(res, 400, { error: "invalid_request_body" }); }
   }
   try {
-    const shared = authorizeSharedProject(slug, { email: user?.email, password });
-    return json(res, 200, { sharedProject: { slug: shared.slug, status: shared.status, accessMode: shared.accessMode, sections: shared.sections, cover: shared.cover, projectName: shared.projectTitle, readOnly: true, canOpenInFilmScript: !!(session?.userId && projectAccess(session.userId, shared.projectId)), content: sharedProjectContent(shared) } });
+    const { shared, session } = sharedProjectRequestContext(req, res, slug, password);
+    const source = sharedProjectContent(shared);
+    return json(res, 200, { sharedProject: { slug: shared.slug, status: shared.status, accessMode: shared.accessMode, sections: source.sections, cover: shared.cover, projectName: shared.projectTitle, readOnly: true, canOpenInFilmScript: !!(session?.userId && projectAccess(session.userId, shared.projectId)), sourceUpdatedAt: source.sourceUpdatedAt, content: source.content } });
   } catch (error) { return json(res, error.status || 403, { error: error.code || "shared_access_denied", message: error.message }); }
+}
+
+async function handleSharedProjectExport(req, res, slug) {
+  let body = {}; try { body = JSON.parse(await readBody(req, 16 * 1024) || "{}"); } catch { return json(res, 400, { error: "invalid_request_body" }); }
+  try {
+    const { shared } = sharedProjectRequestContext(req, res, slug, body.password || null);
+    const section = String(body.section || ""); const selected = shared.sections.find((item) => item.module === section && item.canView);
+    if (!selected?.canExport) return json(res, 403, { error: "shared_export_disabled", message: "The project owner has not enabled export for this section." });
+    const source = sharedProjectContent(shared); const key = sharedContentKey(section);
+    if (!Object.prototype.hasOwnProperty.call(source.content, key)) return json(res, 403, { error: "shared_section_unavailable" });
+    return json(res, 200, { section, filename: `${String(shared.projectTitle || "FilmScript Project").replace(/[^a-z0-9_-]+/gi, "-").slice(0, 80) || "FilmScript-Project"}-${section}.json`, content: source.content[key] });
+  } catch (error) { return json(res, error.status || 403, { error: error.code || "shared_export_denied", message: error.message }); }
+}
+
+async function handleSharedProjectAccessRequest(req, res, slug) {
+  let body = {}; try { body = JSON.parse(await readBody(req, 16 * 1024) || "{}"); } catch { return json(res, 400, { error: "invalid_request_body" }); }
+  try { return json(res, 202, requestSharedProjectAccess(slug, body)); }
+  catch (error) { return json(res, error.status || 403, { error: error.code || "shared_access_request_denied", message: error.message }); }
+}
+
+async function handleSharedProjectAsset(req, res, slug, assetId) {
+  try {
+    const { shared } = sharedProjectRequestContext(req, res, slug);
+    const script = loadScripts().scripts[shared.projectId];
+    const workspace = getCanvasWorkspace(shared.projectId, script?.userId || shared.createdByUserId);
+    const sourceAccess = sourceSharedAccess(shared);
+    const sections = currentSharedSections(shared, sourceAccess);
+    const fileSection = sections.find((section) => section.module === "files");
+    const coverAssetAllowed = canAccessModule(sourceAccess, "canvas", "view") && [shared.cover?.logoAssetId, shared.cover?.coverAssetId].includes(assetId);
+    const allowed = sections.some((section) => section.module === "canvas" || section.module === "imagine") || fileSection?.fileIds?.includes(assetId)
+      || coverAssetAllowed;
+    const asset = allowed ? workspace?.assets?.find((entry) => entry.id === assetId) : null;
+    if (!asset) return json(res, 404, { error: "shared_asset_not_found" });
+    const data = await canvasStorage.get(asset);
+    res.writeHead(200, { "Content-Type": asset.mimeType, "Content-Length": data.length, "Cache-Control": "private, max-age=3600", "X-Content-Type-Options": "nosniff" });
+    res.end(data);
+  } catch (error) { return json(res, error.status || 403, { error: error.code || "shared_asset_denied", message: error.message }); }
 }
 
 async function handleLocationPlans(req, res, projectId, planId = null) {
@@ -7899,8 +8012,17 @@ export function requestHandler(req, res) {
       handleGoogleCallback(req, res, requestUrl).catch((err) => json(res, err.status || 500, { error: err.message }));
     } else if (req.method === "POST" && pathname === "/auth/logout") {
       handleLogout(req, res);
+    } else if (req.method === "GET" && /^\/api\/shared\/[A-Za-z0-9_-]+\/assets\/cas_[a-f0-9]+$/.test(pathname)) {
+      if (enforceRateLimit(req, res, "shared-project-asset", 180, 10 * 60 * 1000)) return;
+      const parts = pathname.split("/"); handleSharedProjectAsset(req, res, parts[3], parts[5]).catch((err) => json(res, err.status || 500, { error: err.code || err.message }));
+    } else if (req.method === "POST" && /^\/api\/shared\/[A-Za-z0-9_-]+\/export$/.test(pathname)) {
+      if (enforceRateLimit(req, res, "shared-project-export", 20, 10 * 60 * 1000)) return;
+      handleSharedProjectExport(req, res, pathname.split("/")[3]).catch((err) => json(res, err.status || 500, { error: err.code || err.message }));
+    } else if (req.method === "POST" && /^\/api\/shared\/[A-Za-z0-9_-]+\/access-requests$/.test(pathname)) {
+      if (enforceRateLimit(req, res, "shared-project-access-request", 5, 60 * 60 * 1000)) return;
+      handleSharedProjectAccessRequest(req, res, pathname.split("/")[3]).catch((err) => json(res, err.status || 500, { error: err.code || err.message }));
     } else if ((req.method === "GET" || req.method === "POST") && /^\/api\/shared\/[A-Za-z0-9_-]+$/.test(pathname)) {
-      if (enforceRateLimit(req, res, "shared-project-access", req.method === "POST" ? 10 : 120, 10 * 60 * 1000)) return;
+      if (enforceRateLimit(req, res, "shared-project-access", req.method === "POST" ? 8 : 90, 10 * 60 * 1000)) return;
       handlePublicSharedProject(req, res, pathname.split("/").pop()).catch((err) => json(res, err.status || 500, { error: err.code || err.message }));
     } else if (req.method === "POST" && pathname === "/api/invitations/accept") {
       if (enforceRateLimit(req, res, "invitation-accept", 20, 10 * 60 * 1000)) return;
@@ -7933,9 +8055,9 @@ export function requestHandler(req, res) {
       handleProjectComments(req, res, pathname.split("/")[3]).catch((err) => json(res, err.status || 500, { error: err.code || err.message }));
     } else if (req.method === "PATCH" && /^\/api\/projects\/scr_[a-f0-9]+\/comments\/cmt_[a-f0-9]+$/.test(pathname)) {
       const parts = pathname.split("/"); handleProjectComments(req, res, parts[3], parts[5]).catch((err) => json(res, err.status || 500, { error: err.code || err.message }));
-    } else if (req.method === "POST" && /^\/api\/projects\/scr_[a-f0-9]+\/shared-projects$/.test(pathname)) {
+    } else if ((req.method === "GET" || req.method === "POST") && /^\/api\/projects\/scr_[a-f0-9]+\/shared-projects$/.test(pathname)) {
       handleSharedProjects(req, res, pathname.split("/")[3]).catch((err) => json(res, err.status || 500, { error: err.code || err.message }));
-    } else if (req.method === "DELETE" && /^\/api\/projects\/scr_[a-f0-9]+\/shared-projects\/shr_[a-f0-9]+$/.test(pathname)) {
+    } else if ((req.method === "PATCH" || req.method === "DELETE") && /^\/api\/projects\/scr_[a-f0-9]+\/shared-projects\/shr_[a-f0-9]+$/.test(pathname)) {
       const parts = pathname.split("/"); handleSharedProjects(req, res, parts[3], parts[5]).catch((err) => json(res, err.status || 500, { error: err.code || err.message }));
     } else if ((req.method === "GET" || req.method === "POST") && /^\/api\/projects\/scr_[a-f0-9]+\/location-plans$/.test(pathname)) {
       handleLocationPlans(req, res, pathname.split("/")[3]).catch((err) => json(res, err.status || 500, { error: err.code || err.message }));

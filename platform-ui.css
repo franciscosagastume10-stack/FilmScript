@@ -117,6 +117,11 @@ html[data-filmscript-theme="dark"] .v5-screenplay-stage, html[data-filmscript-th
 .fs-danger-text { color:var(--semantic-danger)!important; }
 .fs-span-all { grid-column:1/-1; }
 .fs-form-message { min-height:20px; margin:10px 0 0; color:var(--semantic-danger); }
+.fs-share-hint { margin:16px 0 0; color:var(--text-secondary); font-size:12px; line-height:1.5; }
+.fs-share-sections { margin-top:12px; }
+.fs-share-sections .fs-member-card { align-items:flex-start; }
+.fs-share-sections .fs-member-card > input[type="checkbox"] { width:16px; height:16px; margin-top:5px; accent-color:var(--accent); }
+.fs-share-sections .fs-member-card > span:last-child { padding-top:3px; color:var(--text-secondary); font-size:11px; font-weight:700; }
 
 .fs-people-dialog { width:min(1080px,96vw); }
 .fs-dashboard-toolbar, .fs-section-title { display:flex; align-items:center; justify-content:space-between; gap:16px; }

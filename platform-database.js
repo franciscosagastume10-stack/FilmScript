@@ -30,6 +30,16 @@ let platformEventSink = null;
 export function setPlatformEventSink(sink) { platformEventSink = typeof sink === "function" ? sink : null; }
 function emitPlatformEvent(event) { try { platformEventSink?.(event); } catch {} }
 
+// These are deliberately narrower than PROJECT_MODULES. A Shared Project is
+// a read-only projection of specific source modules, never a way to share
+// settings, memberships, exports, or Lumiere itself.
+export const SHARED_PROJECT_SECTION_MODULES = Object.freeze([
+  "script", "analysis", "breakdown", "stripboard", "shot_list", "calendar", "budget",
+  "canvas", "location_plan", "imagine", "files",
+]);
+const SHARED_ACCESS_MODES = new Set(["public", "password", "email_restricted"]);
+const SHARED_EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
 function validateCinematicRole(value) {
   if (value == null || value === "") return null;
   if (!CINEMATIC_ROLES.includes(value)) throw Object.assign(new Error("Choose a valid cinematic role."), { status: 422, code: "invalid_cinematic_role" });
@@ -85,10 +95,14 @@ export function runPlatformMigrations() {
 
 function rowToAccess(row) {
   if (!row) return null;
+  // New modules must inherit the role default for existing memberships. This
+  // avoids silently locking every long-lived owner out when a capability such
+  // as Shared Projects is introduced after their membership was created.
+  const storedPermissions = jsonParse(row.module_permissions_json, {});
   return {
     id: row.id, projectId: row.project_id, userId: row.user_id || null, guestId: row.guest_id || null,
     projectRole: row.project_role, cinematicRole: row.cinematic_role || null,
-    modulePermissions: jsonParse(row.module_permissions_json, {}),
+    modulePermissions: { ...permissionsForRole(row.project_role, row.cinematic_role || null), ...storedPermissions },
     financialPermissions: jsonParse(row.financial_permissions_json, ["financial.no_access"]),
     financialDepartmentIds: jsonParse(row.financial_department_ids_json, []),
     departmentIds: jsonParse(row.department_ids_json, []), status: row.status,
@@ -448,44 +462,177 @@ function passwordRecord(password) {
 export function verifySharedPassword(shared, password) {
   if (!shared.password_hash || !shared.password_salt) return false;
   const candidate = crypto.scryptSync(String(password || ""), shared.password_salt, 32);
-  return crypto.timingSafeEqual(candidate, Buffer.from(shared.password_hash, "hex"));
+  const expected = Buffer.from(shared.password_hash, "hex");
+  return candidate.length === expected.length && crypto.timingSafeEqual(candidate, expected);
 }
 
-export function createSharedProject(projectId, actorUserId, input = {}) {
-  requireProjectPermission(actorUserId, projectId, "shared_projects", "manage");
-  const accessMode = ["public", "password", "email_restricted"].includes(input.accessMode) ? input.accessMode : "public";
-  if (accessMode === "password" && String(input.password || "").length < 8) throw Object.assign(new Error("Use a password with at least eight characters."), { status: 422 });
-  const sections = (Array.isArray(input.sections) ? input.sections : []).filter((section) => PROJECT_MODULES.includes(section?.module) && section.canView).map((section) => ({ module: section.module, canView: true, canExport: section.canExport === true }));
-  if (!sections.length) throw Object.assign(new Error("Select at least one section to share."), { status: 422 });
-  const record = accessMode === "password" ? passwordRecord(input.password) : {};
-  const sharedId = id("shr"); const slug = crypto.randomBytes(18).toString("base64url"); const timestamp = nowIso();
-  db.prepare(`INSERT INTO shared_projects (id,project_id,created_by_user_id,slug,status,access_mode,password_hash,password_salt,allowed_emails_json,sections_json,cover_json,created_at,updated_at)
-    VALUES (?,?,?,?,'active',?,?,?,?,?,?,?,?)`).run(sharedId, projectId, actorUserId, slug, accessMode, record.hash || null, record.salt || null, JSON.stringify((input.allowedEmails || []).map((email) => String(email).trim().toLowerCase()).filter(Boolean)), JSON.stringify(sections), JSON.stringify(input.cover || {}), timestamp, timestamp);
-  recordActivity({ projectId, module: "shared_projects", actorUserId, entityType: "shared_project", entityId: sharedId, action: "shared_project.created", summary: "Shared Project settings were created." });
-  return { id: sharedId, projectId, slug, status: "active", accessMode, allowedEmails: input.allowedEmails || [], sections, cover: input.cover || {}, createdAt: timestamp, updatedAt: timestamp };
+function normalizeSharedEmails(value) {
+  const emails = [...new Set((Array.isArray(value) ? value : String(value || "").split(","))
+    .map(normalizedEmail).filter(Boolean))];
+  if (emails.some((email) => !SHARED_EMAIL.test(email))) throw Object.assign(new Error("Use valid email addresses for restricted access."), { status: 422, code: "invalid_shared_emails" });
+  return emails.slice(0, 100);
 }
 
-export function getSharedProject(slug) {
-  const row = db.prepare("SELECT shared_projects.*, scripts.title AS project_title FROM shared_projects JOIN scripts ON scripts.id=shared_projects.project_id WHERE slug=?").get(slug);
-  if (!row) return null;
-  return { id: row.id, projectId: row.project_id, createdByUserId: row.created_by_user_id, slug: row.slug, status: row.status, accessMode: row.access_mode, password_hash: row.password_hash, password_salt: row.password_salt, allowedEmails: jsonParse(row.allowed_emails_json, []), sections: jsonParse(row.sections_json, []), cover: jsonParse(row.cover_json, {}), projectTitle: row.project_title, createdAt: row.created_at, updatedAt: row.updated_at, revokedAt: row.revoked_at };
+function cleanSharedUrl(value) {
+  const raw = String(value || "").trim().slice(0, 2000);
+  if (!raw) return "";
+  try {
+    const url = new URL(raw);
+    return url.protocol === "https:" ? url.toString() : "";
+  } catch { return ""; }
 }
 
-export function authorizeSharedProject(slug, { email = null, password = null } = {}) {
-  const shared = getSharedProject(slug);
-  if (!shared || shared.status !== "active") throw Object.assign(new Error("This Shared Project link has been revoked."), { status: 410, code: "shared_project_revoked" });
-  if (shared.accessMode === "password" && !verifySharedPassword(shared, password)) throw Object.assign(new Error("That password is not correct."), { status: 401, code: "shared_password_required" });
-  if (shared.accessMode === "email_restricted" && (!email || !shared.allowedEmails.includes(String(email).toLowerCase()))) throw Object.assign(new Error("Sign in with an invited email address."), { status: 403, code: "shared_email_required" });
+function normalizeSharedCover(value) {
+  const input = value && typeof value === "object" && !Array.isArray(value) ? value : {};
+  const assetId = (entry) => /^cas_[a-f0-9]+$/.test(String(entry || "")) ? String(entry) : "";
+  return {
+    logoUrl: cleanSharedUrl(input.logoUrl),
+    coverUrl: cleanSharedUrl(input.coverUrl),
+    logoAssetId: assetId(input.logoAssetId),
+    coverAssetId: assetId(input.coverAssetId),
+    subtitle: String(input.subtitle || "").replace(/[\u0000-\u001f]/g, "").trim().slice(0, 240),
+  };
+}
+
+function canShareExport(access, module) {
+  if (!canAccessModule(access, "exports", "view")) return false;
+  return module !== "budget" || (access.financialPermissions || []).includes("financial.export");
+}
+
+function normalizeSharedSections(value, access) {
+  const seen = new Set();
+  const sections = [];
+  for (const candidate of Array.isArray(value) ? value : []) {
+    const module = String(candidate?.module || "");
+    if (!candidate?.canView || !SHARED_PROJECT_SECTION_MODULES.includes(module) || seen.has(module)) continue;
+    if (!canAccessModule(access, module, "view")) throw Object.assign(new Error(`You cannot share the ${module.replaceAll("_", " ")} section.`), { status: 403, code: "share_source_permission_denied" });
+    if (module === "budget" && !canViewFinancialData(access)) throw Object.assign(new Error("You need financial access before sharing Budget."), { status: 403, code: "financial_permission_denied" });
+    const fileIds = module === "files"
+      ? [...new Set((Array.isArray(candidate.fileIds) ? candidate.fileIds : []).map(String).filter((entry) => /^cas_[a-f0-9]+$/.test(entry)))].slice(0, 100)
+      : [];
+    if (module === "files" && !fileIds.length) throw Object.assign(new Error("Select at least one file to share."), { status: 422, code: "shared_files_required" });
+    sections.push({ module, canView: true, canExport: candidate.canExport === true && canShareExport(access, module), ...(fileIds.length ? { fileIds } : {}) });
+    seen.add(module);
+  }
+  if (!sections.length) throw Object.assign(new Error("Select at least one section to share."), { status: 422, code: "shared_sections_required" });
+  return sections;
+}
+
+function safeSharedProject(shared) {
+  if (!shared) return null;
   const { password_hash, password_salt, ...safe } = shared;
   return safe;
 }
 
+function sharedProjectRow(row) {
+  if (!row) return null;
+  return {
+    id: row.id, projectId: row.project_id, createdByUserId: row.created_by_user_id, slug: row.slug,
+    status: row.status, accessMode: row.access_mode, password_hash: row.password_hash,
+    password_salt: row.password_salt, allowedEmails: jsonParse(row.allowed_emails_json, []),
+    sections: jsonParse(row.sections_json, []), cover: jsonParse(row.cover_json, {}),
+    projectTitle: row.project_title, createdAt: row.created_at, updatedAt: row.updated_at, revokedAt: row.revoked_at,
+  };
+}
+
+function sharedProjectById(sharedId) {
+  return sharedProjectRow(db.prepare("SELECT shared_projects.*, scripts.title AS project_title FROM shared_projects JOIN scripts ON scripts.id=shared_projects.project_id WHERE shared_projects.id=?").get(sharedId));
+}
+
+export function getSharedProject(slug) {
+  return sharedProjectRow(db.prepare("SELECT shared_projects.*, scripts.title AS project_title FROM shared_projects JOIN scripts ON scripts.id=shared_projects.project_id WHERE slug=?").get(slug));
+}
+
+function sharedAccessMode(input, fallback = "public") {
+  const mode = input === undefined ? fallback : String(input || "");
+  if (!SHARED_ACCESS_MODES.has(mode)) throw Object.assign(new Error("Choose a valid Shared Project access mode."), { status: 422, code: "invalid_shared_access_mode" });
+  return mode;
+}
+
+function sharedAccessValues(input, existing = null) {
+  const accessMode = sharedAccessMode(input.accessMode, existing?.accessMode || "public");
+  const providedPassword = Object.prototype.hasOwnProperty.call(input, "password");
+  const password = providedPassword ? String(input.password || "") : null;
+  if (accessMode === "password" && ((existing?.accessMode !== "password" && !providedPassword) || (providedPassword && (password.length < 8 || password.length > 256)))) {
+    throw Object.assign(new Error("Use a password with 8 to 256 characters."), { status: 422, code: "invalid_shared_password" });
+  }
+  const allowedEmails = accessMode === "email_restricted"
+    ? normalizeSharedEmails(Object.prototype.hasOwnProperty.call(input, "allowedEmails") ? input.allowedEmails : existing?.allowedEmails || [])
+    : [];
+  if (accessMode === "email_restricted" && !allowedEmails.length) throw Object.assign(new Error("Add at least one invited email address."), { status: 422, code: "shared_emails_required" });
+  return { accessMode, password: accessMode === "password" ? password : null, providedPassword, allowedEmails };
+}
+
+export function createSharedProject(projectId, actorUserId, input = {}) {
+  const access = requireProjectPermission(actorUserId, projectId, "shared_projects", "manage");
+  const accessValues = sharedAccessValues(input);
+  const sections = normalizeSharedSections(input.sections, access);
+  const record = accessValues.accessMode === "password" ? passwordRecord(accessValues.password) : {};
+  const sharedId = id("shr"); const slug = crypto.randomBytes(24).toString("base64url"); const timestamp = nowIso();
+  const cover = normalizeSharedCover(input.cover);
+  db.prepare(`INSERT INTO shared_projects (id,project_id,created_by_user_id,slug,status,access_mode,password_hash,password_salt,allowed_emails_json,sections_json,cover_json,created_at,updated_at)
+    VALUES (?,?,?,?,'active',?,?,?,?,?,?,?,?)`).run(sharedId, projectId, actorUserId, slug, accessValues.accessMode, record.hash || null, record.salt || null, JSON.stringify(accessValues.allowedEmails), JSON.stringify(sections), JSON.stringify(cover), timestamp, timestamp);
+  recordActivity({ projectId, module: "shared_projects", actorUserId, entityType: "shared_project", entityId: sharedId, action: "shared_project.created", summary: "Shared Project settings were created." });
+  return safeSharedProject(sharedProjectById(sharedId));
+}
+
+export function listSharedProjects(projectId, actorUserId) {
+  requireProjectPermission(actorUserId, projectId, "shared_projects", "manage");
+  return db.prepare("SELECT shared_projects.*, scripts.title AS project_title FROM shared_projects JOIN scripts ON scripts.id=shared_projects.project_id WHERE shared_projects.project_id=? ORDER BY shared_projects.updated_at DESC").all(projectId).map(sharedProjectRow).map(safeSharedProject);
+}
+
+export function updateSharedProject(sharedId, actorUserId, input = {}) {
+  const current = sharedProjectById(sharedId);
+  if (!current) throw Object.assign(new Error("Shared Project was not found."), { status: 404, code: "shared_project_not_found" });
+  const access = requireProjectPermission(actorUserId, current.projectId, "shared_projects", "manage");
+  const accessValues = sharedAccessValues(input, current);
+  const sections = Object.prototype.hasOwnProperty.call(input, "sections") ? normalizeSharedSections(input.sections, access) : normalizeSharedSections(current.sections, access);
+  const cover = Object.prototype.hasOwnProperty.call(input, "cover") ? normalizeSharedCover(input.cover) : current.cover;
+  const record = accessValues.accessMode === "password" && accessValues.providedPassword ? passwordRecord(accessValues.password) : null;
+  const timestamp = nowIso();
+  db.prepare(`UPDATE shared_projects SET access_mode=?,password_hash=?,password_salt=?,allowed_emails_json=?,sections_json=?,cover_json=?,updated_at=? WHERE id=?`).run(
+    accessValues.accessMode,
+    accessValues.accessMode === "password" ? (record?.hash || current.password_hash) : null,
+    accessValues.accessMode === "password" ? (record?.salt || current.password_salt) : null,
+    JSON.stringify(accessValues.allowedEmails), JSON.stringify(sections), JSON.stringify(cover), timestamp, sharedId,
+  );
+  recordActivity({ projectId: current.projectId, module: "shared_projects", actorUserId, entityType: "shared_project", entityId: sharedId, action: "shared_project.updated", summary: "Shared Project settings were updated." });
+  return safeSharedProject(sharedProjectById(sharedId));
+}
+
+export function authorizeSharedProject(slug, { email = null, emailVerified = false, password = null, passwordAuthorized = false } = {}) {
+  const shared = getSharedProject(slug);
+  if (!shared || shared.status !== "active") throw Object.assign(new Error("This Shared Project link has been revoked."), { status: 410, code: "shared_project_revoked" });
+  if (shared.accessMode === "password" && !passwordAuthorized && !verifySharedPassword(shared, password)) throw Object.assign(new Error("Enter the correct password to continue."), { status: 401, code: "shared_password_required" });
+  if (shared.accessMode === "email_restricted") {
+    if (!email) throw Object.assign(new Error("Sign in with an invited email address."), { status: 401, code: "shared_email_sign_in_required" });
+    if (!emailVerified) throw Object.assign(new Error("Verify your email address before opening this Shared Project."), { status: 403, code: "shared_email_unverified" });
+    if (!shared.allowedEmails.includes(normalizedEmail(email))) throw Object.assign(new Error("This signed-in email has not been invited to this Shared Project."), { status: 403, code: "shared_email_not_invited" });
+  }
+  return safeSharedProject(shared);
+}
+
+export function requestSharedProjectAccess(slug, input = {}) {
+  const shared = getSharedProject(slug);
+  if (!shared || shared.status !== "active") throw Object.assign(new Error("This Shared Project link has been revoked."), { status: 410, code: "shared_project_revoked" });
+  const email = normalizedEmail(input.email);
+  if (!SHARED_EMAIL.test(email)) throw Object.assign(new Error("Enter a valid email address so the project owner can respond."), { status: 422, code: "invalid_request_access_email" });
+  const note = String(input.note || "").replace(/[\u0000-\u001f]/g, "").trim().slice(0, 800);
+  createNotification({
+    userId: shared.createdByUserId, projectId: shared.projectId, type: "shared_project_access_request",
+    title: "Shared Project access request", message: `${email}${note ? `: ${note}` : " requested access."}`,
+    deepLink: `/Editor%20v5.dc.html?script=${encodeURIComponent(shared.projectId)}&view=editor`,
+    aggregationKey: `shared-access-request:${shared.id}:${email}`,
+  });
+  return { accepted: true };
+}
+
 export function revokeSharedProject(sharedId, actorUserId) {
-  const row = db.prepare("SELECT * FROM shared_projects WHERE id=?").get(sharedId);
-  if (!row) throw Object.assign(new Error("Shared Project was not found."), { status: 404 });
-  requireProjectPermission(actorUserId, row.project_id, "shared_projects", "manage");
+  const row = sharedProjectById(sharedId);
+  if (!row) throw Object.assign(new Error("Shared Project was not found."), { status: 404, code: "shared_project_not_found" });
+  requireProjectPermission(actorUserId, row.projectId, "shared_projects", "manage");
   const timestamp = nowIso(); db.prepare("UPDATE shared_projects SET status='revoked', revoked_at=?, updated_at=? WHERE id=?").run(timestamp, timestamp, sharedId);
-  recordActivity({ projectId: row.project_id, module: "shared_projects", actorUserId, entityType: "shared_project", entityId: sharedId, action: "shared_project.revoked", summary: "Shared Project access was revoked." });
+  recordActivity({ projectId: row.projectId, module: "shared_projects", actorUserId, entityType: "shared_project", entityId: sharedId, action: "shared_project.revoked", summary: "Shared Project access was revoked." });
 }
 
 export function createAIJob(input) {
