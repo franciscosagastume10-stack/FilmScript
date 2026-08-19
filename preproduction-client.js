@@ -63,10 +63,10 @@
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(changes),
     }),
-    generateShotLists: (scriptId, sceneId = null) => request(`/api/project-files/${encodeURIComponent(scriptId)}/preproduction/shotlists`, {
+    generateShotLists: (scriptId, sceneId = null, options = {}) => request(`/api/project-files/${encodeURIComponent(scriptId)}/preproduction/shotlists`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ ...(sceneId ? { sceneId } : {}), language: interfaceLanguage() }),
+      body: JSON.stringify({ ...(sceneId ? { sceneId } : {}), ...(options?.regenerate === true ? { regenerate: true } : {}), language: interfaceLanguage() }),
     }),
     saveShots: (scriptId, sceneId, shots) => request(`/api/project-files/${encodeURIComponent(scriptId)}/preproduction/scenes/${encodeURIComponent(sceneId)}/shots`, {
       method: 'PATCH',
