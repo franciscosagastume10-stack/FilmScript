@@ -7848,7 +7848,11 @@ export function requestHandler(req, res) {
   } catch {
     return json(res, 400, { error: "invalid_request_url" });
   }
-  const pathname = requestUrl.pathname;
+  // Some privacy/content blockers classify the literal `/api/scripts` path as
+  // a third-party script resource and cancel the browser request before it
+  // reaches us. Keep the established endpoint for integrations, while serving
+  // the first-party app through an equivalent project-content route.
+  const pathname = requestUrl.pathname.replace(/^\/api\/project-files(?=\/|$)/, "/api/scripts");
   if (applyCors(req, res)) return;
   if (rejectCrossSiteMutation(req, res, pathname)) return;
   if (req.method === "GET" && pathname === "/auth/google") {

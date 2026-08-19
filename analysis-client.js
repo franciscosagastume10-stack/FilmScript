@@ -17,13 +17,13 @@
   };
 
   window.filmscriptAnalysis = {
-    get: (scriptId) => request(`/api/scripts/${encodeURIComponent(scriptId)}/analysis`),
-    analyze: (scriptId, options = {}) => request(`/api/scripts/${encodeURIComponent(scriptId)}/analysis`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(options || {}) }),
-    update: (scriptId, change) => request(`/api/scripts/${encodeURIComponent(scriptId)}/analysis`, {
+    get: (scriptId) => request(`/api/project-files/${encodeURIComponent(scriptId)}/analysis`),
+    analyze: (scriptId, options = {}) => request(`/api/project-files/${encodeURIComponent(scriptId)}/analysis`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(options || {}) }),
+    update: (scriptId, change) => request(`/api/project-files/${encodeURIComponent(scriptId)}/analysis`, {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(change || {}),
     }),
-    exportUrl: (scriptId) => resolve(`/api/scripts/${encodeURIComponent(scriptId)}/analysis.pdf`),
+    exportUrl: (scriptId) => resolve(`/api/project-files/${encodeURIComponent(scriptId)}/analysis.pdf`),
   };
 })();

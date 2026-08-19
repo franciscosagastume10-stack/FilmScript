@@ -23,7 +23,7 @@
     return data;
   };
 
-  const calendarPath = (scriptId) => `/api/scripts/${encodeURIComponent(scriptId)}/preproduction/calendar`;
+  const calendarPath = (scriptId) => `/api/project-files/${encodeURIComponent(scriptId)}/preproduction/calendar`;
   const cacheKey = (scriptId) => `filmscript_calendar_${String(scriptId || "").trim()}`;
   const cachedCalendar = (scriptId) => {
     try {

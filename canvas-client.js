@@ -38,7 +38,7 @@
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(body || {}),
   });
-  const pathFor = (scriptId, suffix = '') => `/api/scripts/${encodeURIComponent(scriptId)}/canvas${suffix}`;
+  const pathFor = (scriptId, suffix = '') => `/api/project-files/${encodeURIComponent(scriptId)}/canvas${suffix}`;
 
   // Older API deployments expose Canvas but not its dedicated Vault/image
   // routes. Keep a private browser-side mirror only for that 404 case so a
