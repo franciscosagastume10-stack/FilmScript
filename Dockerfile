@@ -17,7 +17,7 @@ RUN npm ci --omit=dev \
 # internet-facing backend container.
 COPY server.js database.js budget-model.js budget-import-model.js calendar-model.js analysis-model.js ./
 COPY reference-storage.js canvas-model.js canvas-storage.js s3-storage.js ./
-COPY platform-database.js permissions-model.js ai-router.js collaboration-engine.js location-plan-model.js translation-policy.js ./
+COPY platform-database.js permissions-model.js invitation-mailer.js ai-router.js collaboration-engine.js location-plan-model.js translation-policy.js ./
 COPY migrations ./migrations
 COPY *.py ./
 
