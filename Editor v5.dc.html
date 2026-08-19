@@ -22,7 +22,7 @@
 <script defer src="./character-name-tools.js?v=20260713-names1"></script>
 <script defer src="./pdf-import.js?v=20260731-scenes3"></script>
 <script defer src="./scripts-client.js?v=20260820-project-files1"></script>
-<script defer src="./preproduction-client.js?v=20260820-project-files1"></script>
+<script defer src="./preproduction-client.js?v=20260819-shotlist-phase6"></script>
 <script defer src="./canvas-client.js?v=20260820-project-files1"></script>
 <script defer src="./canvas-workspace.js?v=20260819-phase1c1"></script>
 <script defer src="./analysis-client.js?v=20260820-project-files1"></script>
@@ -1344,6 +1344,7 @@
           <div class="v5-shotlist-toolbar-copy"><button type="button" class="v5-shotlist-button" onClick="{{ canvasBack }}" style="margin-bottom: 11px;">← Canvas</button><div style="font-size: 11px; font-weight: 750; letter-spacing: 1.05px; text-transform: uppercase; color: var(--accent, #BA7517);">Scene coverage</div><div style="font-size: 12px; color: var(--muted, #888780); margin-top: 4px;">{{ shotListSummary }}</div></div>
           <span style="font-size: 10.5px; color: var(--muted, #888780); white-space: nowrap;">{{ shotListSaveLabel }}</span>
           <div class="v5-shotlist-toolbar-actions">
+            <button type="button" class="v5-shotlist-button v5-shotlist-button-primary" data-testid="shotlist-generate" onClick="{{ shotListGenerate }}" disabled="{{ shotListGenerateDisabled }}">{{ shotListGenerateLabel }}</button>
             <button type="button" class="v5-shotlist-button v5-shotlist-button-primary" data-testid="shotlist-add-scene" onClick="{{ shotListAddScene }}" disabled="{{ shotListAddSceneDisabled }}">{{ shotListAddSceneLabel }}</button>
             <button type="button" class="v5-shotlist-button" data-testid="shotlist-edit" onClick="{{ shotListEdit }}" disabled="{{ shotListEditDisabled }}">{{ shotListEditLabel }}</button>
             <button type="button" class="v5-shotlist-button v5-shotlist-button-dark" data-testid="shotlist-export" onClick="{{ shotListExport }}" disabled="{{ shotListExportDisabled }}">{{ shotListExportLabel }}</button>
@@ -1371,6 +1372,7 @@
                       <span class="v5-shot-reference-caption">{{ scene.referenceCaption }}</span><span class="v5-shot-reference-loading">Saving…</span>
                     </button>
                     <span class="v5-shotlist-scene-count">{{ scene.countLabel }}</span>
+                    <sc-if value="{{ scene.diffVisible }}" hint-placeholder-val="false"><span class="v5-shotlist-scene-count" title="Changes from the latest Lumiere generation">{{ scene.diffSummary }}</span></sc-if>
                     <button type="button" class="v5-shotlist-button" data-testid="{{ scene.addTestId }}" onClick="{{ scene.addShot }}" disabled="{{ scene.addShotDisabled }}" title="{{ scene.addShotTitle }}">{{ scene.addShotLabel }}</button>
                     <sc-if value="{{ scene.generateAvailable }}" hint-placeholder-val="true"><button type="button" class="v5-shotlist-button" onClick="{{ scene.generate }}" disabled="{{ scene.generateDisabled }}">{{ scene.generateLabel }}</button></sc-if>
                     <sc-if value="{{ scene.deleteAvailable }}" hint-placeholder-val="false"><button type="button" class="v5-shot-action" onClick="{{ scene.remove }}" aria-label="Delete manual scene">×</button></sc-if>
@@ -1397,8 +1399,8 @@
                           <sc-if value="{{ shot.viewing }}" hint-placeholder-val="true"><span style="font-size: 11.5px; font-weight: 650; color: var(--ink, #2C2C2A); padding-right: 14px;">{{ shot.size }}</span><span style="font-size: 11.5px; color: var(--ink, #2C2C2A); padding-right: 14px;">{{ shot.angle }}</span><span style="font-size: 11.5px; color: var(--ink, #2C2C2A); padding-right: 14px;">{{ shot.focalLengthDisplay }}</span></sc-if>
                           <sc-if value="{{ shot.editing }}" hint-placeholder-val="false"><input class="v5-shot-input" aria-label="Shot size" placeholder="e.g. Medium" value="{{ shot.size }}" onInput="{{ shot.sizeInput }}" onBlur="{{ shot.sizeBlur }}"><input class="v5-shot-input" aria-label="Shot angle" placeholder="e.g. Eye level" value="{{ shot.angle }}" onInput="{{ shot.angleInput }}" onBlur="{{ shot.angleBlur }}"><input class="v5-shot-input" aria-label="Lens focal length" placeholder="e.g. 50mm" value="{{ shot.focalLength }}" onInput="{{ shot.focalLengthInput }}" onBlur="{{ shot.focalLengthBlur }}"></sc-if>
                           <span class="v5-shot-time-control"><button type="button" class="v5-shot-time-button" onClick="{{ shot.openTime }}" aria-label="Set duration for shot {{ shot.number }}" title="Set duration in 15-minute intervals">{{ shot.timeDisplay }}</button></span>
-                          <sc-if value="{{ shot.viewing }}" hint-placeholder-val="true"><span style="font-size: 11.5px; color: var(--ink, #2C2C2A); padding-right: 14px;">{{ shot.movement }}</span><span style="font-size: 11.5px; line-height: 1.45; color: var(--muted, #888780);">{{ shot.descriptionDisplay }}</span></sc-if>
-                          <sc-if value="{{ shot.editing }}" hint-placeholder-val="false"><input class="v5-shot-input" aria-label="Shot movement" placeholder="e.g. Static" value="{{ shot.movement }}" onInput="{{ shot.movementInput }}" onBlur="{{ shot.movementBlur }}"><textarea class="v5-shot-input" aria-label="Shot description" placeholder="Describe what the camera captures" value="{{ shot.description }}" onInput="{{ shot.descriptionInput }}" onBlur="{{ shot.descriptionBlur }}"></textarea><div class="v5-shot-actions"><button type="button" class="v5-shot-action" onClick="{{ shot.moveUp }}" disabled="{{ shot.moveUpDisabled }}" aria-label="Move shot up">↑</button><button type="button" class="v5-shot-action" onClick="{{ shot.moveDown }}" disabled="{{ shot.moveDownDisabled }}" aria-label="Move shot down">↓</button><button type="button" class="v5-shot-action" onClick="{{ shot.remove }}" aria-label="Delete shot">×</button></div></sc-if>
+                          <sc-if value="{{ shot.viewing }}" hint-placeholder-val="true"><span style="font-size: 11.5px; color: var(--ink, #2C2C2A); padding-right: 14px;">{{ shot.movement }}</span><span style="font-size: 11.5px; line-height: 1.45; color: var(--muted, #888780);"><span style="display:block;">{{ shot.descriptionDisplay }}</span><span style="display:block; margin-top:4px; font-size:9.5px; font-weight:700; letter-spacing:.25px; color:var(--accent,#BA7517); text-transform:capitalize;">{{ shot.productionMeta }}</span></span></sc-if>
+                          <sc-if value="{{ shot.editing }}" hint-placeholder-val="false"><input class="v5-shot-input" aria-label="Shot movement" placeholder="e.g. Static" value="{{ shot.movement }}" onInput="{{ shot.movementInput }}" onBlur="{{ shot.movementBlur }}"><div style="display:grid; gap:6px;"><textarea class="v5-shot-input" aria-label="Shot description" placeholder="Describe what the camera captures" value="{{ shot.description }}" onInput="{{ shot.descriptionInput }}" onBlur="{{ shot.descriptionBlur }}"></textarea><input class="v5-shot-input" aria-label="Camera" placeholder="Camera" value="{{ shot.camera }}" onInput="{{ shot.cameraInput }}" onBlur="{{ shot.cameraBlur }}"><input class="v5-shot-input" aria-label="Characters or subject" placeholder="Characters / subject" value="{{ shot.characters }}" onInput="{{ shot.charactersInput }}" onBlur="{{ shot.charactersBlur }}"><input class="v5-shot-input" aria-label="Production notes" placeholder="Production notes" value="{{ shot.notes }}" onInput="{{ shot.notesInput }}" onBlur="{{ shot.notesBlur }}"><input class="v5-shot-input" aria-label="Shot status" placeholder="planned" value="{{ shot.status }}" onInput="{{ shot.statusInput }}" onBlur="{{ shot.statusBlur }}"></div><div class="v5-shot-actions"><button type="button" class="v5-shot-action" onClick="{{ shot.moveUp }}" disabled="{{ shot.moveUpDisabled }}" aria-label="Move shot up">↑</button><button type="button" class="v5-shot-action" onClick="{{ shot.moveDown }}" disabled="{{ shot.moveDownDisabled }}" aria-label="Move shot down">↓</button><button type="button" class="v5-shot-action" onClick="{{ shot.remove }}" aria-label="Delete shot">×</button></div></sc-if>
                         </div>
                       </sc-for>
                     </sc-if>
@@ -2131,12 +2133,12 @@ class Component extends DCLogic {
     workMode: (() => {
       const params = new URLSearchParams(window.location.search);
       const scriptId = params.get('script');
-      const allowed = ['editor', 'analysis', 'translation', 'breakdown', 'stripboard', 'imagine', 'canvas', 'budget', 'calendar'];
+      const allowed = ['editor', 'analysis', 'translation', 'breakdown', 'stripboard', 'imagine', 'canvas', 'shotlist', 'budget', 'calendar'];
       let mode = params.get('view') || '';
       if (!mode) {
         try { mode = localStorage.getItem(scriptId ? `filmscript_work_mode_${scriptId}` : 'filmscript_work_mode_default') || ''; } catch (e) {}
       }
-      if (mode === 'shotlist') return 'canvas';
+      if (mode === 'shotlist') return 'shotlist';
       return allowed.includes(mode) ? mode : 'editor';
     })(),
     mobileMenuOpen: false,
@@ -2156,6 +2158,7 @@ class Component extends DCLogic {
     productionProject: null,
     productionLoading: false,
     productionRefreshBusy: false,
+    shotListJob: null,
     breakdownSceneIndex: 0,
     breakdownEditing: false,
     breakdownFormSaving: false,
@@ -2779,6 +2782,14 @@ class Component extends DCLogic {
       if (detail.scriptId && activeScriptId && detail.scriptId !== activeScriptId) return;
       this.openBreakdownReference(detail.sceneNumber, detail.categoryKey, detail.references, detail.label);
     };
+    this._shotListJobUpdateHandler = (event) => {
+      const job = event?.detail?.job;
+      const scriptId = this.state.activeScriptId || this._activeScriptId;
+      if (!job || job.type !== 'shot_list' || !scriptId || job.projectId !== scriptId) return;
+      this.setState({ shotListJob: job });
+      if (['completed', 'failed'].includes(job.status)) this._refreshShotListProject(job.status === 'completed');
+    };
+    this._shotListJobCompletedHandler = (event) => this._shotListJobUpdateHandler(event);
     window.addEventListener('filmscript:analysis-open-editor', this._analysisOpenEditorHandler);
     window.addEventListener('filmscript:analysis-open-scene', this._analysisOpenSceneHandler);
     window.addEventListener('filmscript:analysis-open-mode', this._analysisOpenModeHandler);
@@ -2786,6 +2797,8 @@ class Component extends DCLogic {
     window.addEventListener('filmscript:analysis-background', this._analysisBackgroundHandler);
     window.addEventListener('filmscript:canvas-shotlist', this._canvasShotlistHandler);
     window.addEventListener('filmscript:breakdown-open-reference', this._breakdownOpenReferenceHandler);
+    window.addEventListener('filmscript:ai.job.updated', this._shotListJobUpdateHandler);
+    window.addEventListener('filmscript:ai.job.completed', this._shotListJobCompletedHandler);
     setTimeout(() => { if (this._autoFit) this.fillPage(1); }, 0);
     setTimeout(() => this._snapshot('First draft'), 700);
   };
@@ -3147,16 +3160,17 @@ class Component extends DCLogic {
   async analyzeProduction() {
     const scriptId = this.state.activeScriptId || this._activeScriptId;
     if (!scriptId || !window.filmscriptPreproduction) return;
-    const feature = this.state.workMode === 'canvas' && this.state.canvasTool === 'shotlist' ? 'storyboard' : 'breakdown';
+    const shotListMode = this.state.workMode === 'shotlist' || (this.state.workMode === 'canvas' && this.state.canvasTool === 'shotlist');
+    const feature = shotListMode ? 'storyboard' : 'breakdown';
     if (!this._canUseLumiereFeature(feature)) {
       this._requireLumierePlan('Your included Lumiere pass has been used. Choose Creator or Full for more production AI.');
       return;
     }
     try {
-      const result = this.state.workMode === 'canvas' && this.state.canvasTool === 'shotlist'
+      const result = shotListMode
         ? await window.filmscriptPreproduction.generateShotLists(scriptId)
         : await window.filmscriptPreproduction.analyze(scriptId);
-      this.setState({ productionProject: result.project || null }, () => this._pollProduction());
+      this.setState({ productionProject: result.project || null, ...(shotListMode ? { shotListJob: result.job || null } : {}) }, () => this._pollProduction());
     } catch (error) {
       this._toast('Lumiere could not start the analysis.');
     }
@@ -5187,23 +5201,43 @@ class Component extends DCLogic {
     setTimeout(() => this.setState({ shotListExporting: false }), 700);
   }
 
-  async generateShotListForScene(sceneId) {
+  async _refreshShotListProject(notify = false) {
     const scriptId = this.state.activeScriptId || this._activeScriptId;
-    if (!scriptId || !sceneId || !window.filmscriptPreproduction) return;
+    if (!scriptId || !window.filmscriptPreproduction) return;
+    clearTimeout(this._shotListRefreshTimer);
+    this._shotListRefreshTimer = setTimeout(async () => {
+      try {
+        const result = await window.filmscriptPreproduction.get(scriptId);
+        if (this._unmounted || scriptId !== (this.state.activeScriptId || this._activeScriptId)) return;
+        this.setState({ productionProject: result.project || null, shotListJob: null });
+        if (notify) this._toast('Your Shot List is ready. Manual shots were kept.');
+      } catch (error) {}
+    }, 80);
+  }
+
+  async generateShotListForScene(sceneId = null, { regenerate = false } = {}) {
+    const scriptId = this.state.activeScriptId || this._activeScriptId;
+    if (!scriptId || !window.filmscriptPreproduction) return;
     if (!this._canUseLumiereFeature('storyboard')) {
       this._requireLumierePlan('Your included storyboard has been used. Choose Creator or Full for more Lumiere shot lists.');
       return;
     }
     try {
-      const result = await window.filmscriptPreproduction.generateShotLists(scriptId, sceneId);
-      this.setState({ productionProject: result.project || null }, () => this._pollProduction());
+      const result = await window.filmscriptPreproduction.generateShotLists(scriptId, sceneId, { regenerate });
+      this.setState({ productionProject: result.project || null, shotListJob: result.job || null });
+      this._toast(regenerate ? 'Lumiere is updating the generated coverage. Your manual shots will stay in place.' : 'Lumiere is planning the Shot List in the background.');
     } catch (error) {
-      this._toast('Lumiere could not start this shot list.');
+      this._toast(error?.message || 'Lumiere could not start this shot list.');
     }
   }
 
   _pollProduction() {
     clearTimeout(this._productionTimer);
+    const shotListMode = this.state.workMode === 'shotlist' || (this.state.workMode === 'canvas' && this.state.canvasTool === 'shotlist');
+    // Shot List background work is driven by the collaboration event stream.
+    // It survives navigation without a client-side polling loop; reopening the
+    // module reads the durable progress snapshot from the project.
+    if (shotListMode) return;
     const status = this.state.workMode === 'canvas' && this.state.canvasTool === 'shotlist'
       ? this.state.productionProject?.shotAnalysis?.status
       : this.state.productionProject?.analysis?.status;
@@ -7615,7 +7649,8 @@ ${history}
 
 Write Lumiere's next reply only:`;
     try {
-      const reply = await window.lumiere.complete({ messages: [{ role: 'user', content: prompt }], surface: 'editor-chat' });
+      const chatModule = this.state.workMode === 'shotlist' || (this.state.workMode === 'canvas' && this.state.canvasTool === 'shotlist') ? 'shot_list' : 'script';
+      const reply = await window.lumiere.complete({ messages: [{ role: 'user', content: prompt }], surface: 'editor-chat', module: chatModule });
       this.setState(s => ({ chat: [...s.chat, { who: 'l', text: (reply || '').trim() || '…', cliche: clicheRequest }], loading: false }), () => {
         this._scrollChat();
         this._queueChatSave(this.state.chat);
@@ -7682,6 +7717,8 @@ Write Lumiere's next reply only:`;
     if (this._analysisBackgroundHandler) window.removeEventListener('filmscript:analysis-background', this._analysisBackgroundHandler);
     if (this._canvasShotlistHandler) window.removeEventListener('filmscript:canvas-shotlist', this._canvasShotlistHandler);
     if (this._breakdownOpenReferenceHandler) window.removeEventListener('filmscript:breakdown-open-reference', this._breakdownOpenReferenceHandler);
+    if (this._shotListJobUpdateHandler) window.removeEventListener('filmscript:ai.job.updated', this._shotListJobUpdateHandler);
+    if (this._shotListJobCompletedHandler) window.removeEventListener('filmscript:ai.job.completed', this._shotListJobCompletedHandler);
     clearTimeout(this._saveT);
     clearTimeout(this._chatSaveTimer);
     clearTimeout(this._writingIdleCopyTimer);
@@ -7690,6 +7727,7 @@ Write Lumiere's next reply only:`;
     clearTimeout(this._titleRoomSyncTimer);
     clearTimeout(this._nameRoomSyncTimer);
     clearTimeout(this._productionTimer);
+    clearTimeout(this._shotListRefreshTimer);
     clearTimeout(this._stripboardSavedTimer);
     clearTimeout(this._stripboardEntryTimer);
     clearTimeout(this._analysisFocusTimer);
@@ -8447,6 +8485,11 @@ Write Lumiere's next reply only:`;
           movement: shot.movement || shot.move || shot.cameraMovement || 'Not set',
           description: shot.description || '',
           descriptionDisplay: shot.description || 'No description',
+          camera: shot.camera || 'A camera',
+          characters: Array.isArray(shot.characters) ? shot.characters.join(', ') : String(shot.characters || ''),
+          notes: shot.notes || '',
+          status: shot.status || 'planned',
+          productionMeta: [shot.camera, Array.isArray(shot.characters) && shot.characters.length ? shot.characters.join(', ') : '', shot.status && shot.status !== 'planned' ? shot.status.replaceAll('_', ' ') : ''].filter(Boolean).join(' · '),
           editing: this.state.shotListEditing,
           viewing: !this.state.shotListEditing,
           sizeInput: (event) => this._updateShotField(scene.id, shotIndex, 'size', event.target.value),
@@ -8459,6 +8502,14 @@ Write Lumiere's next reply only:`;
           movementBlur: (event) => this._updateShotField(scene.id, shotIndex, 'movement', event.target.value, true),
           descriptionInput: (event) => this._updateShotField(scene.id, shotIndex, 'description', event.target.value),
           descriptionBlur: (event) => this._updateShotField(scene.id, shotIndex, 'description', event.target.value, true),
+          cameraInput: (event) => this._updateShotField(scene.id, shotIndex, 'camera', event.target.value),
+          cameraBlur: (event) => this._updateShotField(scene.id, shotIndex, 'camera', event.target.value, true),
+          charactersInput: (event) => this._updateShotField(scene.id, shotIndex, 'characters', event.target.value),
+          charactersBlur: (event) => this._updateShotField(scene.id, shotIndex, 'characters', event.target.value, true),
+          notesInput: (event) => this._updateShotField(scene.id, shotIndex, 'notes', event.target.value),
+          notesBlur: (event) => this._updateShotField(scene.id, shotIndex, 'notes', event.target.value, true),
+          statusInput: (event) => this._updateShotField(scene.id, shotIndex, 'status', event.target.value),
+          statusBlur: (event) => this._updateShotField(scene.id, shotIndex, 'status', event.target.value, true),
           moveUp: () => this.moveShot(scene.id, shotIndex, -1),
           moveDown: () => this.moveShot(scene.id, shotIndex, 1),
           moveUpDisabled: shotIndex === 0,
@@ -8518,9 +8569,11 @@ Write Lumiere's next reply only:`;
             : `${this._formatProductionMinutes(remainingMinutes)} remain in this scene.`,
         addTestId: `shotlist-add-shot-${sceneIndex + 1}`,
         generateAvailable: !manual,
-        generate: canGenerateShotLists ? () => this.generateShotListForScene(scene.id) : () => this._requireLumierePlan('Your included storyboard has been used. Choose Creator or Full for more Lumiere shot lists.'),
+        generate: canGenerateShotLists ? () => this.generateShotListForScene(scene.id, { regenerate: rows.length > 0 }) : () => this._requireLumierePlan('Your included storyboard has been used. Choose Creator or Full for more Lumiere shot lists.'),
         generateDisabled: productionProgress,
-        generateLabel: productionProgress ? 'Planning…' : canGenerateShotLists ? 'Generate with Lumiere' : 'Creator or Full required',
+        generateLabel: productionProgress ? 'Planning…' : canGenerateShotLists ? (rows.length ? 'Regenerate with Lumiere' : 'Generate with Lumiere') : 'Creator or Full required',
+        diffVisible: Boolean(scene.shotListDiff?.generatedAt),
+        diffSummary: (() => { const diff = scene.shotListDiff || {}; const chunks = []; if ((diff.newShots || []).length) chunks.push(`+${diff.newShots.length} new`); if ((diff.modifiedShots || []).length) chunks.push(`${diff.modifiedShots.length} updated`); if ((diff.removedShots || []).length) chunks.push(`${diff.removedShots.length} removed`); if ((diff.manualEditsPreserved || []).length) chunks.push(`${diff.manualEditsPreserved.length} manual kept`); return chunks.join(' · ') || 'Coverage reviewed'; })(),
         deleteAvailable: manual && this.state.shotListEditing,
         remove: () => this.deleteShotListScene(scene.id),
         testId: `shotlist-scene-${sceneIndex + 1}`,
@@ -8630,7 +8683,9 @@ Write Lumiere's next reply only:`;
     const cameraReviewCount = shotListSceneSource.filter(scene => !Array.isArray(scene.shots) || scene.shots.length === 0).length;
     const completedScenes = activeProductionAnalysis?.completed || 0;
     const totalScenes = activeProductionAnalysis?.total || productionScenesRaw.length;
-    const productionProgressText = activeProductionAnalysis?.message || `Analyzing scene ${Math.min(completedScenes + 1, totalScenes)} of ${totalScenes}`;
+    const productionProgressText = shotListMode
+      ? activeProductionAnalysis?.message || `Generating Shot List · ${Math.min(completedScenes + 1, totalScenes)} of ${totalScenes} scenes`
+      : activeProductionAnalysis?.message || `Analyzing scene ${Math.min(completedScenes + 1, totalScenes)} of ${totalScenes}`;
     const breakdownGenerationActive = workMode === 'breakdown' && this.state.breakdownManualGenerating;
     const breakdownGenerationTotal = Math.max(1, Number(totalScenes) || productionScenesRaw.length || 1);
     const breakdownGenerationCompleted = Math.max(0, Math.min(breakdownGenerationTotal, Number(completedScenes) || 0));
@@ -9065,6 +9120,9 @@ Write Lumiere's next reply only:`;
       shotListHasScenes: shotListScenes.length > 0,
       shotListNoScenes: shotListScenes.length === 0,
       shotListSummary: `${shotListScenes.length} scene${shotListScenes.length === 1 ? '' : 's'} · ${shotListTotalShots} shot${shotListTotalShots === 1 ? '' : 's'}`,
+      shotListGenerate: () => this.generateShotListForScene(null, { regenerate: shotListTotalShots > 0 }),
+      shotListGenerateLabel: productionProgress ? 'Planning…' : shotListTotalShots > 0 ? 'Regenerate coverage' : 'Generate with Lumiere',
+      shotListGenerateDisabled: productionProgress || !canGenerateShotLists || productionScenesRaw.length === 0,
       shotListEditing: this.state.shotListEditing,
       shotListViewing: !this.state.shotListEditing,
       shotListEditLabel: this.state.shotListEditing ? 'Done' : 'Edit shots',

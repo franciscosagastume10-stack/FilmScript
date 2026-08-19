@@ -402,7 +402,15 @@ function buildAuthorizedLumiereContext(userId, projectId, focus = {}) {
   const script = loadScripts().scripts[projectId];
   if (!script) throw Object.assign(new Error("Project was not found."), { status: 404, code: "project_not_found" });
   const requestedModule = String(focus?.module || "").trim();
-  const include = (module) => (!requestedModule || requestedModule === module) && canAccessModule(access, module, "view");
+  if (requestedModule && !canAccessModule(access, requestedModule, "view")) {
+    throw Object.assign(new Error("You do not have permission to use Lumiere in this project area."), { status: 403, code: "permission_denied" });
+  }
+  // A focused Shot List conversation needs the screenplay evidence as well as
+  // the saved coverage. Both permissions are required before either is sent.
+  if (requestedModule === "shot_list" && !canAccessModule(access, "script", "view")) {
+    throw Object.assign(new Error("You do not have permission to read the screenplay for this Shot List discussion."), { status: 403, code: "permission_denied" });
+  }
+  const include = (module) => (!requestedModule || requestedModule === module || (requestedModule === "shot_list" && module === "script")) && canAccessModule(access, module, "view");
   const context = { project: { id: script.id, title: lumiereContextText(script.title, 180) }, authorizedModules: [] };
 
   if (include("script")) {
@@ -545,7 +553,7 @@ function updateAndBroadcastAIJob(jobId, patch = {}) {
 
 function finalizeDurableAIJob(job, { succeeded, output = null, error = null, settledCredits = null } = {}) {
   const current = getAIJobInternal(job.id) || job;
-  const next = updateAIJob(job.id, succeeded
+  const next = updateAndBroadcastAIJob(job.id, succeeded
     ? { status: "completed", stage: "completed", progress: 100, output: output ?? current.output, settledCredits: settledCredits ?? current.settledCredits }
     : { status: "failed", stage: "failed", errorCode: error?.code || "ai_job_failed" });
   if (!next) return null;
@@ -580,7 +588,7 @@ function finalizeDurableAIJob(job, { succeeded, output = null, error = null, set
 
 function createDurableAIJob({ type, projectId, requesterId, sourceScriptVersionId, sourceContentHash, reservedCredits = 0, input = {} }) {
   const idempotencyKey = hashText(JSON.stringify({ type, projectId, requesterId, sourceScriptVersionId, sourceContentHash, input: {
-    language: input.language || null, sceneId: input.sceneId || null, includeManual: !!input.includeManual,
+    language: input.language || null, sceneId: input.sceneId || null, includeManual: !!input.includeManual, regenerate: !!input.regenerate,
   } }));
   const idempotent = findAIJobByIdempotency(idempotencyKey);
   if (idempotent) return { job: idempotent, created: false, allowed: true };
@@ -812,6 +820,8 @@ Create a practical camera plan for only the supplied screenplay scene. Cover the
 
 Keep the plan producible and concise. Prefer intentional coverage over unnecessary shots. Every shot must contain a short verbatim sourceExcerpt copied from the supplied scene.
 
+For every shot, include the practical camera and production details below. Characters must only name people who appear in the supplied scene. Notes should flag a useful practical consideration, or be an empty string. Use status "planned" unless the scene itself makes another status necessary. Do not invent equipment, locations, story events, or production requirements.
+
 Return only valid JSON with this exact shape:
 {
   "sceneId": "string",
@@ -821,7 +831,11 @@ Return only valid JSON with this exact shape:
       "angle": "Eye level",
       "focalLength": "50mm",
       "movement": "Static",
+      "camera": "A camera",
+      "characters": ["Character name"],
       "description": "What the shot captures",
+      "notes": "Practical note, if needed",
+      "status": "planned",
       "sourceExcerpt": "Exact words from the scene"
     }
   ]
@@ -3624,6 +3638,7 @@ function validateShotList(payload, scene) {
     if (!sourceExcerpt || !description || !sceneEvidence.includes(normalizeEvidence(sourceExcerpt))) return [];
     return [{
       id: `sh_${sceneHash(`${scene.id}:${index}:${sourceExcerpt}:${description}`)}`,
+      shotNumber: index + 1,
       size: String(shot.size || "Not set").trim().slice(0, 80),
       angle: String(shot.angle || "Not set").trim().slice(0, 80),
       focalLength: String(shot.focalLength || shot.lens || "50mm").trim().slice(0, 40),
@@ -3631,11 +3646,102 @@ function validateShotList(payload, scene) {
       referenceImage: String(shot.referenceImage || "").trim().slice(0, 2500000),
       referenceAsset: null,
       movement: String(shot.movement || "Static").trim().slice(0, 80),
+      camera: String(shot.camera || "A camera").trim().slice(0, 120),
+      characters: Array.from(new Set((Array.isArray(shot.characters) ? shot.characters : String(shot.characters || "").split(","))
+        .map((entry) => String(entry || "").trim().slice(0, 120)).filter(Boolean))).slice(0, 20),
       description: description.slice(0, 600),
+      notes: String(shot.notes || "").trim().slice(0, 600),
+      status: ["planned", "draft", "ready", "needs_review"].includes(String(shot.status || "").trim().toLowerCase())
+        ? String(shot.status).trim().toLowerCase()
+        : "planned",
       sourceExcerpt: sourceExcerpt.slice(0, 400),
+      source: "lumiere",
       userEdited: false,
     }];
   }).slice(0, 20);
+}
+
+function shotMergeKey(shot, seen = new Map()) {
+  const source = normalizeEvidence(shot?.sourceExcerpt || shot?.description || "");
+  const base = source || `shot:${normalizeEvidence(shot?.description || "")}`;
+  const ordinal = (seen.get(base) || 0) + 1;
+  seen.set(base, ordinal);
+  return `${base}:${ordinal}`;
+}
+
+function shotConnections(scene, shot, previous = null) {
+  const evidence = normalizeEvidence(`${shot?.sourceExcerpt || ""} ${shot?.description || ""}`);
+  const breakdownElementIds = (Array.isArray(scene?.breakdown?.elements) ? scene.breakdown.elements : []).flatMap((element) => {
+    const name = normalizeEvidence(element?.name || "");
+    const excerpt = normalizeEvidence(element?.sourceExcerpt || "");
+    return element?.id && ((name.length > 2 && evidence.includes(name)) || (excerpt.length > 8 && evidence.includes(excerpt))) ? [element.id] : [];
+  }).slice(0, 20);
+  const inherited = previous?.connections && typeof previous.connections === "object" ? previous.connections : {};
+  return {
+    scriptSceneId: scene?.id || null,
+    breakdownElementIds: Array.from(new Set([...breakdownElementIds, ...(Array.isArray(inherited.breakdownElementIds) ? inherited.breakdownElementIds : [])])),
+    canvasObjectIds: Array.isArray(inherited.canvasObjectIds) ? inherited.canvasObjectIds.slice(0, 20) : [],
+    locationPlanIds: Array.isArray(inherited.locationPlanIds) ? inherited.locationPlanIds.slice(0, 20) : [],
+    location: String(scene?.strip?.location || inherited.location || "").slice(0, 160),
+    cameraPlanning: {
+      camera: String(shot?.camera || "").slice(0, 120),
+      lens: String(shot?.focalLength || shot?.lens || "").slice(0, 40),
+      movement: String(shot?.movement || "").slice(0, 80),
+    },
+  };
+}
+
+function shotDiffEntry(shot) {
+  return { id: shot?.id || "", shotNumber: Number(shot?.shotNumber || 0) || null, description: String(shot?.description || "Shot").slice(0, 160) };
+}
+
+function mergeGeneratedShotList(previousShots, generatedShots, scene) {
+  const before = Array.isArray(previousShots) ? previousShots : [];
+  const oldSeen = new Map();
+  const generatedByKey = new Map(before
+    .filter((shot) => shot?.userEdited !== true && shot?.manual !== true)
+    .map((shot) => [shotMergeKey(shot, oldSeen), shot]));
+  const nextSeen = new Map();
+  const matched = new Set();
+  const newShots = [];
+  const modifiedShots = [];
+  const fields = ["size", "angle", "focalLength", "movement", "camera", "characters", "description", "notes", "status", "sourceExcerpt"];
+  const equivalent = (left, right) => fields.every((field) => JSON.stringify(left?.[field] ?? "") === JSON.stringify(right?.[field] ?? ""));
+  const generated = (Array.isArray(generatedShots) ? generatedShots : []).map((shot, index) => {
+    const prior = generatedByKey.get(shotMergeKey(shot, nextSeen));
+    if (!prior) {
+      const fresh = { ...shot, shotNumber: index + 1, connections: shotConnections(scene, shot) };
+      newShots.push(shotDiffEntry(fresh));
+      return fresh;
+    }
+    matched.add(prior.id);
+    const merged = {
+      ...shot,
+      id: prior.id,
+      shotNumber: index + 1,
+      referenceImage: prior.referenceImage || shot.referenceImage || "",
+      referenceAsset: cleanReferenceAsset(prior.referenceAsset),
+      connections: shotConnections(scene, shot, prior),
+      source: "lumiere",
+      userEdited: false,
+    };
+    if (!equivalent(prior, merged)) modifiedShots.push(shotDiffEntry(merged));
+    return merged;
+  });
+  const protectedShots = before.filter((shot) => shot?.userEdited === true || shot?.manual === true);
+  const removedShots = before
+    .filter((shot) => shot?.userEdited !== true && shot?.manual !== true && !matched.has(shot.id))
+    .map(shotDiffEntry);
+  return {
+    shots: [...generated, ...protectedShots],
+    diff: {
+      newShots,
+      modifiedShots,
+      removedShots,
+      manualEditsPreserved: protectedShots.map(shotDiffEntry),
+      generatedAt: new Date().toISOString(),
+    },
+  };
 }
 
 function cleanManualShots(value, sceneId) {
@@ -3645,6 +3751,7 @@ function cleanManualShots(value, sceneId) {
     const description = String(shot.description || "No description").trim() || "No description";
     return [{
       id: /^sh_[a-f0-9]+$/.test(String(shot.id || "")) ? shot.id : `sh_${sceneHash(`${sceneId}:manual:${index}:${description}`)}`,
+      shotNumber: Math.max(1, Math.round(Number(shot.shotNumber) || index + 1)),
       size: String(shot.size || "Not set").trim().slice(0, 80),
       angle: String(shot.angle || "Not set").trim().slice(0, 80),
       focalLength: String(shot.focalLength || shot.lens || "50mm").trim().slice(0, 40),
@@ -3652,8 +3759,17 @@ function cleanManualShots(value, sceneId) {
       referenceImage: String(shot.referenceImage || "").trim().slice(0, 2500000),
       referenceAsset: cleanReferenceAsset(shot.referenceAsset),
       movement: String(shot.movement || "Static").trim().slice(0, 80),
+      camera: String(shot.camera || "A camera").trim().slice(0, 120),
+      characters: Array.from(new Set((Array.isArray(shot.characters) ? shot.characters : String(shot.characters || "").split(","))
+        .map((entry) => String(entry || "").trim().slice(0, 120)).filter(Boolean))).slice(0, 20),
       description: description.slice(0, 600),
+      notes: String(shot.notes || "").trim().slice(0, 600),
+      status: ["planned", "draft", "ready", "needs_review"].includes(String(shot.status || "").trim().toLowerCase())
+        ? String(shot.status).trim().toLowerCase()
+        : "planned",
       sourceExcerpt: String(shot.sourceExcerpt || "").trim().slice(0, 400),
+      connections: shot?.connections && typeof shot.connections === "object" ? shot.connections : { scriptSceneId: sceneId, breakdownElementIds: [], canvasObjectIds: [], locationPlanIds: [], location: "", cameraPlanning: {} },
+      source: "manual",
       userEdited: true,
     }];
   });
@@ -3861,7 +3977,18 @@ async function handleShotReferenceFromCanvas(req, res, scriptId) {
   const asset = { id, provider: stored.provider, key: stored.key, mimeType: source.mimeType, filename: source.filename || 'Imagine reference.jpg', size: data.length, createdAt: new Date().toISOString() };
   const previousAsset = cleanReferenceAsset(target.referenceAsset);
   target.referenceAsset = asset;
-  if (shotId) target.referenceImage = '';
+  if (shotId) {
+    target.referenceImage = '';
+    const connections = target.connections && typeof target.connections === "object" ? target.connections : {};
+    target.connections = {
+      ...connections,
+      scriptSceneId: scene.id,
+      canvasObjectIds: Array.from(new Set([
+        ...(Array.isArray(connections.canvasObjectIds) ? connections.canvasObjectIds : []),
+        assetId,
+      ])).slice(0, 20),
+    };
+  }
   project.updatedAt = asset.createdAt;
   try { savePreproduction(db); } catch (error) { await referenceStorage.remove(asset).catch(() => {}); throw error; }
   if (previousAsset) referenceStorage.remove(previousAsset).catch(() => {});
@@ -4113,8 +4240,21 @@ async function handleSceneShotsPatch(req, res, scriptId, sceneId) {
   if (!scene) return json(res, 404, { error: "scene not found" });
   const previousShots = Array.isArray(scene.shots) ? scene.shots : [];
   if (Array.isArray(body.operations)) {
-    const allowed = new Set(["size","angle","focalLength","estimatedMinutes","movement","description","sourceExcerpt","userEdited"]); const shotsById = new Map(previousShots.map((shot) => [shot.id, shot]));
-    for (const operation of body.operations.slice(0, 500)) { const shot = shotsById.get(String(operation?.id || "")); if (!shot) continue; for (const [field,value] of Object.entries(operation.patch || {})) if (allowed.has(field)) shot[field] = value; }
+    const allowed = new Set(["shotNumber","size","angle","focalLength","estimatedMinutes","movement","camera","characters","description","notes","status","sourceExcerpt"]); const shotsById = new Map(previousShots.map((shot) => [shot.id, shot]));
+    for (const operation of body.operations.slice(0, 500)) {
+      const shot = shotsById.get(String(operation?.id || "")); if (!shot) continue;
+      let changed = false;
+      for (const [field,value] of Object.entries(operation.patch || {})) {
+        if (!allowed.has(field)) continue;
+        shot[field] = field === "characters"
+          ? Array.from(new Set((Array.isArray(value) ? value : String(value || "").split(",")).map((entry) => String(entry || "").trim().slice(0, 120)).filter(Boolean))).slice(0, 20)
+          : value;
+        changed = true;
+      }
+      // Any direct edit is a deliberate production decision. A later AI pass
+      // keeps this whole shot rather than silently replacing a single field.
+      if (changed) shot.userEdited = true;
+    }
     scene.shots = previousShots; scene.shotsUpdatedAt = new Date().toISOString(); savePreproduction(db); return json(res, 200, { ok:true, shots:filterDepartmentFinancialData(publicShotListScene({shots:scene.shots}).shots,projectAccess(sid,scriptId)) });
   }
   const previousAssets = new Map(previousShots.flatMap((shot) => {
@@ -4146,7 +4286,7 @@ async function handleSceneShotsPatch(req, res, scriptId, sceneId) {
   json(res, 200, { ok: true, shots: filterDepartmentFinancialData(publicShotListScene({ shots: scene.shots }).shots, projectAccess(sid, scriptId)) });
 }
 
-async function generateShotLists(scriptId, sid, onlySceneId = null, language = 'en', { freeAllowance = false, freeAllowanceReservationId = null, billingUserId = sid, textReservationId = null, aiJobId = null } = {}) {
+async function generateShotLists(scriptId, sid, onlySceneId = null, language = 'en', { regenerate = false, freeAllowance = false, freeAllowanceReservationId = null, billingUserId = sid, textReservationId = null, aiJobId = null } = {}) {
   let freeAllowanceSettled = false;
   let textReservationSettled = false;
   let successfulOutputs = 0;
@@ -4157,21 +4297,21 @@ async function generateShotLists(scriptId, sid, onlySceneId = null, language = '
   };
   try {
   const script = loadScripts().scripts[scriptId];
-  if (!script || !projectPermission(sid, scriptId, "shot_list", "edit")) return { ok: false, errorCode: "permission_denied" };
+  if (!script || !projectPermission(sid, scriptId, "script", "view") || !projectPermission(sid, scriptId, "shot_list", "edit")) return { ok: false, errorCode: "permission_denied" };
   const db = loadPreproduction();
   const project = db.projects[scriptId] = syncProject(script, db.projects[scriptId]);
   const all = Object.values(project.scenes || {});
   const pending = all
     .map((scene, sceneIndex) => ({ scene: JSON.parse(JSON.stringify(scene)), sceneIndex }))
-    .filter(({ scene }) => (!onlySceneId || scene.id === onlySceneId) && (!Array.isArray(scene.shots) || scene.shots.length === 0));
+    .filter(({ scene }) => (!onlySceneId || scene.id === onlySceneId) && (regenerate || !Array.isArray(scene.shots) || scene.shots.length === 0));
   if (!pending.length) {
-    project.shotAnalysis = { status: "complete", total: 0, completed: 0, message: "Shot lists already up to date" };
+    project.shotAnalysis = { status: "complete", total: 0, completed: 0, message: "Shot lists already up to date", jobId: aiJobId || null };
     savePreproduction(db);
     return { ok: true, noop: true, successfulOutputs: 0, settledCredits: 0 };
   }
-  project.shotAnalysis = { status: "running", total: pending.length, completed: 0, message: "Preparing camera coverage" };
+  project.shotAnalysis = { status: "running", total: pending.length, completed: 0, message: "Preparing camera coverage", jobId: aiJobId || null, regenerate: !!regenerate };
   savePreproduction(db);
-  if (aiJobId) updateAIJob(aiJobId, { status: "processing", stage: "preparing", progress: 8 });
+  if (aiJobId) updateAndBroadcastAIJob(aiJobId, { status: "processing", stage: "preparing", progress: 8 });
   let generationFailure = "";
   for (let index = 0; index < pending.length; index++) {
     const { scene, sceneIndex } = pending[index];
@@ -4198,9 +4338,9 @@ async function generateShotLists(scriptId, sid, onlySceneId = null, language = '
       return { ok: false, errorCode: "insufficient_credits" };
     }
     mutatePreproductionProject(scriptId, sid, (freshProject) => {
-      freshProject.shotAnalysis = { status: "running", total: pending.length, completed: index, message: `Planning shots for scene ${sceneIndex + 1} of ${all.length}` };
+      freshProject.shotAnalysis = { ...freshProject.shotAnalysis, status: "running", total: pending.length, completed: index, message: `Planning shots for scene ${sceneIndex + 1} of ${all.length}`, currentSceneId: scene.id, jobId: aiJobId || null, regenerate: !!regenerate };
     });
-    if (aiJobId) updateAIJob(aiJobId, { status: "processing", stage: "generating", progress: 10 + Math.round((index / Math.max(1, pending.length)) * 75) });
+    if (aiJobId) updateAndBroadcastAIJob(aiJobId, { status: "processing", stage: "generating", progress: 10 + Math.round((index / Math.max(1, pending.length)) * 75) });
     try {
       const sceneBudgetMinutes = shotTimeBudget(scene);
       const response = await requestLumiereForTask("shot_list", {
@@ -4223,15 +4363,23 @@ async function generateShotLists(scriptId, sid, onlySceneId = null, language = '
       mutatePreproductionProject(scriptId, sid, (freshProject) => {
         const current = freshProject.scenes?.[scene.id];
         // Keep manual work and never apply a result generated from stale text.
-        if (current && current.contentHash === scene.contentHash && (!Array.isArray(current.shots) || current.shots.length === 0)) {
-          current.shots = generatedShots;
+        // Regeneration replaces only earlier, untouched Lumiere shots. Every
+        // manual or user-edited shot is carried forward and reported in the
+        // diff so no production choice disappears without a visible trace.
+        // An empty or malformed model response must not erase an existing
+        // usable plan.  A valid response can still remove individual
+        // generated shots and surface that decision in the saved diff.
+        if (generatedShots.length && current && current.contentHash === scene.contentHash && (regenerate || !Array.isArray(current.shots) || current.shots.length === 0)) {
+          const merged = mergeGeneratedShotList(current.shots, generatedShots, current);
+          current.shots = merged.shots;
           current.shotsUpdatedAt = new Date().toISOString();
+          current.shotListDiff = merged.diff;
           if (generatedShots.length) {
             successfulOutputs += 1;
             savedOutput = true;
           }
         }
-        freshProject.shotAnalysis = { ...freshProject.shotAnalysis, status: "running", total: pending.length, completed: index + 1 };
+        freshProject.shotAnalysis = { ...freshProject.shotAnalysis, status: "running", total: pending.length, completed: index + 1, currentSceneId: null, jobId: aiJobId || null };
       });
       // Do not charge for malformed, stale, or empty work. A prompt is only
       // consumed once FilmScript has actually saved usable shot coverage.
@@ -4240,7 +4388,7 @@ async function generateShotLists(scriptId, sid, onlySceneId = null, language = '
       console.error(`Shot list generation failed for ${scene.id}:`, error.message);
       generationFailure ||= lumiereFailureMessage(error);
       mutatePreproductionProject(scriptId, sid, (freshProject) => {
-        freshProject.shotAnalysis = { ...freshProject.shotAnalysis, status: "running", total: pending.length, completed: index + 1, message: generationFailure };
+        freshProject.shotAnalysis = { ...freshProject.shotAnalysis, status: "running", total: pending.length, completed: index + 1, currentSceneId: null, message: generationFailure, jobId: aiJobId || null };
       });
     }
   }
@@ -4251,6 +4399,9 @@ async function generateShotLists(scriptId, sid, onlySceneId = null, language = '
       total: pending.length,
       completed,
       message: completed === pending.length ? "Shot lists complete" : generationFailure || `${pending.length - completed} scenes need camera review`,
+      currentSceneId: null,
+      jobId: aiJobId || null,
+      regenerate: !!regenerate,
     };
   });
   if (successfulOutputs > 0) settleFreeAllowance();
@@ -4270,13 +4421,14 @@ async function handleShotLists(req, res, scriptId) {
   const sid = sessionId(req, res);
   if (!sid) return googleRequired(res);
   const script = loadScripts().scripts[scriptId];
-  if (!script || !projectPermission(sid, scriptId, "shot_list", "edit") || !canUseLumiereAction(projectAccess(sid, scriptId), "shot_list")) return json(res, 404, { error: "script not found" });
+  if (!script || !projectPermission(sid, scriptId, "script", "view") || !projectPermission(sid, scriptId, "shot_list", "edit") || !canUseLumiereAction(projectAccess(sid, scriptId), "shot_list")) return permissionRequired(res);
   if (enforceRateLimit(req, res, "shotlist-generation", 10, 10 * 60 * 1000, sid)) return;
   let body = {};
   try { const raw = await readBody(req, 32 * 1024); body = raw ? JSON.parse(raw) : {}; } catch { return json(res, 400, { error: "invalid request body" }); }
   const db = loadPreproduction();
   const project = db.projects[scriptId] = syncProject(script, db.projects[scriptId]);
   const sceneId = body.sceneId ? String(body.sceneId) : null;
+  const regenerate = body.regenerate === true;
   if (sceneId && !project.scenes?.[sceneId]) return json(res, 404, { error: "scene not found" });
   const activeJob = activeAIJobForProject(scriptId, ["shot_list"]);
   if (["queued", "running"].includes(project.shotAnalysis?.status) && !activeShotListJobs.has(scriptId) && !activeJob) {
@@ -4286,12 +4438,12 @@ async function handleShotLists(req, res, scriptId) {
   }
   if (!activeShotListJobs.has(scriptId) && !activeJob) {
     const billingUserId = projectBillingOwnerId(scriptId) || sid;
-    const pending = Object.values(project.scenes || {}).filter((scene) => (!sceneId || scene.id === sceneId) && (!Array.isArray(scene.shots) || scene.shots.length === 0));
+    const pending = Object.values(project.scenes || {}).filter((scene) => (!sceneId || scene.id === sceneId) && (regenerate || !Array.isArray(scene.shots) || scene.shots.length === 0));
     const access = featureAccess(billingUserId, "storyboard");
     if (!access.allowed) return lumierePlanRequired(res, { feature: "AI Storyboard generation" });
     const freeReservation = access.free && pending.length ? reserveFreeAllowance(billingUserId, "storyboard") : null;
     if (freeReservation && !freeReservation.allowed) return lumierePlanRequired(res, { feature: "your one Free AI Storyboard" });
-    project.shotAnalysis = { status: "queued", total: pending.length, completed: 0, message: "Starting shot list" };
+    project.shotAnalysis = { status: "queued", total: pending.length, completed: 0, message: regenerate ? "Preparing updated shot list" : "Starting shot list", regenerate };
     try {
       savePreproduction(db);
       const scheduled = createDurableAIJob({
@@ -4302,7 +4454,7 @@ async function handleShotLists(req, res, scriptId) {
         sourceContentHash: hashText(JSON.stringify(script.blocks || [])),
         reservedCredits: access.free ? 0 : Math.max(1, pending.length),
         input: {
-          language: normalizeLumiereLanguage(body.language), sceneId, billingUserId,
+          language: normalizeLumiereLanguage(body.language), sceneId, regenerate, billingUserId,
           freeAllowance: access.free, freeAllowanceReservationId: freeReservation?.reservationId || null,
         },
       });
@@ -4312,6 +4464,8 @@ async function handleShotLists(req, res, scriptId) {
         savePreproduction(db);
         return json(res, 402, { error: "insufficient_credits", message: "Your Lumiere prompt allowance is currently empty." });
       }
+      project.shotAnalysis = { ...project.shotAnalysis, jobId: scheduled.job?.id || null };
+      savePreproduction(db);
       if (scheduled.created) scheduleDurableAIJob(scheduled.job.id);
       return json(res, 202, { project: authorizedProjectPayload(project, sid, scriptId), job: publicAIJob(scheduled.job) });
     } catch (error) {
@@ -8630,10 +8784,11 @@ async function runDurableAIJob(jobId) {
       && hashText(JSON.stringify(script.blocks || [])) !== job.sourceContentHash) {
       throw Object.assign(new Error("The source screenplay changed before this AI job started."), { status: 409, code: "corrupt_script" });
     }
-    if (!projectPermission(job.requestedByUserId, job.projectId, AI_JOB_ACTIVITY_MODULE[job.type] || "script", "edit")) {
+    if (!projectPermission(job.requestedByUserId, job.projectId, AI_JOB_ACTIVITY_MODULE[job.type] || "script", "edit")
+      || (job.type === "shot_list" && !projectPermission(job.requestedByUserId, job.projectId, "script", "view"))) {
       throw Object.assign(new Error("Project access was revoked."), { status: 403, code: "permission_denied" });
     }
-    updateAIJob(job.id, { status: "processing", stage: "validating", progress: Math.max(3, Number(job.progress || 0)) });
+    updateAndBroadcastAIJob(job.id, { status: "processing", stage: "validating", progress: Math.max(3, Number(job.progress || 0)) });
     let result;
     if (job.type === "analysis") {
       activeScriptAnalysisJobs.add(job.projectId);
@@ -8658,6 +8813,7 @@ async function runDurableAIJob(jobId) {
     } else if (job.type === "shot_list") {
       activeShotListJobs.add(job.projectId);
       result = await generateShotLists(job.projectId, job.requestedByUserId, input.sceneId || null, input.language || "en", {
+        regenerate: !!input.regenerate,
         freeAllowance: !!input.freeAllowance,
         freeAllowanceReservationId: input.freeAllowanceReservationId || null,
         billingUserId,
@@ -9147,6 +9303,15 @@ export const __aiInfrastructureTesting = Object.freeze({
   reserveTextCredits,
   settleTextCredits,
   releaseTextCredits,
+});
+
+// Pure Shot List seams: generation itself remains server-only, while these
+// deterministic boundaries make manual-preservation and structured output
+// safe to exercise without spending a provider credit in tests.
+export const __shotListTesting = Object.freeze({
+  validateShotList,
+  mergeGeneratedShotList,
+  shotConnections,
 });
 
 // Server-only test seam for image persistence. It is intentionally not an
