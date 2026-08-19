@@ -60,6 +60,7 @@ import {
   getCollaborationDocument,
   getCollaborationEntity,
   createAIJob,
+  createAICompletionNotification,
   createComment,
   createInvitation,
   createGuestSession,
@@ -90,6 +91,7 @@ import {
   saveCollaborationDocument,
   saveCollaborationEntity,
   saveLocationPlan,
+  setPlatformEventSink,
   setProjectArchived,
   transferProjectOwnership,
   updateAIJob,
@@ -98,7 +100,7 @@ import {
   updateUserPlatformProfile,
   userPlatformProfile,
 } from "./platform-database.js";
-import { filterDepartmentFinancialData, filterFinancialData, canAccessModule, canUseLumiereAction } from "./permissions-model.js";
+import { filterDepartmentFinancialData, filterFinancialData, canAccessModule, canUseLumiereAction, canViewFinancialData } from "./permissions-model.js";
 import { invitationEmail, invitationMailer } from "./invitation-mailer.js";
 import { AI_MODELS, modelForTask, publicAIJob, routeAIRequest } from "./ai-router.js";
 import { CollaborationRooms, applyVersionedPatch, throttleIntervalForEvent } from "./collaboration-engine.js";
@@ -6594,7 +6596,7 @@ async function handleScript(req, res, id) {
   if (hasBlocks) {
     const documentId = `script:${id}`; const result = scriptDocuments.replace(id, documentId, body.blocks);
     broadcastCollaboration(id, "script.crdt", { module:"script", documentId, update:encodeUpdate(result.update), version:result.version, actorUserId:sid }, String(req.headers["x-filmscript-client-id"] || ""));
-    recordActivity({ projectId:id, module:"script", actorUserId:sid, entityType:"script", entityId:id, action:"content.committed", summary:"Screenplay content was edited." });
+    recordActivity({ projectId:id, module:"script", actorUserId:sid, entityType:"scene", entityId:"screenplay", action:"scene.edited", summary:"Scene edited.", aggregationKey:"scene:screenplay", aggregationWindowMinutes:30 });
     return json(res, 200, { ok:true, collaboration:"crdt", version:result.version });
   }
   if (hasTitle) {
@@ -6615,7 +6617,7 @@ async function handleScript(req, res, id) {
   }
   script.updatedAt = new Date().toISOString();
   saveScripts(db);
-  recordActivity({ projectId: id, module: "script", actorUserId: sid, entityType: "script", entityId: id, action: "content.committed", summary: hasBlocks ? "Screenplay content was edited." : hasTitle ? "Screenplay title was edited." : "Screenplay details were updated." });
+  recordActivity({ projectId: id, module: "script", actorUserId: sid, entityType: "script", entityId: id, action: hasTitle ? "script.title.changed" : "script.details.changed", summary: hasTitle ? "Screenplay title was edited." : "Screenplay details were updated.", aggregationKey: hasTitle ? `script-title:${id}` : `script-details:${id}` });
   if (hasBlocks) {
     const operation = { module: "script", entityType: "script", entityId: id, actorUserId: sid, patch: { blocks: script.blocks }, updatedAt: script.updatedAt };
     broadcastCollaboration(id, "content.operation", operation, String(req.headers["x-filmscript-client-id"] || ""));
@@ -7347,6 +7349,7 @@ async function handleLumiere(req, res) {
 const collaborationRooms = new CollaborationRooms();
 const collaborationSubscribers = new Map();
 const collaborationThrottle = new Map();
+const semanticActivityThrottle = new Map();
 
 function roomSubscribers(projectId) {
   if (!collaborationSubscribers.has(projectId)) collaborationSubscribers.set(projectId, new Map());
@@ -7358,12 +7361,19 @@ function broadcastCollaboration(projectId, type, payload, exceptClientId = null)
   const module = String(payload?.module || payload?.entity?.module || (type === "script.crdt" ? "script" : ""));
   for (const [clientId, subscriber] of subscribers) {
     if (clientId === exceptClientId) continue;
+    if (payload?.recipientUserId && payload.recipientUserId !== subscriber.userId) continue;
     if (module && !canAccessModule(subscriber.access, module, "view")) continue;
+    if (payload?.containsFinancialData && !canViewFinancialData(subscriber.access, payload.financialDepartmentId || null)) continue;
     const safePayload = filterFinancialData(payload, subscriber.access);
     const event = `event: ${type}\ndata: ${JSON.stringify(safePayload)}\n\n`;
     try { subscriber.response.write(event); } catch { subscribers.delete(clientId); }
   }
 }
+
+setPlatformEventSink((event) => {
+  if (!event?.projectId) return;
+  broadcastCollaboration(event.projectId, event.type, event.userId ? { ...event.payload, recipientUserId: event.userId } : event.payload);
+});
 
 function collaborationIdentity(req, userId) {
   const queryClientId = new URL(req.url, "http://localhost").searchParams.get("clientId");
@@ -7476,10 +7486,14 @@ async function handleProjectComments(req, res, projectId, commentId = null) {
   const url = new URL(req.url, "http://localhost");
   try {
     if (req.method === "GET") return json(res, 200, { comments: listComments(projectId, sid, url.searchParams.get("module"), url.searchParams.get("entityId")) });
-    if (req.method === "PATCH" && commentId) return json(res, 200, resolveComment(projectId, sid, commentId));
     const body = JSON.parse(await readBody(req, 64 * 1024) || "{}");
+    if (req.method === "PATCH" && commentId) {
+      const result = resolveComment(projectId, sid, commentId, body.resolved !== false);
+      broadcastCollaboration(projectId, "comment.updated", { ...result.comment, containsFinancialData: result.comment?.module === "budget" }, String(req.headers["x-filmscript-client-id"] || ""));
+      return json(res, 200, result);
+    }
     const comment = createComment(projectId, sid, body);
-    broadcastCollaboration(projectId, "comment.created", comment, String(req.headers["x-filmscript-client-id"] || ""));
+    broadcastCollaboration(projectId, "comment.created", { ...comment, containsFinancialData: comment.module === "budget" }, String(req.headers["x-filmscript-client-id"] || ""));
     return json(res, 201, { comment });
   } catch (error) { return permissionRequired(res, error); }
 }
@@ -7490,7 +7504,8 @@ async function handleNotifications(req, res, notificationId = null) {
     const notifications = listNotifications(sid);
     return json(res, 200, { notifications, unreadCount: notifications.filter((item) => !item.read).length });
   }
-  return json(res, 200, { unreadCount: markNotificationsRead(sid, notificationId) });
+  let body = {}; try { body = JSON.parse(await readBody(req, 32 * 1024) || "{}"); } catch {}
+  return json(res, 200, { unreadCount: markNotificationsRead(sid, notificationId, body.read !== false) });
 }
 
 async function handleSharedProjects(req, res, projectId, sharedId = null) {
@@ -7560,7 +7575,7 @@ async function handleCollaborationEvents(req, res, projectId) {
   const identity = collaborationIdentity(req, sid);
   res.writeHead(200, { "Content-Type": "text/event-stream", "Cache-Control": "no-cache, no-transform", Connection: "keep-alive", "X-Accel-Buffering": "no" });
   const access = projectAccess(sid, projectId);
-  const subscribers = roomSubscribers(projectId); subscribers.set(identity.clientId, { response: res, access });
+  const subscribers = roomSubscribers(projectId); subscribers.set(identity.clientId, { response: res, access, userId: sid });
   const presence = collaborationRooms.join(projectId, { ...identity, module: String(new URL(req.url, "http://localhost").searchParams.get("module") || "script"), selection: null });
   res.write(`retry: 2000\nevent: connected\ndata: ${JSON.stringify({ clientId: identity.clientId, presence: collaborationRooms.presence(projectId) })}\n\n`);
   broadcastCollaboration(projectId, "presence.joined", presence, identity.clientId);
@@ -7584,6 +7599,20 @@ async function handleCollaborationPresence(req, res, projectId) {
   return json(res, 200, { presence: client });
 }
 
+function semanticOperationActivity(projectId, actorUserId, body, result) {
+  if (!result.changedFields.length) return null;
+  const metadata = body.metadata && typeof body.metadata === "object" ? body.metadata : {};
+  const sceneLabel = String(metadata.sceneLabel || metadata.sceneTitle || "").slice(0, 120) || null;
+  const base = { projectId, actorUserId, module: body.module, entityType: body.entityType, entityId: body.entityId, before: body.previous || null, after: result.entity, containsFinancialData: body.module === "budget" || body.containsFinancialData === true, financialDepartmentId: body.financialDepartmentId || null, metadata: { ...metadata, sceneLabel } };
+  if (body.module === "breakdown") return recordActivity({ ...base, action: "breakdown.changed", summary: "Breakdown item changed.", aggregationKey: `breakdown:${metadata.sceneId || body.entityId}` });
+  if (body.module === "shot_list") {
+    const added = body.operationType === "entity.add";
+    return recordActivity({ ...base, action: added ? "shot.added" : "shot.modified", summary: added ? "Shot added." : "Shot modified.", aggregationKey: `shot:${metadata.sceneId || body.documentId}:${added ? "added" : "modified"}` });
+  }
+  if (body.module === "canvas") return recordActivity({ ...base, action: "canvas.modified", summary: "Canvas object modified.", aggregationKey: `canvas:${metadata.boardId || body.documentId}` });
+  return recordActivity({ ...base, action: "content.committed", summary: `${body.entityType || "Project content"} was updated.`, aggregationKey: `${body.module}:${body.entityType}:${body.entityId}` });
+}
+
 async function handleCollaborationOperations(req, res, projectId) {
   const sid = sessionId(req, res); if (!sid) return googleRequired(res);
   const url = new URL(req.url, "http://localhost");
@@ -7600,7 +7629,7 @@ async function handleCollaborationOperations(req, res, projectId) {
   const operationId = saveCollaborationOperation({ ...body, projectId, actorUserId: sid, committedVersion: result.entity.version, conflicts: result.conflicts });
   const payload = { id: operationId, module: body.module, documentId: body.documentId || projectId, entityType: body.entityType, entityId: body.entityId, entity: result.entity, changedFields: result.changedFields, conflicts: result.conflicts, stale: result.stale };
   broadcastCollaboration(projectId, result.conflicts.length ? "content.conflict" : "content.operation", payload, String(req.headers["x-filmscript-client-id"] || ""));
-  if (result.changedFields.length) recordActivity({ projectId, module: body.module, actorUserId: sid, entityType: body.entityType, entityId: body.entityId, action: "content.committed", summary: `${body.entityType || "Project content"} was updated.` });
+  semanticOperationActivity(projectId, sid, body, result);
   return json(res, result.conflicts.length ? 409 : 200, payload);
 }
 
@@ -7626,6 +7655,12 @@ async function handleScriptCollaboration(req, res, projectId) {
     const update = decodeUpdate(body.update); const result = scriptDocuments.apply(projectId, documentId, update);
     const payload = { module: "script", documentId, update: encodeUpdate(update), version: result.version, actorUserId: sid };
     broadcastCollaboration(projectId, "script.crdt", payload, String(req.headers["x-filmscript-client-id"] || ""));
+    const sceneId = String(body.sceneId || body.blockId || "screenplay").slice(0, 120);
+    const activityKey = `${projectId}:${sid}:script:${sceneId}`; const lastRecordedAt = semanticActivityThrottle.get(activityKey) || 0;
+    if (Date.now() - lastRecordedAt > 60_000) {
+      semanticActivityThrottle.set(activityKey, Date.now());
+      recordActivity({ projectId, module: "script", actorUserId: sid, entityType: "scene", entityId: sceneId, action: "scene.edited", summary: "Scene edited.", aggregationKey: `scene:${sceneId}`, aggregationWindowMinutes: 30, metadata: { sceneLabel: String(body.sceneLabel || "").slice(0, 120) || null } });
+    }
     return json(res, 200, { ok: true, version: result.version });
   } catch (error) { return json(res, error.status || 422, { error: error.message }); }
 }
@@ -7633,7 +7668,7 @@ async function handleScriptCollaboration(req, res, projectId) {
 const roomSweepTimer = setInterval(() => {
   const result = collaborationRooms.sweep();
   for (const transition of collaborationRooms.lastTransitions || []) broadcastCollaboration(transition.projectId, "presence.updated", transition.client);
-  for (const projectId of result) { collaborationSubscribers.delete(projectId); scriptDocuments.closeProject(projectId); for (const key of collaborationThrottle.keys()) if (key.startsWith(`${projectId}:`)) collaborationThrottle.delete(key); }
+  for (const projectId of result) { collaborationSubscribers.delete(projectId); scriptDocuments.closeProject(projectId); for (const key of collaborationThrottle.keys()) if (key.startsWith(`${projectId}:`)) collaborationThrottle.delete(key); for (const key of semanticActivityThrottle.keys()) if (key.startsWith(`${projectId}:`)) semanticActivityThrottle.delete(key); }
 }, 30_000);
 roomSweepTimer.unref?.();
 
@@ -7680,7 +7715,7 @@ async function runTranslationJob(jobId, requesterId, billingOwnerId) {
     settleTextCredits(billingOwnerId, reservationId);
     updateAIJob(job.id, { status: "completed", stage: "completed", progress: 100, settledCredits: job.reservedCredits, output: { projectId: translatedId, scriptId: translatedId, title, targetLanguage: language }, internalCompletedModel: completedModel, usedFallback });
     recordActivity({ projectId: script.id, module: "script", actorUserId: requesterId, actorType: "lumiere", entityType: "translation", entityId: job.id, action: "ai.job.completed", summary: `Translation to ${language} completed.` });
-    createNotification({ userId: requesterId, projectId: script.id, type: "translation_completed", title: "Translation is ready", message: `${title} was created as an independent project.`, deepLink: `/Editor%20v5.dc.html?id=${encodeURIComponent(translatedId)}` });
+    createAICompletionNotification({ userId: requesterId, projectId: script.id, kind: "translation", message: `${title} was created as an independent project.`, deepLink: `/Editor%20v5.dc.html?id=${encodeURIComponent(translatedId)}` });
     broadcastCollaboration(script.id, "ai.job.completed", { job: publicAIJob(getAIJob(job.id, requesterId, true)) });
   } catch (error) {
     releaseTextCredits(billingOwnerId, reservationId);
