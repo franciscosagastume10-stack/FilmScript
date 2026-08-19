@@ -65,6 +65,7 @@ test('Breakdown elements reveal their exact screenplay evidence with a smooth fi
   assert.match(workspace, /onKeydown/);
   assert.match(workspace, /text-decoration-color:transparent/);
   assert.match(editor, /filmscript:breakdown-open-reference/);
+  assert.match(editor, /breakdown-workspace\.js\?v=20260819-breakdown-script-links1/);
   assert.match(editor, /Collect through the next scene heading across every screenplay page/);
   assert.match(editor, /_fadeBreakdownReferenceHighlight/);
   assert.match(editor, /window\.setTimeout\(\(\) => this\._fadeBreakdownReferenceHighlight\(\), 5000\)/);
