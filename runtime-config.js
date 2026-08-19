@@ -24,10 +24,17 @@
       || window.FILMSCRIPT_ERP_ENVIRONMENT
       || '',
   ).trim().toLowerCase();
+  const firstPartyApi = configured.firstPartyApi === true || String(configured.firstPartyApi || '').toLowerCase() === 'true';
   const resolveApiUrl = (pathname) => {
     const path = pathname.startsWith('/') ? pathname : `/${pathname}`;
-    return `${apiUrl}${path}`;
+    // Browser privacy tools can block generic `/api/*` paths. Production
+    // routes those first-party calls through `/workspace/*`, which Vercel
+    // rewrites to the private API without exposing a different browser origin.
+    const firstPartyPath = firstPartyApi && (path === '/api' || path.startsWith('/api/'))
+      ? `/workspace${path.slice(4)}`
+      : path;
+    return `${apiUrl}${firstPartyPath}`;
   };
-  window.FILMSCRIPT_CONFIG = { ...configured, apiUrl, localApiUrl, erpApiUrl, erpEnvironment };
+  window.FILMSCRIPT_CONFIG = { ...configured, apiUrl, localApiUrl, erpApiUrl, erpEnvironment, firstPartyApi };
   window.filmscriptApiUrl = resolveApiUrl;
 })();

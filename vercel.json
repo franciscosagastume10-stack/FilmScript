@@ -5,6 +5,10 @@
   "outputDirectory": "dist",
   "rewrites": [
     {
+      "source": "/workspace/:path*",
+      "destination": "https://api.filmscript.app/api/:path*"
+    },
+    {
       "source": "/api/:path*",
       "destination": "https://api.filmscript.app/api/:path*"
     },
