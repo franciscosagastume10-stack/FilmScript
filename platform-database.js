@@ -9,6 +9,7 @@ import {
   canAccessModule, canEditFinancialData, canViewFinancialData, financialSummary,
   normalizeFinancialPermissions, normalizeProjectRole, permissionsForRole,
 } from "./permissions-model.js";
+import { isAIJobType, moduleForAIJob } from "./ai-router.js";
 
 const ROOT = path.dirname(fileURLToPath(import.meta.url));
 const db = new Database(DATABASE_PATH);
@@ -77,6 +78,7 @@ export function runPlatformMigrations() {
     [11, "011_collaboration_access_foundation.sql"],
     [12, "012_realtime_collaboration.sql"],
     [13, "013_activity_comments_notifications.sql"],
+    [14, "014_lumiere_ai_infrastructure.sql"],
   ];
   for (const [version, filename] of migrations) {
     if (current >= version && (version !== 10 || hasColumn("users", "theme")) && (version !== 11 || hasColumn("project_memberships", "department_ids_json"))) continue;
@@ -637,11 +639,15 @@ export function revokeSharedProject(sharedId, actorUserId) {
 
 export function createAIJob(input) {
   const existing = db.prepare("SELECT * FROM ai_jobs WHERE idempotency_key=?").get(input.idempotencyKey);
-  if (existing) return rowToJob(existing);
+  if (existing) return { ...rowToJob(existing), created: false };
+  if (!isAIJobType(input.type)) throw Object.assign(new Error("Choose a supported AI job type."), { status: 422, code: "invalid_ai_job_type" });
+  if (!String(input.projectId || "").trim() || !String(input.requestedByUserId || "").trim() || !String(input.sourceScriptId || "").trim() || !String(input.idempotencyKey || "").trim()) {
+    throw Object.assign(new Error("AI jobs require a project, requester, source and idempotency key."), { status: 422, code: "invalid_ai_job" });
+  }
   const jobId = id("job"); const timestamp = nowIso();
   db.prepare(`INSERT INTO ai_jobs (id,project_id,requested_by_user_id,type,status,progress,stage,source_script_id,source_script_version_id,source_content_hash,internal_primary_model,reserved_credits,idempotency_key,input_json,output_schema_version,created_at,updated_at)
     VALUES (?,?,?,?,'queued',0,'queued',?,?,?,?,?,?,?, ?,?,?)`).run(jobId, input.projectId, input.requestedByUserId, input.type, input.sourceScriptId, input.sourceScriptVersionId, input.sourceContentHash, input.internalPrimaryModel, Number(input.reservedCredits)||0, input.idempotencyKey, JSON.stringify(input.input || {}), Number(input.outputSchemaVersion)||1, timestamp, timestamp);
-  return getAIJob(jobId, input.requestedByUserId, true);
+  return { ...getAIJobInternal(jobId), created: true };
 }
 
 function rowToJob(row, internal = false) {
@@ -655,17 +661,88 @@ export function getAIJob(jobId, userId, internal = false) {
   const row = db.prepare("SELECT * FROM ai_jobs WHERE id=?").get(jobId);
   if (!row) return null;
   const access = projectAccess(userId, row.project_id);
-  if (!access) return null;
+  const module = moduleForAIJob(row.type);
+  if (!access || !module || !canAccessModule(access, module, "view")) return null;
   return rowToJob(row, internal);
+}
+
+export function getAIJobInternal(jobId) {
+  return rowToJob(db.prepare("SELECT * FROM ai_jobs WHERE id=?").get(jobId), true);
+}
+
+export function findAIJobByIdempotency(idempotencyKey) {
+  return rowToJob(db.prepare("SELECT * FROM ai_jobs WHERE idempotency_key=?").get(idempotencyKey), true);
+}
+
+export function listRecoverableAIJobs(limit = 40) {
+  return db.prepare(`SELECT * FROM ai_jobs
+    WHERE status IN ('queued','processing','saving')
+    ORDER BY updated_at ASC LIMIT ?`).all(Math.min(200, Math.max(1, Number(limit) || 40))).map((row) => rowToJob(row, true));
+}
+
+export function activeAIJobForProject(projectId, types = []) {
+  const allowed = Array.isArray(types) ? types.filter(isAIJobType) : [];
+  if (!projectId || !allowed.length) return null;
+  const placeholders = allowed.map(() => "?").join(",");
+  const row = db.prepare(`SELECT * FROM ai_jobs WHERE project_id=? AND type IN (${placeholders}) AND status IN ('queued','processing','saving','interrupted') ORDER BY updated_at DESC LIMIT 1`).get(projectId, ...allowed);
+  return rowToJob(row, true);
+}
+
+export function retryAIJob(jobId, userId) {
+  const current = db.prepare("SELECT * FROM ai_jobs WHERE id=?").get(jobId);
+  if (!current) throw Object.assign(new Error("AI job was not found."), { status: 404, code: "job_not_found" });
+  const module = moduleForAIJob(current.type);
+  const access = projectAccess(userId, current.project_id);
+  if (!access || !module || !canAccessModule(access, module, "edit")) throw Object.assign(new Error("You do not have permission to retry this AI job."), { status: 403, code: "permission_denied" });
+  if (!["failed", "cancelled", "interrupted"].includes(current.status)) throw Object.assign(new Error("Only a finished AI job can be retried."), { status: 409, code: "ai_job_not_retryable" });
+  const attempts = db.prepare("SELECT COUNT(*) AS count FROM ai_jobs WHERE idempotency_key LIKE ?").get(`${current.idempotency_key}:retry:%`);
+  return createAIJob({
+    projectId: current.project_id,
+    requestedByUserId: userId,
+    type: current.type,
+    sourceScriptId: current.source_script_id,
+    sourceScriptVersionId: current.source_script_version_id,
+    sourceContentHash: current.source_content_hash,
+    internalPrimaryModel: current.internal_primary_model,
+    reservedCredits: current.reserved_credits,
+    idempotencyKey: `${current.idempotency_key}:retry:${Number(attempts?.count || 0) + 1}`,
+    input: jsonParse(current.input_json, {}),
+    outputSchemaVersion: current.output_schema_version,
+  });
+}
+
+export function recordAIJobAttempt(input = {}) {
+  if (!input.jobId) return null;
+  const attemptId = id("aia");
+  db.prepare(`INSERT INTO ai_job_attempts (id,job_id,attempt_number,model_id,is_fallback,outcome,error_code,created_at)
+    VALUES (?,?,?,?,?,?,?,?)`).run(
+    attemptId,
+    input.jobId,
+    Math.max(1, Number(input.attemptNumber) || 1),
+    String(input.modelId || "").slice(0, 160),
+    input.isFallback ? 1 : 0,
+    String(input.outcome || "started").slice(0, 40),
+    input.errorCode ? String(input.errorCode).slice(0, 120) : null,
+    nowIso(),
+  );
+  return attemptId;
 }
 
 export function updateAIJob(jobId, patch = {}) {
   const current = db.prepare("SELECT * FROM ai_jobs WHERE id=?").get(jobId);
   if (!current) return null;
-  const status = patch.status || current.status; const timestamp = nowIso();
+  const statuses = new Set(["queued", "processing", "saving", "completed", "failed", "cancelled", "interrupted"]);
+  const status = patch.status && statuses.has(patch.status) ? patch.status : current.status; const timestamp = nowIso();
   db.prepare(`UPDATE ai_jobs SET status=?,progress=?,stage=?,internal_completed_model=?,used_fallback=?,settled_credits=?,output_json=?,error_code=?,started_at=?,completed_at=?,updated_at=? WHERE id=?`)
     .run(status, Math.max(0, Math.min(100, Number(patch.progress ?? current.progress))), patch.stage || current.stage, patch.internalCompletedModel ?? current.internal_completed_model, patch.usedFallback === undefined ? current.used_fallback : patch.usedFallback ? 1 : 0, Number(patch.settledCredits ?? current.settled_credits), patch.output === undefined ? current.output_json : JSON.stringify(patch.output), patch.errorCode ?? current.error_code, patch.startedAt ?? current.started_at ?? (status === "processing" ? timestamp : null), patch.completedAt ?? current.completed_at ?? (["completed","failed","cancelled"].includes(status) ? timestamp : null), timestamp, jobId);
   return rowToJob(db.prepare("SELECT * FROM ai_jobs WHERE id=?").get(jobId), true);
+}
+
+export function updateAIJobInput(jobId, input = {}) {
+  const current = db.prepare("SELECT * FROM ai_jobs WHERE id=?").get(jobId);
+  if (!current) return null;
+  db.prepare("UPDATE ai_jobs SET input_json=?, updated_at=? WHERE id=?").run(JSON.stringify(input || {}), nowIso(), jobId);
+  return getAIJobInternal(jobId);
 }
 
 export function saveCollaborationOperation(input) {

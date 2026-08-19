@@ -56,14 +56,21 @@
     if (language === 'es' || language === 'en') return language;
     try { return localStorage.getItem('filmscript_language') === 'es' ? 'es' : 'en'; } catch { return 'en'; }
   };
+  const currentProjectId = () => {
+    try {
+      const params = new URLSearchParams(window.location.search);
+      const value = params.get('script') || params.get('id') || '';
+      return /^scr_[a-f0-9]+$/i.test(value) ? value : null;
+    } catch { return null; }
+  };
   const lumiere = window.lumiere || {};
   window.lumiere = lumiere;
-  lumiere.complete = async ({ messages, maxTokens, surface = 'workspace' } = {}) => {
+  lumiere.complete = async ({ messages, maxTokens, surface = 'workspace', projectId = currentProjectId(), module, sceneId } = {}) => {
     const res = await fetch(resolve("/api/lumiere"), {
       method: "POST",
       credentials: "include",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ messages, maxTokens, surface, language: interfaceLanguage() }),
+      body: JSON.stringify({ messages, maxTokens, surface, language: interfaceLanguage(), projectId, module, sceneId }),
     });
     if (!res.ok) {
       const data = await res.json().catch(() => ({}));
