@@ -54,6 +54,7 @@ import {
 import { canvasStorage } from "./canvas-storage.js";
 import {
   acceptInvitation,
+  activeAIJobForProject,
   backfillOwners,
   authorizeSharedProject,
   collaborationDelta,
@@ -67,9 +68,12 @@ import {
   createNotification,
   createSharedProject,
   financialAccess,
+  findAIJobByIdempotency,
   guestProjectAccess,
   getAIJob,
+  getAIJobInternal,
   getSharedProject,
+  listRecoverableAIJobs,
   listAccessibleProjectIds,
   listActivity,
   listComments,
@@ -83,10 +87,12 @@ import {
   projectBillingOwnerId,
   projectState,
   recordActivity,
+  recordAIJobAttempt,
   requireProjectPermission,
   requestSharedProjectAccess,
   resolveComment,
   revokeSharedProject,
+  retryAIJob,
   revokeInvitation,
   rotateInvitationToken,
   saveCollaborationOperation,
@@ -97,6 +103,7 @@ import {
   setProjectArchived,
   transferProjectOwnership,
   updateAIJob,
+  updateAIJobInput,
   updateMembership,
   updateInvitation,
   updateSharedProject,
@@ -105,7 +112,7 @@ import {
 } from "./platform-database.js";
 import { filterDepartmentFinancialData, filterFinancialData, canAccessModule, canUseLumiereAction, canViewFinancialData } from "./permissions-model.js";
 import { invitationEmail, invitationMailer } from "./invitation-mailer.js";
-import { AI_MODELS, modelForTask, publicAIJob, routeAIRequest } from "./ai-router.js";
+import { AI_MODELS, isAIJobType, modelForTask, moduleForAIJob, publicAIJob, routeAIRequest } from "./ai-router.js";
 import { CollaborationRooms, applyVersionedPatch, throttleIntervalForEvent } from "./collaboration-engine.js";
 import { ScriptDocumentRegistry, decodeUpdate, encodeUpdate } from "./realtime-collaboration.js";
 import { createLocationPlan, updatePinnedMeasurements } from "./location-plan-model.js";
@@ -332,6 +339,7 @@ async function requestLumiere({ system = "", messages = [], maxTokens = 1024, js
   const text = openAIResponseText(payload);
   if (!text.trim()) throw Object.assign(new Error("OpenAI returned an empty response."), { status: 502 });
   return {
+    provider: "openai",
     model: String(payload?.model || model || OPENAI_TEXT_MODEL),
     content: [{ type: "text", text }],
     usage: {
@@ -342,12 +350,99 @@ async function requestLumiere({ system = "", messages = [], maxTokens = 1024, js
   };
 }
 
-async function requestLumiereForTask(task, request) {
-  const routed = await routeAIRequest({ task, request, invoke: requestLumiere });
+async function requestLumiereForTask(task, request, { jobId = null } = {}) {
+  const attempts = [];
+  const routed = await routeAIRequest({
+    task,
+    request,
+    invoke: requestLumiere,
+    onAttempt: (attempt) => attempts.push(attempt),
+  });
+  if (jobId) {
+    attempts.forEach((attempt, index) => recordAIJobAttempt({
+      jobId,
+      attemptNumber: index + 1,
+      modelId: attempt.model,
+      isFallback: attempt.fallback,
+      outcome: index === attempts.length - 1 ? "completed" : "retryable_failure",
+      errorCode: attempt.error ? String(attempt.error.code || "provider_retryable") : null,
+    }));
+  }
   return Object.assign(routed.result, {
     internalCompletedModel: routed.completedModel,
     usedFallback: routed.usedFallback,
   });
+}
+
+const LUMIERE_CONTEXT_LIMIT = 60_000;
+const LUMIERE_PROJECT_ID = /^scr_[a-f0-9]+$/;
+
+function lumiereContextText(value, limit = 4_000) {
+  return String(value ?? "").replace(/\u0000/g, "").slice(0, limit);
+}
+
+// Project facts must be selected on the server. The browser may contribute a
+// question, but it never decides which project records Lumiere receives.
+// Budget data is intentionally excluded even for project owners: the current
+// AI surfaces do not need it, and a prompt is not a security boundary.
+function buildAuthorizedLumiereContext(userId, projectId, focus = {}) {
+  if (!LUMIERE_PROJECT_ID.test(String(projectId || ""))) return null;
+  const access = projectAccess(userId, projectId);
+  if (!access || !canUseLumiereAction(access, "chat")) {
+    throw Object.assign(new Error("You do not have permission to use Lumiere in this project."), { status: 403, code: "permission_denied" });
+  }
+  const script = loadScripts().scripts[projectId];
+  if (!script) throw Object.assign(new Error("Project was not found."), { status: 404, code: "project_not_found" });
+  const requestedModule = String(focus?.module || "").trim();
+  const include = (module) => (!requestedModule || requestedModule === module) && canAccessModule(access, module, "view");
+  const context = { project: { id: script.id, title: lumiereContextText(script.title, 180) }, authorizedModules: [] };
+
+  if (include("script")) {
+    context.authorizedModules.push("script");
+    const sceneId = String(focus?.sceneId || "");
+    const blocks = Array.isArray(script.blocks) ? script.blocks : [];
+    const selected = sceneId ? blocks.filter((block) => String(block.id || "") === sceneId || String(block.sceneId || "") === sceneId) : blocks;
+    context.script = selected.slice(0, 260).map((block) => ({
+      id: String(block.id || "").slice(0, 120) || undefined,
+      type: lumiereContextText(block.type, 40),
+      text: lumiereContextText(block.text, 1_600),
+    }));
+  }
+
+  const preproduction = loadPreproduction().projects?.[projectId];
+  if (preproduction && include("analysis")) {
+    context.authorizedModules.push("analysis");
+    const analysis = publicScriptAnalysis(syncScriptAnalysis(preproduction, script).analysis);
+    // Do not expose router/provider diagnostics in any Lumiere context.
+    if (analysis.deep?.model) delete analysis.deep.model;
+    context.analysis = filterFinancialData({ metrics: analysis.metrics, status: analysis.status, deep: analysis.deep }, null);
+  }
+  if (preproduction && include("breakdown")) {
+    context.authorizedModules.push("breakdown");
+    context.breakdown = filterDepartmentFinancialData(Object.values(preproduction.scenes || {}).slice(0, 80).map((scene) => ({
+      id: scene.id, title: lumiereContextText(scene.title, 220), status: scene.status,
+      breakdown: scene.breakdown || null,
+    })), null);
+  }
+  if (preproduction && include("shot_list")) {
+    context.authorizedModules.push("shot_list");
+    context.shotList = filterDepartmentFinancialData(Object.values(preproduction.scenes || {}).slice(0, 80).map((scene) => ({
+      id: scene.id, title: lumiereContextText(scene.title, 220), shots: scene.shots || [],
+    })), null);
+  }
+  if (include("canvas")) {
+    context.authorizedModules.push("canvas");
+    const canvas = getCanvasWorkspace(projectId, script.userId);
+    if (canvas) context.canvas = filterFinancialData({
+      boards: (canvas.boards || []).slice(0, 20).map((board) => ({ id: board.id, name: lumiereContextText(board.name, 180) })),
+      objects: (canvas.objects || []).slice(0, 100).map((item) => ({ id: item.id, type: item.type, name: lumiereContextText(item.name || item.title, 180) })),
+    }, null);
+  }
+  // No Budget, receipts, rates, quotes, invoices, or financial metadata are
+  // ever added here. Keep the serialized packet bounded before it reaches the
+  // provider, preserving room for the actual question.
+  const serialized = JSON.stringify(context);
+  return serialized.length > LUMIERE_CONTEXT_LIMIT ? `${serialized.slice(0, LUMIERE_CONTEXT_LIMIT)}…` : serialized;
 }
 
 // OpenAI exposes token usage but not an exact request cost in this response
@@ -401,12 +496,122 @@ const LEGACY_PLAN_ALIASES = Object.freeze({ basic: "creator", lumiere: "creator"
 const activePreproductionJobs = new Set();
 const activeShotListJobs = new Set();
 const activeScriptAnalysisJobs = new Set();
+const activeDurableAIJobs = new Set();
 const activeLumiereChats = new Set();
 const activeBudgetImports = new Set();
 const budgetImportProposals = new Map();
 const billingVerificationCache = new Map();
 const activeBillingVerifications = new Map();
 const requestRateBuckets = new Map();
+
+const AI_JOB_COMPLETION_KIND = Object.freeze({
+  analysis: "analysis",
+  breakdown: "breakdown",
+  breakdown_scene: "breakdown",
+  shot_list: "shot_list",
+  translation: "translation",
+});
+
+const AI_JOB_ACTIVITY_MODULE = Object.freeze({
+  analysis: "analysis",
+  breakdown: "breakdown",
+  breakdown_scene: "breakdown",
+  shot_list: "shot_list",
+  translation: "script",
+});
+
+function aiJobReservationId(jobId) {
+  return `ai:${String(jobId || "")}`;
+}
+
+function publicAIJobLink(job) {
+  const view = job.type === "analysis" ? "analysis" : job.type === "shot_list" ? "shotlist" : job.type === "breakdown" || job.type === "breakdown_scene" ? "breakdown" : "editor";
+  return `/Editor%20v5.dc.html?script=${encodeURIComponent(job.projectId)}&view=${encodeURIComponent(view)}`;
+}
+
+function finalizeDurableAIJob(job, { succeeded, output = null, error = null, settledCredits = null } = {}) {
+  const current = getAIJobInternal(job.id) || job;
+  const next = updateAIJob(job.id, succeeded
+    ? { status: "completed", stage: "completed", progress: 100, output: output ?? current.output, settledCredits: settledCredits ?? current.settledCredits }
+    : { status: "failed", stage: "failed", errorCode: error?.code || "ai_job_failed" });
+  if (!next) return null;
+  if (succeeded) {
+    const kind = AI_JOB_COMPLETION_KIND[job.type];
+    recordActivity({
+      projectId: job.projectId,
+      module: AI_JOB_ACTIVITY_MODULE[job.type] || "script",
+      actorUserId: job.requestedByUserId,
+      actorType: "lumiere",
+      entityType: "ai_job",
+      entityId: job.id,
+      action: "ai.job.completed",
+      summary: `${kind === "shot_list" ? "Shot List" : kind === "breakdown" ? "Breakdown" : kind === "translation" ? "Translation" : "Analysis"} completed.`,
+      aggregationKey: `ai-job:${job.type}:${job.id}`,
+    });
+    createAICompletionNotification({ userId: job.requestedByUserId, projectId: job.projectId, kind, deepLink: publicAIJobLink(job) });
+    broadcastCollaboration(job.projectId, "ai.job.completed", { job: publicAIJob(next) });
+  } else {
+    createNotification({
+      userId: job.requestedByUserId,
+      projectId: job.projectId,
+      type: "ai_job_failed",
+      title: "Lumiere could not complete this request",
+      message: "Your reserved credits were released. You can retry when ready.",
+      deepLink: publicAIJobLink(job),
+      aggregationKey: `ai-job-failed:${job.id}`,
+    });
+  }
+  return next;
+}
+
+function createDurableAIJob({ type, projectId, requesterId, sourceScriptVersionId, sourceContentHash, reservedCredits = 0, input = {} }) {
+  const idempotencyKey = hashText(JSON.stringify({ type, projectId, requesterId, sourceScriptVersionId, sourceContentHash, input: {
+    language: input.language || null, sceneId: input.sceneId || null, includeManual: !!input.includeManual,
+  } }));
+  const idempotent = findAIJobByIdempotency(idempotencyKey);
+  if (idempotent) return { job: idempotent, created: false, allowed: true };
+  const billingUserId = String(input.billingUserId || requesterId);
+  const provisionalReservationId = `ai:pending:${idempotencyKey}`;
+  if (reservedCredits > 0) {
+    const provisional = reserveTextCredits(billingUserId, reservedCredits, provisionalReservationId);
+    if (!provisional.allowed) return { job: null, created: false, allowed: false, available: provisional.available };
+  }
+  let job;
+  try {
+    job = createAIJob({
+      projectId,
+      requestedByUserId: requesterId,
+      type,
+      sourceScriptId: projectId,
+      sourceScriptVersionId,
+      sourceContentHash,
+      internalPrimaryModel: modelForTask(type),
+      reservedCredits,
+      idempotencyKey,
+      input: { ...input, creditReservationId: reservedCredits > 0 ? aiJobReservationId("pending") : null },
+      outputSchemaVersion: 1,
+    });
+  } finally {
+    if (reservedCredits > 0) releaseTextCredits(billingUserId, provisionalReservationId);
+  }
+  if (!job.created) return { job, created: false, allowed: true };
+  if (reservedCredits > 0) {
+    const durableReservationId = aiJobReservationId(job.id);
+    const durable = reserveTextCredits(billingUserId, reservedCredits, durableReservationId);
+    if (!durable.allowed) {
+      updateAIJob(job.id, { status: "failed", stage: "failed", errorCode: "insufficient_credits" });
+      return { job: getAIJobInternal(job.id), created: true, allowed: false, available: durable.available };
+    }
+    updateAIJob(job.id, { output: null, stage: "queued", progress: 0 });
+    job = { ...getAIJobInternal(job.id), input: { ...(getAIJobInternal(job.id)?.input || {}), creditReservationId: durableReservationId } };
+    // Persist the durable reservation reference; it stays server-only because
+    // publicAIJob deliberately removes input.
+    const current = getAIJobInternal(job.id);
+    updateAIJobInput(job.id, { ...(current?.input || {}), creditReservationId: durableReservationId });
+    job = getAIJobInternal(job.id);
+  }
+  return { job, created: true, allowed: true };
+}
 // Webhooks invalidate this cache immediately. Between webhook events, avoid a
 // full provider reconciliation every time the account UI refreshes.
 const BILLING_VERIFICATION_TTL_MS = 5 * 60_000;
@@ -3759,8 +3964,9 @@ async function handleSceneShotsPatch(req, res, scriptId, sceneId) {
   json(res, 200, { ok: true, shots: filterDepartmentFinancialData(publicShotListScene({ shots: scene.shots }).shots, projectAccess(sid, scriptId)) });
 }
 
-async function generateShotLists(scriptId, sid, onlySceneId = null, language = 'en', { freeAllowance = false, freeAllowanceReservationId = null, billingUserId = sid } = {}) {
+async function generateShotLists(scriptId, sid, onlySceneId = null, language = 'en', { freeAllowance = false, freeAllowanceReservationId = null, billingUserId = sid, textReservationId = null, aiJobId = null } = {}) {
   let freeAllowanceSettled = false;
+  let textReservationSettled = false;
   let successfulOutputs = 0;
   const settleFreeAllowance = () => {
     if (!freeAllowance || !freeAllowanceReservationId || freeAllowanceSettled) return false;
@@ -3769,7 +3975,7 @@ async function generateShotLists(scriptId, sid, onlySceneId = null, language = '
   };
   try {
   const script = loadScripts().scripts[scriptId];
-  if (!script || !projectPermission(sid, scriptId, "shot_list", "edit")) return;
+  if (!script || !projectPermission(sid, scriptId, "shot_list", "edit")) return { ok: false, errorCode: "permission_denied" };
   const db = loadPreproduction();
   const project = db.projects[scriptId] = syncProject(script, db.projects[scriptId]);
   const all = Object.values(project.scenes || {});
@@ -3779,10 +3985,11 @@ async function generateShotLists(scriptId, sid, onlySceneId = null, language = '
   if (!pending.length) {
     project.shotAnalysis = { status: "complete", total: 0, completed: 0, message: "Shot lists already up to date" };
     savePreproduction(db);
-    return;
+    return { ok: true, noop: true, successfulOutputs: 0, settledCredits: 0 };
   }
   project.shotAnalysis = { status: "running", total: pending.length, completed: 0, message: "Preparing camera coverage" };
   savePreproduction(db);
+  if (aiJobId) updateAIJob(aiJobId, { status: "processing", stage: "preparing", progress: 8 });
   let generationFailure = "";
   for (let index = 0; index < pending.length; index++) {
     const { scene, sceneIndex } = pending[index];
@@ -3795,7 +4002,7 @@ async function generateShotLists(scriptId, sid, onlySceneId = null, language = '
           message: "FilmScript Creator or Full is required to continue generating shot lists. Existing work was preserved.",
         };
       });
-      return;
+      return { ok: false, errorCode: "insufficient_credits" };
     }
     if (!freeAllowance && !hasLumiereCredits(billingUserId)) {
       mutatePreproductionProject(scriptId, sid, (freshProject) => {
@@ -3806,11 +4013,12 @@ async function generateShotLists(scriptId, sid, onlySceneId = null, language = '
           message: "Your Lumiere prompt allowance is currently empty. It refreshes automatically with your plan.",
         };
       });
-      return;
+      return { ok: false, errorCode: "insufficient_credits" };
     }
     mutatePreproductionProject(scriptId, sid, (freshProject) => {
       freshProject.shotAnalysis = { status: "running", total: pending.length, completed: index, message: `Planning shots for scene ${sceneIndex + 1} of ${all.length}` };
     });
+    if (aiJobId) updateAIJob(aiJobId, { status: "processing", stage: "generating", progress: 10 + Math.round((index / Math.max(1, pending.length)) * 75) });
     try {
       const sceneBudgetMinutes = shotTimeBudget(scene);
       const response = await requestLumiereForTask("shot_list", {
@@ -3818,7 +4026,7 @@ async function generateShotLists(scriptId, sid, onlySceneId = null, language = '
         jsonMode: true,
         system: `${SHOTLIST_SYSTEM_PROMPT}\n\n${lumiereLanguageInstruction(language)}`,
         messages: [{ role: "user", content: `Scene ID: ${scene.id}\nScene heading: ${scene.title}\nProduction time available from Stripboard: ${sceneBudgetMinutes == null ? "Not set" : `${sceneBudgetMinutes} minutes`}\n\nSCENE:\n${scene.text}` }],
-      });
+      }, { jobId: aiJobId });
       recordUsage(response.usage);
       const raw = response.content.filter((block) => block.type === "text").map((block) => block.text).join("");
       let generatedShots = validateShotList(parseBreakdownJson(raw), scene);
@@ -3845,7 +4053,7 @@ async function generateShotLists(scriptId, sid, onlySceneId = null, language = '
       });
       // Do not charge for malformed, stale, or empty work. A prompt is only
       // consumed once FilmScript has actually saved usable shot coverage.
-      if (savedOutput && !freeAllowance) consumeLumiereCredit(billingUserId);
+      if (savedOutput && !freeAllowance && !textReservationId) consumeLumiereCredit(billingUserId);
     } catch (error) {
       console.error(`Shot list generation failed for ${scene.id}:`, error.message);
       generationFailure ||= lumiereFailureMessage(error);
@@ -3864,10 +4072,15 @@ async function generateShotLists(scriptId, sid, onlySceneId = null, language = '
     };
   });
   if (successfulOutputs > 0) settleFreeAllowance();
+  if (!freeAllowance && textReservationId && successfulOutputs > 0) {
+    textReservationSettled = settleTextCredits(billingUserId, textReservationId, successfulOutputs);
+  }
+  return { ok: successfulOutputs > 0, successfulOutputs, settledCredits: textReservationSettled ? successfulOutputs : 0, message: generationFailure };
   } finally {
     if (freeAllowance && freeAllowanceReservationId && !freeAllowanceSettled) {
       releaseFreeAllowanceReservation(billingUserId, "storyboard", freeAllowanceReservationId);
     }
+    if (textReservationId && !textReservationSettled) releaseTextCredits(billingUserId, textReservationId);
   }
 }
 
@@ -3883,12 +4096,13 @@ async function handleShotLists(req, res, scriptId) {
   const project = db.projects[scriptId] = syncProject(script, db.projects[scriptId]);
   const sceneId = body.sceneId ? String(body.sceneId) : null;
   if (sceneId && !project.scenes?.[sceneId]) return json(res, 404, { error: "scene not found" });
-  if (["queued", "running"].includes(project.shotAnalysis?.status) && !activeShotListJobs.has(scriptId)) {
+  const activeJob = activeAIJobForProject(scriptId, ["shot_list"]);
+  if (["queued", "running"].includes(project.shotAnalysis?.status) && !activeShotListJobs.has(scriptId) && !activeJob) {
     project.shotAnalysis = { ...project.shotAnalysis, status: "interrupted", message: "Shot list generation interrupted" };
     releaseActiveFreeAllowanceReservation(projectBillingOwnerId(scriptId) || sid, "storyboard");
     savePreproduction(db);
   }
-  if (!activeShotListJobs.has(scriptId)) {
+  if (!activeShotListJobs.has(scriptId) && !activeJob) {
     const billingUserId = projectBillingOwnerId(scriptId) || sid;
     const pending = Object.values(project.scenes || {}).filter((scene) => (!sceneId || scene.id === sceneId) && (!Array.isArray(scene.shots) || scene.shots.length === 0));
     const access = featureAccess(billingUserId, "storyboard");
@@ -3898,18 +4112,33 @@ async function handleShotLists(req, res, scriptId) {
     project.shotAnalysis = { status: "queued", total: pending.length, completed: 0, message: "Starting shot list" };
     try {
       savePreproduction(db);
-      activeShotListJobs.add(scriptId);
-      generateShotLists(scriptId, sid, sceneId, normalizeLumiereLanguage(body.language), {
-        freeAllowance: access.free,
-        freeAllowanceReservationId: freeReservation?.reservationId || null,
-        billingUserId,
-      }).catch((error) => console.error("Shot list job failed:", error.message)).finally(() => activeShotListJobs.delete(scriptId));
+      const scheduled = createDurableAIJob({
+        type: "shot_list",
+        projectId: scriptId,
+        requesterId: sid,
+        sourceScriptVersionId: script.updatedAt,
+        sourceContentHash: hashText(JSON.stringify(script.blocks || [])),
+        reservedCredits: access.free ? 0 : Math.max(1, pending.length),
+        input: {
+          language: normalizeLumiereLanguage(body.language), sceneId, billingUserId,
+          freeAllowance: access.free, freeAllowanceReservationId: freeReservation?.reservationId || null,
+        },
+      });
+      if (!scheduled.allowed) {
+        if (freeReservation?.reservationId) releaseFreeAllowanceReservation(billingUserId, "storyboard", freeReservation.reservationId);
+        project.shotAnalysis = { ...project.shotAnalysis, status: "interrupted", message: "Your Lumiere credits are currently unavailable." };
+        savePreproduction(db);
+        return json(res, 402, { error: "insufficient_credits", message: "Your Lumiere prompt allowance is currently empty." });
+      }
+      if (scheduled.created) scheduleDurableAIJob(scheduled.job.id);
+      return json(res, 202, { project: authorizedProjectPayload(project, sid, scriptId), job: publicAIJob(scheduled.job) });
     } catch (error) {
       if (freeReservation?.reservationId) releaseFreeAllowanceReservation(billingUserId, "storyboard", freeReservation.reservationId);
       throw error;
     }
   }
-  json(res, 202, { project: authorizedProjectPayload(project, sid, scriptId) });
+  const currentJob = activeAIJobForProject(scriptId, ["shot_list"]);
+  json(res, 202, { project: authorizedProjectPayload(project, sid, scriptId), job: publicAIJob(currentJob) });
 }
 
 function sceneNeedsBreakdown(scene, { includeManual = false } = {}) {
@@ -3924,8 +4153,9 @@ function preserveManualBreakdownForm(form) {
   return { metadata, cells, ...(Object.keys(metadata).length || Object.keys(cells).length ? { userEdited: true } : {}) };
 }
 
-async function analyzeProject(scriptId, sid, language = 'en', { includeManual = false, freeAllowance = false, freeAllowanceReservationId = null, billingUserId = sid } = {}) {
+async function analyzeProject(scriptId, sid, language = 'en', { includeManual = false, onlySceneId = null, freeAllowance = false, freeAllowanceReservationId = null, billingUserId = sid, textReservationId = null, aiJobId = null } = {}) {
   let freeAllowanceSettled = false;
+  let textReservationSettled = false;
   let successfulOutputs = 0;
   const settleFreeAllowance = () => {
     if (!freeAllowance || !freeAllowanceReservationId || freeAllowanceSettled) return false;
@@ -3934,20 +4164,21 @@ async function analyzeProject(scriptId, sid, language = 'en', { includeManual = 
   };
   try {
   const script = loadScripts().scripts[scriptId];
-  if (!script || !projectPermission(sid, scriptId, "breakdown", "edit")) return;
+  if (!script || !projectPermission(sid, scriptId, "breakdown", "edit")) return { ok: false, errorCode: "permission_denied" };
   const db = loadPreproduction();
   const project = db.projects[scriptId] = syncProject(script, db.projects[scriptId]);
   const all = Object.values(project.scenes);
   const pending = all
     .map((scene, index) => ({ scene: JSON.parse(JSON.stringify(scene)), index }))
-    .filter(({ scene }) => sceneNeedsBreakdown(scene, { includeManual }));
+    .filter(({ scene }) => (!onlySceneId || scene.id === onlySceneId) && sceneNeedsBreakdown(scene, { includeManual }));
   if (!pending.length) {
     project.analysis = { status: "complete", total: all.length, completed: all.length, message: "Breakdown already up to date" };
     savePreproduction(db);
-    return;
+    return { ok: true, noop: true, successfulOutputs: 0, settledCredits: 0 };
   }
   project.analysis = { status: "running", total: pending.length, completed: 0, message: "Preparing scenes" };
   savePreproduction(db);
+  if (aiJobId) updateAIJob(aiJobId, { status: "processing", stage: "preparing", progress: 8 });
   for (let i = 0; i < pending.length; i++) {
     const { scene, index } = pending[i];
     if (!freeAllowance && !hasActiveLumierePlan(billingUserId)) {
@@ -3959,7 +4190,7 @@ async function analyzeProject(scriptId, sid, language = 'en', { includeManual = 
           message: "FilmScript Creator or Full is required to continue the breakdown. Existing work was preserved.",
         };
       });
-      return;
+      return { ok: false, errorCode: "insufficient_credits" };
     }
     if (!freeAllowance && !hasLumiereCredits(billingUserId)) {
       mutatePreproductionProject(scriptId, sid, (freshProject) => {
@@ -3970,11 +4201,12 @@ async function analyzeProject(scriptId, sid, language = 'en', { includeManual = 
           message: "Your Lumiere prompt allowance is currently empty. It refreshes automatically with your plan.",
         };
       });
-      return;
+      return { ok: false, errorCode: "insufficient_credits" };
     }
     mutatePreproductionProject(scriptId, sid, (freshProject) => {
       freshProject.analysis = { status: "running", total: pending.length, completed: i, message: `Analyzing scene ${index + 1} of ${all.length}` };
     });
+    if (aiJobId) updateAIJob(aiJobId, { status: "processing", stage: "generating", progress: 10 + Math.round((i / Math.max(1, pending.length)) * 75) });
       const canPatch = !!scene.previousText && !!scene.breakdown;
     try {
       const result = canPatch
@@ -3983,13 +4215,13 @@ async function analyzeProject(scriptId, sid, language = 'en', { includeManual = 
             jsonMode: true,
             system: `${BREAKDOWN_UPDATE_SYSTEM_PROMPT}\n\n${lumiereLanguageInstruction(language)}`,
             messages: [{ role: "user", content: JSON.stringify({ previousScene: scene.previousText, updatedScene: scene.text, existingBreakdown: scene.breakdown, metadata: { sceneId: scene.id, sceneNumber: index + 1, sceneHeading: scene.title } }) }],
-          })
+          }, { jobId: aiJobId })
         : await requestLumiereForTask("breakdown", {
             maxTokens: 1800,
             jsonMode: true,
             system: `${BREAKDOWN_SYSTEM_PROMPT}\n\n${lumiereLanguageInstruction(language)}`,
             messages: [{ role: "user", content: JSON.stringify({ scene: scene.text, metadata: { sceneId: scene.id, sceneNumber: index + 1, sceneHeading: scene.title } }) }],
-          });
+          }, { jobId: aiJobId });
       recordUsage(result.usage);
       const raw = result.content.filter((block) => block.type === "text").map((block) => block.text).join("");
       const payload = parseBreakdownJson(raw);
@@ -4026,7 +4258,7 @@ async function analyzeProject(scriptId, sid, language = 'en', { includeManual = 
       });
       // Parsing and persistence are both part of a completed generation. If
       // either fails, the catch path leaves the allowance untouched.
-      if (savedOutput && !freeAllowance) consumeLumiereCredit(billingUserId);
+      if (savedOutput && !freeAllowance && !textReservationId) consumeLumiereCredit(billingUserId);
     } catch (error) {
       console.error(`Breakdown analysis failed for ${scene.id}:`, error.message);
       mutatePreproductionProject(scriptId, sid, (freshProject) => {
@@ -4046,10 +4278,15 @@ async function analyzeProject(scriptId, sid, language = 'en', { includeManual = 
     freshProject.analysis = { status: needsReview ? "needs_review" : "complete", total: currentScenes.length, completed: currentScenes.length - needsReview, message: needsReview ? `${needsReview} scenes need review` : "Breakdown complete" };
   });
   if (successfulOutputs > 0) settleFreeAllowance();
+  if (!freeAllowance && textReservationId && successfulOutputs > 0) {
+    textReservationSettled = settleTextCredits(billingUserId, textReservationId, successfulOutputs);
+  }
+  return { ok: successfulOutputs > 0, successfulOutputs, settledCredits: textReservationSettled ? successfulOutputs : 0 };
   } finally {
     if (freeAllowance && freeAllowanceReservationId && !freeAllowanceSettled) {
       releaseFreeAllowanceReservation(billingUserId, "breakdown", freeAllowanceReservationId);
     }
+    if (textReservationId && !textReservationSettled) releaseTextCredits(billingUserId, textReservationId);
   }
 }
 
@@ -4109,12 +4346,14 @@ async function handlePreproduction(req, res, scriptId) {
   const script = loadScripts().scripts[scriptId]; if (!script || !projectPermission(sid, scriptId, "breakdown", req.method === "POST" ? "edit" : "view")) return json(res, 404, { error: "script not found" });
   const db = loadPreproduction(); let project = db.projects[scriptId] = syncProject(script, db.projects[scriptId]);
   let repairedInterruptedJob = false;
-  if ((project.analysis?.status === "queued" || project.analysis?.status === "running") && !activePreproductionJobs.has(scriptId)) {
+  const activeBreakdownJob = activeAIJobForProject(scriptId, ["breakdown", "breakdown_scene"]);
+  const activeShotJob = activeAIJobForProject(scriptId, ["shot_list"]);
+  if ((project.analysis?.status === "queued" || project.analysis?.status === "running") && !activePreproductionJobs.has(scriptId) && !activeBreakdownJob) {
     project.analysis = { ...project.analysis, status: "interrupted", message: "Analysis interrupted" };
     releaseActiveFreeAllowanceReservation(projectBillingOwnerId(scriptId) || sid, "breakdown");
     repairedInterruptedJob = true;
   }
-  if ((project.shotAnalysis?.status === "queued" || project.shotAnalysis?.status === "running") && !activeShotListJobs.has(scriptId)) {
+  if ((project.shotAnalysis?.status === "queued" || project.shotAnalysis?.status === "running") && !activeShotListJobs.has(scriptId) && !activeShotJob) {
     project.shotAnalysis = { ...project.shotAnalysis, status: "interrupted", message: "Shot list generation interrupted" };
     releaseActiveFreeAllowanceReservation(projectBillingOwnerId(scriptId) || sid, "storyboard");
     repairedInterruptedJob = true;
@@ -4129,9 +4368,11 @@ async function handlePreproduction(req, res, scriptId) {
     try { body = JSON.parse(await readBody(req, 32 * 1024) || "{}"); } catch { return json(res, 400, { error: "invalid request body" }); }
     const language = normalizeLumiereLanguage(body.language);
     const includeManual = body?.includeManual === true;
-    if (!activePreproductionJobs.has(scriptId)) {
+    const sceneId = body?.sceneId ? String(body.sceneId) : null;
+    if (sceneId && !project.scenes?.[sceneId]) return json(res, 404, { error: "scene not found" });
+    if (!activePreproductionJobs.has(scriptId) && !activeBreakdownJob) {
       const billingUserId = projectBillingOwnerId(scriptId) || sid;
-      const pendingTotal = Object.values(project.scenes).filter((scene) => sceneNeedsBreakdown(scene, { includeManual })).length;
+      const pendingTotal = Object.values(project.scenes).filter((scene) => (!sceneId || scene.id === sceneId) && sceneNeedsBreakdown(scene, { includeManual })).length;
       const access = featureAccess(billingUserId, "breakdown");
       if (!access.allowed) return lumierePlanRequired(res, { feature: "AI Breakdown generation" });
       const freeReservation = access.free && pendingTotal ? reserveFreeAllowance(billingUserId, "breakdown") : null;
@@ -4144,19 +4385,34 @@ async function handlePreproduction(req, res, scriptId) {
       };
       try {
         savePreproduction(db);
-        activePreproductionJobs.add(scriptId);
-        analyzeProject(scriptId, sid, language, {
-          includeManual,
-          freeAllowance: access.free,
-          freeAllowanceReservationId: freeReservation?.reservationId || null,
-          billingUserId,
-        }).catch((error) => console.error("Preproduction job failed:", error.message)).finally(() => activePreproductionJobs.delete(scriptId));
+        const scheduled = createDurableAIJob({
+          type: sceneId ? "breakdown_scene" : "breakdown",
+          projectId: scriptId,
+          requesterId: sid,
+          sourceScriptVersionId: script.updatedAt,
+          sourceContentHash: hashText(JSON.stringify(script.blocks || [])),
+          reservedCredits: access.free ? 0 : Math.max(1, pendingTotal),
+          input: {
+            language, includeManual, sceneId, billingUserId,
+            freeAllowance: access.free,
+            freeAllowanceReservationId: freeReservation?.reservationId || null,
+          },
+        });
+        if (!scheduled.allowed) {
+          if (freeReservation?.reservationId) releaseFreeAllowanceReservation(billingUserId, "breakdown", freeReservation.reservationId);
+          project.analysis = { ...project.analysis, status: "interrupted", message: "Your Lumiere credits are currently unavailable." };
+          savePreproduction(db);
+          return json(res, 402, { error: "insufficient_credits", message: "Your Lumiere prompt allowance is currently empty." });
+        }
+        if (scheduled.created) scheduleDurableAIJob(scheduled.job.id);
+        return json(res, 202, { project: authorizedProjectPayload(project, sid, scriptId), job: publicAIJob(scheduled.job) });
       } catch (error) {
         if (freeReservation?.reservationId) releaseFreeAllowanceReservation(billingUserId, "breakdown", freeReservation.reservationId);
         throw error;
       }
     }
-    return json(res, 202, { project: authorizedProjectPayload(project, sid, scriptId) });
+    const currentJob = activeAIJobForProject(scriptId, ["breakdown", "breakdown_scene"]);
+    return json(res, 202, { project: authorizedProjectPayload(project, sid, scriptId), job: publicAIJob(currentJob) });
   }
   json(res, 405, { error: "method not allowed" });
 }
@@ -4364,6 +4620,7 @@ function syncScriptAnalysis(project, script) {
 
 function sanitizeScriptAnalysisDeepForDisplay(deep, sceneIndex) {
   if (!deep) return null;
+  const { model: _internalModel, ...displayDeep } = deep;
   const sceneById = new Map((sceneIndex || []).map((scene) => [scene.id, scene]));
   const display = (value, limit) => analysisDisplayText(value, sceneById, limit);
   const evidence = (item) => ({
@@ -4374,7 +4631,7 @@ function sanitizeScriptAnalysisDeepForDisplay(deep, sceneIndex) {
   });
   const questions = (items) => (items || []).map((item) => ({ ...item, label: display(item.label, 70), prompt: display(item.prompt, 300) }));
   return {
-    ...deep,
+    ...displayDeep,
     statusSummary: deep.statusSummary ? { ...deep.statusSummary, label: display(deep.statusSummary.label, 40), reason: display(deep.statusSummary.reason, 500) } : null,
     overview: {
       working: (deep.overview?.working || []).map(evidence),
@@ -4566,8 +4823,9 @@ function analysisScenePackets(snapshot) {
   });
 }
 
-async function runScriptAnalysis(scriptId, sid, targetHash, requestedLanguage = 'en', { freeAllowance = false, freeAllowanceReservationId = null, billingUserId = sid } = {}) {
+async function runScriptAnalysis(scriptId, sid, targetHash, requestedLanguage = 'en', { freeAllowance = false, freeAllowanceReservationId = null, billingUserId = sid, textReservationId = null, aiJobId = null } = {}) {
   let freeAllowanceSettled = false;
+  let textReservationSettled = false;
   const settleFreeAllowance = () => {
     if (!freeAllowance || !freeAllowanceReservationId || freeAllowanceSettled) return false;
     freeAllowanceSettled = settleFreeAllowanceReservation(billingUserId, "analysis", freeAllowanceReservationId);
@@ -4575,15 +4833,16 @@ async function runScriptAnalysis(scriptId, sid, targetHash, requestedLanguage = 
   };
   try {
   const script = loadScripts().scripts[scriptId];
-  if (!script || !projectPermission(sid, scriptId, "analysis", "edit")) return;
+  if (!script || !projectPermission(sid, scriptId, "analysis", "edit")) return { ok: false, errorCode: "permission_denied" };
   let db = loadPreproduction();
   let project = db.projects[scriptId] = syncProject(script, db.projects[scriptId]);
   let { analysis, snapshot } = syncScriptAnalysis(project, script);
-  if (snapshot.contentHash !== targetHash || !snapshot.hasEnoughContent) { savePreproduction(db); return; }
+  if (snapshot.contentHash !== targetHash || !snapshot.hasEnoughContent) { savePreproduction(db); return { ok: false, errorCode: "corrupt_script" }; }
   analysis.status = "running";
   analysis.statusMessage = "Lumiere is finding the story priorities and production impact";
   analysis.targetHash = targetHash;
   savePreproduction(db);
+  if (aiJobId) updateAIJob(aiJobId, { status: "processing", stage: "analyzing", progress: 10 });
 
   try {
     if (!process.env.OPENAI_API_KEY) throw Object.assign(new Error('OpenAI API key is not configured.'), { status: 503 });
@@ -4602,14 +4861,14 @@ async function runScriptAnalysis(scriptId, sid, targetHash, requestedLanguage = 
       analysis.status = "interrupted";
       analysis.statusMessage = "Your Lumiere prompt allowance is currently empty. It refreshes automatically with your plan.";
       savePreproduction(db);
-      return;
+      return { ok: false, errorCode: "insufficient_credits" };
     }
     let response = await requestLumiereForTask("analysis", {
       maxTokens: 12000,
       jsonMode: true,
       system: `${SCRIPT_ANALYSIS_SYSTEM_PROMPT}\n\n${lumiereLanguageInstruction(requestedLanguage)}`,
       messages: [{ role: "user", content: requestContent }],
-    });
+    }, { jobId: aiJobId });
     recordUsage(response.usage);
     let raw = response.content.filter((block) => block.type === "text").map((block) => block.text).join("");
     let payload;
@@ -4620,14 +4879,14 @@ async function runScriptAnalysis(scriptId, sid, targetHash, requestedLanguage = 
         analysis.status = "interrupted";
         analysis.statusMessage = "Your Lumiere prompt allowance is currently empty. It refreshes automatically with your plan.";
         savePreproduction(db);
-        return;
+        return { ok: false, errorCode: "insufficient_credits" };
       }
       response = await requestLumiereForTask("analysis", {
         maxTokens: 16000,
         jsonMode: true,
         system: `${SCRIPT_ANALYSIS_SYSTEM_PROMPT}\n\n${lumiereLanguageInstruction(requestedLanguage)}\nThe previous pass did not produce complete JSON. Make this retry especially compact and complete.`,
         messages: [{ role: "user", content: requestContent }],
-      });
+      }, { jobId: aiJobId });
       recordUsage(response.usage);
       raw = response.content.filter((block) => block.type === "text").map((block) => block.text).join("");
       payload = parseBreakdownJson(raw);
@@ -4635,7 +4894,7 @@ async function runScriptAnalysis(scriptId, sid, targetHash, requestedLanguage = 
     const deep = validateScriptAnalysisDeep(payload, snapshot, response);
 
     const currentScript = loadScripts().scripts[scriptId];
-    if (!currentScript || !projectPermission(sid, scriptId, "analysis", "edit")) return;
+    if (!currentScript || !projectPermission(sid, scriptId, "analysis", "edit")) return { ok: false, errorCode: "permission_denied" };
     db = loadPreproduction();
     project = db.projects[scriptId] = syncProject(currentScript, db.projects[scriptId]);
     const current = syncScriptAnalysis(project, currentScript);
@@ -4655,12 +4914,14 @@ async function runScriptAnalysis(scriptId, sid, targetHash, requestedLanguage = 
     savePreproduction(db);
     // Retries, malformed JSON, stale source text, and failed persistence must
     // never cost the writer. Charge the single analysis only after it lands.
-    if (didApply && !freeAllowance) consumeLumiereCredit(billingUserId);
+    if (didApply && !freeAllowance && !textReservationId) consumeLumiereCredit(billingUserId);
     if (didApply) settleFreeAllowance();
+    if (didApply && !freeAllowance && textReservationId) textReservationSettled = settleTextCredits(billingUserId, textReservationId, 1);
+    return { ok: didApply, applied: didApply, successfulOutputs: didApply ? 1 : 0, settledCredits: textReservationSettled ? 1 : 0 };
   } catch (error) {
     console.error(`Script analysis failed for ${scriptId}:`, error.message);
     const currentScript = loadScripts().scripts[scriptId];
-    if (!currentScript || !projectPermission(sid, scriptId, "analysis", "edit")) return;
+    if (!currentScript || !projectPermission(sid, scriptId, "analysis", "edit")) return { ok: false, errorCode: "permission_denied" };
     db = loadPreproduction();
     project = db.projects[scriptId] = syncProject(currentScript, db.projects[scriptId]);
     const current = syncScriptAnalysis(project, currentScript);
@@ -4668,11 +4929,13 @@ async function runScriptAnalysis(scriptId, sid, targetHash, requestedLanguage = 
     current.analysis.statusMessage = lumiereFailureMessage(error);
     current.analysis.targetHash = "";
     savePreproduction(db);
+    return { ok: false, errorCode: error.code || "analysis_failed", message: error.message };
   }
   } finally {
     if (freeAllowance && freeAllowanceReservationId && !freeAllowanceSettled) {
       releaseFreeAllowanceReservation(billingUserId, "analysis", freeAllowanceReservationId);
     }
+    if (textReservationId && !textReservationSettled) releaseTextCredits(billingUserId, textReservationId);
   }
 }
 
@@ -4686,7 +4949,8 @@ async function handleScriptAnalysis(req, res, scriptId) {
   const { analysis } = syncScriptAnalysis(project, script);
 
   let repairedInterruptedAnalysis = false;
-  if (["queued", "running"].includes(analysis.status) && !activeScriptAnalysisJobs.has(scriptId)) {
+  const activeAnalysisJob = activeAIJobForProject(scriptId, ["analysis"]);
+  if (["queued", "running"].includes(analysis.status) && !activeScriptAnalysisJobs.has(scriptId) && !activeAnalysisJob) {
     analysis.status = analysis.deep ? "stale" : "interrupted";
     analysis.statusMessage = "The previous analysis was interrupted. Start it again when ready.";
     releaseActiveFreeAllowanceReservation(projectBillingOwnerId(scriptId) || sid, "analysis");
@@ -4723,7 +4987,7 @@ async function handleScriptAnalysis(req, res, scriptId) {
     const billingUserId = projectBillingOwnerId(scriptId) || sid;
     const access = featureAccess(billingUserId, "analysis");
     if (!access.allowed) return lumierePlanRequired(res, { feature: "AI Script Analysis" });
-    if (!activeScriptAnalysisJobs.has(scriptId)) {
+    if (!activeScriptAnalysisJobs.has(scriptId) && !activeAnalysisJob) {
       const freeReservation = access.free ? reserveFreeAllowance(billingUserId, "analysis") : null;
       if (freeReservation && !freeReservation.allowed) return lumierePlanRequired(res, { feature: "your one Free AI Script Analysis" });
       analysis.feedback ||= { moments: {}, savedNotes: [] };
@@ -4735,14 +4999,34 @@ async function handleScriptAnalysis(req, res, scriptId) {
       analysis.targetHash = analysis.contentHash;
       try {
         savePreproduction(db);
-        activeScriptAnalysisJobs.add(scriptId);
-        runScriptAnalysis(scriptId, sid, analysis.contentHash, requestedLanguage, {
-          freeAllowance: access.free,
-          freeAllowanceReservationId: freeReservation?.reservationId || null,
-          billingUserId,
-        })
-          .catch((error) => console.error("Script Analysis job failed:", error.message))
-          .finally(() => activeScriptAnalysisJobs.delete(scriptId));
+        const scheduled = createDurableAIJob({
+          type: "analysis",
+          projectId: scriptId,
+          requesterId: sid,
+          sourceScriptVersionId: script.updatedAt,
+          sourceContentHash: analysis.contentHash,
+          reservedCredits: access.free ? 0 : 1,
+          input: {
+            language: requestedLanguage, billingUserId,
+            freeAllowance: access.free,
+            freeAllowanceReservationId: freeReservation?.reservationId || null,
+          },
+        });
+        if (!scheduled.allowed) {
+          if (freeReservation?.reservationId) releaseFreeAllowanceReservation(billingUserId, "analysis", freeReservation.reservationId);
+          analysis.status = analysis.deep ? "stale" : "interrupted";
+          analysis.statusMessage = "Your Lumiere credits are currently unavailable.";
+          savePreproduction(db);
+          return json(res, 402, { error: "insufficient_credits", message: "Your Lumiere prompt allowance is currently empty.", analysis: publicScriptAnalysis(analysis) });
+        }
+        if (scheduled.created) scheduleDurableAIJob(scheduled.job.id);
+        return json(res, 202, {
+          accepted: true,
+          background: true,
+          pollAfterMs: 1200,
+          analysis: publicScriptAnalysis(analysis),
+          job: publicAIJob(scheduled.job),
+        });
       } catch (error) {
         if (freeReservation?.reservationId) releaseFreeAllowanceReservation(billingUserId, "analysis", freeReservation.reservationId);
         throw error;
@@ -4750,11 +5034,13 @@ async function handleScriptAnalysis(req, res, scriptId) {
     }
     // The reading deliberately continues after this response. Clients can
     // leave Analysis, keep working elsewhere, and poll the saved job state.
+    const currentJob = activeAIJobForProject(scriptId, ["analysis"]);
     return json(res, 202, {
       accepted: true,
       background: true,
       pollAfterMs: 1200,
       analysis: publicScriptAnalysis(analysis),
+      job: publicAIJob(currentJob),
     });
   }
 
@@ -5006,13 +5292,14 @@ function reserveTextCredits(userId, amount, reservationId) {
   return { allowed: true, reservationId, amount: required, available };
 }
 
-function settleTextCredits(userId, reservationId) {
+function settleTextCredits(userId, reservationId, amount = null) {
   const snapshot = loadLumiereCreditsSnapshot(); const entry = snapshot[userId] || {};
   const reservations = entry.textReservations && typeof entry.textReservations === "object" ? entry.textReservations : {};
   const reservation = reservations[reservationId];
   if (!reservation) return false;
+  const settledAmount = Math.max(0, Math.min(Number(reservation.amount) || 0, amount == null ? Number(reservation.amount) || 0 : Math.round(Number(amount) || 0)));
   delete reservations[reservationId]; snapshot[userId] = { ...entry, textReservations: reservations }; saveLumiereCreditsSnapshot(snapshot);
-  consumeLumiereCredit(userId, reservation.amount);
+  if (settledAmount > 0) consumeLumiereCredit(userId, settledAmount);
   return true;
 }
 
@@ -7357,6 +7644,7 @@ async function handleLumiere(req, res) {
   let messages;
   let maxTokens = 1024;
   let requestedLanguage = 'en';
+  let projectContext = null;
   try {
     const payload = JSON.parse(await readBody(req, 512 * 1024));
     if (!Array.isArray(payload.messages) || payload.messages.length === 0 || payload.messages.length > 50) {
@@ -7369,9 +7657,16 @@ async function handleLumiere(req, res) {
     const totalCharacters = messages.reduce((total, message) => total + message.content.length, 0);
     if (!messages.length || totalCharacters > 200_000) throw new Error("bad payload");
     requestedLanguage = normalizeLumiereLanguage(payload.language);
+    if (payload.projectId != null && payload.projectId !== '') {
+      projectContext = buildAuthorizedLumiereContext(sid, String(payload.projectId), {
+        module: payload.module,
+        sceneId: payload.sceneId,
+      });
+    }
     const requestedMaxTokens = Number(payload.maxTokens);
     if (Number.isFinite(requestedMaxTokens)) maxTokens = Math.max(256, Math.min(4096, Math.round(requestedMaxTokens)));
   } catch (error) {
+    if (error?.code === "permission_denied" || error?.code === "project_not_found") return permissionRequired(res, error);
     return json(res, error?.status === 413 ? 413 : 400, {
       error: error?.status === 413 ? "request_too_large" : "invalid request body",
     });
@@ -7386,13 +7681,13 @@ async function handleLumiere(req, res) {
   activeLumiereChats.add(sid);
   try {
     const personalization = buildLumierePersonalizationSystem(sid);
-    const response = await requestLumiere({
+    const response = await requestLumiereForTask("chat", {
       maxTokens,
-      model: OPENAI_TEXT_MODEL,
       system: [
         'You are Lumiere, the AI assistant inside FilmScript.',
         lumiereLanguageInstruction(requestedLanguage),
         personalization,
+        projectContext ? `Authorized project context (never mention hidden sections):\n${projectContext}` : '',
       ].filter(Boolean).join("\n\n"),
       messages,
     });
@@ -7404,8 +7699,6 @@ async function handleLumiere(req, res) {
     consumeLumiereCredit(sid);
     json(res, 200, {
       reply,
-      provider: "openai",
-      model: response.model || OPENAI_TEXT_MODEL,
       credits: creditsSummary(sid),
     });
   } catch (err) {
@@ -7835,9 +8128,97 @@ function translationEntityMap(script) {
   return map;
 }
 
-async function runTranslationJob(jobId, requesterId, billingOwnerId) {
-  const job = getAIJob(jobId, requesterId, true); if (!job) return;
-  const script = loadScripts().scripts[job.sourceScriptId]; const reservationId = `translation:${job.id}`;
+function scheduleDurableAIJob(jobId) {
+  if (!jobId || activeDurableAIJobs.has(jobId)) return;
+  setImmediate(() => {
+    runDurableAIJob(jobId).catch((error) => console.error("Durable AI job failed:", error.message));
+  });
+}
+
+async function runDurableAIJob(jobId) {
+  const job = getAIJobInternal(jobId);
+  if (!job || !isAIJobType(job.type) || !["queued", "processing", "saving", "interrupted"].includes(job.status) || activeDurableAIJobs.has(jobId)) return;
+  activeDurableAIJobs.add(jobId);
+  const input = job.input || {};
+  const billingUserId = String(input.billingUserId || job.requestedByUserId);
+  const creditReservationId = input.creditReservationId || aiJobReservationId(job.id);
+  try {
+    const script = loadScripts().scripts[job.sourceScriptId];
+    if (!script) throw Object.assign(new Error("The source screenplay is no longer available."), { status: 409, code: "corrupt_script" });
+    if (["breakdown", "breakdown_scene", "shot_list", "translation"].includes(job.type)
+      && hashText(JSON.stringify(script.blocks || [])) !== job.sourceContentHash) {
+      throw Object.assign(new Error("The source screenplay changed before this AI job started."), { status: 409, code: "corrupt_script" });
+    }
+    if (!projectPermission(job.requestedByUserId, job.projectId, AI_JOB_ACTIVITY_MODULE[job.type] || "script", "edit")) {
+      throw Object.assign(new Error("Project access was revoked."), { status: 403, code: "permission_denied" });
+    }
+    updateAIJob(job.id, { status: "processing", stage: "validating", progress: Math.max(3, Number(job.progress || 0)) });
+    let result;
+    if (job.type === "analysis") {
+      activeScriptAnalysisJobs.add(job.projectId);
+      result = await runScriptAnalysis(job.projectId, job.requestedByUserId, job.sourceContentHash, input.language || "en", {
+        freeAllowance: !!input.freeAllowance,
+        freeAllowanceReservationId: input.freeAllowanceReservationId || null,
+        billingUserId,
+        textReservationId: job.reservedCredits > 0 ? creditReservationId : null,
+        aiJobId: job.id,
+      });
+    } else if (job.type === "breakdown" || job.type === "breakdown_scene") {
+      activePreproductionJobs.add(job.projectId);
+      result = await analyzeProject(job.projectId, job.requestedByUserId, input.language || "en", {
+        includeManual: !!input.includeManual,
+        onlySceneId: job.type === "breakdown_scene" ? String(input.sceneId || "") : null,
+        freeAllowance: !!input.freeAllowance,
+        freeAllowanceReservationId: input.freeAllowanceReservationId || null,
+        billingUserId,
+        textReservationId: job.reservedCredits > 0 ? creditReservationId : null,
+        aiJobId: job.id,
+      });
+    } else if (job.type === "shot_list") {
+      activeShotListJobs.add(job.projectId);
+      result = await generateShotLists(job.projectId, job.requestedByUserId, input.sceneId || null, input.language || "en", {
+        freeAllowance: !!input.freeAllowance,
+        freeAllowanceReservationId: input.freeAllowanceReservationId || null,
+        billingUserId,
+        textReservationId: job.reservedCredits > 0 ? creditReservationId : null,
+        aiJobId: job.id,
+      });
+    } else if (job.type === "translation") {
+      result = await runTranslationJob(job.id, job.requestedByUserId, billingUserId, { managed: true });
+      // Translation owns its result and completion record because it creates a
+      // new project. Do not create a duplicate notification here.
+      return result;
+    } else {
+      throw Object.assign(new Error("Unsupported AI job."), { status: 422, code: "invalid_ai_job_type" });
+    }
+    const saved = Number(result?.successfulOutputs ?? (result?.applied ? 1 : 0));
+    if (!result?.ok && saved <= 0 && !result?.noop) {
+      throw Object.assign(new Error(result?.message || "No usable AI output was saved."), { status: 502, code: result?.errorCode || "ai_output_not_saved" });
+    }
+    finalizeDurableAIJob(job, { succeeded: true, output: { completedItems: saved, ...(result?.output || {}) }, settledCredits: Number(result?.settledCredits || 0) });
+  } catch (error) {
+    if (job.reservedCredits > 0) releaseTextCredits(billingUserId, creditReservationId);
+    finalizeDurableAIJob(job, { succeeded: false, error });
+  } finally {
+    activeDurableAIJobs.delete(jobId);
+    activeScriptAnalysisJobs.delete(job.projectId);
+    activePreproductionJobs.delete(job.projectId);
+    activeShotListJobs.delete(job.projectId);
+  }
+}
+
+function recoverDurableAIJobs() {
+  for (const job of listRecoverableAIJobs(40)) scheduleDurableAIJob(job.id);
+}
+
+// Recovery is event-driven: startup requeues unfinished durable records, and
+// every new/retried request schedules exactly one worker. There is no polling
+// loop or permanent per-project worker.
+if (!process.env.VERCEL) setImmediate(recoverDurableAIJobs);
+
+async function runTranslationJob(jobId, requesterId, billingOwnerId, { managed = false } = {}) {
+  const job = getAIJobInternal(jobId) || getAIJob(jobId, requesterId, true); if (!job) return { ok: false, errorCode: "job_not_found" };
+  const script = loadScripts().scripts[job.sourceScriptId]; const reservationId = job.input?.creditReservationId || `translation:${job.id}`;
   try {
     updateAIJob(job.id, { status: "processing", stage: "validating", progress: 5 });
     if (!script || hashText(JSON.stringify(script.blocks || [])) !== job.sourceContentHash) throw Object.assign(new Error("The source screenplay changed before translation started."), { code: "corrupt_script", status: 409 });
@@ -7852,7 +8233,7 @@ async function runTranslationJob(jobId, requesterId, billingOwnerId) {
         maxTokens: 8000, jsonMode: true,
         system: `You are Lumiere translating a professional screenplay into ${language}. Preserve every block id, type, order, scene number, note relationship, and screenplay convention. Translate descriptive scene heading terms while preserving proper names. Preserve character voice, tone, slang, humor, insults, subtext, and period language. Return JSON with one blocks array. Entity glossary: ${JSON.stringify(entityMap)}`,
         messages: [{ role: "user", content: JSON.stringify({ blocks: chunk }) }],
-      });
+      }, { jobId: job.id });
       const raw = response.content.map((item) => item.text || "").join(""); const parsed = parseBreakdownJson(raw);
       translated.push(...validateTranslatedBlocks(parsed.blocks, chunk));
       usedFallback ||= response.usedFallback; completedModel = response.internalCompletedModel || completedModel;
@@ -7867,10 +8248,12 @@ async function runTranslationJob(jobId, requesterId, billingOwnerId) {
     recordActivity({ projectId: script.id, module: "script", actorUserId: requesterId, actorType: "lumiere", entityType: "translation", entityId: job.id, action: "ai.job.completed", summary: `Translation to ${language} completed.` });
     createAICompletionNotification({ userId: requesterId, projectId: script.id, kind: "translation", message: `${title} was created as an independent project.`, deepLink: `/Editor%20v5.dc.html?id=${encodeURIComponent(translatedId)}` });
     broadcastCollaboration(script.id, "ai.job.completed", { job: publicAIJob(getAIJob(job.id, requesterId, true)) });
+    return { ok: true, successfulOutputs: 1, settledCredits: job.reservedCredits, output: { projectId: translatedId, scriptId: translatedId, title, targetLanguage: language } };
   } catch (error) {
     releaseTextCredits(billingOwnerId, reservationId);
     updateAIJob(job.id, { status: "failed", stage: "failed", errorCode: error.code || "translation_failed" });
     createNotification({ userId: requesterId, projectId: job.projectId, type: "translation_failed", title: "Translation could not be completed", message: "Your credits were returned. You can retry when ready.", deepLink: `/App.dc.html` });
+    return { ok: false, errorCode: error.code || "translation_failed" };
   }
 }
 
@@ -7884,23 +8267,64 @@ async function handleTranslation(req, res, scriptId) {
   const pageCount = script.blocks?.length ? script.blocks.filter((block) => block.type === "pagebreak").length + 1 : Math.max(1, Math.ceil(String(script.text || "").length / 3000));
   const requiredCredits = translationCreditCost(pageCount); const available = creditsSummary(script.userId);
   if (req.method === "GET" || body.preview === true) return json(res, 200, { sourceScriptName: script.title, pageCount, targetLanguage, newProjectName: translatedProjectName(script.title, targetLanguage), requiredCredits, availableCredits: available.unlimited ? null : available.remaining, remainingCredits: available.unlimited ? null : Math.max(0, Number(available.remaining || 0) - requiredCredits), createsIndependentProject: true });
-  const sourceContentHash = hashText(JSON.stringify(script.blocks || [])); const idempotencyKey = hashText(`${scriptId}:${script.updatedAt}:${targetLanguage}:${sid}`);
-  const reservationId = `translation:${idempotencyKey}`; const reservation = reserveTextCredits(script.userId, requiredCredits, reservationId);
-  if (!reservation.allowed) return json(res, 402, { error: "insufficient_credits", message: "There are not enough FilmScript AI credits for this translation.", requiredCredits, availableCredits: reservation.available });
-  const job = createAIJob({ projectId: scriptId, requestedByUserId: sid, type: "translation", sourceScriptId: scriptId, sourceScriptVersionId: script.updatedAt, sourceContentHash, internalPrimaryModel: modelForTask("translation"), reservedCredits: requiredCredits, idempotencyKey, input: { targetLanguage, sourceLanguage: body.sourceLanguage || null, pageCount }, outputSchemaVersion: 1 });
-  // Rebind a first reservation to the durable job id. A duplicate request keeps the existing reservation and job.
-  if (!reservation.duplicate) releaseTextCredits(script.userId, reservationId);
-  if (job.status === "queued") {
-    const durableReservation = reserveTextCredits(script.userId, requiredCredits, `translation:${job.id}`);
-    if (!durableReservation.allowed) return json(res, 402, { error: "insufficient_credits" });
-    setImmediate(() => runTranslationJob(job.id, sid, script.userId));
-  }
-  return json(res, 202, { job: publicAIJob(job), sourceScriptName: script.title, pageCount, requiredCredits, availableCredits: available.unlimited ? null : available.remaining, newProjectName: translatedProjectName(script.title, targetLanguage) });
+  const sourceContentHash = hashText(JSON.stringify(script.blocks || []));
+  const scheduled = createDurableAIJob({
+    type: "translation",
+    projectId: scriptId,
+    requesterId: sid,
+    sourceScriptVersionId: script.updatedAt,
+    sourceContentHash,
+    reservedCredits: requiredCredits,
+    input: { targetLanguage, sourceLanguage: body.sourceLanguage || null, pageCount, billingUserId: script.userId },
+  });
+  if (!scheduled.allowed) return json(res, 402, { error: "insufficient_credits", message: "There are not enough FilmScript AI credits for this translation.", requiredCredits, availableCredits: scheduled.available });
+  if (scheduled.created) scheduleDurableAIJob(scheduled.job.id);
+  return json(res, 202, { job: publicAIJob(scheduled.job), sourceScriptName: script.title, pageCount, requiredCredits, availableCredits: available.unlimited ? null : available.remaining, newProjectName: translatedProjectName(script.title, targetLanguage) });
 }
 
 async function handleAIJob(req, res, jobId) {
   const sid = sessionId(req, res); if (!sid) return googleRequired(res);
-  const job = getAIJob(jobId, sid, false); return job ? json(res, 200, { job }) : json(res, 404, { error: "job_not_found" });
+  const job = getAIJob(jobId, sid, false);
+  if (req.method === "GET") return job ? json(res, 200, { job: publicAIJob(job) }) : json(res, 404, { error: "job_not_found" });
+  if (!job) return json(res, 404, { error: "job_not_found" });
+  const module = moduleForAIJob(job.type);
+  if (!projectPermission(sid, job.projectId, module, "edit")) return permissionRequired(res);
+  let body = {};
+  try { body = JSON.parse(await readBody(req, 16 * 1024) || "{}"); } catch { return json(res, 400, { error: "invalid_request_body" }); }
+  if (body.action === "cancel") {
+    if (["completed", "failed", "cancelled"].includes(job.status)) return json(res, 409, { error: "ai_job_not_cancellable" });
+    const internal = getAIJobInternal(job.id);
+    const reservationId = internal?.input?.creditReservationId || aiJobReservationId(job.id);
+    if (Number(internal?.reservedCredits || 0) > 0) releaseTextCredits(String(internal?.input?.billingUserId || sid), reservationId);
+    updateAIJob(job.id, { status: "cancelled", stage: "cancelled", errorCode: "user_cancelled" });
+    return json(res, 200, { job: publicAIJob(getAIJob(job.id, sid, false)) });
+  }
+  if (body.action !== "retry") return json(res, 422, { error: "invalid_ai_job_action" });
+  let next;
+  try { next = retryAIJob(job.id, sid); } catch (error) { return json(res, error.status || 422, { error: error.code || "ai_job_retry_failed", message: error.message }); }
+  const internal = getAIJobInternal(next.id);
+  const input = { ...(internal?.input || {}) };
+  const billingUserId = String(input.billingUserId || sid);
+  if (Number(next.reservedCredits || 0) > 0) {
+    const reservationId = aiJobReservationId(next.id);
+    const reservation = reserveTextCredits(billingUserId, next.reservedCredits, reservationId);
+    if (!reservation.allowed) {
+      updateAIJob(next.id, { status: "failed", stage: "failed", errorCode: "insufficient_credits" });
+      return json(res, 402, { error: "insufficient_credits", message: "There are not enough Lumiere credits to retry this request." });
+    }
+    input.creditReservationId = reservationId;
+  } else if (input.freeAllowance) {
+    const feature = next.type === "analysis" ? "analysis" : next.type === "shot_list" ? "storyboard" : "breakdown";
+    const reservation = reserveFreeAllowance(billingUserId, feature);
+    if (!reservation.allowed) {
+      updateAIJob(next.id, { status: "failed", stage: "failed", errorCode: "insufficient_credits" });
+      return json(res, 402, { error: "insufficient_credits", message: "Your included Lumiere request is no longer available." });
+    }
+    input.freeAllowanceReservationId = reservation.reservationId;
+  }
+  updateAIJobInput(next.id, input);
+  scheduleDurableAIJob(next.id);
+  return json(res, 202, { job: publicAIJob(getAIJob(next.id, sid, false)) });
 }
 
 async function handlePlatformProfile(req, res) {
@@ -8071,7 +8495,7 @@ export function requestHandler(req, res) {
       handleCollaborationOperations(req, res, pathname.split("/")[3]).catch((err) => json(res, err.status || 500, { error: err.code || err.message }));
     } else if ((req.method === "GET" || req.method === "POST") && /^\/api\/scripts\/scr_[a-f0-9]+\/translation$/.test(pathname)) {
       handleTranslation(req, res, pathname.split("/")[3]).catch((err) => json(res, err.status || 500, { error: err.code || err.message }));
-    } else if (req.method === "GET" && /^\/api\/ai-jobs\/job_[a-f0-9]+$/.test(pathname)) {
+    } else if ((req.method === "GET" || req.method === "POST") && /^\/api\/ai-jobs\/job_[a-f0-9]+$/.test(pathname)) {
       handleAIJob(req, res, pathname.split("/").pop()).catch((err) => json(res, err.status || 500, { error: err.code || err.message }));
     } else if (req.method === "POST" && pathname === "/api/scripts/import") {
       if (enforceRateLimit(req, res, "script-import", 12, 10 * 60 * 1000)) return;
@@ -8225,6 +8649,18 @@ export const __entitlementTesting = Object.freeze({
   reserveImageCredits,
   settleImageCreditReservation,
   refundImageCreditReservation,
+});
+
+// Server-only seam for the AI infrastructure suite. None of these helpers is
+// mounted as a route; they make authorization and reservation boundaries
+// independently testable without contacting a model provider.
+export const __aiInfrastructureTesting = Object.freeze({
+  buildAuthorizedLumiereContext,
+  createDurableAIJob,
+  recoverDurableAIJobs,
+  reserveTextCredits,
+  settleTextCredits,
+  releaseTextCredits,
 });
 
 // Server-only test seam for image persistence. It is intentionally not an
