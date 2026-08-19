@@ -456,12 +456,61 @@ function buildAnalysisSnapshot(script, previous = {}) {
   };
 }
 
+// Scene hashes are the durable boundary for incremental Lumiere work.  They
+// are deliberately based on typed screenplay blocks, so moving a scene (with
+// its stable ID reconciled above) does not trigger another model pass while a
+// changed line, heading, or beat does.
+function sceneContentHashes(snapshot) {
+  return Object.fromEntries((snapshot?.sceneIndex || []).map((scene) => [
+    String(scene.id),
+    String(scene.contentHash || ''),
+  ]).filter(([id, hash]) => id && hash));
+}
+
+function diffAnalysisScenes(snapshot, previousDeep = null) {
+  const current = sceneContentHashes(snapshot);
+  const prior = previousDeep?.sceneContentHashes && typeof previousDeep.sceneContentHashes === 'object'
+    ? previousDeep.sceneContentHashes
+    : null;
+  const scenes = Array.isArray(snapshot?.sourceScenes) ? snapshot.sourceScenes : [];
+
+  // Analyses created before per-scene hashes existed get one conservative
+  // refresh. Every later pass can be scoped precisely.
+  if (!prior || !Object.keys(prior).length) {
+    return {
+      changedSceneIds: scenes.map((scene) => scene.id),
+      addedSceneIds: scenes.map((scene) => scene.id),
+      deletedSceneIds: [],
+      unchangedSceneIds: [],
+      sceneContentHashes: current,
+      fullRefresh: true,
+    };
+  }
+
+  const changedSceneIds = scenes
+    .filter((scene) => current[scene.id] !== prior[scene.id])
+    .map((scene) => scene.id);
+  const addedSceneIds = changedSceneIds.filter((sceneId) => !prior[sceneId]);
+  const deletedSceneIds = Object.keys(prior).filter((sceneId) => !current[sceneId]);
+  const changed = new Set(changedSceneIds);
+  return {
+    changedSceneIds,
+    addedSceneIds,
+    deletedSceneIds,
+    unchangedSceneIds: scenes.map((scene) => scene.id).filter((sceneId) => !changed.has(sceneId)),
+    sceneContentHashes: current,
+    fullRefresh: false,
+  };
+}
+
 export {
   buildAnalysisSnapshot,
   cleanText,
+  diffAnalysisScenes,
   hashText,
   headingMetadata,
   normalizeEmotionalArc,
+  sceneContentHashes,
   normalized,
   wordCount,
 };

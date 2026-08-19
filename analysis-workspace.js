@@ -64,6 +64,7 @@ class FilmScriptAnalysis extends HTMLElement {
     super();
     this.attachShadow({ mode: 'open' });
     this.analysis = null;
+    this.job = null;
     this.loading = true;
     this.error = '';
     this.filterKey = '';
@@ -197,6 +198,7 @@ class FilmScriptAnalysis extends HTMLElement {
     try {
       const result = await window.filmscriptAnalysis.get(this.scriptId);
       this.analysis = result.analysis;
+      this.job = result.job || null;
       this.loading = false;
       this.error = ['error', 'interrupted'].includes(this.analysis?.status)
         ? this.analysis.statusMessage || ''
@@ -253,6 +255,7 @@ class FilmScriptAnalysis extends HTMLElement {
     try {
       const result = await window.filmscriptAnalysis.get(this.scriptId);
       this.analysis = result.analysis;
+      this.job = result.job || null;
       this.loading = false;
       this.error = ['error', 'interrupted'].includes(this.analysis?.status)
         ? this.analysis.statusMessage || ''
@@ -300,6 +303,7 @@ class FilmScriptAnalysis extends HTMLElement {
       const language = window.filmscriptLanguage?.get?.() === 'es' ? 'es' : 'en';
       const result = await window.filmscriptAnalysis.analyze(this.scriptId, { mode: this.analysisMode || 'quick', answers: this.deepAnswers, language });
       this.analysis = result.analysis;
+      this.job = result.job || null;
       this.error = '';
       this.analysisStarting = false;
       this.render();
@@ -318,6 +322,7 @@ class FilmScriptAnalysis extends HTMLElement {
       try {
         const result = await window.filmscriptAnalysis.get(this.scriptId);
         this.analysis = result.analysis;
+        this.job = result.job || null;
         this.error = ['error', 'interrupted'].includes(this.analysis?.status)
           ? this.analysis.statusMessage || ''
           : '';
@@ -382,6 +387,8 @@ class FilmScriptAnalysis extends HTMLElement {
       this.maybeStartAnalysis(true);
     }
     if (action === 'refresh') this.refreshFromEditor();
+    if (action === 'reanalyze') this.startAnalysis('quick');
+    if (action === 'start-analysis') this.startAnalysis('quick');
     if (action === 'start-quick') this.startAnalysis('quick');
     if (action === 'start-deep') this.startAnalysis('deep');
     if (action === 'export') {
@@ -453,8 +460,8 @@ class FilmScriptAnalysis extends HTMLElement {
 
   statusCopy() {
     const analysis = this.analysis || {};
-    if (this.analysisStarting) return 'Preparing a fresh reading…';
-    if (['queued', 'running', 'updating'].includes(analysis.status)) return analysis.statusMessage || 'Updating analysis…';
+    if (this.analysisStarting) return 'Reading screenplay';
+    if (['queued', 'running', 'updating'].includes(analysis.status)) return this.analysisStageLabel();
     if (analysis.status === 'complete') return `Analysis updated · Last updated ${relativeTime(analysis.deep?.generatedAt || analysis.updatedAt)}`;
     if (analysis.status === 'stale') return this.proActive ? 'Updating analysis… Previous deep results are clearly marked.' : 'Live metrics are current. A previous Lumiere reading belongs to an earlier script version.';
     if (analysis.status === 'error' || analysis.status === 'interrupted') return analysis.statusMessage || 'Lumiere could not finish this pass.';
@@ -462,8 +469,23 @@ class FilmScriptAnalysis extends HTMLElement {
     return 'Live screenplay analysis';
   }
 
+  analysisStageLabel() {
+    const stages = {
+      queued: 'Reading screenplay',
+      validating: 'Reading screenplay',
+      reading_screenplay: 'Reading screenplay',
+      identifying_scenes: 'Identifying scenes',
+      mapping_characters: 'Mapping characters',
+      reviewing_locations: 'Reviewing locations',
+      evaluating_production_requirements: 'Evaluating production requirements',
+      building_analysis: 'Building analysis',
+      finalizing_results: 'Finalizing results',
+    };
+    return stages[this.job?.stage] || this.analysis?.statusMessage || 'Reading screenplay';
+  }
+
   emptyState() {
-    if (this.analysis?.hasEnoughContent && !this.analysis?.deep && !this.analysis?.previousDeep && !this.analysisRequested && !this.analysisStarting && !['queued', 'running'].includes(this.analysis?.status)) return `<main class="analysis-start" aria-labelledby="analysis-start-title"><div class="empty-spark">${icon('sparkle')}</div><span class="section-kicker">Lumiere</span><h1 id="analysis-start-title">Choose how to read your screenplay</h1><p>Nothing will be analyzed until you choose a mode.</p><div class="analysis-start-options"><button type="button" class="analysis-start-card" data-action="start-quick"><strong>Quick analysis</strong><span>A focused pass on story flow, clarity, and the main priorities.</span><em>Fast</em></button><div class="analysis-start-card analysis-start-deep"><div><strong>Deep analysis</strong><span>A complete reading personalized to your creative direction.</span></div><div class="deep-questions"><label>Visual style<select data-deep-answer="visualStyle"><option value="">Choose one</option><option>Naturalistic</option><option>Stylized</option><option>Handheld</option><option>Minimal</option><option>Other</option></select></label><label>References<select data-deep-answer="references"><option value="">Choose one</option><option>Indie drama</option><option>Studio film</option><option>Documentary</option><option>Genre cinema</option><option>Other</option></select></label><label>Genre<select data-deep-answer="genre"><option value="">Choose one</option><option>Drama</option><option>Comedy</option><option>Thriller</option><option>Horror</option><option>Other</option></select></label><label>Color<select data-deep-answer="color"><option value="">Choose one</option><option>Warm</option><option>Cool</option><option>Muted</option><option>High contrast</option><option>Other</option></select></label><input data-deep-answer="other" placeholder="Other (optional)"></div><button type="button" class="primary" data-action="start-deep">Start deep analysis</button></div></div></main>`;
+    if (this.analysis?.hasEnoughContent && !this.analysis?.deep && !this.analysis?.previousDeep && !this.analysisRequested && !this.analysisStarting && !['queued', 'running'].includes(this.analysis?.status)) return `<main class="analysis-start" aria-labelledby="analysis-start-title"><div class="empty-spark">${icon('sparkle')}</div><span class="section-kicker">Lumiere</span><h1 id="analysis-start-title">Your screenplay is ready to read</h1><p>Analysis starts only when you choose it. Your edits never spend credits automatically.</p><button type="button" class="primary analysis-start-button" data-action="start-analysis">${icon('sparkle')}Analyze</button></main>`;
     return `<main class="empty" aria-labelledby="analysis-empty-title">
       <div class="empty-spark">${icon('sparkle')}</div>
       <h1 id="analysis-empty-title">Analysis</h1>
@@ -472,7 +494,7 @@ class FilmScriptAnalysis extends HTMLElement {
     </main>`;
   }
 
-  startAnalysis(mode) {
+  startAnalysis(mode = 'quick') {
     this.analysisRequested = true;
     this.analysisMode = mode;
     this.analysisStarting = true;
@@ -483,7 +505,16 @@ class FilmScriptAnalysis extends HTMLElement {
 
   analysisProgressBar(active) {
     if (!active) return '';
-    return `<div class="analysis-progress" role="status" aria-live="polite"><div class="analysis-progress-copy"><span class="reading-dot"></span><div><strong>${this.analysisStarting ? 'Preparing a fresh reading' : 'Lumiere is reading your screenplay'}</strong><span>Story Flow and the writing signals will update when the pass is ready.</span></div></div><div class="analysis-progress-track" aria-hidden="true"><i></i></div></div>`;
+    const progress = Math.max(4, Math.min(96, finite(this.job?.progress, this.analysisStarting ? 4 : 12)));
+    return `<div class="analysis-progress" role="status" aria-live="polite"><div class="analysis-progress-copy"><span class="reading-dot"></span><div><strong>${escapeHtml(this.analysisStageLabel())}</strong><span>FilmScript is preparing a new analysis from the current screenplay.</span></div><b>${progress}%</b></div><div class="analysis-progress-track" aria-hidden="true"><i style="width:${progress}%"></i></div></div>`;
+  }
+
+  processingState() {
+    const progress = Math.max(4, Math.min(96, finite(this.job?.progress, this.analysisStarting ? 4 : 12)));
+    const stage = this.analysisStageLabel();
+    const stages = ['Reading screenplay', 'Identifying scenes', 'Mapping characters', 'Reviewing locations', 'Evaluating production requirements', 'Building analysis', 'Finalizing results'];
+    const activeIndex = Math.max(0, stages.indexOf(stage));
+    return `<main class="analysis-processing" aria-labelledby="analysis-processing-title" aria-live="polite"><section class="analysis-processing-glass"><div class="analysis-orbit" aria-hidden="true"><i></i><i></i><i></i><span>${icon('sparkle')}</span></div><span class="section-kicker">Lumiere · Analysis</span><h1 id="analysis-processing-title">Reading the current screenplay</h1><p>${escapeHtml(stage)}</p><div class="analysis-stage-progress"><div><span>Progress</span><strong>${progress}%</strong></div><i><b style="width:${progress}%"></b></i></div><ol>${stages.map((item, index) => `<li class="${index < activeIndex ? 'is-complete' : index === activeIndex ? 'is-current' : ''}"><i></i><span>${escapeHtml(item)}</span></li>`).join('')}</ol><small>You can leave this page. Lumiere will keep working and notify you when it is ready.</small></section></main>`;
   }
 
   waitingBlock(label) {
@@ -827,6 +858,7 @@ class FilmScriptAnalysis extends HTMLElement {
       @supports selector(:has(*)){.signal-stack:has(.signal-card[open]){grid-template-rows:minmax(0,1fr)}.signal-stack:has(.signal-card[open]) .signal-card:not([open]){display:none}.signal-stack:has(.signal-card[open]) .signal-card[open]{height:100%;overflow:hidden}.signal-stack:has(.signal-card[open]) .signal-card-body{max-height:216px}}
       @media(max-width:980px){.production-impact-grid{grid-template-columns:1fr}}
       @media(max-width:720px){.pro-note{width:100%;margin:-8px 0 18px}}
+      .analysis-processing{display:grid;place-items:center;min-height:calc(100vh - 44px);padding:32px;background:radial-gradient(circle at 50% 28%,color-mix(in srgb,var(--an-accent) 15%,transparent),transparent 36%),var(--an-bg)}.analysis-processing-glass{width:min(540px,100%);padding:34px 38px 30px;overflow:hidden;border:1px solid color-mix(in srgb,var(--an-ink) 22%,var(--an-line));border-radius:24px 18px 26px 20px/20px 26px 18px 24px;background:color-mix(in srgb,var(--an-surface) 74%,transparent);box-shadow:0 24px 65px color-mix(in srgb,var(--an-ink) 11%,transparent),inset 0 1px 0 rgba(255,255,255,.4);backdrop-filter:blur(22px) saturate(1.18);text-align:center}.analysis-processing-glass h1{margin:10px 0 8px;font-size:27px;letter-spacing:-.75px}.analysis-processing-glass>p{margin:0;color:var(--an-accent);font-size:12px;font-weight:700}.analysis-orbit{position:relative;display:grid;place-items:center;width:116px;height:116px;margin:0 auto 22px}.analysis-orbit>i{position:absolute;inset:8px;border:1px solid color-mix(in srgb,var(--an-accent) 58%,transparent);border-radius:50%;animation:analysisOrbit 4s linear infinite}.analysis-orbit>i:nth-child(2){inset:23px;border-style:dashed;animation-direction:reverse;animation-duration:5.5s}.analysis-orbit>i:nth-child(3){inset:0;border-color:color-mix(in srgb,var(--an-ink) 16%,transparent);transform:rotateX(68deg);animation:analysisOrbitTilt 3.8s ease-in-out infinite}.analysis-orbit>span{display:grid;place-items:center;width:46px;height:46px;border-radius:16px 12px 17px 13px;background:color-mix(in srgb,var(--an-accent) 14%,var(--an-surface));color:var(--an-accent);box-shadow:0 8px 22px color-mix(in srgb,var(--an-accent) 22%,transparent)}.analysis-orbit svg{width:24px;height:24px}.analysis-stage-progress{margin:27px 0 20px;text-align:left}.analysis-stage-progress>div{display:flex;justify-content:space-between;margin-bottom:8px;color:var(--an-muted);font-size:10px}.analysis-stage-progress strong{color:var(--an-ink);font-variant-numeric:tabular-nums}.analysis-stage-progress>i{display:block;height:5px;overflow:hidden;border-radius:99px;background:color-mix(in srgb,var(--an-ink) 8%,transparent)}.analysis-stage-progress b{display:block;height:100%;border-radius:inherit;background:linear-gradient(90deg,var(--an-accent),color-mix(in srgb,var(--an-accent) 45%,#fff));transition:width .3s ease}.analysis-processing ol{display:grid;grid-template-columns:1fr 1fr;gap:7px 14px;padding:0;margin:0;list-style:none;text-align:left}.analysis-processing li{display:flex;align-items:center;gap:7px;min-width:0;color:var(--an-muted);font-size:9.5px}.analysis-processing li>i{width:7px;height:7px;flex:0 0 7px;border:1px solid var(--an-line);border-radius:50%}.analysis-processing li.is-current{color:var(--an-ink);font-weight:700}.analysis-processing li.is-current>i{border-color:var(--an-accent);background:var(--an-accent);box-shadow:0 0 0 4px color-mix(in srgb,var(--an-accent) 15%,transparent);animation:pulse 1.25s ease-in-out infinite}.analysis-processing li.is-complete{color:var(--an-ink)}.analysis-processing li.is-complete>i{border-color:var(--an-positive);background:var(--an-positive)}.analysis-processing small{display:block;margin-top:23px;color:var(--an-muted);font-size:9.5px;line-height:1.45}.analysis-outdated{display:flex;align-items:flex-start;justify-content:space-between;gap:18px;margin:0 0 20px;padding:15px 17px;border:1px solid #C65550;border-radius:14px 11px 15px 10px;background:color-mix(in srgb,#C65550 10%,var(--an-surface));color:#A24441}.analysis-outdated strong,.analysis-outdated p{display:block;margin:0}.analysis-outdated strong{font-size:12px}.analysis-outdated p{margin-top:4px;color:color-mix(in srgb,#A24441 83%,var(--an-ink));font-size:10.5px;line-height:1.42}.analysis-outdated button{flex:0 0 auto;min-height:34px;padding:0 12px;border:1px solid #B9504B;border-radius:9px 8px 10px 7px;background:#B9504B;color:#fff;font:700 10px/1 inherit;cursor:pointer}.analysis-metadata{display:flex;flex-wrap:wrap;gap:7px 13px;margin:0 0 20px;color:var(--an-muted);font-size:9.5px}.analysis-metadata span{display:inline-flex;gap:4px}.analysis-metadata b{color:var(--an-ink);font-weight:650}@keyframes analysisOrbit{to{transform:rotate(360deg)}}@keyframes analysisOrbitTilt{0%,100%{transform:rotateX(68deg) rotateZ(0)}50%{transform:rotateX(68deg) rotateZ(180deg)}}
     </style>`;
     if (this.loading && !this.analysis) {
       this.shadowRoot.innerHTML = `${style}<main class="empty"><div class="empty-spark">${icon('sparkle')}</div><h1>Analysis</h1><p>Lumiere is connecting to the current screenplay…</p></main>`;
@@ -848,12 +880,16 @@ class FilmScriptAnalysis extends HTMLElement {
     }
     const analysis = this.analysis;
     const metrics = analysis.metrics || {};
+    const busy = this.analysisStarting || ['queued', 'running'].includes(analysis.status);
+    if (busy) {
+      this.shadowRoot.innerHTML = `${style}${this.processingState()}`;
+      return;
+    }
     const deep = analysis.deep || analysis.previousDeep || null;
     const stale = !analysis.deep && !!analysis.previousDeep;
-    const busy = this.analysisStarting || ['queued', 'running'].includes(analysis.status);
     const analysisFailure = ['error', 'interrupted'].includes(analysis.status)
       ? (analysis.statusMessage || this.error || '')
-      : '';
+      : analysis.failure?.message || '';
     const visibleError = this.error || analysisFailure;
     const data = this.normalizeInsightData(deep, metrics);
     const deepReady = !!deep;
@@ -861,9 +897,14 @@ class FilmScriptAnalysis extends HTMLElement {
     const shouldAnimateEntry = this._animateEntry;
     const statusClass = String(data.status.label || 'Developing').toLowerCase().replace(/[^a-z]+/g, '-');
     const updatedAt = deep?.generatedAt || analysis.updatedAt;
+    const lastScene = analysis.metadata?.lastModifiedRelevantScene;
+    const outdated = stale || analysis.metadata?.state === 'outdated';
+    const outdatedAction = analysis.failure ? 'Retry' : 'Reanalyze';
+    const metadata = `<div class="analysis-metadata"><span>Script version <b>${escapeHtml(String(analysis.metadata?.scriptVersion || analysis.scriptVersion || 'Current'))}</b></span><span>Analysis <b>${escapeHtml(analysis.metadata?.state === 'updated' ? 'Updated' : analysis.metadata?.state === 'outdated' ? 'Outdated' : 'Not generated')}</b></span>${lastScene ? `<span>Last relevant scene <b>Scene ${escapeHtml(String(lastScene.sceneNumber || '—'))}</b></span>` : ''}<span>Date <b>${escapeHtml(updatedAt ? relativeTime(updatedAt) : '—')}</b></span></div>`;
+    const outdatedNotice = outdated ? `<section class="analysis-outdated" role="alert"><div><strong>Reanalyze</strong><p>Your script has changed since this analysis was generated.</p></div><button type="button" data-action="reanalyze">${outdatedAction}</button></section>` : '';
     this.shadowRoot.innerHTML = `${style}<main class="workspace${shouldAnimateEntry ? ' is-entering' : ''}">
-      <header class="page-header"><div class="page-title"><span class="page-kicker">Analysis · Lumiere</span><h1>${escapeHtml(this.projectTitle)}</h1><div class="title-meta"><span class="script-status ${escapeHtml(statusClass)}">${escapeHtml(data.status.label)}</span><span>${escapeHtml(metrics.scenes || 0)} scenes · current draft</span></div></div><div class="header-actions"><div class="sync-state ${busy ? 'is-live' : ''}" role="status" aria-live="polite"><i></i><span>${busy ? escapeHtml(this.statusCopy()) : analysisFailure ? escapeHtml(analysisFailure) : `Updated ${escapeHtml(relativeTime(updatedAt))}`}</span></div><button type="button" class="export" data-action="refresh"${busy ? ' disabled' : ''}>↻ <span>Refresh</span></button><button type="button" class="export" data-action="export">${icon('download')}<span>Export</span></button></div></header>
-      ${visibleError ? `<div class="error" role="alert"><span>${escapeHtml(visibleError)}</span><button type="button" data-action="retry">Try again</button></div>` : ''}${access}${this.analysisProgressBar(busy)}
+      <header class="page-header"><div class="page-title"><span class="page-kicker">Analysis · Lumiere</span><h1>${escapeHtml(this.projectTitle)}</h1><div class="title-meta"><span class="script-status ${escapeHtml(statusClass)}">${escapeHtml(data.status.label)}</span><span>${escapeHtml(metrics.scenes || 0)} scenes · current draft</span></div></div><div class="header-actions"><div class="sync-state" role="status" aria-live="polite"><i></i><span>${analysisFailure ? escapeHtml(analysisFailure) : `Updated ${escapeHtml(relativeTime(updatedAt))}`}</span></div><button type="button" class="export" data-action="refresh">↻ <span>${outdated ? 'Reanalyze' : 'Refresh'}</span></button><button type="button" class="export" data-action="export">${icon('download')}<span>Export</span></button></div></header>
+      ${outdatedNotice}${visibleError && !outdated ? `<div class="error" role="alert"><span>${escapeHtml(visibleError)}</span><button type="button" data-action="retry">Try again</button></div>` : ''}${access}${metadata}
       ${this.analysisFocusPanel(data, stale, deepReady)}
       ${this.storyFlowPanel(data, stale)}
       ${this.storyClarityPanel(data, stale)}
