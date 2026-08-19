@@ -143,7 +143,9 @@ test("account Analysis persists feedback, stays owner-scoped, and exports the cu
       PUBLIC_APP_URL: url,
       CORS_ORIGINS: url,
       FILMSCRIPT_DATA_DIR: dataDir,
-      OPENROUTER_API_KEY: "test-key",
+      // Keep the test fully offline: it verifies the missing-provider path
+      // before a Free account's one-time analysis allowance is consumed.
+      OPENAI_API_KEY: "",
       PDF_PYTHON: runtimePython,
     },
     stdio: ["ignore", "pipe", "pipe"],
@@ -198,8 +200,8 @@ test("account Analysis persists feedback, stays owner-scoped, and exports the cu
   assert.equal(foreignResponse.status, 404);
 
   const generationResponse = await fetch(`${url}/api/scripts/${scriptId}/analysis`, { method: "POST", headers: { Cookie: ownerCookie } });
-  assert.equal(generationResponse.status, 403);
-  assert.equal((await generationResponse.json()).error, "filmscript_pro_required");
+  assert.equal(generationResponse.status, 503);
+  assert.equal((await generationResponse.json()).error, "openai_not_configured");
 
   const feedbackResponse = await fetch(`${url}/api/scripts/${scriptId}/analysis`, {
     method: "PATCH",

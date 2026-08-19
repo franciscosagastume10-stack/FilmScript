@@ -1,7 +1,9 @@
 (() => {
   const resolve = (path) => window.filmscriptApiUrl ? window.filmscriptApiUrl(path) : path;
   const request = async (url, options = {}) => {
-    const response = await fetch(resolve(url), { credentials: 'include', ...options });
+    // A Google sign-in can return to Scripts immediately after the session cookie is
+    // created. Never reuse a pre-login response for a user-scoped request.
+    const response = await fetch(resolve(url), { credentials: 'include', ...options, cache: 'no-store', headers: { ...(options.headers || {}), ...(window.filmscriptPlatform?.clientId ? { 'X-FilmScript-Client-Id': window.filmscriptPlatform.clientId } : {}) } });
     const data = await response.json().catch(() => ({}));
     if (!response.ok) {
       const error = new Error(data.message || data.error || `Script error ${response.status}`);

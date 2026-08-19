@@ -61,6 +61,7 @@ class FilmScriptCalendar extends HTMLElement {
     this.authRequired = false;
     this.saveStatus = "";
     this.search = "";
+    this.completedSearch = "";
     this.phaseFilter = "all";
     this.criticalOnly = false;
     this.timelineZoom = 1;
@@ -96,6 +97,7 @@ class FilmScriptCalendar extends HTMLElement {
     this.shadowRoot.addEventListener("scroll", this._onScroll, true);
     window.addEventListener("resize", this._onWindowResize);
     window.filmscriptSounds?.preload("formatControl");
+    window.filmscriptSounds?.preload("calendarTaskComplete");
     this.load();
   }
 
@@ -180,7 +182,7 @@ class FilmScriptCalendar extends HTMLElement {
         this.error = error.message || "Could not save this calendar.";
         this.render();
       }
-    }, 420);
+    }, 1500);
   }
 
   computed() {
@@ -206,6 +208,22 @@ class FilmScriptCalendar extends HTMLElement {
     if (!start) return "Not scheduled";
     if (!end || start === end) return this.formatDate(start, withYear);
     return `${this.formatDate(start, withYear)} – ${this.formatDate(end, withYear)}`;
+  }
+
+  formatCompactDateRange(start, end) {
+    const startDate = parseDate(start);
+    const endDate = parseDate(end);
+    if (!startDate) return "Not scheduled";
+    if (!endDate || start === end) return this.formatDate(start, true);
+    const formatter = new Intl.DateTimeFormat(this.locale(), {
+      month: "short",
+      day: "numeric",
+      year: "numeric",
+      timeZone: "UTC",
+    });
+    return typeof formatter.formatRange === "function"
+      ? formatter.formatRange(startDate, endDate)
+      : this.formatDateRange(start, end, true);
   }
 
   timelineWeekWidth(value = this.timelineZoom) {
@@ -522,10 +540,13 @@ class FilmScriptCalendar extends HTMLElement {
 
   completeTask(taskId) {
     if (!this.calendar) return;
+    const task = this.calendar.tasks.find((entry) => entry.id === taskId);
+    if (!task || task.status === "done") return;
     this.calendar.tasks = this.calendar.tasks.map((task) => task.id === taskId
       ? { ...task, progress: 100, status: "done" }
       : task);
     this.calendar = normalizeCalendar(this.calendar, this.projectTitle);
+    window.filmscriptSounds?.play("calendarTaskComplete");
     this.queueSave();
   }
 
@@ -541,6 +562,16 @@ class FilmScriptCalendar extends HTMLElement {
       return;
     }
     this.completeTask(taskId);
+  }
+
+  restoreTask(taskId) {
+    const task = this.calendar?.tasks?.find((entry) => entry.id === taskId);
+    if (!task || task.status !== "done") return;
+    this.calendar.tasks = this.calendar.tasks.map((entry) => entry.id === taskId
+      ? { ...entry, progress: 0, status: "not_started" }
+      : entry);
+    this.calendar = normalizeCalendar(this.calendar, this.projectTitle);
+    this.queueSave();
   }
 
   createGroup(phaseId = "development") {
@@ -752,6 +783,10 @@ class FilmScriptCalendar extends HTMLElement {
       this.toggleTaskComplete(target.dataset.task);
       return;
     }
+    if (action === "restore-task") {
+      this.restoreTask(target.dataset.task);
+      return;
+    }
     if (action === "row-delete") {
       this.openRowMenuId = "";
       this.deleteTask(target.dataset.task);
@@ -809,6 +844,19 @@ class FilmScriptCalendar extends HTMLElement {
         if (next) {
           next.focus();
           next.setSelectionRange(this.search.length, this.search.length);
+        }
+      });
+      return;
+    }
+    const completedSearch = event.target.closest("[data-completed-search]");
+    if (completedSearch) {
+      this.completedSearch = completedSearch.value;
+      this.render();
+      requestAnimationFrame(() => {
+        const next = this.shadowRoot.querySelector("[data-completed-search]");
+        if (next) {
+          next.focus();
+          next.setSelectionRange(this.completedSearch.length, this.completedSearch.length);
         }
       });
       return;
@@ -940,10 +988,6 @@ class FilmScriptCalendar extends HTMLElement {
     }
   };
 
-  renderKpi(label, value, note, tone = "") {
-    return `<article class="kpi ${tone}"><span>${escapeHtml(label)}</span><strong>${escapeHtml(value)}</strong><small>${escapeHtml(note)}</small></article>`;
-  }
-
   renderOverview(computed) {
     const today = localDateString();
     const deliveryDistance = workdayDistance(today, computed.deliveryDate);
@@ -953,25 +997,48 @@ class FilmScriptCalendar extends HTMLElement {
     const riskNote = computed.atRiskCount
       ? `${computed.atRiskCount} task${computed.atRiskCount === 1 ? " needs" : "s need"} attention`
       : "No critical task is slipping";
+    const shootingDays = computed.shootingStart && computed.shootingEnd
+      ? Math.max(1, workdayDistance(computed.shootingStart, computed.shootingEnd) + 1)
+      : 0;
+    const shootingDaysNote = shootingDays
+      ? `${shootingDays} production day${shootingDays === 1 ? "" : "s"}`
+      : "Not scheduled";
+    const deliveryState = deliveryDistance < 0 ? "Overdue" : deliveryDistance === 0 ? "Today" : "Milestone";
+    const criticalState = computed.atRiskCount ? "Needs attention" : "On track";
     const phaseRibbon = computed.phases.map((phase) => {
       const duration = Math.max(1, workdayDistance(phase.startDate, phase.endDate) + 1);
-      return `<div style="--phase:${phase.color};flex-grow:${duration}"><span>${escapeHtml(phase.name)}</span><small>${escapeHtml(this.formatDateRange(phase.startDate, phase.endDate))}</small></div>`;
-    }).join("");
-    const phaseCards = computed.phases.map((phase) => `<article class="phase-card" style="--phase:${phase.color}">
-      <div class="phase-card-head"><span>${escapeHtml(phase.name)}</span><strong>${phase.progress}%</strong></div>
+      return `<article class="phase-step" style="--phase:${phase.color};--phase-grow:${duration}">
+      <div class="phase-step-head"><span>${escapeHtml(phase.name)}</span><strong>${phase.progress}%</strong></div>
+      <small class="phase-step-dates">${escapeHtml(this.formatDateRange(phase.startDate, phase.endDate))}</small>
       <div class="phase-progress"><i style="width:${phase.progress}%"></i></div>
-      <small>${escapeHtml(this.formatDateRange(phase.startDate, phase.endDate))} · ${phase.taskCount} task${phase.taskCount === 1 ? "" : "s"}</small>
-    </article>`).join("");
-    const criticalRows = computed.criticalTasks.slice(0, 8).map((task, index) => `<button type="button" class="focus-row" data-action="edit-task" data-task="${task.id}">
+      <div class="phase-step-foot"><span>${phase.taskCount} task${phase.taskCount === 1 ? "" : "s"}</span><i aria-hidden="true"></i></div>
+    </article>`;
+    }).join("");
+    const criticalRows = computed.criticalTasks.slice(0, 8).map((task, index) => `<article class="focus-row">
       <span class="focus-index">${String(index + 1).padStart(2, "0")}</span>
-      <span class="focus-copy"><strong>${escapeHtml(task.name)}</strong><small>${escapeHtml(this.formatDateRange(task.startDate, task.endDate))}${task.owner ? ` · ${escapeHtml(task.owner)}` : ""}</small></span>
-      <span class="risk-badge ${task.atRisk ? "is-risk" : ""}">${task.atRisk ? "At risk" : "Critical"}</span>
-    </button>`).join("");
+      <button type="button" class="focus-main" data-action="edit-task" data-task="${task.id}"><span class="focus-copy"><strong>${escapeHtml(task.name)}</strong><small>${escapeHtml(this.formatDateRange(task.startDate, task.endDate))}${task.owner ? ` · ${escapeHtml(task.owner)}` : ""}</small></span></button>
+      <div class="overview-row-actions"><button type="button" class="mark-done" data-action="complete-task" data-task="${task.id}">Mark as done</button><span class="risk-badge ${task.atRisk ? "is-risk" : ""}">${task.atRisk ? "At risk" : "Critical"}</span></div>
+    </article>`).join("");
     const upcomingRows = computed.upcoming.map((task) => `<article class="upcoming-row">
       <span class="upcoming-date"><strong>${escapeHtml(this.formatDate(task.startDate))}</strong><small>${escapeHtml(this.formatDate(task.endDate))}</small></span>
       <button type="button" class="upcoming-main" data-action="edit-task" data-task="${task.id}"><strong>${escapeHtml(task.name)}</strong><small>${escapeHtml(PHASES.find((phase) => phase.id === task.phaseId)?.name || "Production")}${task.owner ? ` · ${escapeHtml(task.owner)}` : ""}</small></button>
+      ${task.status === "done" ? "" : `<div class="overview-row-actions"><button type="button" class="mark-done" data-action="complete-task" data-task="${task.id}">Mark as done</button></div>`}
       <span class="status ${statusClass(task.status)}">${escapeHtml(statusLabel(task.status))}</span>
-      ${task.status === "done" ? "" : `<button type="button" class="complete" data-action="complete-task" data-task="${task.id}" aria-label="Mark ${escapeHtml(task.name)} complete">✓</button>`}
+    </article>`).join("");
+    const completedQuery = this.completedSearch.trim().toLowerCase();
+    const completedTasks = computed.tasks
+      .filter((task) => task.status === "done")
+      .filter((task) => {
+        if (!completedQuery) return true;
+        const phase = PHASES.find((entry) => entry.id === task.phaseId)?.name || "";
+        return [task.name, task.owner, phase, task.startDate, task.endDate]
+          .some((value) => String(value || "").toLowerCase().includes(completedQuery));
+      })
+      .sort((a, b) => String(b.endDate || "").localeCompare(String(a.endDate || "")));
+    const completedRows = completedTasks.map((task) => `<article class="completed-row">
+      <span class="completed-check" aria-hidden="true">✓</span>
+      <button type="button" class="completed-main" data-action="edit-task" data-task="${task.id}"><strong>${escapeHtml(task.name)}</strong><small>${escapeHtml(PHASES.find((phase) => phase.id === task.phaseId)?.name || "Production")} · ${escapeHtml(this.formatDateRange(task.startDate, task.endDate))}</small></button>
+      <button type="button" class="restore-task" data-action="restore-task" data-task="${task.id}" aria-label="Restore ${escapeHtml(task.name)} to the plan">Restore</button>
     </article>`).join("");
 
     return `<section class="view overview-view">
@@ -979,16 +1046,32 @@ class FilmScriptCalendar extends HTMLElement {
         <div class="hero-lockup"><span class="calendar-glyph" aria-hidden="true"><svg viewBox="0 0 42 42" fill="none"><path d="M9 11.5h24v22H9zM9 17h24M15 8v7M27 8v7M14 22h4M22 22h5M14 27h4M22 27h5"/></svg></span><div><span class="eyebrow">Production calendar</span><h2>Calendar</h2><p>The route from script lock to final delivery, recalculated every time the plan changes.</p></div></div>
         <label class="start-control"><span>Project starts</span><input type="date" data-project-start value="${escapeHtml(computed.projectStart)}"><small>Monday–Saturday workweek</small></label>
       </header>
-      <div class="kpi-grid">
-        ${this.renderKpi("Final delivery", this.formatDate(computed.deliveryDate, true), deliveryNote, computed.overdueCount ? "danger" : "delivery")}
-        ${this.renderKpi("Main shoot", this.formatDateRange(computed.shootingStart, computed.shootingEnd, true), "Connected to Budget shooting dates", "shoot")}
-        ${this.renderKpi("Critical path", `${computed.criticalCount} tasks`, riskNote, computed.atRiskCount ? "danger" : "critical")}
-        ${this.renderKpi("Overall progress", `${computed.progress}%`, `${computed.completedCount} of ${computed.tasks.length} tasks complete`, "progress")}
-      </div>
+      <section class="schedule-pulse" aria-label="Production status">
+        <article class="pulse-metric pulse-progress" style="--pulse-progress:${Math.max(0, Math.min(100, computed.progress))}%">
+          <header class="pulse-head"><span class="pulse-index">01</span><h3>Overall progress</h3><span class="pulse-badge">Live</span></header>
+          <strong class="pulse-progress-value">${computed.progress}%</strong>
+          <div class="pulse-bar" role="progressbar" aria-label="Overall progress" aria-valuemin="0" aria-valuemax="100" aria-valuenow="${computed.progress}"><i></i></div>
+          <p>${computed.completedCount} of ${computed.tasks.length} tasks complete</p>
+        </article>
+        <article class="pulse-metric pulse-shoot">
+          <header class="pulse-head"><span class="pulse-index">02</span><h3>Main shoot</h3><span class="pulse-badge">Budget linked</span></header>
+          <p class="pulse-date">${escapeHtml(this.formatCompactDateRange(computed.shootingStart, computed.shootingEnd))}</p>
+          <footer class="pulse-foot"><span class="pulse-pill">${escapeHtml(shootingDaysNote)}</span><span>Connected to Budget shooting dates</span></footer>
+        </article>
+        <article class="pulse-metric pulse-delivery ${deliveryDistance < 0 ? "is-risk" : ""}">
+          <header class="pulse-head"><span class="pulse-index">03</span><h3>Final delivery</h3><span class="pulse-badge">${escapeHtml(deliveryState)}</span></header>
+          <time class="pulse-value" datetime="${escapeHtml(computed.deliveryDate)}">${escapeHtml(this.formatDate(computed.deliveryDate, true))}</time>
+          <p>${escapeHtml(deliveryNote)}</p>
+        </article>
+        <article class="pulse-metric pulse-critical ${computed.atRiskCount ? "is-risk" : "is-on-track"}">
+          <header class="pulse-head"><span class="pulse-index">04</span><h3>Critical path</h3><span class="pulse-status"><i aria-hidden="true"></i>${escapeHtml(criticalState)}</span></header>
+          <p class="pulse-value"><strong>${computed.criticalCount}</strong> tasks</p>
+          <p>${escapeHtml(riskNote)}</p>
+        </article>
+      </section>
       <article class="panel phase-panel">
         <div class="panel-head"><div><span>Production path</span><h3>One timeline, five connected phases</h3></div><small>${computed.durationWorkdays} production days</small></div>
         <div class="phase-ribbon">${phaseRibbon}</div>
-        <div class="phase-card-grid">${phaseCards}</div>
       </article>
       <div class="overview-grid">
         <article class="panel critical-panel">
@@ -1000,6 +1083,11 @@ class FilmScriptCalendar extends HTMLElement {
           <div class="upcoming-list">${upcomingRows || '<div class="quiet-empty">Everything in this plan is complete.</div>'}</div>
         </article>
       </div>
+      <article class="panel completed-panel">
+        <div class="panel-head"><div><span>Completed work</span><h3>Done, not gone</h3></div><small>${computed.completedCount} saved in history</small></div>
+        <div class="completed-tools"><label><span class="completed-search-icon" aria-hidden="true">⌕</span><input type="search" data-completed-search value="${escapeHtml(this.completedSearch)}" placeholder="Search completed tasks" aria-label="Search completed tasks"></label><p>Restore anything marked by accident. FilmScript recalculates whether it belongs in Upcoming work or the Critical path.</p></div>
+        <div class="completed-list">${completedRows || `<div class="quiet-empty">${completedQuery ? "No completed tasks match that search." : "Completed tasks will stay here, ready to restore if needed."}</div>`}</div>
+      </article>
       <aside class="calendar-note"><span class="note-mark" aria-hidden="true"></span><div><strong>Sundays stay protected.</strong><p>FilmScript schedules production work from Monday through Saturday and automatically carries unfinished durations into the next working day.</p></div></aside>
     </section>`;
   }
@@ -1237,7 +1325,43 @@ class FilmScriptCalendar extends HTMLElement {
       .timeline-view .timeline-pan-sync{display:none!important}
       .timeline-card>[data-timeline-pan]{display:none!important}
       @media(max-width:700px){.timeline-view{min-height:0}.timeline-view>.timeline-card{min-height:clamp(420px,calc(100dvh - 230px),900px)}}
+      .focus-list,.upcoming-list{gap:5px;margin-top:15px}.focus-row,.upcoming-row{position:relative;isolation:isolate;min-width:0;border:1px solid transparent;background:transparent;transition:background-color .18s ease,border-color .18s ease,box-shadow .2s cubic-bezier(.2,.8,.2,1),transform .2s cubic-bezier(.2,.8,.2,1)}.focus-row{grid-template-columns:30px minmax(0,1fr) auto;width:auto;padding:10px 9px 10px 2px}.focus-main{min-width:0;padding:0;border:0;background:transparent;text-align:left}.upcoming-row{grid-template-columns:68px minmax(0,1fr) auto auto;padding:9px 8px}.focus-row:hover,.focus-row:focus-within,.upcoming-row:hover,.upcoming-row:focus-within{z-index:2;border-color:color-mix(in srgb,var(--ink,#2C2C2A) 12%,var(--hair,#E7E4DA));border-radius:12px 11px 13px 10px;background:color-mix(in srgb,var(--surface,#FFFEF9) 94%,var(--soft,#EFEBE1));box-shadow:0 8px 18px color-mix(in srgb,var(--ink,#2C2C2A) 9%,transparent);transform:translateY(-1px)}.overview-row-actions{display:flex;align-items:center;justify-content:flex-end;gap:6px;min-width:0}.mark-done{min-height:28px;padding:0 9px;border:1px solid color-mix(in srgb,var(--cal-positive) 43%,var(--hair,#E7E4DA));border-radius:8px 7px 9px 6px;background:color-mix(in srgb,var(--cal-positive) 8%,var(--surface,#FFFEF9));color:var(--cal-positive);font-size:8.5px;font-weight:800;white-space:nowrap;opacity:0;pointer-events:none;transform:translateX(4px) scale(.98);transition:opacity .16s ease,transform .18s cubic-bezier(.2,.8,.2,1),background-color .14s ease}.focus-row:hover .mark-done,.focus-row:focus-within .mark-done,.upcoming-row:hover .mark-done,.upcoming-row:focus-within .mark-done{opacity:1;pointer-events:auto;transform:none}.mark-done:hover,.mark-done:focus-visible{background:color-mix(in srgb,var(--cal-positive) 16%,var(--surface,#FFFEF9))}@media(max-width:700px){.focus-row{padding-right:6px}.focus-row .risk-badge{display:none}.upcoming-row{grid-template-columns:62px minmax(0,1fr) auto auto}.mark-done{opacity:1;pointer-events:auto;transform:none}}
+      .schedule-pulse{position:relative;isolation:isolate;display:grid;grid-template-columns:minmax(220px,.95fr) minmax(310px,1.35fr) minmax(235px,1fr);grid-template-rows:repeat(2,minmax(88px,1fr));grid-template-areas:"progress shoot delivery" "progress shoot critical";gap:8px;min-width:0;min-height:202px;padding:8px;border:1px solid color-mix(in srgb,var(--ink,#2C2C2A) 28%,transparent);border-radius:21px 18px 22px 17px / 19px 22px 18px 21px;background:color-mix(in srgb,var(--surface,#FFFEF9) 94%,var(--bg,#F5F0E8));box-shadow:1px 2px 0 color-mix(in srgb,var(--ink,#2C2C2A) 12%,transparent);overflow:hidden}.schedule-pulse:after{content:"";position:absolute;z-index:5;pointer-events:none;inset:3px 4px 3px 3px;border:1px solid color-mix(in srgb,var(--ink,#2C2C2A) 20%,transparent);border-radius:18px 16px 19px 15px / 16px 19px 15px 18px;opacity:.28;transform:rotate(.04deg)}.pulse-metric{--pulse-color:var(--accent,#FFB703);position:relative;z-index:1;display:flex;flex-direction:column;min-width:0;padding:17px 18px;border:1px solid color-mix(in srgb,var(--pulse-color) 17%,var(--hair,#E7E4DA));border-radius:14px 12px 15px 11px;background:linear-gradient(145deg,color-mix(in srgb,var(--pulse-color) 8%,var(--surface,#FFFEF9)),var(--surface,#FFFEF9) 72%);overflow:hidden;animation:calendarPulseIn .3s cubic-bezier(.2,.8,.2,1) both}.pulse-metric:nth-child(2){animation-delay:35ms}.pulse-metric:nth-child(3){animation-delay:70ms}.pulse-metric:nth-child(4){animation-delay:105ms}.pulse-progress{grid-area:progress;--pulse-color:var(--cal-blue)}.pulse-shoot{grid-area:shoot;--pulse-color:#6F8F61}.pulse-delivery{grid-area:delivery;--pulse-color:#C88624}.pulse-critical{grid-area:critical;--pulse-color:var(--cal-positive)}.pulse-delivery.is-risk,.pulse-critical.is-risk{--pulse-color:var(--cal-critical)}@keyframes calendarPulseIn{from{opacity:0;transform:translateY(5px) scale(.993)}to{opacity:1;transform:none}}.pulse-head{display:flex;align-items:center;gap:8px;min-width:0}.pulse-head h3{min-width:0;margin:0;color:var(--ink,#2C2C2A);font-size:11.5px;font-weight:790;line-height:1.2;letter-spacing:-.1px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.pulse-index{display:grid;place-items:center;width:25px;height:22px;flex:0 0 25px;border-radius:7px 6px 8px 5px;background:color-mix(in srgb,var(--pulse-color) 14%,var(--surface,#FFFEF9));color:var(--pulse-color);font-size:8.5px;font-weight:850;font-variant-numeric:tabular-nums}.pulse-badge,.pulse-status,.pulse-pill{display:inline-flex;align-items:center;min-width:0;min-height:24px;border-radius:99px;background:color-mix(in srgb,var(--pulse-color) 11%,var(--surface,#FFFEF9));color:color-mix(in srgb,var(--pulse-color) 78%,var(--ink,#2C2C2A));font-size:9px;font-weight:780;line-height:1}.pulse-badge{max-width:54%;margin-left:auto;padding:0 8px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.pulse-progress-value{display:block;margin-top:22px;color:var(--ink,#2C2C2A);font-size:clamp(38px,4vw,58px);font-weight:900;line-height:.95;letter-spacing:-2px;font-variant-numeric:tabular-nums}.pulse-bar{height:7px;margin-top:auto;border-radius:99px;background:color-mix(in srgb,var(--pulse-color) 11%,var(--hair,#E7E4DA));overflow:hidden}.pulse-bar i{display:block;width:var(--pulse-progress);height:100%;border-radius:inherit;background:var(--pulse-color);transform-origin:left center;animation:calendarPulseFill .55s .16s cubic-bezier(.2,.8,.2,1) both}@keyframes calendarPulseFill{from{transform:scaleX(0)}to{transform:scaleX(1)}}.pulse-metric>p{margin:9px 0 0;color:var(--muted,#888780);font-size:10.5px;line-height:1.35}.pulse-date,.pulse-value{display:block;margin:22px 0 0;color:var(--ink,#2C2C2A)!important;font-size:clamp(21px,2.15vw,31px)!important;font-weight:870!important;line-height:1.08!important;letter-spacing:-.7px!important;font-variant-numeric:tabular-nums;text-wrap:balance;overflow-wrap:anywhere}.pulse-shoot .pulse-date{max-width:520px}.pulse-foot{display:flex;align-items:center;gap:10px;min-width:0;margin-top:auto;color:var(--muted,#888780);font-size:10px}.pulse-foot>span:last-child{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.pulse-pill{flex:0 0 auto;padding:0 9px}.pulse-delivery,.pulse-critical{padding:14px 16px}.pulse-delivery .pulse-value,.pulse-critical .pulse-value{margin-top:11px;font-size:clamp(17px,1.45vw,23px)!important}.pulse-critical .pulse-value strong{display:inline;color:var(--ink,#2C2C2A);font-size:1.2em;font-weight:900}.pulse-status{margin-left:auto;padding:0 8px;white-space:nowrap}.pulse-status i{width:6px;height:6px;margin-right:6px;border-radius:50%;background:var(--pulse-color);box-shadow:0 0 0 3px color-mix(in srgb,var(--pulse-color) 11%,transparent)}@media(max-width:1100px){.schedule-pulse{grid-template-columns:repeat(2,minmax(0,1fr));grid-template-rows:auto;grid-template-areas:"progress shoot" "delivery critical";min-height:0}.pulse-progress,.pulse-shoot{min-height:160px}.pulse-delivery,.pulse-critical{min-height:105px}}@media(max-width:700px){.schedule-pulse{grid-template-columns:repeat(2,minmax(0,1fr));grid-template-areas:"progress progress" "shoot shoot" "delivery critical";padding:7px}.pulse-metric{padding:15px}.pulse-progress,.pulse-shoot{min-height:145px}.pulse-delivery,.pulse-critical{min-height:118px;padding:13px}.pulse-date,.pulse-value{font-size:20px!important}.pulse-delivery .pulse-value,.pulse-critical .pulse-value{font-size:17px!important}.pulse-delivery .pulse-badge,.pulse-critical .pulse-status{max-width:48%;font-size:8px}.pulse-foot>span:last-child{display:none}}@media(max-width:390px){.schedule-pulse{grid-template-columns:1fr;grid-template-areas:"progress" "shoot" "delivery" "critical"}.pulse-delivery,.pulse-critical{min-height:108px}}@media(prefers-reduced-motion:reduce){.pulse-metric,.pulse-bar i{animation:none!important}}
+      .phase-panel{overflow:hidden}.phase-ribbon{display:flex;align-items:stretch;gap:7px;min-height:0;margin-top:20px;padding:2px 1px 5px;overflow-x:auto;overscroll-behavior-inline:contain;scrollbar-width:thin}.phase-ribbon>.phase-step{position:relative;display:flex;flex:var(--phase-grow) 1 145px!important;flex-direction:column;min-width:145px;min-height:122px;padding:14px 14px 12px;border:1px solid color-mix(in srgb,var(--phase) 24%,var(--hair,#E7E4DA));border-top:3px solid var(--phase);border-radius:14px 12px 15px 11px;background:color-mix(in srgb,var(--phase) 8%,var(--surface,#FFFEF9));transition:transform .18s cubic-bezier(.2,.8,.2,1),border-color .18s ease,background-color .18s ease,box-shadow .18s ease}.phase-ribbon>.phase-step:hover{z-index:2;border-color:color-mix(in srgb,var(--phase) 48%,var(--hair,#E7E4DA));background:color-mix(in srgb,var(--phase) 12%,var(--surface,#FFFEF9));box-shadow:0 7px 16px color-mix(in srgb,var(--ink,#2C2C2A) 7%,transparent);transform:translateY(-1px)}.phase-step-head{display:flex;align-items:center;justify-content:space-between;gap:10px}.phase-step-head span{overflow:hidden;color:var(--ink,#2C2C2A);font-size:11px;font-weight:800;text-overflow:ellipsis;white-space:nowrap}.phase-step-head strong{color:var(--ink,#2C2C2A);font-size:10.5px;font-variant-numeric:tabular-nums}.phase-ribbon .phase-step-dates{display:block;overflow:hidden;margin-top:7px;color:var(--muted,#888780);font-size:9px;text-overflow:ellipsis;white-space:nowrap}.phase-step .phase-progress{height:5px;margin:14px 0 10px;border-radius:99px;background:color-mix(in srgb,var(--phase) 13%,var(--hair,#E7E4DA));overflow:hidden}.phase-step .phase-progress i{display:block;height:100%;min-width:2px;border-radius:inherit;background:var(--phase);transition:width .35s cubic-bezier(.2,.8,.2,1)}.phase-step-foot{display:flex;align-items:center;justify-content:space-between;margin-top:auto;color:var(--muted,#888780);font-size:8.5px}.phase-step-foot span{font-size:8.5px;font-weight:650}.phase-step-foot i{width:6px;height:6px;border-radius:50%;background:var(--phase);opacity:.72}@media(max-width:700px){.phase-ribbon>.phase-step{flex:0 0 168px!important;min-width:168px}.phase-panel .panel-head{align-items:flex-start;flex-direction:column;gap:7px}}
+      .critical-panel,.upcoming-panel{min-height:0}.critical-panel .focus-list,.upcoming-panel .upcoming-list{max-height:min(52vh,440px);overflow-y:auto;overscroll-behavior:contain;padding:0 5px 0 1px;scrollbar-gutter:stable}.critical-panel .focus-list::-webkit-scrollbar,.upcoming-panel .upcoming-list::-webkit-scrollbar{width:8px}.critical-panel .focus-list::-webkit-scrollbar-thumb,.upcoming-panel .upcoming-list::-webkit-scrollbar-thumb{border:2px solid var(--surface,#FFFEF9);border-radius:99px;background:color-mix(in srgb,var(--cv-muted,#888780) 46%,transparent)}.critical-panel .focus-list,.upcoming-panel .upcoming-list{scrollbar-color:color-mix(in srgb,var(--muted,#888780) 55%,transparent) transparent;scrollbar-width:thin}@media(max-width:700px){.critical-panel .focus-list,.upcoming-panel .upcoming-list{max-height:52dvh;padding-right:3px}}
+      .critical-panel,.upcoming-panel{overflow:hidden}.critical-panel .focus-list,.upcoming-panel .upcoming-list{gap:7px;margin:13px -4px -4px;padding:5px 12px 12px 8px}.focus-row,.upcoming-row{width:100%;margin:0!important;border:1px solid color-mix(in srgb,var(--ink,#2C2C2A) 10%,var(--hair,#E7E4DA));border-radius:12px 11px 13px 10px;background:color-mix(in srgb,var(--surface,#FFFEF9) 88%,var(--soft,#EFEBE1));box-shadow:none}.focus-row:last-child,.upcoming-row:last-child{border-bottom:1px solid color-mix(in srgb,var(--ink,#2C2C2A) 10%,var(--hair,#E7E4DA))}.focus-row{padding:12px 12px 12px 10px}.upcoming-row{padding:11px 12px}.focus-row:hover,.focus-row:focus-within,.upcoming-row:hover,.upcoming-row:focus-within{border-color:color-mix(in srgb,var(--ink,#2C2C2A) 19%,var(--hair,#E7E4DA));background:var(--surface,#FFFEF9);box-shadow:0 8px 18px color-mix(in srgb,var(--ink,#2C2C2A) 8%,transparent)}@media(max-width:700px){.critical-panel .focus-list,.upcoming-panel .upcoming-list{padding:5px 8px 10px 5px}.focus-row{padding:11px 9px}.upcoming-row{padding:10px 9px}}
+      .completed-panel{margin-top:14px}.completed-tools{display:grid;grid-template-columns:minmax(220px,360px) minmax(0,1fr);align-items:center;gap:14px;margin-top:15px}.completed-tools label{position:relative;display:block}.completed-tools input{width:100%;padding-left:32px}.completed-search-icon{position:absolute;z-index:1;left:11px;top:50%;color:var(--muted,#888780);font-size:17px;line-height:1;pointer-events:none;transform:translateY(-52%)}.completed-tools p{margin:0;color:var(--muted,#888780);font-size:10px;line-height:1.45}.completed-list{display:grid;gap:5px;margin-top:12px;max-height:300px;overflow:auto;padding-right:2px}.completed-row{display:grid;grid-template-columns:28px minmax(0,1fr) auto;align-items:center;gap:9px;padding:10px 8px 10px 2px;border:1px solid transparent;border-bottom-color:var(--hair,#E7E4DA);transition:background-color .18s ease,border-color .18s ease,border-radius .18s ease,transform .18s cubic-bezier(.2,.8,.2,1)}.completed-row:last-child{border-bottom-color:transparent}.completed-row:hover,.completed-row:focus-within{border-color:color-mix(in srgb,var(--cal-positive) 28%,var(--hair,#E7E4DA));border-radius:12px 11px 13px 10px;background:color-mix(in srgb,var(--cal-positive) 6%,var(--surface,#FFFEF9));transform:translateY(-1px)}.completed-check{display:grid;place-items:center;width:20px;height:20px;border-radius:50%;background:color-mix(in srgb,var(--cal-positive) 14%,var(--surface,#FFFEF9));color:var(--cal-positive);font-size:10px;font-weight:900}.completed-main{min-width:0;padding:0;border:0;background:transparent;text-align:left}.completed-main strong,.completed-main small{display:block}.completed-main strong{overflow:hidden;font-size:11px;text-overflow:ellipsis;white-space:nowrap}.completed-main small{margin-top:3px;color:var(--muted,#888780);font-size:9px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.restore-task{min-height:29px;padding:0 10px;border:1px solid color-mix(in srgb,var(--ink,#2C2C2A) 25%,var(--hair,#E7E4DA));border-radius:8px 7px 9px 6px;background:var(--surface,#FFFEF9);color:var(--ink,#2C2C2A);font-size:9px;font-weight:800;transition:transform .16s cubic-bezier(.2,.8,.2,1),border-color .16s ease,background-color .16s ease}.restore-task:hover,.restore-task:focus-visible{border-color:var(--accent,#FFB703);background:color-mix(in srgb,var(--accent,#FFB703) 10%,var(--surface,#FFFEF9));transform:translateY(-1px)}@media(max-width:700px){.completed-tools{grid-template-columns:1fr;gap:9px}.completed-row{grid-template-columns:25px minmax(0,1fr) auto}.completed-list{max-height:360px}}
       @media(prefers-reduced-motion:reduce){.view.is-entering,.modal-backdrop.is-entering,.modal-backdrop.is-entering .task-modal,.loading>span{animation:none!important}.tabs button,.primary,.secondary,.icon,.critical-filter,.switch,.switch i{transition-duration:.01ms!important}}
+      /* Calendar uses the same restrained liquid-glass hierarchy as Imagine:
+         a calm glass navigation layer, soft dashboard surfaces, and a timeline
+         that stays precise enough for production work. */
+      .fs-calendar{--calendar-glass:color-mix(in srgb,var(--surface,#FFFEF9) 70%,transparent);--calendar-glass-strong:color-mix(in srgb,var(--surface,#FFFEF9) 86%,transparent);--calendar-glass-edge:color-mix(in srgb,var(--hair,#E7E4DA) 67%,rgba(255,255,255,.44));--calendar-glass-shadow:0 16px 38px color-mix(in srgb,var(--ink,#2C2C2A) 9%,transparent);position:relative;isolation:isolate;padding-inline:clamp(12px,2.1vw,26px)}
+      .fs-calendar:before{content:"";position:absolute;z-index:-1;top:-58px;right:4%;width:min(500px,50vw);height:340px;border-radius:50%;background:radial-gradient(circle,color-mix(in srgb,var(--accent,#FFB703) 10%,transparent),transparent 68%);filter:blur(13px);opacity:.64;pointer-events:none}
+      .calendar-nav{top:10px;margin:0 -8px 30px;padding:9px 10px;border:1px solid var(--calendar-glass-edge);border-radius:18px 16px 20px 15px;background:linear-gradient(135deg,var(--calendar-glass-strong),var(--calendar-glass));box-shadow:var(--calendar-glass-shadow),inset 0 1px 0 color-mix(in srgb,#fff 58%,transparent);backdrop-filter:blur(22px) saturate(148%);-webkit-backdrop-filter:blur(22px) saturate(148%)}
+      .tabs{gap:5px;padding:3px;border:1px solid color-mix(in srgb,var(--hair,#E7E4DA) 62%,transparent);border-radius:13px 11px 14px 10px;background:color-mix(in srgb,var(--soft,#EFEBE1) 45%,transparent)}
+      .tabs button{min-height:36px;border-radius:10px 9px 11px 8px;font-weight:720;letter-spacing:-.08px}.tabs button[aria-pressed="true"]{border-color:color-mix(in srgb,var(--hair,#E7E4DA) 76%,transparent);background:color-mix(in srgb,var(--surface,#FFFEF9) 82%,transparent);box-shadow:0 5px 14px color-mix(in srgb,var(--ink,#2C2C2A) 10%,transparent),inset 0 1px 0 color-mix(in srgb,#fff 72%,transparent)}
+      .calendar-actions{gap:7px;padding:3px 4px 3px 8px;border:1px solid color-mix(in srgb,var(--hair,#E7E4DA) 60%,transparent);border-radius:13px 11px 14px 10px;background:color-mix(in srgb,var(--soft,#EFEBE1) 44%,transparent)}
+      .calendar-actions>span{max-width:160px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.calendar-actions .primary{min-height:34px;padding-inline:13px;border-radius:10px 9px 11px 8px;box-shadow:inset 0 1px 0 rgba(255,255,255,.36),0 5px 13px color-mix(in srgb,var(--accent,#FFB703) 18%,transparent)}
+      .calendar-hero,.section-head{position:relative;padding:2px 4px 4px}.calendar-hero:after,.section-head:after{content:"";position:absolute;right:4px;bottom:0;left:4px;height:1px;background:linear-gradient(90deg,transparent,color-mix(in srgb,var(--hair,#E7E4DA) 72%,transparent) 16% 84%,transparent)}
+      .kpi,.panel,.timeline-card,.task-modal,.loading,.empty,.schedule-pulse{border-color:var(--calendar-glass-edge);background:linear-gradient(135deg,var(--calendar-glass-strong),var(--calendar-glass));box-shadow:var(--calendar-glass-shadow),inset 0 1px 0 color-mix(in srgb,#fff 56%,transparent);backdrop-filter:blur(18px) saturate(138%);-webkit-backdrop-filter:blur(18px) saturate(138%)}
+      .kpi{box-shadow:0 12px 28px color-mix(in srgb,var(--ink,#2C2C2A) 8%,transparent),inset 0 1px 0 color-mix(in srgb,#fff 58%,transparent)}.kpi:after,.panel:after,.timeline-card:after,.task-modal:after,.loading:after,.empty:after,.schedule-pulse:after{border-color:color-mix(in srgb,var(--hair,#E7E4DA) 56%,transparent);opacity:.4}
+      .phase-ribbon>.phase-step,.phase-card,.pulse-metric,.focus-row,.upcoming-row,.completed-row{background:linear-gradient(145deg,color-mix(in srgb,var(--surface,#FFFEF9) 72%,transparent),color-mix(in srgb,var(--soft,#EFEBE1) 46%,transparent));backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px)}
+      .calendar-note{border-color:color-mix(in srgb,var(--accent,#FFB703) 42%,var(--hair,#E7E4DA));background:linear-gradient(135deg,color-mix(in srgb,var(--accent,#FFB703) 13%,transparent),var(--calendar-glass));box-shadow:inset 0 1px 0 color-mix(in srgb,#fff 50%,transparent),0 9px 20px color-mix(in srgb,var(--accent,#FFB703) 9%,transparent);backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px)}
+      input,select,textarea,.critical-filter,.zoom-control{border-color:color-mix(in srgb,var(--hair,#E7E4DA) 72%,transparent);background:color-mix(in srgb,var(--surface,#FFFEF9) 62%,transparent);box-shadow:inset 0 1px 0 color-mix(in srgb,#fff 60%,transparent);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px)}
+      .secondary,.icon,.complete,.restore-task,.mark-done{border-color:color-mix(in srgb,var(--hair,#E7E4DA) 72%,transparent);background:color-mix(in srgb,var(--surface,#FFFEF9) 64%,transparent);box-shadow:inset 0 1px 0 color-mix(in srgb,#fff 60%,transparent),0 3px 9px color-mix(in srgb,var(--ink,#2C2C2A) 6%,transparent);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px)}
+      .timeline-tools{padding:10px;border:1px solid var(--calendar-glass-edge);border-radius:16px 14px 18px 13px;background:linear-gradient(135deg,color-mix(in srgb,var(--surface,#FFFEF9) 65%,transparent),color-mix(in srgb,var(--soft,#EFEBE1) 38%,transparent));box-shadow:0 10px 24px color-mix(in srgb,var(--ink,#2C2C2A) 6%,transparent);backdrop-filter:blur(18px) saturate(135%);-webkit-backdrop-filter:blur(18px) saturate(135%)}
+      .timeline-card{background:linear-gradient(135deg,color-mix(in srgb,var(--surface,#FFFEF9) 78%,transparent),color-mix(in srgb,var(--soft,#EFEBE1) 44%,transparent));box-shadow:0 20px 45px color-mix(in srgb,var(--ink,#2C2C2A) 12%,transparent),inset 0 1px 0 color-mix(in srgb,#fff 60%,transparent)}
+      .timeline-head{background:color-mix(in srgb,var(--surface,#FFFEF9) 77%,transparent);backdrop-filter:blur(18px) saturate(135%);-webkit-backdrop-filter:blur(18px) saturate(135%)}
+      .task-head,.timeline-task{background:color-mix(in srgb,var(--surface,#FFFEF9) 83%,transparent);backdrop-filter:blur(16px) saturate(130%);-webkit-backdrop-filter:blur(16px) saturate(130%)}
+      .week-cell{background:color-mix(in srgb,var(--surface,#FFFEF9) 56%,transparent);backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px)}.week-cell.zone-pre{background:color-mix(in srgb,var(--zone-pre) 74%,transparent)}.week-cell.zone-zero{background:color-mix(in srgb,var(--zone-zero) 78%,transparent)}.week-cell.zone-post{background:color-mix(in srgb,var(--zone-post) 74%,transparent)}
+      .phase-band,.phase-band>div,.timeline-group-band,.timeline-group-band>div{background:color-mix(in srgb,var(--soft,#EFEBE1) 62%,transparent);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px)}
+      .timeline-track{background:repeating-linear-gradient(to right,transparent 0,max(0px,calc(var(--day) - 1px)),color-mix(in srgb,var(--ink,#2C2C2A) 6%,transparent) max(0px,calc(var(--day) - 1px)),color-mix(in srgb,var(--ink,#2C2C2A) 6%,transparent) var(--day)),repeating-linear-gradient(to right,transparent 0,transparent calc(var(--week) - 1px),color-mix(in srgb,var(--ink,#2C2C2A) 12%,transparent) calc(var(--week) - 1px),color-mix(in srgb,var(--ink,#2C2C2A) 12%,transparent) var(--week)),color-mix(in srgb,var(--surface,#FFFEF9) 54%,transparent)}
+      .timeline-track.has-week-zero{background:repeating-linear-gradient(to right,transparent 0,max(0px,calc(var(--day) - 1px)),color-mix(in srgb,var(--ink,#2C2C2A) 6%,transparent) max(0px,calc(var(--day) - 1px)),color-mix(in srgb,var(--ink,#2C2C2A) 6%,transparent) var(--day)),repeating-linear-gradient(to right,transparent 0,transparent calc(var(--week) - 1px),color-mix(in srgb,var(--ink,#2C2C2A) 12%,transparent) calc(var(--week) - 1px),color-mix(in srgb,var(--ink,#2C2C2A) 12%,transparent) var(--week)),linear-gradient(to right,color-mix(in srgb,var(--zone-pre) 72%,transparent) 0,color-mix(in srgb,var(--zone-pre) 72%,transparent) var(--zero-start),color-mix(in srgb,var(--zone-zero) 76%,transparent) var(--zero-start),color-mix(in srgb,var(--zone-zero) 76%,transparent) var(--zero-end),color-mix(in srgb,var(--zone-post) 72%,transparent) var(--zero-end),color-mix(in srgb,var(--zone-post) 72%,transparent) 100%)}
+      .task-bar{box-shadow:inset 0 1px 0 rgba(255,255,255,.38),0 6px 14px color-mix(in srgb,var(--phase) 23%,transparent)}.timeline-row-tools,.timeline-row-menu{border-color:var(--calendar-glass-edge);background:color-mix(in srgb,var(--surface,#FFFEF9) 76%,transparent);box-shadow:0 11px 28px color-mix(in srgb,var(--ink,#2C2C2A) 14%,transparent);backdrop-filter:blur(18px);-webkit-backdrop-filter:blur(18px)}
+      .modal-backdrop{background:color-mix(in srgb,var(--ink,#2C2C2A) 42%,transparent);backdrop-filter:blur(12px) saturate(130%);-webkit-backdrop-filter:blur(12px) saturate(130%)}
+      @media(max-width:980px){.calendar-nav{align-items:stretch;flex-direction:column}.calendar-actions{justify-content:flex-end}.calendar-actions>span{margin-right:auto;max-width:220px}.timeline-tools{padding:8px}}
+      @media(max-width:700px){.fs-calendar{padding-inline:10px}.calendar-nav{top:6px;margin-inline:-2px;padding:7px}.calendar-actions{justify-content:space-between}.calendar-actions .primary{min-width:112px}.timeline-tools{border-radius:14px 12px 16px 11px}.calendar-hero,.section-head{padding-inline:2px}}
+      @media(prefers-reduced-motion:reduce){.calendar-nav,.tabs button,.kpi,.panel,.timeline-card,.task-bar,.timeline-row-tools{transition-duration:.01ms!important}}
     </style>`;
   }
 

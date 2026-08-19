@@ -72,6 +72,24 @@ test("Calendar recovers from deferred DC hydration and gives auth failures a nex
   assert.match(workspace, /data-action="sign-in"/);
   assert.match(workspace, /googleSignInUrl/);
   assert.match(client, /calendar_network_error/);
-  assert.match(server, /origin === "null"/);
+  assert.match(server, /normalized === "null"/);
   assert.match(server, /localFilePreview/);
+});
+
+test("Calendar presents production status as one accessible, responsive pulse", async () => {
+  const [workspace, language] = await Promise.all([
+    fs.readFile(path.join(ROOT, "calendar-workspace.js"), "utf8"),
+    fs.readFile(path.join(ROOT, "language-preference.js"), "utf8"),
+  ]);
+
+  assert.match(workspace, /class="schedule-pulse"/);
+  assert.match(workspace, /class="pulse-metric pulse-progress"/);
+  assert.match(workspace, /role="progressbar"/);
+  assert.match(workspace, /aria-valuenow="\$\{computed\.progress\}"/);
+  assert.match(workspace, /formatCompactDateRange/);
+  assert.match(workspace, /class="pulse-status"/);
+  assert.match(workspace, /@media\(max-width:390px\)\{\.schedule-pulse/);
+  assert.doesNotMatch(workspace, /\$\{this\.renderKpi\(/);
+  assert.match(language, /'Budget linked': 'Presupuesto conectado'/);
+  assert.match(language, /'On track': 'En curso'/);
 });

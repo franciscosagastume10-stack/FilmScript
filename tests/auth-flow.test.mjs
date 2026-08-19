@@ -78,9 +78,9 @@ test('the Scripts page removes the temporary sign-in query', () => {
   assert.deepEqual(history, ['/App.dc.html']);
 });
 
-test('the Features landing opens a clean Google login instead of a sign-up panel', () => {
+test('the Features landing opens one clean Google authentication panel', () => {
   assert.match(featuresPage, /data-testid="landing-login-top"[^>]*>Log in<\/button>/);
-  assert.match(featuresPage, /landingPrimaryLabel: this\.state\.user \? 'Open Scripts' : 'Log in'/);
+  assert.match(featuresPage, /landingPrimaryLabel: this\.state\.user \? 'Open Scripts' : 'Sign up free'/);
   assert.match(featuresPage, /data-testid="google-login"[^>]+onClick="\{\{ googleLogIn \}\}"/);
   assert.match(featuresPage, /Log in with your Google account/);
   assert.equal(featuresPage.includes('<div class="fs-auth-brand">FilmScript</div>'), false);

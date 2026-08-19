@@ -46,6 +46,8 @@ class FilmScriptBudget extends HTMLElement {
     this.importFile = null;
     this.importUrl = '';
     this.importPreview = null;
+    this.generatorOpen = false;
+    this.generatorError = '';
         this._moneyAnimationFrame = 0;
         this._moneySoundTimer = 0;
         this._onLanguageChange = () => this.render();
@@ -84,6 +86,44 @@ class FilmScriptBudget extends HTMLElement {
       return window.filmscriptLanguage?.get?.() === 'es'
         ? (window.filmscriptLanguage?.t?.(text, 'es') || text)
         : text;
+    }
+
+    entitlementEnabled(value) {
+      return value === true || value?.allowed === true;
+    }
+
+    budgetAiUpgradeMessage() {
+      return 'AI budget planning is included with FilmScript Creator at $24.99/month and Full. You can still build, edit, and export your budget manually.';
+    }
+
+    presentBudgetAiUpgrade() {
+      const message = this.budgetAiUpgradeMessage();
+      this.generatorError = message;
+      this.importError = message;
+      window.dispatchEvent(new CustomEvent('filmscript:pro-required', {
+        detail: { error: 'filmscript_creator_required', requiredTier: 'creator', message },
+      }));
+      window.dispatchEvent(new CustomEvent('filmscript:upgrade-required', {
+        detail: { error: 'filmscript_creator_required', requiredTier: 'creator', message },
+      }));
+    }
+
+    async ensureBudgetAi() {
+      const reader = window.filmscriptEntitlements;
+      if (!reader?.get) return true;
+      try {
+        const account = await (reader.refresh?.() || reader.get());
+        // Let the server keep ownership of unauthenticated and transient
+        // states. This check only makes a known Free-plan limit clear before
+        // the user begins an AI flow.
+        if (!account || !account.authenticated) return true;
+        if (this.entitlementEnabled(account.entitlements?.budgetAi)) return true;
+        this.presentBudgetAiUpgrade();
+        this.render();
+        return false;
+      } catch {
+        return true;
+      }
     }
 
   async load() {
@@ -203,7 +243,7 @@ class FilmScriptBudget extends HTMLElement {
         if (keepEditing) this.syncStatusText();
         else this.render();
       }
-    }, 420);
+    }, 1500);
   }
 
   syncStatusText() {
@@ -312,6 +352,7 @@ class FilmScriptBudget extends HTMLElement {
       this.expensePickerId = '';
       this.expenseLineSearch = '';
       if (this.importOpen && !this.importBusy) this.importOpen = false;
+      if (this.generatorOpen) { this.generatorOpen = false; this.generatorError = ''; }
       this.render();
       return;
     }
@@ -346,6 +387,9 @@ class FilmScriptBudget extends HTMLElement {
     }
     if (action === 'retry') this.load();
     if (action === 'export') this.exportPdf();
+    if (action === 'open-generator') return this.openBudgetGenerator();
+    if (action === 'close-generator') { this.generatorOpen = false; this.generatorError = ''; this.render(); }
+    if (action === 'generate-estimate') this.generateBudgetEstimate();
     if (action === 'open-import') { this.importOpen = true; this.importError = ''; this._animateModal = true; this.render(); }
     if (action === 'close-import') { if (!this.importBusy) { this.importOpen = false; this.importPreview = null; this.importFile = null; this.importUrl = ''; this.importError = ''; this.render(); } }
     if (action === 'analyze-import') this.analyzeImport();
@@ -733,6 +777,7 @@ class FilmScriptBudget extends HTMLElement {
       this.render();
       return;
     }
+    if (!await this.ensureBudgetAi()) return;
     this.importBusy = true;
     this.importError = '';
     this.uploadStatus = 'Lumiere is analyzing the budget';
@@ -745,7 +790,11 @@ class FilmScriptBudget extends HTMLElement {
       this.importPreview = await window.filmscriptBudget.importBudget(this.scriptId, payload);
       this.uploadStatus = '';
     } catch (error) {
-      this.importError = error.message || 'Lumiere could not analyze this source.';
+      if (['filmscript_creator_required', 'filmscript_pro_required'].includes(error?.code)) {
+        this.presentBudgetAiUpgrade();
+      } else {
+        this.importError = error.message || 'Lumiere could not analyze this source.';
+      }
       this.uploadStatus = '';
     } finally {
       this.importBusy = false;
@@ -781,6 +830,115 @@ class FilmScriptBudget extends HTMLElement {
     }
   }
 
+  async openBudgetGenerator() {
+    if (!await this.ensureBudgetAi()) return;
+    this.generatorOpen = true;
+    this.generatorError = '';
+    this._animateModal = true;
+    this.render();
+  }
+
+  async generateBudgetEstimate() {
+    if (!await this.ensureBudgetAi()) return;
+    const form = this.shadowRoot.querySelector('[data-budget-generator]');
+    if (!form || !this.budget) return;
+    const amount = Math.round(Math.max(0, finite(form.querySelector('[name="amount"]')?.value)) * 100) / 100;
+    const currencyCode = String(form.querySelector('[name="currency"]')?.value || 'USD').toUpperCase();
+    const shootingDays = Math.max(1, Math.min(120, Math.trunc(finite(form.querySelector('[name="shootingDays"]')?.value, 3))));
+    const locations = Math.max(1, Math.min(40, Math.trunc(finite(form.querySelector('[name="locations"]')?.value, 2))));
+    const format = String(form.querySelector('[name="format"]')?.value || 'Independent narrative film').trim().slice(0, 80);
+    if (amount < 100) {
+      this.generatorError = 'Enter a production budget of at least 100.';
+      this.render();
+      return;
+    }
+    const currencySymbol = { USD: '$', GTQ: 'Q', EUR: '€', GBP: '£', MXN: '$' }[currencyCode] || currencyCode;
+    const usdEquivalent = currencyCode === 'GTQ' ? amount / 7.8 : amount;
+    const baseShares = [
+      ['1003', .020], ['1101', .010], ['1201', .040], ['1203', .025], ['1301', .055], ['1401', .025], ['1404', .015],
+      ['1601', .015], ['1602', .018], ['1603', .020], ['1610', .015],
+      ['1701', .025], ['1704', .040], ['1707', .025], ['1801', .040], ['1802', .022], ['1804', .012],
+      ['1901', .080], ['1903', .015], ['2001', .028], ['2003', .023], ['2101', .020], ['2102', .018], ['2103', .013], ['2108', .012],
+      ['2201', .045], ['2202', .020], ['2301', .012], ['2303', .018], ['2401', .012], ['2403', .008],
+      ['2701', .012], ['2704', .035], ['2709', .012], ['2710', .010], ['2804', .010], ['2901', .025], ['2902', .012], ['2905', .008],
+      ['3001', .020], ['3005', .022], ['3007', .012], ['3201', .050], ['3203', .012], ['3302', .030], ['3305', .012], ['3306', .012],
+      ['3401', .020], ['3404', .018], ['3501', .020], ['3601', .012], ['3602', .006], ['3604', .010], ['3605', .008], ['3801', .016],
+    ];
+    // A microbudget keeps only the essential crew roles. Larger productions
+    // gradually unlock support positions without inventing an oversized crew.
+    const optionalAtMicrobudget = new Set(['1404', '1802', '1804', '2103', '2202', '2905', '3203', '3305', '3602', '3605']);
+    const shares = baseShares.filter(([code]) => usdEquivalent >= 25000 || !optionalAtMicrobudget.has(code));
+    const shareTotal = shares.reduce((sum, [, share]) => sum + share, 0) || 1;
+    const contingencyRate = .05;
+    const contingencyEligibleShare = shares.filter(([code]) => {
+      const account = this.budget.accounts.find((entry) => entry.items.some((item) => item.code === code));
+      return account?.phaseId === 'above_line' || account?.phaseId === 'production';
+    }).reduce((sum, [, share]) => sum + share, 0);
+    const netBudget = amount / (1 + contingencyRate * (contingencyEligibleShare / shareTotal));
+    const itemsByCode = new Map(this.budget.accounts.flatMap((account) => account.items.map((item) => [item.code, { account, item }])));
+    this.budget.accounts.forEach((account) => account.items.forEach((item) => {
+      item.quantity = item.calculation === 'contingency' ? 0 : 0;
+      item.multiplier = item.calculation === 'contingency' ? 0 : 1;
+      item.unitCost = 0;
+      item.unit = item.calculation === 'contingency' ? 'calculated' : 'flat';
+      item.taxRateId = 'tax_exempt';
+      item.taxMode = 'exclusive';
+      item.fundingKind = 'cash';
+      item.schedule = {};
+    }));
+    shares.forEach(([code, share]) => {
+      const found = itemsByCode.get(code);
+      if (!found) return;
+      const allocation = Math.round((netBudget * share / shareTotal) * 100) / 100;
+      const dayBased = ['1201', '1203', '1301', '1401', '1404', '1601', '1602', '1603', '1701', '1801', '1802', '1804', '2001', '2101', '2102', '2103', '2301', '2401', '2901', '3001', '3007'].includes(code);
+      const locationBased = ['2704', '2709', '2710'].includes(code);
+      const units = locationBased ? locations : dayBased ? shootingDays : 1;
+      found.item.quantity = 1;
+      found.item.multiplier = units;
+      found.item.unit = locationBased ? 'location' : dayBased ? 'day' : 'flat';
+      found.item.unitCost = Math.round((allocation / units) * 100) / 100;
+      const stage = found.account.phaseId === 'above_line' ? 'prep' : found.account.phaseId === 'production' ? 'shoot' : found.account.phaseId === 'postproduction' ? 'post' : 'wrap';
+      const weeks = this.budget.periods.filter((period) => period.stage === stage);
+      const targetWeeks = weeks.length ? weeks : this.budget.periods.filter((period) => period.stage === 'shoot');
+      targetWeeks.forEach((period, index) => {
+        found.item.schedule[period.id] = Math.round((allocation / targetWeeks.length + (index === targetWeeks.length - 1 ? allocation - (allocation / targetWeeks.length) * targetWeeks.length : 0)) * 100) / 100;
+      });
+    });
+    this.budget.settings.currencyCode = currencyCode;
+    this.budget.settings.currencySymbol = currencySymbol;
+    this.budget.settings.contingencyRate = contingencyRate;
+    this.budget.metadata.format = format;
+    this.budget.metadata.locations = `${locations} planned location${locations === 1 ? '' : 's'}`;
+    this.budget.metadata.shootingDates = `${shootingDays} shooting day${shootingDays === 1 ? '' : 's'}`;
+    this.budget.timeline = { prepWeeks: Math.max(1, Math.min(8, Math.ceil(shootingDays / 3))), shootWeeks: Math.max(1, Math.min(24, Math.ceil(shootingDays / 5))), wrapWeeks: 1, postWeeks: Math.max(4, Math.min(24, Math.ceil(shootingDays * 1.5))) };
+    const rebuilt = normalizeBudget(this.budget, this.projectTitle);
+    this.budget.periods = rebuilt.periods;
+    // The period list changes with production scale, so rebuild simple weekly
+    // cash placement once more after normalization.
+    this.budget.accounts.forEach((account) => account.items.forEach((item) => {
+      if (!item.unitCost || item.calculation === 'contingency') return;
+      const stage = account.phaseId === 'above_line' ? 'prep' : account.phaseId === 'production' ? 'shoot' : account.phaseId === 'postproduction' ? 'post' : 'wrap';
+      const weeks = this.budget.periods.filter((period) => period.stage === stage);
+      const total = Math.round(item.quantity * item.multiplier * item.unitCost * 100) / 100;
+      item.schedule = {};
+      weeks.forEach((period, index) => { item.schedule[period.id] = Math.round((index === weeks.length - 1 ? total - (total / weeks.length) * index : total / weeks.length) * 100) / 100; });
+    }));
+    this.budget.fundingSources = [{ id: `funding_generated_${Date.now().toString(36)}`, name: 'Planned production budget', type: 'cash', amount, paid: 0, status: 'Planned', paymentDate: '', receiptId: '', receiptName: '' }];
+    this.openAccounts = new Set(this.budget.accounts.filter((account) => account.items.some((item) => item.unitCost > 0)).map((account) => account.code));
+    this.generatorOpen = false;
+    this.generatorError = '';
+    this.view = 'quick';
+    this.uploadStatus = 'Estimated budget created from your production scale';
+    this.queueSave();
+  }
+
+  renderBudgetGenerator() {
+    if (!this.generatorOpen) return '';
+    const code = this.budget?.settings?.currencyCode || 'USD';
+    const defaultAmount = code === 'GTQ' ? 100000 : 10000;
+    return `<div class="modal-backdrop" role="presentation"><section class="schedule-modal budget-generator" role="dialog" aria-modal="true" aria-labelledby="budget-generator-title" data-budget-generator><div class="modal-head"><div><span>Smart starting point</span><h3 id="budget-generator-title">Generate a production budget</h3><p>FilmScript will build a lean, realistic starting plan across every department, including postproduction, insurance, contingency and distribution.</p></div><button type="button" class="icon" data-action="close-generator" aria-label="Close budget generator">×</button></div><div class="generator-body" style="display:grid;grid-template-columns:1fr 1fr;gap:13px;padding:20px"><label style="display:grid;gap:6px"><span style="font-size:9.5px;font-weight:700;color:var(--muted,#888780)">Total film budget</span><input name="amount" type="number" min="100" step="0.01" inputmode="decimal" value="${defaultAmount}" autofocus></label><label style="display:grid;gap:6px"><span style="font-size:9.5px;font-weight:700;color:var(--muted,#888780)">Currency</span><select name="currency"><option value="USD" ${code === 'USD' ? 'selected' : ''}>USD · $</option><option value="GTQ" ${code === 'GTQ' ? 'selected' : ''}>GTQ · Q</option><option value="EUR" ${code === 'EUR' ? 'selected' : ''}>EUR · €</option><option value="MXN" ${code === 'MXN' ? 'selected' : ''}>MXN · $</option></select></label><label style="display:grid;gap:6px"><span style="font-size:9.5px;font-weight:700;color:var(--muted,#888780)">Shooting days</span><input name="shootingDays" type="number" min="1" max="120" step="1" value="3"></label><label style="display:grid;gap:6px"><span style="font-size:9.5px;font-weight:700;color:var(--muted,#888780)">Locations</span><input name="locations" type="number" min="1" max="40" step="1" value="2"></label><label style="display:grid;gap:6px;grid-column:1 / -1"><span style="font-size:9.5px;font-weight:700;color:var(--muted,#888780)">Production format</span><select name="format"><option>Short film</option><option selected>Independent narrative film</option><option>Documentary</option><option>Commercial or music video</option><option>Feature film</option></select></label></div>${this.generatorError ? `<div class="notice error" style="margin:0 20px">${escapeHtml(this.generatorError)}</div>` : ''}<div style="display:grid;gap:4px;margin:0 20px 18px;padding:13px;border:1px solid var(--hair,#E7E4DA);border-radius:11px;background:var(--soft,#EFEBE1)"><strong style="font-size:11px">Built for the budget you enter.</strong><span style="color:var(--muted,#888780);font-size:10px;line-height:1.45">Smaller budgets use a core crew and essential rentals first. More resources expand support roles without inflating the crew.</span></div><div class="modal-foot"><span>This replaces planned amounts, never recorded expenses.</span><div class="schedule-actions"><button type="button" class="secondary" data-action="close-generator">Cancel</button><button type="button" class="primary" data-action="generate-estimate">Generate budget</button></div></div></section></div>`;
+  }
+
   render() {
     if (!this.shadowRoot) return;
     const styles = this.styles();
@@ -809,13 +967,14 @@ class FilmScriptBudget extends HTMLElement {
       <div class="fs-budget">
         <div class="budget-nav">
           <div class="tabs" role="tablist" aria-label="Budget views">${tabs}</div>
-          <div class="budget-actions"><span aria-live="polite">${escapeHtml(this.saveStatus || this.uploadStatus)}</span><button type="button" class="secondary import-trigger" data-action="open-import">${escapeHtml(this.displayLabel('Import Budget'))}</button><button type="button" class="export" data-action="export">${escapeHtml(this.displayLabel('Export'))}</button></div>
+          <div class="budget-actions"><span aria-live="polite">${escapeHtml(this.saveStatus || this.uploadStatus)}</span><button type="button" class="secondary" data-action="open-generator">Generate budget</button><button type="button" class="secondary import-trigger" data-action="open-import">${escapeHtml(this.displayLabel('Import Budget'))}</button><button type="button" class="export" data-action="export">${escapeHtml(this.displayLabel('Export'))}</button></div>
         </div>
         ${this.error ? `<div class="notice error" role="alert">${escapeHtml(this.error)}</div>` : ''}
         ${content}
         ${this.renderScheduleModal(computed)}
         ${this.renderExpensePicker(computed)}
         ${this.renderImportModal()}
+        ${this.renderBudgetGenerator()}
       </div>`;
     if (this._animateView) {
       this.shadowRoot.querySelector('.view')?.classList.add('is-entering');
@@ -956,7 +1115,7 @@ class FilmScriptBudget extends HTMLElement {
       : '';
     return `<section class="view" role="tabpanel" tabindex="0"><div class="section-head"><div><span class="eyebrow">Cost detail</span><h2>Budget Breakdown</h2><p>Open an account, change any driver and every report updates together.</p></div></div>
       ${unexpectedAlert}
-      <div class="filters"><label><span>Search</span><input data-budget-search value="${escapeHtml(this.search)}" placeholder="Account, code or cost item"></label><label><span>Phase</span><select data-phase-filter>${phaseOptions}</select></label><div class="formula-note"><strong>Live formula</strong><span>Quantity × times × unit cost, then tax</span></div></div>
+      <div class="filters"><label><span>Search</span><input data-budget-search value="${escapeHtml(this.search)}" placeholder="Account, code or cost item"></label><label><span>Phase</span><select data-phase-filter>${phaseOptions}</select></label><div class="formula-field"><span>Live formula</span><div class="formula-note">Quantity × times × unit cost, then tax</div></div></div>
       <div class="account-stack">${sections || '<div class="empty small"><strong>No matching cost items</strong><p>Clear the filters to see the complete budget.</p></div>'}</div>
     </section>`;
   }
@@ -972,7 +1131,7 @@ class FilmScriptBudget extends HTMLElement {
       <td>${calculation ? '<span class="calculated">Fixed</span>' : `<select data-model="item" data-id="${item.id}" data-field="costType"><option value="fixed" ${item.costType === 'fixed' ? 'selected' : ''}>Fixed</option><option value="variable" ${item.costType === 'variable' ? 'selected' : ''}>Variable</option></select>`}</td>
       <td>${calculation ? '<span class="calculated">Cash</span>' : `<select data-model="item" data-id="${item.id}" data-field="fundingKind"><option value="cash" ${item.fundingKind === 'cash' ? 'selected' : ''}>Cash</option><option value="in_kind" ${item.fundingKind === 'in_kind' ? 'selected' : ''}>In kind</option></select>`}</td>
       <td><strong>${this.formatMoney(item.total)}</strong></td><td>${this.formatMoney(item.spent)}</td><td class="${item.remaining < 0 ? 'negative' : ''}">${this.formatMoney(item.remaining)}</td>
-      <td><button type="button" class="mini" data-action="open-schedule" data-id="${item.id}">Schedule</button></td><td>${calculation ? '' : `<button type="button" class="icon" data-action="remove-item" data-id="${item.id}" aria-label="Delete ${escapeHtml(item.name)}">×</button>`}</td>
+      <td><button type="button" class="mini schedule-trigger" data-action="open-schedule" data-id="${item.id}">Schedule</button></td><td>${calculation ? '' : `<button type="button" class="icon" data-action="remove-item" data-id="${item.id}" aria-label="Delete ${escapeHtml(item.name)}">×</button>`}</td>
     </tr>`;
   }
 
@@ -1318,7 +1477,7 @@ class FilmScriptBudget extends HTMLElement {
     if (entry.receiptId) {
       const previewUrl = window.filmscriptBudget.receiptUrl(this.scriptId, entry.receiptId);
       const fileName = type === 'expense' ? '' : `<span title="${escapeHtml(entry.receiptName)}">${escapeHtml(entry.receiptName)}</span>`;
-      return `<div class="receipt ${type === 'expense' ? 'receipt-compact' : ''}"><span class="receipt-preview-wrap"><button type="button" class="receipt-view" data-action="view-receipt" data-receipt="${entry.receiptId}">View</button><span class="receipt-preview"><img src="${escapeHtml(previewUrl)}" alt="Preview of ${escapeHtml(entry.receiptName)}"></span></span>${fileName}<label>Replace<input type="file" accept="image/*" data-receipt-for="${type}" data-id="${entry.id}"></label></div>`;
+      return `<div class="receipt ${type === 'expense' ? 'receipt-compact' : ''}"><span class="receipt-preview-wrap"><button type="button" class="receipt-view" data-action="view-receipt" data-receipt="${entry.receiptId}">View</button><span class="receipt-preview"><img loading="lazy" decoding="async" src="${escapeHtml(previewUrl)}" alt="Preview of ${escapeHtml(entry.receiptName)}"></span></span>${fileName}<label>Replace<input type="file" accept="image/*" data-receipt-for="${type}" data-id="${entry.id}"></label></div>`;
     }
     return `<label class="attach">Attach<input type="file" accept="image/*" data-receipt-for="${type}" data-id="${entry.id}"></label>`;
   }
@@ -1379,6 +1538,9 @@ class FilmScriptBudget extends HTMLElement {
       :host{display:block;min-width:0;width:100%;color:var(--ink,#2C2C2A);font-family:"Helvetica Neue",Helvetica,Arial,sans-serif}
       *{box-sizing:border-box}button,input,select{font:inherit}button{color:inherit}.fs-budget{padding:24px 0 72px}.budget-nav{position:sticky;top:-38px;z-index:20;display:flex;align-items:center;justify-content:space-between;gap:18px;margin:0 0 28px;padding:12px 0;background:var(--bg,#F5F0E8);border-bottom:1px solid var(--hair,#E7E4DA)}.tabs{display:flex;gap:4px;overflow:auto;scrollbar-width:none}.tabs button{min-height:38px;padding:0 13px;border:1px solid transparent;border-radius:9px 10px 8px 9px;background:transparent;color:var(--muted,#888780);white-space:nowrap;cursor:pointer}.tabs button[aria-pressed="true"]{border-color:var(--hair,#E7E4DA);background:var(--surface,#FFFEF9);color:var(--ink,#2C2C2A);box-shadow:1px 2px 0 var(--hair,#E7E4DA)}.tabs button:focus-visible,.export:focus-visible,button:focus-visible,input:focus-visible,select:focus-visible{outline:2px solid var(--accent,#BA7517);outline-offset:2px}.budget-actions{display:flex;align-items:center;gap:10px}.budget-actions span{font-size:10.5px;color:var(--muted,#888780);white-space:nowrap}.export,.primary{min-height:40px;padding:0 16px;border:0;border-radius:9px 10px 8px 9px;background:var(--accent,#BA7517);color:#181816;font-weight:750;cursor:pointer}.export{background:var(--ink,#2C2C2A);color:var(--surface,#FFFEF9)}.secondary{min-height:38px;padding:0 14px;border:1px solid var(--hair,#E7E4DA);border-radius:9px;background:var(--surface,#FFFEF9);font-weight:700;cursor:pointer}.view{animation:budgetRise .22s ease both}@keyframes budgetRise{from{opacity:0;transform:translateY(7px)}to{opacity:1;transform:none}}.section-head{display:flex;align-items:flex-end;justify-content:space-between;gap:20px;margin-bottom:22px}.eyebrow,.panel-head span,.finance-note>span,.formula-card>span,.insight>span{display:block;font-size:10px;font-weight:800;letter-spacing:1.45px;text-transform:uppercase;color:var(--accent,#BA7517)}h2{margin:6px 0 0;font-size:27px;line-height:1.1;letter-spacing:-.7px}h3{margin:4px 0 0;font-size:16px;letter-spacing:-.2px}.section-head p,.table-title p,.panel-head small,.modal-head p{margin:7px 0 0;color:var(--muted,#888780);font-size:12px;line-height:1.45}.updated{font-size:11px;color:var(--muted,#888780)}.kpi-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px}.kpi{position:relative;min-height:126px;padding:19px 19px 17px;background:var(--surface,#FFFEF9);border:1px solid var(--hair,#E7E4DA);border-radius:15px 13px 16px 12px;box-shadow:2px 3px 0 var(--hair,#E7E4DA);overflow:hidden}.kpi:before{content:"";position:absolute;left:0;top:0;bottom:0;width:3px;background:var(--accent,#BA7517)}.kpi.remaining:before,.kpi.funded:before{background:#5B7A4A}.kpi.spent:before{background:#4A6B8A}.kpi.warning:before{background:#BA7517}.kpi.danger:before{background:#C74440}.kpi span{display:block;font-size:10.5px;font-weight:700;color:var(--muted,#888780)}.kpi strong{display:block;margin-top:17px;font-size:21px;letter-spacing:-.55px;font-variant-numeric:tabular-nums}.kpi small{display:block;margin-top:8px;color:var(--muted,#888780);font-size:10.5px}.compact{margin-bottom:20px}.compact .kpi{min-height:110px}.visual-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-top:14px}.panel,.table-card{background:var(--surface,#FFFEF9);border:1px solid var(--hair,#E7E4DA);border-radius:17px 14px 18px 13px;box-shadow:2px 3px 0 var(--hair,#E7E4DA)}.panel{padding:20px}.panel-head,.table-title{display:flex;align-items:flex-start;justify-content:space-between;gap:18px}.donut-wrap{display:grid;grid-template-columns:168px 1fr;align-items:center;gap:24px;margin-top:22px}.donut{width:164px;height:164px;border-radius:50%;display:grid;place-items:center}.donut:before{content:"";position:absolute}.donut>span{width:104px;height:104px;border-radius:50%;display:grid;place-content:center;text-align:center;background:var(--surface,#FFFEF9);box-shadow:0 0 0 1px var(--hair,#E7E4DA)}.donut strong{font-size:14px}.donut small{margin-top:4px;font-size:9.5px;color:var(--muted,#888780)}.legend{display:grid;gap:11px}.legend div{display:grid;grid-template-columns:9px 1fr auto;align-items:center;gap:8px;font-size:11px}.legend i{width:9px;height:9px;border-radius:3px}.legend strong{font-size:10.5px}.phase-bars{display:grid;gap:18px;margin-top:25px}.phase-bar>div:first-child{display:flex;justify-content:space-between;gap:12px;margin-bottom:7px}.phase-bar strong{font-size:11px}.phase-bar span{font-size:10px;color:var(--muted,#888780)}.bar{height:8px;border-radius:99px;background:var(--soft,#EFEBE1);overflow:hidden}.bar i{display:block;height:100%;min-width:0;border-radius:99px}.insight{display:grid;grid-template-columns:auto 1fr auto;align-items:center;gap:18px;margin-top:14px;padding:16px 18px;background:var(--accent-soft,rgba(186,117,23,.11));border:1px solid var(--accent,#BA7517);border-radius:12px 14px 11px 13px}.insight p{margin:0;font-size:11.5px;line-height:1.45}.insight button,.finance-note button{border:0;background:transparent;color:var(--accent,#BA7517);font-weight:750;font-size:11px;cursor:pointer}.phase-card-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px;margin-bottom:18px}.phase-card{padding:17px 18px;background:var(--surface,#FFFEF9);border:1px solid var(--hair,#E7E4DA);border-top:3px solid var(--phase);border-radius:12px}.phase-card span,.phase-card small{display:block;font-size:10.5px;color:var(--muted,#888780)}.phase-card strong{display:block;margin:10px 0 7px;font-size:17px}.table-card{overflow:hidden}.table-title{align-items:center;padding:18px 19px;border-bottom:1px solid var(--hair,#E7E4DA)}.table-title h3{margin:0}.table-scroll{overflow:auto}.table-card table{width:100%;border-collapse:collapse;min-width:820px}th{padding:11px 12px;border-bottom:1px solid var(--hair,#E7E4DA);color:var(--muted,#888780);font-size:9px;letter-spacing:1.05px;text-transform:uppercase;text-align:left;white-space:nowrap}td{padding:11px 12px;border-bottom:1px solid var(--hair,#E7E4DA);font-size:10.8px;white-space:nowrap;font-variant-numeric:tabular-nums}td:not(:nth-child(2)){text-align:right}tbody tr:hover{background:var(--soft,#EFEBE1)}tfoot td{background:var(--chrome,#232322);color:var(--surface,#FFFEF9);font-weight:750;border:0}.account-code{display:inline-grid;place-items:center;min-width:43px;height:23px;padding:0 6px;border-radius:7px;background:var(--soft,#EFEBE1);font-weight:750}.negative{color:#C74440!important;font-weight:750}.filters{display:grid;grid-template-columns:minmax(240px,1fr) 180px minmax(260px,auto);align-items:end;gap:12px;margin-bottom:16px}.filters label,.form-grid label,.schedule-grid label{display:grid;gap:6px}.filters label span,.form-grid label>span,.schedule-grid label>span{font-size:9.5px;font-weight:700;color:var(--muted,#888780)}input,select{min-height:36px;border:1px solid var(--hair,#E7E4DA);border-radius:8px;background:var(--bg,#F5F0E8);color:var(--ink,#2C2C2A);padding:0 9px;outline:none}input:focus,select:focus{border-color:var(--accent,#BA7517)}.formula-note{display:flex;align-items:center;justify-content:space-between;gap:12px;min-height:58px;padding:10px 13px;border:1px solid var(--hair,#E7E4DA);border-radius:10px;background:var(--surface,#FFFEF9)}.formula-note strong{font-size:10px}.formula-note span{font-size:10px;color:var(--muted,#888780)}.account-stack{display:grid;gap:10px}.account{background:var(--surface,#FFFEF9);border:1px solid var(--hair,#E7E4DA);border-radius:13px 15px 12px 14px;overflow:hidden}.account summary{display:flex;justify-content:space-between;align-items:center;gap:20px;padding:15px 17px;cursor:pointer;list-style:none}.account summary::-webkit-details-marker{display:none}.account summary>div{display:flex;align-items:center;gap:11px}.account summary>div:first-child>span{display:grid;place-items:center;min-width:45px;height:25px;border-radius:7px;background:var(--soft,#EFEBE1);font-size:10px;font-weight:800}.account summary strong{font-size:12px}.account summary small,.account summary>div:last-child>span{font-size:10px;color:var(--muted,#888780)}.breakdown-table{min-width:1510px;width:100%;border-collapse:collapse}.breakdown-table th,.breakdown-table td{padding:7px 6px}.breakdown-table td{text-align:right}.breakdown-table td:nth-child(2){text-align:left}.breakdown-table input,.breakdown-table select{width:100%;min-height:32px;padding:0 6px;font-size:10.5px}.breakdown-table th:nth-child(1){width:74px}.breakdown-table th:nth-child(2){width:210px}.breakdown-table th:nth-child(3),.breakdown-table th:nth-child(5){width:67px}.breakdown-table th:nth-child(4){width:82px}.breakdown-table th:nth-child(6){width:92px}.breakdown-table th:nth-child(7){width:150px}.breakdown-table th:nth-child(8),.breakdown-table th:nth-child(9){width:96px}.calculated{display:block;padding:8px 6px;color:var(--muted,#888780);font-size:10px}.contingency-row{background:var(--accent-soft,rgba(186,117,23,.11))}.mini{min-height:30px;border:1px solid var(--hair,#E7E4DA);border-radius:7px;background:transparent;font-size:9.5px;cursor:pointer}.icon{width:30px;height:30px;padding:0;border:1px solid var(--hair,#E7E4DA);border-radius:8px;background:transparent;color:var(--muted,#888780);cursor:pointer}.add-row{min-height:36px;margin:10px 12px 12px;padding:0 13px;border:1px dashed var(--muted,#888780);border-radius:8px;background:transparent;font-weight:700;font-size:10.5px;cursor:pointer}.funding-table{min-width:1120px!important}.funding-table input,.funding-table select,.expense-table input,.expense-table select{width:100%;min-height:32px;padding:0 6px;font-size:10.5px}.funding-table td,.expense-table td{text-align:left;padding:7px 6px}.funding-table td:nth-child(3),.funding-table td:nth-child(4),.expense-table td:nth-child(n+6):nth-child(-n+8){text-align:right}.finance-grid{grid-template-columns:1.4fr .6fr}.cash-timeline{display:grid;gap:12px;margin-top:20px}.cash-period>div{display:flex;justify-content:space-between;gap:12px;font-size:10.5px}.cash-period i{display:block;height:6px;margin-top:5px;border-radius:99px;background:var(--soft,#EFEBE1);overflow:hidden}.cash-period b{display:block;height:100%;border-radius:99px;background:var(--accent,#BA7517)}.finance-note{display:flex;flex-direction:column;align-items:flex-start;justify-content:center}.finance-note p{font-size:11.5px;line-height:1.55;color:var(--muted,#888780)}.finance-note button{padding:8px 0}.expense-card{margin-top:2px}.expense-table{min-width:1500px!important}.expense-table th:nth-child(3){width:250px}.expense-table th:nth-child(4),.expense-table th:nth-child(5){width:180px}.compression-note{padding:7px 10px;border-radius:99px;background:var(--accent-soft,rgba(186,117,23,.11));font-size:9.5px;color:var(--accent,#BA7517);font-weight:700}.table-empty{text-align:center!important;padding:34px!important;color:var(--muted,#888780)}.attach,.receipt label{display:inline-flex;align-items:center;min-height:28px;padding:0 9px;border:1px dashed var(--muted,#888780);border-radius:7px;font-size:9.5px;font-weight:700;cursor:pointer}.attach input,.receipt label input{display:none}.receipt{display:flex;align-items:center;gap:6px;max-width:190px}.receipt button{border:0;background:transparent;color:var(--accent,#BA7517);font-size:9.5px;font-weight:800;cursor:pointer}.receipt span{max-width:74px;overflow:hidden;text-overflow:ellipsis;font-size:9px}.receipt label{min-height:25px;padding:0 6px}.settings-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:14px}.settings-panel{padding:20px}.form-grid{display:grid;grid-template-columns:1fr 1fr;gap:13px;margin-top:20px}.form-grid label:nth-child(5){grid-column:1 / -1}.suffix{display:grid;grid-template-columns:1fr 34px}.suffix input{border-radius:8px 0 0 8px}.suffix b{display:grid;place-items:center;border:1px solid var(--hair,#E7E4DA);border-left:0;border-radius:0 8px 8px 0;background:var(--soft,#EFEBE1);font-size:11px}.driver-result{grid-column:1 / -1;padding:12px 13px;border-radius:10px;background:var(--soft,#EFEBE1)}.driver-result span,.driver-result small{display:block;font-size:9.5px;color:var(--muted,#888780)}.driver-result strong{display:block;margin:5px 0;font-size:16px}.tax-layout{display:grid;grid-template-columns:minmax(420px,1fr) minmax(300px,.75fr);gap:16px;padding:18px}.tax-table{width:100%;border-collapse:collapse}.tax-table input{width:100%}.tax-table td:nth-child(2){width:130px}.tax-table td:last-child{width:42px}.formula-card{padding:16px;border:1px solid var(--hair,#E7E4DA);border-radius:12px;background:var(--soft,#EFEBE1)}.formula-card p{margin:11px 0 0;font-size:10.5px;line-height:1.5;color:var(--muted,#888780)}.formula-card strong{color:var(--ink,#2C2C2A)}.locked{font-size:9px;color:var(--muted,#888780)}.modal-backdrop{position:fixed;inset:0;z-index:1000;display:grid;place-items:center;padding:24px;background:rgba(20,20,19,.58)}.schedule-modal{width:min(720px,100%);max-height:min(760px,90vh);overflow:auto;background:var(--surface,#FFFEF9);border:1px solid var(--hair,#E7E4DA);border-radius:19px 16px 20px 14px;box-shadow:0 24px 80px rgba(0,0,0,.25)}.modal-head{display:flex;justify-content:space-between;gap:18px;padding:20px;border-bottom:1px solid var(--hair,#E7E4DA)}.modal-head>div>span{font-size:10px;font-weight:800;color:var(--accent,#BA7517)}.modal-head h3{font-size:19px}.schedule-summary{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;padding:16px 20px;background:var(--soft,#EFEBE1)}.schedule-summary div{padding:11px;background:var(--surface,#FFFEF9);border:1px solid var(--hair,#E7E4DA);border-radius:9px}.schedule-summary span,.schedule-summary strong{display:block}.schedule-summary span{font-size:9.5px;color:var(--muted,#888780)}.schedule-summary strong{margin-top:6px;font-size:14px}.schedule-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:12px;padding:20px}.modal-foot{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:15px 20px;border-top:1px solid var(--hair,#E7E4DA)}.modal-foot span{font-size:10px;color:var(--muted,#888780)}.notice{margin-bottom:16px;padding:11px 13px;border-radius:9px;font-size:11px}.notice.error{background:rgba(199,68,64,.12);color:#C74440}.loading,.empty{display:grid;justify-items:center;max-width:560px;margin:50px auto;padding:42px;text-align:center;background:var(--surface,#FFFEF9);border:1px solid var(--hair,#E7E4DA);border-radius:17px 14px 18px 13px}.loading span{width:26px;height:26px;border:2px solid var(--hair,#E7E4DA);border-top-color:var(--accent,#BA7517);border-radius:50%;animation:spin .7s linear infinite}@keyframes spin{to{transform:rotate(360deg)}}.loading strong,.empty strong{margin-top:15px;font-size:17px}.loading small,.empty p{margin:7px 0 0;color:var(--muted,#888780);font-size:11.5px}.empty .primary{margin-top:18px}.empty.small{margin:20px auto;padding:26px}
       :host{--accent:#FFB703;--accent-soft:rgba(255,183,3,.13)}
+      .formula-field{display:grid;gap:6px}.formula-field>span{font-size:9.5px;font-weight:700;color:var(--muted,#888780)}.formula-field .formula-note{display:flex;align-items:center;justify-content:flex-start;min-height:36px;padding:0 9px;border-radius:8px;font-size:10px;line-height:1;white-space:nowrap}
+      /* Keep the localized scheduling action whole when an account is expanded. */
+      .breakdown-table th:nth-child(10),.breakdown-table td:nth-child(10){width:100px;text-align:center}.breakdown-table th:nth-child(11),.breakdown-table td:nth-child(11){width:42px;text-align:center}.mini{white-space:nowrap;overflow-wrap:normal;word-break:normal}.schedule-trigger{min-width:78px}
       .section-title{display:flex;align-items:flex-start;gap:15px}.budget-glyph{position:relative;display:grid;place-items:center;width:43px;height:43px;flex:0 0 43px;margin-top:1px;color:var(--accent,#FFB703)}.budget-glyph svg{width:32px;height:32px;overflow:visible;stroke:currentColor;stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round}.budget-glyph:after{content:"";position:absolute;left:6px;right:3px;bottom:1px;height:3px;border-bottom:1.5px solid currentColor;border-radius:50%;transform:rotate(-1.2deg);opacity:.62}
       .kpi,.panel,.table-card,.account,.formula-card,.schedule-modal,.loading,.empty{position:relative;isolation:isolate;border-color:color-mix(in srgb,var(--ink,#2C2C2A) 30%,transparent);border-radius:20px 17px 22px 16px / 18px 21px 17px 20px;box-shadow:1px 2px 0 color-mix(in srgb,var(--ink,#2C2C2A) 15%,transparent)}
       .kpi:after,.panel:after,.table-card:after,.account:after,.formula-card:after,.schedule-modal:after,.loading:after,.empty:after{content:"";position:absolute;z-index:4;pointer-events:none;inset:3px 4px 3px 3px;border:1px solid color-mix(in srgb,var(--ink,#2C2C2A) 28%,transparent);border-radius:17px 15px 18px 14px / 15px 18px 14px 17px;opacity:.38;transform:rotate(.08deg)}
@@ -1475,6 +1637,35 @@ class FilmScriptBudget extends HTMLElement {
       @media(max-width:760px){.allocation .donut-wrap{grid-template-columns:minmax(150px,.9fr) minmax(145px,1fr);gap:10px}.donut-legend-row{padding-inline:6px}.donut-legend-row span{font-size:9px}.donut-legend-row strong{font-size:9px}}
       @media(max-width:560px){.allocation .donut-wrap{grid-template-columns:1fr;gap:12px}.donut-graphic{width:min(100%,228px)}.donut-legend{grid-template-columns:1fr 1fr;gap:3px}.donut-legend-row{padding:7px 6px}}
       @media(prefers-reduced-motion:reduce){.donut-segment-ring,.donut-segment-label rect,.donut-legend-row{transition-duration:.01ms!important}.donut-segment:hover .donut-segment-ring,.donut-segment:focus .donut-segment-ring{filter:none}}
+      /* Budget shares Imagine's liquid-glass language without changing its
+         financial hierarchy. The background remains calm; glass only gathers
+         navigation, actions and the information surfaces into clear layers. */
+      .fs-budget{--budget-glass:color-mix(in srgb,var(--surface,#FFFEF9) 72%,transparent);--budget-glass-strong:color-mix(in srgb,var(--surface,#FFFEF9) 86%,transparent);--budget-glass-edge:color-mix(in srgb,var(--hair,#E7E4DA) 68%,rgba(255,255,255,.45));--budget-glass-shadow:0 16px 38px color-mix(in srgb,var(--ink,#2C2C2A) 9%,transparent);position:relative;isolation:isolate;padding-inline:clamp(12px,2.1vw,26px)}
+      .fs-budget:before{content:"";position:absolute;z-index:-1;top:-48px;right:7%;width:min(440px,46vw);height:310px;border-radius:50%;background:radial-gradient(circle,color-mix(in srgb,var(--accent-soft,rgba(186,117,23,.11)) 78%,transparent),transparent 68%);filter:blur(12px);opacity:.54;pointer-events:none}
+      .budget-nav{top:10px;margin:0 -8px 30px;padding:9px 10px;border:1px solid var(--budget-glass-edge);border-radius:18px 16px 20px 15px;background:linear-gradient(135deg,var(--budget-glass-strong),var(--budget-glass));box-shadow:var(--budget-glass-shadow),inset 0 1px 0 color-mix(in srgb,#fff 58%,transparent);backdrop-filter:blur(22px) saturate(148%);-webkit-backdrop-filter:blur(22px) saturate(148%)}
+      .tabs{gap:5px;padding:3px;border:1px solid color-mix(in srgb,var(--hair,#E7E4DA) 62%,transparent);border-radius:13px 11px 14px 10px;background:color-mix(in srgb,var(--soft,#EFEBE1) 48%,transparent)}
+      .tabs button{min-height:36px;border-radius:10px 9px 11px 8px;font-weight:720;letter-spacing:-.08px}
+      .tabs button[aria-pressed="true"]{border-color:color-mix(in srgb,var(--hair,#E7E4DA) 76%,transparent);background:color-mix(in srgb,var(--surface,#FFFEF9) 82%,transparent);box-shadow:0 5px 14px color-mix(in srgb,var(--ink,#2C2C2A) 10%,transparent),inset 0 1px 0 color-mix(in srgb,#fff 72%,transparent)}
+      .budget-actions{gap:7px;padding:3px 4px 3px 8px;border:1px solid color-mix(in srgb,var(--hair,#E7E4DA) 60%,transparent);border-radius:13px 11px 14px 10px;background:color-mix(in srgb,var(--soft,#EFEBE1) 44%,transparent)}
+      .budget-actions span{max-width:120px;overflow:hidden;text-overflow:ellipsis}
+      .budget-actions .secondary,.budget-actions .export{min-height:34px;padding-inline:12px;border-radius:10px 9px 11px 8px;font-size:10.5px;letter-spacing:-.08px}
+      .budget-actions .secondary{border-color:color-mix(in srgb,var(--hair,#E7E4DA) 72%,transparent);background:color-mix(in srgb,var(--surface,#FFFEF9) 70%,transparent);box-shadow:inset 0 1px 0 color-mix(in srgb,#fff 70%,transparent),0 3px 9px color-mix(in srgb,var(--ink,#2C2C2A) 7%,transparent)}
+      .budget-actions .secondary:hover{border-color:color-mix(in srgb,var(--accent,#BA7517) 48%,var(--hair,#E7E4DA));background:color-mix(in srgb,var(--accent-soft,rgba(186,117,23,.11)) 72%,var(--surface,#FFFEF9));box-shadow:0 7px 15px color-mix(in srgb,var(--accent,#BA7517) 13%,transparent)}
+      .budget-actions .export{border:1px solid color-mix(in srgb,var(--ink,#2C2C2A) 70%,transparent);background:linear-gradient(135deg,color-mix(in srgb,var(--ink,#2C2C2A) 94%,#3A3935),var(--ink,#2C2C2A));box-shadow:inset 0 1px 0 rgba(255,255,255,.18),0 5px 13px color-mix(in srgb,var(--ink,#2C2C2A) 18%,transparent)}
+      .section-head{position:relative;margin-bottom:24px;padding:2px 4px 4px}.section-head:after{content:"";position:absolute;right:4px;bottom:0;left:4px;height:1px;background:linear-gradient(90deg,transparent,color-mix(in srgb,var(--hair,#E7E4DA) 72%,transparent) 16% 84%,transparent)}
+      .kpi,.panel,.table-card,.account,.formula-card,.settings-panel,.cash-week,.cashflow-bridge,.cash-profile,.finance-note,.expense-status-guide{border-color:var(--budget-glass-edge);background:linear-gradient(135deg,var(--budget-glass-strong),var(--budget-glass));box-shadow:var(--budget-glass-shadow),inset 0 1px 0 color-mix(in srgb,#fff 56%,transparent);backdrop-filter:blur(18px) saturate(138%);-webkit-backdrop-filter:blur(18px) saturate(138%)}
+      .kpi{box-shadow:0 12px 28px color-mix(in srgb,var(--ink,#2C2C2A) 8%,transparent),inset 0 1px 0 color-mix(in srgb,#fff 58%,transparent)}
+      .kpi:after,.panel:after,.table-card:after,.account:after,.formula-card:after,.schedule-modal:after,.loading:after,.empty:after{border-color:color-mix(in srgb,var(--hair,#E7E4DA) 56%,transparent);opacity:.42}
+      .account[open],.cash-week[open]{box-shadow:0 18px 38px color-mix(in srgb,var(--ink,#2C2C2A) 11%,transparent),inset 0 1px 0 color-mix(in srgb,#fff 62%,transparent)}
+      .table-title,.account summary,.cash-week summary{background:linear-gradient(90deg,color-mix(in srgb,var(--surface,#FFFEF9) 40%,transparent),transparent)}
+      input,select,.formula-note,.driver-result,.schedule-summary div{border-color:color-mix(in srgb,var(--hair,#E7E4DA) 72%,transparent);background:color-mix(in srgb,var(--surface,#FFFEF9) 62%,transparent);box-shadow:inset 0 1px 0 color-mix(in srgb,#fff 60%,transparent)}
+      .formula-note{backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px)}
+      .insight,.compression-note{border-color:color-mix(in srgb,var(--accent,#BA7517) 42%,var(--hair,#E7E4DA));background:linear-gradient(135deg,color-mix(in srgb,var(--accent-soft,rgba(186,117,23,.11)) 86%,transparent),color-mix(in srgb,var(--surface,#FFFEF9) 58%,transparent));box-shadow:inset 0 1px 0 color-mix(in srgb,#fff 54%,transparent),0 9px 20px color-mix(in srgb,var(--accent,#BA7517) 9%,transparent);backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px)}
+      .schedule-modal,.loading,.empty{border-color:var(--budget-glass-edge);background:linear-gradient(135deg,color-mix(in srgb,var(--surface,#FFFEF9) 90%,transparent),color-mix(in srgb,var(--soft,#EFEBE1) 64%,transparent));box-shadow:0 28px 90px color-mix(in srgb,var(--ink,#2C2C2A) 26%,transparent),inset 0 1px 0 color-mix(in srgb,#fff 72%,transparent);backdrop-filter:blur(28px) saturate(150%);-webkit-backdrop-filter:blur(28px) saturate(150%)}
+      .modal-backdrop{background:color-mix(in srgb,var(--ink,#2C2C2A) 42%,transparent);backdrop-filter:blur(12px) saturate(130%);-webkit-backdrop-filter:blur(12px) saturate(130%)}
+      @media(max-width:980px){.budget-nav{align-items:stretch;flex-direction:column}.budget-actions{justify-content:flex-end}.budget-actions span{margin-right:auto;max-width:180px}.tabs{max-width:100%}}
+      @media(max-width:620px){.fs-budget{padding-inline:10px}.budget-nav{top:6px;margin-inline:-2px;padding:7px}.budget-actions{display:grid;grid-template-columns:1fr 1fr}.budget-actions span{grid-column:1 / -1;max-width:none;padding:2px 4px}.budget-actions .secondary,.budget-actions .export{width:100%;min-width:0;padding-inline:8px}.budget-actions .export{grid-column:2}.tabs button{padding-inline:11px}.section-head{padding-inline:2px}}
+      @media(prefers-reduced-motion:reduce){.budget-nav,.tabs button,.budget-actions .secondary,.budget-actions .export,.kpi,.panel,.table-card,.account{transition-duration:.01ms!important}}
     </style>`;
   }
 }

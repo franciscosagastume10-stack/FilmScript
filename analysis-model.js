@@ -252,12 +252,28 @@ function sceneStats(scene) {
     if (block.type === 'dialogue' || block.type === 'paren') dialogueWords += count;
     if (block.type === 'action') actionWords += count;
     if (block.type === 'character') {
-      const name = cleanText(block.text).replace(/\s*\([^)]*\)\s*$/g, '').trim();
+      const name = screenplayCharacterCue(block.text);
       if (name) characterCues.push({ name, blockIndex });
     }
   });
   const estimatedSeconds = Math.max(8, Math.round(dialogueWords / 2.25 + actionWords / 2.65 + Math.max(0, allWords - dialogueWords - actionWords) / 3.2 + 2));
   return { dialogueWords, actionWords, words: allWords, characterCues, estimatedSeconds };
+}
+
+// Character blocks may include title-card metadata or transitions when a
+// screenplay was imported from a loose PDF. Never expose those as cast.
+function screenplayCharacterCue(value) {
+  const name = cleanText(value)
+    .replace(/\s*(?:\([^)]*\)|:)\s*$/g, '')
+    .replace(/^[^\p{L}\p{N}]+|[^\p{L}\p{N}]+$/gu, '')
+    .replace(/\s+/g, ' ')
+    .trim();
+  if (!name || name.length > 60 || !/\p{L}/u.test(name) || name.includes(':')) return '';
+  const key = normalized(name).toUpperCase().replace(/[.\-]+/g, ' ').replace(/\s+/g, ' ').trim();
+  const blocked = new Set(['FADE', 'FADE IN', 'FADE OUT', 'FADE TO BLACK', 'FADE TO WHITE', 'CUT', 'CUT TO', 'MATCH CUT TO', 'SMASH CUT TO', 'DISSOLVE', 'DISSOLVE TO', 'POV', 'THE END', 'END', 'FIN', 'BLACK', 'WHITE']);
+  if (blocked.has(key) || /^(?:T[IÍ]TULO|TITLE|ESCRITO\s+POR|WRITTEN\s+BY|AUTOR(?:A)?|AUTHOR|FADE|CORTE|CUT|MATCH\s+CUT|SMASH\s+CUT|DISSOLVE|INTERCUT|MONTAGE|CONTINUED|CONT['’]?D|SUPER|THE\s+END|END|FIN)\b/i.test(name)) return '';
+  if (/^(?:INT\.?|EXT\.?|INT\.?\s*\/\s*EXT\.?|INT\.?\/EXT\.?|I\/E)\b/i.test(name)) return '';
+  return name;
 }
 
 function reconcileNamedEntities(prefix, entries, previousEntries, positionKey) {

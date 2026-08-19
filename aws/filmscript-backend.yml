@@ -31,6 +31,16 @@ Parameters:
     Type: String
     Default: Lax
     AllowedValues: [Lax, None, Strict]
+  TaskCpu:
+    Type: String
+    Default: "512"
+    AllowedValues: ["256", "512", "1024"]
+    Description: Reserved Fargate CPU units. Production usage is monitored before increasing this value.
+  TaskMemory:
+    Type: String
+    Default: "1024"
+    AllowedValues: ["512", "1024", "2048"]
+    Description: Reserved Fargate memory in MiB. The default leaves ample room above observed production peaks.
 
 Resources:
   MediaBucket:
@@ -155,13 +165,15 @@ Resources:
       ClusterName: !Sub filmscript-${EnvironmentName}
       ClusterSettings:
         - Name: containerInsights
-          Value: enabled
+          # Standard ECS CPU and memory metrics remain available without the
+          # paid per-task Container Insights metric set.
+          Value: disabled
 
   LogGroup:
     Type: AWS::Logs::LogGroup
     Properties:
       LogGroupName: !Sub /ecs/filmscript/${EnvironmentName}
-      RetentionInDays: 30
+      RetentionInDays: 7
 
   ExecutionRole:
     Type: AWS::IAM::Role
@@ -224,8 +236,8 @@ Resources:
       Family: !Sub filmscript-${EnvironmentName}
       RequiresCompatibilities: [FARGATE]
       NetworkMode: awsvpc
-      Cpu: "1024"
-      Memory: "2048"
+      Cpu: !Ref TaskCpu
+      Memory: !Ref TaskMemory
       ExecutionRoleArn: !GetAtt ExecutionRole.Arn
       TaskRoleArn: !GetAtt TaskRole.Arn
       Volumes:
@@ -254,6 +266,8 @@ Resources:
               Value: "4173"
             - Name: FILMSCRIPT_DATA_DIR
               Value: /data
+            - Name: FILMSCRIPT_SQLITE_JOURNAL_MODE
+              Value: DELETE
             - Name: FILMSCRIPT_REFERENCE_STORAGE
               Value: s3
             - Name: FILMSCRIPT_CANVAS_STORAGE_PROVIDER
@@ -276,13 +290,19 @@ Resources:
               Value: !Ref SessionCookieSameSite
             - Name: SESSION_COOKIE_SECURE
               Value: "true"
+            - Name: RECURRENTE_CREATOR_AMOUNT_CENTS
+              Value: "2499"
+            - Name: RECURRENTE_FULL_AMOUNT_CENTS
+              Value: "3999"
+            # Legacy values are retained only while historical subscriptions
+            # migrate to Creator. New checkout uses Creator and Full only.
             - Name: RECURRENTE_LUMIERE_AMOUNT_CENTS
-              Value: "2000"
+              Value: "1999"
             - Name: RECURRENTE_CURRENCY
               Value: USD
           Secrets:
-            - Name: OPENROUTER_API_KEY
-              ValueFrom: !Sub "${SecretsArn}:OPENROUTER_API_KEY::"
+            - Name: OPENAI_API_KEY
+              ValueFrom: !Sub "${SecretsArn}:OPENAI_API_KEY::"
             - Name: GOOGLE_CLIENT_ID
               ValueFrom: !Sub "${SecretsArn}:GOOGLE_CLIENT_ID::"
             - Name: GOOGLE_CLIENT_SECRET
@@ -291,8 +311,16 @@ Resources:
               ValueFrom: !Sub "${SecretsArn}:RECURRENTE_SECRET_KEY::"
             - Name: RECURRENTE_WEBHOOK_SECRET
               ValueFrom: !Sub "${SecretsArn}:RECURRENTE_WEBHOOK_SECRET::"
+            - Name: RECURRENTE_CREATOR_PRODUCT_ID
+              ValueFrom: !Sub "${SecretsArn}:RECURRENTE_CREATOR_PRODUCT_ID::"
+            - Name: RECURRENTE_FULL_PRODUCT_ID
+              ValueFrom: !Sub "${SecretsArn}:RECURRENTE_FULL_PRODUCT_ID::"
             - Name: RECURRENTE_LUMIERE_PRODUCT_ID
               ValueFrom: !Sub "${SecretsArn}:RECURRENTE_LUMIERE_PRODUCT_ID::"
+            - Name: RECURRENTE_BASIC_PRODUCT_ID
+              ValueFrom: !Sub "${SecretsArn}:RECURRENTE_BASIC_PRODUCT_ID::"
+            - Name: RECURRENTE_LUMIERE_RESET_PRODUCT_ID
+              ValueFrom: !Sub "${SecretsArn}:RECURRENTE_LUMIERE_RESET_PRODUCT_ID::"
           LogConfiguration:
             LogDriver: awslogs
             Options:
@@ -344,6 +372,7 @@ Resources:
       LoadBalancerArn: !Ref LoadBalancer
       Port: 443
       Protocol: HTTPS
+      SslPolicy: ELBSecurityPolicy-TLS13-1-2-2021-06
       Certificates:
         - CertificateArn: !Ref CertificateArn
       DefaultActions:
@@ -364,8 +393,10 @@ Resources:
       PropagateTags: SERVICE
       HealthCheckGracePeriodSeconds: 90
       DeploymentConfiguration:
-        MaximumPercent: 100
-        MinimumHealthyPercent: 0
+        # Keep the healthy revision serving while the replacement starts.
+        # A 100/0 policy caused a visible API outage during every deployment.
+        MaximumPercent: 200
+        MinimumHealthyPercent: 100
         DeploymentCircuitBreaker:
           Enable: true
           Rollback: true

@@ -2,6 +2,55 @@
 // proxy. The OpenRouter credential never leaves the FilmScript server.
 (() => {
   const resolve = (path) => window.filmscriptApiUrl ? window.filmscriptApiUrl(path) : path;
+  const entitlementEnabled = (value) => value === true || value?.allowed === true;
+  let account = null;
+  let accountRequest = null;
+  const upgradeErrors = new Set([
+    'filmscript_creator_required',
+    'image_generation_plan_required',
+    'image_credits_exhausted',
+    'lumiere_credits_exhausted',
+    // Keep this for an in-flight deployment where an older API is still
+    // answering requests while the new entitlement model rolls out.
+    'filmscript_pro_required',
+  ]);
+  const notifyUpgrade = (data = {}) => {
+    const detail = { ...data };
+    if (detail.error === 'image_generation_plan_required') {
+      detail.message = detail.message || 'Image generation is included with FilmScript Full at $39.99/month. Full includes 1,000 image credits each month; each image uses 3 credits.';
+      detail.requiredTier = 'full';
+    } else if (detail.error === 'filmscript_creator_required') {
+      detail.message = detail.message || 'This Lumiere feature is included with FilmScript Creator at $24.99/month and Full.';
+      detail.requiredTier = 'creator';
+    } else if (detail.error === 'lumiere_credits_exhausted') {
+      detail.message = detail.message || 'Your included Lumiere prompts are used. Creator at $24.99/month unlocks ongoing Lumiere work.';
+      detail.requiredTier = 'creator';
+    }
+    window.dispatchEvent(new CustomEvent('filmscript:pro-required', { detail }));
+    window.dispatchEvent(new CustomEvent('filmscript:upgrade-required', { detail }));
+  };
+  const getAccount = async ({ refresh = false } = {}) => {
+    if (!refresh && account) return account;
+    if (!refresh && accountRequest) return accountRequest;
+    accountRequest = fetch(resolve('/api/me'), { credentials: 'include' })
+      .then(async (response) => {
+        const data = await response.json().catch(() => null);
+        if (!response.ok) throw new Error(data?.message || `Account request failed (${response.status})`);
+        account = data || null;
+        return account;
+      })
+      .finally(() => { accountRequest = null; });
+    return accountRequest;
+  };
+  // Shared entitlement reader for feature workspaces. It only reads the
+  // signed-in account payload; enforcement remains on the server.
+  window.filmscriptEntitlements = window.filmscriptEntitlements || {
+    get: getAccount,
+    refresh: () => getAccount({ refresh: true }),
+    enabled: entitlementEnabled,
+    has(key, value = account) { return entitlementEnabled(value?.entitlements?.[key]); },
+    clear() { account = null; },
+  };
   const interfaceLanguage = () => {
     const language = window.filmscriptLanguage?.get?.();
     if (language === 'es' || language === 'en') return language;
@@ -19,9 +68,7 @@
     if (!res.ok) {
       const data = await res.json().catch(() => ({}));
       if (res.status === 401) window.dispatchEvent(new CustomEvent('filmscript:auth-required'));
-      if ((res.status === 402 || res.status === 403) && data.error === 'filmscript_pro_required') {
-        window.dispatchEvent(new CustomEvent('filmscript:pro-required', { detail: data }));
-      }
+      if ((res.status === 402 || res.status === 403 || res.status === 429) && upgradeErrors.has(data.error)) notifyUpgrade(data);
       throw new Error(data.message || data.error || "Lumiere proxy error " + res.status);
     }
     const data = await res.json();

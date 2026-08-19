@@ -26,7 +26,18 @@ fs.mkdirSync(path.dirname(DATABASE_PATH), { recursive: true });
 try { fs.chmodSync(path.dirname(DATABASE_PATH), 0o700); } catch {}
 
 const sqlite = new Database(DATABASE_PATH);
-sqlite.pragma("journal_mode = WAL");
+const SESSION_TOUCH_INTERVAL_MS = Math.max(
+  60_000,
+  Number(process.env.FILMSCRIPT_SESSION_TOUCH_INTERVAL_MS) || 15 * 60 * 1000,
+);
+// SQLite's WAL sidecar files are not safe on shared network filesystems such as
+// the production EFS volume. Keep local development fast with WAL, but use the
+// rollback journal when explicitly configured for shared persistent storage.
+const configuredJournalMode = String(process.env.FILMSCRIPT_SQLITE_JOURNAL_MODE || "WAL").toUpperCase();
+const SQLITE_JOURNAL_MODE = ["WAL", "DELETE", "TRUNCATE", "PERSIST"].includes(configuredJournalMode)
+  ? configuredJournalMode
+  : "WAL";
+sqlite.pragma(`journal_mode = ${SQLITE_JOURNAL_MODE}`);
 sqlite.pragma("foreign_keys = ON");
 sqlite.pragma("busy_timeout = 5000");
 for (const filename of [DATABASE_PATH, `${DATABASE_PATH}-wal`, `${DATABASE_PATH}-shm`]) {
@@ -96,6 +107,12 @@ sqlite.exec(`
   );
   CREATE INDEX IF NOT EXISTS canvas_workspaces_user_idx ON canvas_workspaces(user_id, updated_at DESC);
 
+  CREATE TABLE IF NOT EXISTS canvas_libraries (
+    user_id TEXT PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE,
+    data_json TEXT NOT NULL,
+    updated_at TEXT NOT NULL
+  );
+
   CREATE TABLE IF NOT EXISTS budget_receipts (
     id TEXT PRIMARY KEY,
     script_id TEXT NOT NULL REFERENCES scripts(id) ON DELETE CASCADE,
@@ -114,6 +131,9 @@ sqlite.exec(`
     status TEXT,
     checkout_id TEXT,
     provider_subscription_id TEXT,
+    billing_cycle_key TEXT,
+    current_period_start TEXT,
+    current_period_end TEXT,
     updated_at TEXT NOT NULL
   );
 
@@ -169,6 +189,16 @@ if (!userColumns.has("profile_completed_at")) {
 const checkoutColumns = new Set(sqlite.prepare("PRAGMA table_info(checkouts)").all().map((column) => column.name));
 if (!checkoutColumns.has("product_id")) {
   sqlite.exec("ALTER TABLE checkouts ADD COLUMN product_id TEXT");
+}
+const subscriptionColumns = new Set(sqlite.prepare("PRAGMA table_info(subscriptions)").all().map((column) => column.name));
+if (!subscriptionColumns.has("billing_cycle_key")) {
+  sqlite.exec("ALTER TABLE subscriptions ADD COLUMN billing_cycle_key TEXT");
+}
+if (!subscriptionColumns.has("current_period_start")) {
+  sqlite.exec("ALTER TABLE subscriptions ADD COLUMN current_period_start TEXT");
+}
+if (!subscriptionColumns.has("current_period_end")) {
+  sqlite.exec("ALTER TABLE subscriptions ADD COLUMN current_period_end TEXT");
 }
 
 const nowIso = () => new Date().toISOString();
@@ -271,13 +301,21 @@ function importLegacyData() {
       ensureUserRow(ownerId, user);
       if (user.subscription) {
         sqlite.prepare(`
-          INSERT INTO subscriptions (user_id, plan, status, checkout_id, provider_subscription_id, updated_at)
-          VALUES (?, ?, ?, ?, ?, ?)
+          INSERT INTO subscriptions (
+            user_id, plan, status, checkout_id, provider_subscription_id,
+            billing_cycle_key, current_period_start, current_period_end, updated_at
+          )
+          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
           ON CONFLICT(user_id) DO UPDATE SET plan=excluded.plan, status=excluded.status,
             checkout_id=excluded.checkout_id, provider_subscription_id=excluded.provider_subscription_id,
+            billing_cycle_key=excluded.billing_cycle_key,
+            current_period_start=excluded.current_period_start,
+            current_period_end=excluded.current_period_end,
             updated_at=excluded.updated_at
         `).run(ownerId, user.subscription.plan || null, user.subscription.status || null,
           user.subscription.checkoutId || null, user.subscription.subscriptionId || null,
+          user.subscription.billingCycleKey || null, user.subscription.currentPeriodStart || null,
+          user.subscription.currentPeriodEnd || null,
           user.subscription.updatedAt || nowIso());
       }
     }
@@ -368,7 +406,7 @@ function claimLegacyLocalDataForSingleGoogleUser() {
 }
 
 claimLegacyLocalDataForSingleGoogleUser();
-sqlite.prepare("INSERT OR REPLACE INTO schema_meta (key, value) VALUES ('schema_version', '8')").run();
+sqlite.prepare("INSERT OR REPLACE INTO schema_meta (key, value) VALUES ('schema_version', '9')").run();
 
 function rowToUser(row) {
   if (!row) return null;
@@ -407,6 +445,9 @@ function getSubscription(userId) {
     status: row.status,
     checkoutId: row.checkout_id,
     subscriptionId: row.provider_subscription_id,
+    billingCycleKey: row.billing_cycle_key || null,
+    currentPeriodStart: row.current_period_start || null,
+    currentPeriodEnd: row.current_period_end || null,
     updatedAt: row.updated_at,
   };
 }
@@ -437,13 +478,21 @@ function saveBillingSnapshot(snapshot) {
       if (user?.subscription) {
         const sub = user.subscription;
         sqlite.prepare(`
-          INSERT INTO subscriptions (user_id, plan, status, checkout_id, provider_subscription_id, updated_at)
-          VALUES (?, ?, ?, ?, ?, ?)
+          INSERT INTO subscriptions (
+            user_id, plan, status, checkout_id, provider_subscription_id,
+            billing_cycle_key, current_period_start, current_period_end, updated_at
+          )
+          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
           ON CONFLICT(user_id) DO UPDATE SET plan=excluded.plan, status=excluded.status,
             checkout_id=excluded.checkout_id, provider_subscription_id=excluded.provider_subscription_id,
+            billing_cycle_key=excluded.billing_cycle_key,
+            current_period_start=excluded.current_period_start,
+            current_period_end=excluded.current_period_end,
             updated_at=excluded.updated_at
         `).run(id, sub.plan || null, sub.status || null, sub.checkoutId || null,
-          sub.subscriptionId || null, sub.updatedAt || nowIso());
+          sub.subscriptionId || null, sub.billingCycleKey || null,
+          sub.currentPeriodStart || null, sub.currentPeriodEnd || null,
+          sub.updatedAt || nowIso());
       }
     }
     for (const checkout of Object.values(snapshot?.checkouts || {})) {
@@ -548,16 +597,20 @@ function getCanvasWorkspace(scriptId, userId) {
     FROM canvas_workspaces
     JOIN scripts ON scripts.id = canvas_workspaces.script_id
     WHERE canvas_workspaces.script_id = ?
-      AND canvas_workspaces.user_id = ?
-      AND scripts.user_id = ?
+      AND (scripts.user_id = ? OR EXISTS (
+        SELECT 1 FROM project_memberships
+        WHERE project_id = scripts.id AND user_id = ? AND status = 'active'
+      ))
   `).get(scriptId, userId, userId);
   return row ? parseJson(row.data_json, null) : null;
 }
 
 function saveCanvasWorkspace(scriptId, userId, workspace) {
   if (!scriptId || !userId) throw new Error("scriptId and userId are required");
-  const owned = sqlite.prepare("SELECT 1 FROM scripts WHERE id = ? AND user_id = ?").get(scriptId, userId);
-  if (!owned) return false;
+  const project = sqlite.prepare(`SELECT user_id FROM scripts WHERE id = ? AND (user_id = ? OR EXISTS (
+    SELECT 1 FROM project_memberships WHERE project_id = scripts.id AND user_id = ? AND status = 'active'
+  ))`).get(scriptId, userId, userId);
+  if (!project) return false;
   const updatedAt = workspace?.updatedAt || nowIso();
   sqlite.prepare(`
     INSERT INTO canvas_workspaces (script_id, user_id, data_json, updated_at)
@@ -566,7 +619,28 @@ function saveCanvasWorkspace(scriptId, userId, workspace) {
       user_id = excluded.user_id,
       data_json = excluded.data_json,
       updated_at = excluded.updated_at
-  `).run(scriptId, userId, stringify(workspace || {}), updatedAt);
+  `).run(scriptId, project.user_id, stringify(workspace || {}), updatedAt);
+  return true;
+}
+
+function getCanvasLibrary(userId) {
+  if (!userId) return null;
+  const row = sqlite.prepare("SELECT data_json FROM canvas_libraries WHERE user_id = ?").get(userId);
+  return row ? parseJson(row.data_json, null) : null;
+}
+
+function saveCanvasLibrary(userId, library) {
+  if (!userId) throw new Error("userId is required");
+  const owned = sqlite.prepare("SELECT 1 FROM users WHERE id = ?").get(userId);
+  if (!owned) return false;
+  const updatedAt = library?.updatedAt || nowIso();
+  sqlite.prepare(`
+    INSERT INTO canvas_libraries (user_id, data_json, updated_at)
+    VALUES (?, ?, ?)
+    ON CONFLICT(user_id) DO UPDATE SET
+      data_json = excluded.data_json,
+      updated_at = excluded.updated_at
+  `).run(userId, stringify(library || {}), updatedAt);
   return true;
 }
 
@@ -606,8 +680,8 @@ function getBudgetReceipt(id, scriptId, userId) {
   const row = sqlite.prepare(`
     SELECT id, script_id, user_id, filename, mime_type, size_bytes, data_blob, created_at
     FROM budget_receipts
-    WHERE id = ? AND script_id = ? AND user_id = ?
-  `).get(id, scriptId, userId);
+    WHERE id = ? AND script_id = ?
+  `).get(id, scriptId);
   if (!row) return null;
   return {
     id: row.id,
@@ -633,7 +707,13 @@ function getSessionByToken(token) {
     sqlite.prepare("DELETE FROM sessions WHERE id = ?").run(row.id);
     return null;
   }
-  sqlite.prepare("UPDATE sessions SET last_seen_at = ? WHERE id = ?").run(nowIso(), row.id);
+  // Authentication is checked on every protected request. Touching SQLite on
+  // every read turns harmless polling into constant EFS journal writes, so a
+  // session is refreshed at most once per interval.
+  const lastSeenAt = Date.parse(row.last_seen_at || "");
+  if (!Number.isFinite(lastSeenAt) || Date.now() - lastSeenAt >= SESSION_TOUCH_INTERVAL_MS) {
+    sqlite.prepare("UPDATE sessions SET last_seen_at = ? WHERE id = ?").run(nowIso(), row.id);
+  }
   return {
     id: row.id,
     userId: row.user_id || null,
@@ -664,16 +744,30 @@ function createSession({ token = null, userId = null, authMethod = "anonymous" }
   const rawToken = token || crypto.randomBytes(32).toString("base64url");
   const id = randomId("ses", 16);
   const timestamp = nowIso();
+  // Keep the session table bounded and avoid year-long bearer cookies.
+  sqlite.prepare("DELETE FROM sessions WHERE expires_at <= ?").run(timestamp);
+  const durationDays = authMethod === "google" ? 30 : 1;
   sqlite.prepare(`
     INSERT INTO sessions (id, token_hash, user_id, auth_method, created_at, expires_at, last_seen_at)
     VALUES (?, ?, ?, ?, ?, ?, ?)
-  `).run(id, hashSecret(rawToken), userId, authMethod, timestamp, futureIso(365), timestamp);
+  `).run(id, hashSecret(rawToken), userId, authMethod, timestamp, futureIso(durationDays), timestamp);
   return { token: rawToken, session: getSessionById(id) };
 }
 
 function deleteSessionByToken(token) {
   if (!token) return;
   sqlite.prepare("DELETE FROM sessions WHERE token_hash = ?").run(hashSecret(token));
+}
+
+function rotateSessionToken(sessionId) {
+  const rawToken = crypto.randomBytes(32).toString("base64url");
+  const timestamp = nowIso();
+  const result = sqlite.prepare(`
+    UPDATE sessions
+    SET token_hash = ?, expires_at = ?, last_seen_at = ?
+    WHERE id = ?
+  `).run(hashSecret(rawToken), futureIso(30), timestamp, sessionId);
+  return result.changes ? rawToken : null;
 }
 
 function createOauthState(state, sessionId, returnTo) {
@@ -706,10 +800,15 @@ function transferOwnership(fromUserId, toUserId) {
   const targetSubscription = sqlite.prepare("SELECT * FROM subscriptions WHERE user_id = ?").get(toUserId);
   if (sourceSubscription && !targetSubscription) {
     sqlite.prepare(`
-      INSERT INTO subscriptions (user_id, plan, status, checkout_id, provider_subscription_id, updated_at)
-      VALUES (?, ?, ?, ?, ?, ?)
+      INSERT INTO subscriptions (
+        user_id, plan, status, checkout_id, provider_subscription_id,
+        billing_cycle_key, current_period_start, current_period_end, updated_at
+      )
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
     `).run(toUserId, sourceSubscription.plan, sourceSubscription.status, sourceSubscription.checkout_id,
-      sourceSubscription.provider_subscription_id, sourceSubscription.updated_at);
+      sourceSubscription.provider_subscription_id, sourceSubscription.billing_cycle_key,
+      sourceSubscription.current_period_start, sourceSubscription.current_period_end,
+      sourceSubscription.updated_at);
   }
   sqlite.prepare("DELETE FROM subscriptions WHERE user_id = ?").run(fromUserId);
   sqlite.prepare("DELETE FROM users WHERE id = ? AND google_sub IS NULL").run(fromUserId);
@@ -738,8 +837,8 @@ function connectGoogleIdentity(sessionId, profile) {
         email_verified = ?, updated_at = ? WHERE id = ?
     `).run(googleSub, profile.email || null, profile.name || profile.email?.split("@")[0] || "Writer",
       profile.picture || null, profile.email_verified === false ? 0 : 1, nowIso(), userId);
-    sqlite.prepare("UPDATE sessions SET user_id = ?, auth_method = 'google', last_seen_at = ? WHERE id = ?")
-      .run(userId, nowIso(), sessionId);
+    sqlite.prepare("UPDATE sessions SET user_id = ?, auth_method = 'google', expires_at = ?, last_seen_at = ? WHERE id = ?")
+      .run(userId, futureIso(30), nowIso(), sessionId);
     return getUser(userId);
   })();
 }
@@ -810,9 +909,9 @@ function updateUserLumierePreferences(userId, preferences) {
 }
 
 function databaseHealth() {
-  const scripts = sqlite.prepare("SELECT COUNT(*) AS count FROM scripts").get().count;
-  const users = sqlite.prepare("SELECT COUNT(*) AS count FROM users").get().count;
-  return { ok: true, adapter: "sqlite", path: DATABASE_PATH, schemaVersion: 8, users, scripts };
+  sqlite.prepare("SELECT 1 AS ok").get();
+  const schemaVersion = Number(sqlite.prepare("SELECT value FROM schema_meta WHERE key = 'schema_version'").get()?.value || 9);
+  return { ok: true, adapter: "sqlite", path: DATABASE_PATH, schemaVersion };
 }
 
 export {
@@ -826,6 +925,7 @@ export {
   getSessionById,
   getSessionByToken,
   getBudgetReceipt,
+  getCanvasLibrary,
   getCanvasWorkspace,
   getSubscription,
   getUser,
@@ -836,11 +936,13 @@ export {
   loadScriptsSnapshot,
   saveBillingSnapshot,
   saveBudgetReceipt,
+  saveCanvasLibrary,
   saveCanvasWorkspace,
   saveCreditsSnapshot,
   saveLumiereCreditsSnapshot,
   savePreproductionSnapshot,
   saveScriptsSnapshot,
+  rotateSessionToken,
   updateUserLumierePreferences,
   updateUserName,
   updateUserProfile,

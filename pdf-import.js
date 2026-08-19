@@ -1,5 +1,6 @@
-// Reliable client-side PDF text extraction for screenplay imports.
-// The PDF stays in the browser; it is never uploaded to FilmScript.
+// Client-side screenplay PDF extraction. The file stays in the browser.
+// Keep layout data: indentation is meaningful in a screenplay (action,
+// character cues and dialogue normally occupy different columns).
 (() => {
   const PDFJS_URL = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js';
   const WORKER_URL = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
@@ -23,36 +24,58 @@
     return loader;
   }
 
-  window.filmscriptPdfText = async (file) => {
+  function linesForPage(content, pageNumber, pageWidth) {
+    const runs = content.items
+      .map((item) => ({
+        text: String(item.str || '').replace(/\u00a0/g, ' ').trim(),
+        x: Number(item.transform?.[4] || 0),
+        y: Number(item.transform?.[5] || 0),
+        width: Number(item.width || 0),
+      }))
+      .filter((item) => item.text);
+    // PDF text streams are not guaranteed to be emitted in reading order.
+    runs.sort((a, b) => Math.abs(b.y - a.y) > 2.5 ? b.y - a.y : a.x - b.x);
+    const groups = [];
+    runs.forEach((run) => {
+      const group = groups.find((candidate) => Math.abs(candidate.y - run.y) <= 2.5);
+      if (group) group.runs.push(run);
+      else groups.push({ y: run.y, runs: [run] });
+    });
+    return groups
+      .sort((a, b) => b.y - a.y)
+      .map((group) => {
+        const ordered = group.runs.sort((a, b) => a.x - b.x);
+        let previousRight = null;
+        const text = ordered.map((run) => {
+          const gap = previousRight === null ? '' : (run.x - previousRight > 1.8 ? ' ' : '');
+          previousRight = Math.max(previousRight ?? 0, run.x + run.width);
+          return gap + run.text;
+        }).join('').replace(/\s+/g, ' ').trim();
+        return { text, x: ordered[0]?.x || 0, y: group.y, page: pageNumber, pageWidth };
+      })
+      .filter((line) => line.text);
+  }
+
+  window.filmscriptPdfLines = async (file) => {
     const pdfjs = await loadPdfJs();
     const pdf = await pdfjs.getDocument({ data: await file.arrayBuffer() }).promise;
-    const pages = [];
+    const lines = [];
     for (let pageNumber = 1; pageNumber <= pdf.numPages; pageNumber++) {
       const page = await pdf.getPage(pageNumber);
-      const content = await page.getTextContent();
-      const lines = [];
-      let lastY = null;
-      let line = '';
-      for (const item of content.items) {
-        const text = (item.str || '').trim();
-        if (!text) continue;
-        const y = item.transform ? item.transform[5] : lastY;
-        if (lastY !== null && Math.abs(y - lastY) > 2.5) {
-          if (line) lines.push(line.trim());
-          line = text;
-        } else {
-          line += (line ? ' ' : '') + text;
-        }
-        lastY = y;
-        if (item.hasEOL) {
-          if (line) lines.push(line.trim());
-          line = '';
-          lastY = null;
-        }
-      }
-      if (line) lines.push(line.trim());
-      pages.push(lines.join('\n'));
+      const viewport = page.getViewport({ scale: 1 });
+      lines.push(...linesForPage(await page.getTextContent(), pageNumber, viewport.width));
     }
-    return pages.join('\n\n');
+    return lines;
+  };
+
+  // Kept for any existing integrations that only need plain text.
+  window.filmscriptPdfText = async (file) => {
+    const lines = await window.filmscriptPdfLines(file);
+    let previousPage = lines[0]?.page;
+    return lines.map((line) => {
+      const separator = line.page !== previousPage ? '\n\n' : '\n';
+      previousPage = line.page;
+      return separator + line.text;
+    }).join('').trim();
   };
 })();

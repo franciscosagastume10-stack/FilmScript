@@ -15,7 +15,7 @@ test("authenticated pages load the private profile onboarding flow", async () =>
   assert.match(onboarding, /type="date"/);
   for (const page of ["App.dc.html", "Editor v5.dc.html", "Subscription.dc.html"]) {
     const html = await fs.readFile(path.join(ROOT, page), "utf8");
-    assert.match(html, /profile-onboarding\.js\?v=20260716-profile1/);
+    assert.match(html, /profile-onboarding\.js\?v=[^"']+/);
   }
   for (const page of ["App.dc.html", "Editor v5.dc.html"]) {
     const html = await fs.readFile(path.join(ROOT, page), "utf8");

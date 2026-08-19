@@ -4,7 +4,9 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="description" content="FilmScript connects screenwriting, visual planning, analysis, breakdowns, schedules, shot lists, budgets and calendars in one filmmaking workspace.">
-<title>FilmScript — Write it. See it. Make it.</title>
+<title>FilmScript | Write it. See it. Make it.</title>
+<link rel="icon" href="./assets/filmscript-favicon.svg?v=20260813" type="image/svg+xml">
+<link rel="shortcut icon" href="./assets/filmscript-favicon.svg?v=20260813" type="image/svg+xml">
 <script src="./support.js"></script>
 <script src="./runtime-config.js?v=20260710-auth1"></script>
 <script src="./funnel-tracking.js?v=20260716-erp1"></script>
@@ -12,11 +14,50 @@
 <script src="./language-preference.js?v=20260716-credits1"></script>
 <script src="./ui-sounds.js?v=20260713-profile-option1"></script>
 <script src="./billing-client.js?v=20260716-profile-safe1"></script>
+<script defer src="./credit-indicator.js?v=20260801-credit-panel1"></script>
 <script src="./lumiere-client.js?v=20260720-openrouter1"></script>
 <script src="./lumiere-preferences.js?v=20260713-taste1"></script>
 <link rel="stylesheet" href="./auth-modal.css?v=20260713-login1">
 <link rel="stylesheet" href="./filmscript-controls.css?v=20260716-typography1">
-<link rel="stylesheet" href="./filmscript-landing.css?v=20260807-home1">
+  <link rel="stylesheet" href="./filmscript-landing.css?v=20260815-header-login2">
+<style id="filmscript-compact-landing-login">
+  /* Keep the public sign-in control easy to tap without letting it dominate the header. */
+  header :is(a, button):last-child {
+    min-width: 0 !important;
+    height: 46px !important;
+    min-height: 46px !important;
+    padding: 0 18px !important;
+    line-height: 1 !important;
+  }
+
+  @media (max-width: 640px) {
+    header :is(a, button):last-child {
+      height: 44px !important;
+      min-height: 44px !important;
+      padding: 0 16px !important;
+    }
+  }
+</style>
+<style id="filmscript-compact-landing-login">
+  /* Keep sign-in visible without letting it dominate the landing header. */
+  header > :is(a, button):last-child,
+  header > *:last-child :is(a, button):last-child {
+    min-width: 0 !important;
+    height: 46px !important;
+    min-height: 46px !important;
+    padding: 0 18px !important;
+    line-height: 1 !important;
+  }
+
+  @media (max-width: 640px) {
+    header > :is(a, button):last-child,
+    header > *:last-child :is(a, button):last-child {
+      height: 44px !important;
+      min-height: 44px !important;
+      padding: 0 16px !important;
+    }
+  }
+</style>
 </head>
 <body>
 <x-dc>
@@ -83,9 +124,6 @@
   .fs-navlink { transition: color .15s ease; }
   .fs-navlink:hover { color: #FFFEF9 !important; }
   .fs-hero-title { text-wrap: balance; }
-  .fs-hero-plan-cta { appearance: none; border: 0; background: transparent; color: var(--accent, #BA7517); padding: 0 4px; font: 600 13px/1.35 "Helvetica Neue", Helvetica, Arial, sans-serif; letter-spacing: .05px; cursor: pointer; text-decoration: underline; text-decoration-thickness: 1px; text-underline-offset: 3px; transition: color .16s ease, transform .18s cubic-bezier(.2,.8,.2,1); }
-  .fs-hero-plan-cta:hover { color: var(--accent-hover, #EF9F27); transform: translateY(-1px); }
-  .fs-hero-plan-cta:focus-visible { outline: 2px solid var(--accent, #BA7517); outline-offset: 4px; border-radius: 4px; }
   @media (max-width: 620px) { .fs-hero-title { font-size: clamp(42px, 12vw, 58px) !important; letter-spacing: -1.5px !important; } }
 </style>
 </helmet>
@@ -114,7 +152,7 @@
         </sc-if>
       </div>
       <sc-if value="{{ signedOut }}" hint-placeholder-val="{{ true }}">
-        <button type="button" data-testid="landing-login-top" onClick="{{ openAuth }}" class="fsx-scale" style="border: 0; font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; font-size: 13px; font-weight: 600; color: #2C2C2A; background: #FFFEF9; padding: 7px 16px; border-radius: 999px; cursor: pointer;">Log in</button>
+        <button type="button" data-testid="landing-login-top" onClick="{{ openAuth }}" class="fs-home-login fsx-scale">Log in</button>
       </sc-if>
       <sc-if value="{{ signedIn }}" hint-placeholder-val="{{ false }}">
         <div style="position: relative;">
@@ -125,11 +163,11 @@
             <div style="font-size: 11.5px; color: var(--muted, #888780); margin-top: 4px;">{{ planLabel }}</div>
             <div style="height: 1px; background: var(--soft, #e4e2d8); margin: 10px 0 6px;"></div>
             <div class="fs-menuitem" onClick="{{ openAccountDetails }}">Account details</div>
-            <sc-if value="{{ isLumierePlan }}" hint-placeholder-val="{{ false }}"><div class="fs-menuitem" onClick="{{ openLumierePreferences }}">Personalize Lumiere</div></sc-if>
+            <sc-if value="{{ hasPaidPlan }}" hint-placeholder-val="{{ false }}"><div class="fs-menuitem" onClick="{{ openLumierePreferences }}">Personalize Lumiere</div></sc-if>
             <div class="fs-menuitem" onClick="{{ openTerms }}">Terms & conditions</div>
             <div style="height: 1px; background: var(--soft, #e4e2d8); margin: 6px 0;"></div>
-            <sc-if value="{{ isBasicPlan }}" hint-placeholder-val="{{ false }}">
-              <div class="fs-menuitem" onClick="{{ upgradeToLumiere }}">Upgrade to FilmScript Pro</div>
+            <sc-if value="{{ isCreatorPlan }}" hint-placeholder-val="{{ false }}">
+              <div class="fs-menuitem" onClick="{{ upgradeToFull }}">Upgrade to Full</div>
             </sc-if>
             <sc-if value="{{ noPlan }}" hint-placeholder-val="{{ true }}">
               <div class="fs-menuitem" onClick="{{ goLandingFromAccount }}">Choose a plan</div>
@@ -146,7 +184,7 @@
   </div>
 
   <sc-if value="{{ accountDetailsOpen }}" hint-placeholder-val="{{ false }}"><div onClick="{{ closeAccountDetails }}" style="position: fixed; inset: 0; z-index: 80; background: rgba(35,35,34,.28); display: flex; align-items: center; justify-content: center; padding: 24px;"><div class="fs-profile-sheet" onClick="{{ stop }}" style="width: min(520px, 100%); max-height: 88vh; overflow-y: auto; background: var(--surface, #FFFEF9); border: 1.5px solid var(--line, #2C2C2A); border-radius: 20px; padding: 26px; filter: url(#fs-sketch);"><div style="display: flex; align-items: center; gap: 14px;"><div style="width: 46px; height: 46px; border-radius: 50%; background: var(--accent, #BA7517); color: #FFFEF9; display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 17px;">{{ userInitial }}</div><div style="flex: 1;"><div style="font-size: 20px; font-weight: 700; color: var(--ink, #2C2C2A);">Your account</div><div style="font-size: 12.5px; color: var(--muted, #888780);">Connected securely with Google.</div></div><div onClick="{{ closeAccountDetails }}" style="font-size: 22px; color: var(--muted, #888780); cursor: pointer;">×</div></div><div style="margin-top: 24px; display: grid; gap: 9px;"><div style="padding: 14px; border: 1px solid var(--soft, #E4E2D8); border-radius: 13px;"><div style="display: flex; justify-content: space-between;"><div style="font-size: 10px; text-transform: uppercase; letter-spacing: 1.2px; color: var(--muted, #888780);">Name</div><div onClick="{{ saveProfileName }}" style="font-size: 11px; color: var(--accent, #BA7517); font-weight: 700; cursor: pointer;">{{ profileSaveLabel }}</div></div><input value="{{ profileNameDraft }}" onInput="{{ onProfileName }}" aria-label="Name" style="width: 100%; margin-top: 7px; padding: 0; border: none; outline: none; background: transparent; color: var(--ink, #2C2C2A); font-size: 14px; font-family: inherit;"></div><div style="padding: 14px; border: 1px solid var(--soft, #E4E2D8); border-radius: 13px;"><div style="font-size: 10px; text-transform: uppercase; letter-spacing: 1.2px; color: var(--muted, #888780);">Email</div><div style="margin-top: 5px; font-size: 14px; color: var(--ink, #2C2C2A); word-break: break-word;">{{ userEmail }}</div></div></div><div style="margin-top: 18px; padding: 15px; border-radius: 15px; background: var(--bg, #F5F0E8);"><div style="font-size: 10px; text-transform: uppercase; letter-spacing: 1.2px; color: var(--muted, #888780);">Subscription</div><div style="font-size: 17px; font-weight: 700; color: var(--ink, #2C2C2A); margin-top: 7px;">{{ planLabel }}</div><sc-if value="{{ noPlan }}" hint-placeholder-val="{{ true }}"><span onClick="{{ goLandingFromAccount }}" role="button" tabindex="0" style="display: inline-block; margin-top: 8px; color: var(--accent, #BA7517); font-size: 12px; font-weight: 700; cursor: pointer;">Choose a plan →</span></sc-if><sc-if value="{{ hasPlan }}" hint-placeholder-val="{{ false }}"><div style="font-size: 12px; color: var(--muted, #888780); margin-top: 5px;">{{ accountStatus }}</div></sc-if></div><div style="margin-top: 22px; text-align: right;"><div onClick="{{ closeAccountDetails }}" style="display: inline-block; padding: 10px 17px; border-radius: 10px; background: var(--ink, #2C2C2A); color: var(--surface, #FFFEF9); font-size: 13px; font-weight: 600; cursor: pointer;">Done</div></div></div></div></sc-if>
-  <sc-if value="{{ termsOpen }}" hint-placeholder-val="{{ false }}"><div onClick="{{ closeTerms }}" style="position: fixed; inset: 0; z-index: 80; background: rgba(35,35,34,.28); display: flex; align-items: center; justify-content: center; padding: 24px;"><div onClick="{{ stop }}" style="width: min(620px, 100%); max-height: 88vh; overflow-y: auto; background: var(--surface, #FFFEF9); border: 1.5px solid var(--line, #2C2C2A); border-radius: 20px; padding: 30px; filter: url(#fs-sketch);"><div style="display: flex; justify-content: space-between;"><div><div style="font-size: 10px; letter-spacing: 1.8px; text-transform: uppercase; color: var(--accent, #BA7517); font-weight: 700;">FilmScript</div><div style="font-size: 25px; font-weight: 700; color: var(--ink, #2C2C2A); margin-top: 7px;">Terms & conditions</div></div><div onClick="{{ closeTerms }}" style="font-size: 22px; color: var(--muted, #888780); cursor: pointer;">×</div></div><div style="margin-top: 24px; display: grid; gap: 17px; color: var(--ink, #2C2C2A); font-size: 13.5px; line-height: 1.6;"><div><b>Your writing stays yours.</b><div style="color: var(--muted, #888780);">You retain ownership of scripts and notes created in FilmScript.</div></div><div><b>Lumiere is an assistant.</b><div style="color: var(--muted, #888780);">It offers suggestions and analysis. You decide what belongs in your work.</div></div><div><b>Lumiere credits and usage limits.</b><div style="color: var(--muted, #888780);">FilmScript Pro includes 100 Lumiere credits per monthly billing period. A rolling 8-hour session allows 20 credits and each week allows 60; both windows reset automatically. Credits reset with each monthly renewal, do not roll over, and have no cash value. When a window or the monthly allowance is reached, new Lumiere generations pause until the next reset; you can wait for its reset or purchase 80 extra credits for $5. Your scripts and existing production documents stay available. Free and Basic plans include no Lumiere credits.</div></div><div><b>FilmScript Pro subscriptions.</b><div style="color: var(--muted, #888780);">FilmScript Pro renews monthly through Recurrente and can be canceled from your account menu.</div></div><div><b>Fair use.</b><div style="color: var(--muted, #888780);">Use FilmScript only with material you have permission to use.</div></div></div><div style="margin-top: 26px; text-align: right;"><div onClick="{{ closeTerms }}" style="display: inline-block; padding: 10px 17px; border-radius: 10px; background: var(--ink, #2C2C2A); color: var(--surface, #FFFEF9); font-size: 13px; font-weight: 600; cursor: pointer;">I understand</div></div></div></div></sc-if>
+  <sc-if value="{{ termsOpen }}" hint-placeholder-val="{{ false }}"><div onClick="{{ closeTerms }}" style="position: fixed; inset: 0; z-index: 80; background: rgba(35,35,34,.28); display: flex; align-items: center; justify-content: center; padding: 24px;"><div onClick="{{ stop }}" style="width: min(620px, 100%); max-height: 88vh; overflow-y: auto; background: var(--surface, #FFFEF9); border: 1.5px solid var(--line, #2C2C2A); border-radius: 20px; padding: 30px; filter: url(#fs-sketch);"><div style="display: flex; justify-content: space-between;"><div><div style="font-size: 10px; letter-spacing: 1.8px; text-transform: uppercase; color: var(--accent, #BA7517); font-weight: 700;">FilmScript</div><div style="font-size: 25px; font-weight: 700; color: var(--ink, #2C2C2A); margin-top: 7px;">Terms & conditions</div></div><div onClick="{{ closeTerms }}" style="font-size: 22px; color: var(--muted, #888780); cursor: pointer;">×</div></div><div style="margin-top: 24px; display: grid; gap: 17px; color: var(--ink, #2C2C2A); font-size: 13.5px; line-height: 1.6;"><div><b>Your writing stays yours.</b><div style="color: var(--muted, #888780);">You retain ownership of scripts and notes created in FilmScript.</div></div><div><b>Lumiere is an assistant.</b><div style="color: var(--muted, #888780);">It offers suggestions and analysis. You decide what belongs in your work.</div></div><div><b>Credits and limits.</b><div style="color: var(--muted, #888780);">Free includes a small set of Lumiere prompts, plus one AI script analysis, one AI breakdown, and one AI storyboard or shot list per account. Those grants are not restored by deleting a script. Creator includes AI text tools and 100 image credits every monthly billing cycle. Full includes 1,000 image credits every monthly billing cycle; every AI image in Imagine, Boards, or Shot List uses 3 credits. Unused image credits do not roll over and have no cash value.</div></div><div><b>Subscriptions.</b><div style="color: var(--muted, #888780);">Creator and Full renew monthly through Recurrente and can be canceled from your account menu.</div></div><div><b>Fair use.</b><div style="color: var(--muted, #888780);">Use FilmScript only with material you have permission to use.</div></div></div><div style="margin-top: 26px; text-align: right;"><div onClick="{{ closeTerms }}" style="display: inline-block; padding: 10px 17px; border-radius: 10px; background: var(--ink, #2C2C2A); color: var(--surface, #FFFEF9); font-size: 13px; font-weight: 600; cursor: pointer;">I understand</div></div></div></div></sc-if>
 
     <!-- ============ FEATURES (MAIN) ============ -->
   <sc-if value="{{ isLanding }}" hint-placeholder-val="{{ true }}">
@@ -154,13 +192,14 @@
     <main class="fs-home">
       <header class="fs-home-hero">
         <div class="fs-home-eyebrow" style="animation: fs-rise .55s ease both;">From first page to final delivery</div>
-        <h1 class="fs-home-title" style="animation: fs-rise .55s ease both .05s;">Write it. See it. Make it.</h1>
-        <p class="fs-home-lede" style="animation: fs-rise .55s ease both .1s;">FilmScript connects every stage of production to the same screenplay—from writing and visual planning to breakdowns, budgets and the final delivery calendar.</p>
+        <h1 class="fs-home-title fs-hero-title" style="animation: fs-rise .55s ease both .05s;"><span class="fs-home-title-line">Write it.</span> <span class="fs-home-title-line">See it.</span> <span class="fs-home-title-line">Make it.</span></h1>
+        <p class="fs-home-lede" style="animation: fs-rise .55s ease both .1s;">FilmScript connects every stage of production to the same screenplay, from writing and visual planning through breakdowns, budgets and the final delivery calendar.</p>
         <div class="fs-cta-row" style="display: flex; gap: 16px; align-items: center; justify-content: center; animation: fs-rise .55s ease both .16s;">
-          <button type="button" data-testid="landing-primary-hero" onClick="{{ goScripts }}" class="fs-double-outline fs-outline-control fs-outline-control--primary" style="min-width: 154px; min-height: 50px;"><span style="font-size: 15px; font-weight: 600;">{{ landingPrimaryLabel }}</span></button>
-          <button type="button" onClick="{{ navPricing }}" class="fs-double-outline fs-outline-control fs-outline-control--secondary" style="min-width: 142px; min-height: 50px;"><span style="font-size: 15px; font-weight: 500;">See pricing</span><span class="fs-control-arrow" aria-hidden="true">›</span></button>
+          <button type="button" data-testid="landing-primary-hero" onClick="{{ goScripts }}" class="fs-landing-cta fs-landing-cta--primary"><span>{{ landingPrimaryLabel }}</span></button>
+          <button type="button" onClick="{{ navPricing }}" class="fs-landing-cta fs-landing-cta--secondary"><span>Compare plans</span><span class="fs-control-arrow" aria-hidden="true">›</span></button>
         </div>
-        <button type="button" data-testid="landing-plan-cta" onClick="{{ openCheckoutLumiere }}" class="fs-hero-plan-cta" style="margin-top: 18px; animation: fs-rise .55s ease both .22s;">Start writing with FilmScript Pro · $19.99/month</button>
+        <button type="button" data-testid="landing-plan-cta" onClick="{{ navPricing }}" class="fs-hero-plan-cta" style="animation: fs-rise .55s ease both .22s;">Start free. Creator $24.99/month. Full $39.99/month.</button>
+        <p class="fs-hero-audience" style="animation: fs-rise .55s ease both .25s;">Built for filmmakers, studios and production teams.</p>
       </header>
 
       <section class="fs-hero-stage" aria-label="A screenplay connected to FilmScript production tools" style="animation: fs-rise .62s ease both .24s;">
@@ -170,7 +209,7 @@
             <svg viewBox="0 0 520 286" role="img" aria-label="A screenplay page with a Lumiere note">
               <path d="M36 17 C92 10 173 15 235 12 C300 9 370 15 426 13 C433 48 428 96 431 139 C434 186 429 230 432 266 C365 272 292 266 227 270 C163 273 95 266 37 271 C32 210 38 146 34 90 C32 61 36 37 36 17 Z" style="fill: var(--bg, #F5F0E8);" class="fs-svg-ink" stroke-width="1.45"></path>
               <g class="fs-screenplay-svg">
-                <text x="70" y="53" class="fs-svg-text" font-size="13" font-weight="700">INT. ROOFTOP — NIGHT</text>
+                <text x="70" y="53" class="fs-svg-text" font-size="13" font-weight="700">INT. ROOFTOP, NIGHT</text>
                 <text x="70" y="83" class="fs-svg-text" font-size="11.5">Mara crosses the empty roof.</text>
                 <text x="70" y="100" class="fs-svg-text" font-size="11.5">The city hums below her.</text>
                 <text x="204" y="137" class="fs-svg-text" font-size="11.5" font-weight="700">MARA</text>
@@ -178,10 +217,12 @@
                 <text x="164" y="181" class="fs-svg-text" font-size="11.5">We only get one take.</text>
                 <text x="70" y="224" class="fs-svg-text" font-size="11.5">She raises the camera.</text>
               </g>
-              <path d="M287 202 C322 195 364 200 401 197 C439 195 476 201 497 199 C501 215 497 239 499 258 C470 264 432 258 398 262 C360 265 322 258 288 262 C285 243 289 219 287 202 Z" style="fill: var(--chrome, #2C2C2A); stroke: var(--chrome, #2C2C2A);" stroke-width="1.2"></path>
-              <text x="306" y="223" fill="#EF9F27" font-size="11" font-weight="700">Lumiere</text>
-              <text x="306" y="242" fill="#FFFEF9" font-size="10.5">The image is clear.</text>
-              <text x="306" y="257" fill="#FFFEF9" font-size="10.5">What changes in this beat?</text>
+              <g class="fs-hero-lumiere-note">
+                <path d="M282 190 C323 184 365 190 404 187 C441 185 478 191 498 188 C503 207 498 238 500 266 C465 271 430 264 397 268 C358 272 319 264 284 269 C281 245 286 215 282 190 Z" style="fill: var(--chrome, #2C2C2A); stroke: var(--chrome, #2C2C2A);" stroke-width="1.2"></path>
+                <text x="304" y="215" fill="#EF9F27" font-size="11" font-weight="700">Lumiere</text>
+                <text x="304" y="237" fill="#FFFEF9" font-size="10.5">The image is clear.</text>
+                <text x="304" y="253" fill="#FFFEF9" font-size="10.5">What changes in this beat?</text>
+              </g>
             </svg>
           </div>
           <div class="fs-hero-modules" aria-label="Connected FilmScript modules">
@@ -215,7 +256,7 @@
                   <circle cx="58" cy="32" r="2.2" style="fill: var(--accent, #BA7517);"></circle><circle cx="69" cy="32" r="2.2" style="fill: var(--soft, #E4E2D8);"></circle><circle cx="80" cy="32" r="2.2" style="fill: var(--soft, #E4E2D8);"></circle>
                   <text x="276" y="34" class="fs-svg-muted-text" font-size="9.5">AUTOSAVED</text>
                   <g class="fs-screenplay-svg">
-                    <text x="74" y="76" class="fs-svg-text" font-size="12" font-weight="700">INT. ROOFTOP — NIGHT</text>
+                    <text x="74" y="76" class="fs-svg-text" font-size="12" font-weight="700">INT. ROOFTOP, NIGHT</text>
                     <text x="74" y="100" class="fs-svg-text" font-size="11">Mara crosses the roof as the city wakes below.</text>
                     <text x="276" y="131" class="fs-svg-text" font-size="11" font-weight="700">MARA</text>
                     <text x="235" y="153" class="fs-svg-text" font-size="10.5">We only get one take.</text>
@@ -235,10 +276,14 @@
               <div class="fs-feature-visual">
                 <svg viewBox="0 0 430 250" role="img" aria-label="A conversation with Lumiere">
                   <circle cx="42" cy="31" r="5" style="fill: var(--accent, #BA7517);"></circle><text x="56" y="35" class="fs-svg-text" font-size="12" font-weight="700">Lumiere</text><text x="116" y="35" class="fs-svg-muted-text" font-size="10">reading Scene 12</text>
-                  <path d="M24 58 C65 52 144 58 205 55 C224 61 220 91 222 116 C175 121 92 115 27 119 C22 102 26 76 24 58 Z" style="fill: var(--bg, #F5F0E8);" class="fs-svg-ink" stroke-width="1.2"></path>
-                  <text x="43" y="78" class="fs-svg-text" font-size="10.5">The scene has a strong image.</text><text x="43" y="95" class="fs-svg-text" font-size="10.5">What decision forces Mara</text><text x="43" y="112" class="fs-svg-text" font-size="10.5">to act now?</text>
-                  <path d="M174 137 C227 132 333 138 405 134 C410 153 405 178 408 194 C346 200 248 194 177 198 C172 181 176 154 174 137 Z" style="fill: #BA75171C;" class="fs-svg-ink" stroke-width="1.2"></path>
-                  <text x="197" y="158" class="fs-svg-text" font-size="10.5">Compare three endings</text><text x="197" y="175" class="fs-svg-text" font-size="10.5">without changing my pages.</text>
+                  <g class="fs-lumiere-message fs-lumiere-message--feedback">
+                    <path d="M22 51 C69 46 147 52 207 49 C227 56 223 91 225 123 C178 130 91 123 25 127 C20 106 24 73 22 51 Z" style="fill: var(--bg, #F5F0E8);" class="fs-svg-ink" stroke-width="1.2"></path>
+                    <text x="43" y="76" class="fs-svg-text" font-size="10.5">The scene has a strong image.</text><text x="43" y="94" class="fs-svg-text" font-size="10.5">What decision forces Mara</text><text x="43" y="112" class="fs-svg-text" font-size="10.5">to act now?</text>
+                  </g>
+                  <g class="fs-lumiere-message fs-lumiere-message--prompt">
+                    <path d="M171 139 C227 133 334 140 407 135 C412 156 407 182 410 201 C347 207 247 201 174 205 C169 185 173 157 171 139 Z" style="fill: #BA75171C;" class="fs-svg-ink" stroke-width="1.2"></path>
+                    <text x="197" y="163" class="fs-svg-text" font-size="10.5">Compare three endings</text><text x="197" y="181" class="fs-svg-text" font-size="10.5">without changing my pages.</text>
+                  </g>
                   <path d="M31 219 C92 216 143 220 201 217" class="fs-svg-soft" stroke-width="1.2"></path><path d="M376 212 L398 222 L376 232" class="fs-svg-accent" stroke-width="1.5"></path>
                 </svg>
               </div>
@@ -257,7 +302,10 @@
                   <path d="M196 110 C221 81 241 92 259 63 C282 89 294 87 313 112" class="fs-svg-ink" stroke-width="1.2"></path><circle cx="299" cy="44" r="8" style="fill: #5B7A4A55;"></circle>
                   <path d="M250 148 C295 144 363 150 406 146 C410 176 405 211 408 232 C358 236 301 232 252 235 C248 207 252 173 250 148 Z" style="fill: #4A6B8A1B;" class="fs-svg-ink" stroke-width="1.2"></path>
                   <path d="M267 215 C286 192 308 198 325 177 C347 199 366 193 395 219" class="fs-svg-ink" stroke-width="1.2"></path>
-                  <path d="M36 188 C88 184 158 190 215 186 C218 202 214 222 217 232 C159 236 92 232 38 235 C34 220 38 202 36 188 Z" class="fs-svg-soft" stroke-width="1.1"></path><text x="53" y="211" class="fs-svg-muted-text" font-size="10.5">Scene 12 · amber light · handheld</text>
+                  <g class="fs-imagine-caption">
+                    <path d="M24 178 C75 174 152 180 218 176 C222 192 218 215 221 226 C158 230 85 226 26 229 C21 211 26 192 24 178 Z" class="fs-svg-soft" stroke-width="1.1"></path>
+                    <text x="41" y="204" class="fs-svg-muted-text" font-size="9.5">Scene 12 · amber light · handheld</text>
+                  </g>
                 </svg>
               </div>
             </div>
@@ -288,7 +336,7 @@
               <div class="fs-feature-visual">
                 <svg viewBox="0 0 360 250" role="img" aria-label="Scene breakdown illustration">
                   <path d="M19 28 C93 23 173 30 231 25 C235 78 230 140 234 205 C157 210 87 204 21 209 C17 150 21 86 19 28 Z" style="fill: var(--bg, #F5F0E8);" class="fs-svg-ink" stroke-width="1.2"></path>
-                  <g class="fs-screenplay-svg"><text x="39" y="52" class="fs-svg-text" font-size="10.5" font-weight="700">12  INT. ROOFTOP — NIGHT</text><text x="39" y="82" class="fs-svg-text" font-size="9.5">Mara raises the camera.</text><text x="39" y="102" class="fs-svg-text" font-size="9.5">A RED SCARF catches wind.</text><text x="39" y="122" class="fs-svg-text" font-size="9.5">The CITY HUM grows louder.</text></g>
+                  <g class="fs-screenplay-svg"><text x="39" y="52" class="fs-svg-text" font-size="10.5" font-weight="700">12  INT. ROOFTOP, NIGHT</text><text x="39" y="82" class="fs-svg-text" font-size="9.5">Mara raises the camera.</text><text x="39" y="102" class="fs-svg-text" font-size="9.5">A RED SCARF catches wind.</text><text x="39" y="122" class="fs-svg-text" font-size="9.5">The CITY HUM grows louder.</text></g>
                   <path d="M117 106 L176 106" stroke="#BA7517" stroke-width="3" stroke-linecap="round"></path><path d="M55 126 L117 126" stroke="#8A5A8A" stroke-width="3" stroke-linecap="round"></path>
                   <path d="M252 44 C279 40 322 45 344 42 C346 57 343 72 345 83 C313 87 281 83 253 86 C250 71 254 55 252 44 Z" style="fill: #BA751718; stroke: #BA7517;" stroke-width="1.1"></path><text x="271" y="65" class="fs-svg-text" font-size="9.5" font-weight="700">CAST · 1</text>
                   <path d="M245 99 C276 95 319 100 348 96 C350 112 347 129 349 140 C318 144 279 140 247 143 C243 128 247 111 245 99 Z" style="fill: #5B7A4A18; stroke: #5B7A4A;" stroke-width="1.1"></path><text x="262" y="121" class="fs-svg-text" font-size="9.5" font-weight="700">PROPS · 2</text>
@@ -355,7 +403,7 @@
               <div class="fs-feature-kicker">Deliver</div><h3 class="fs-feature-title">Calendar</h3><p class="fs-feature-copy">Move from development to delivery with dependencies, milestones, critical path and live progress.</p>
               <div class="fs-feature-visual">
                 <svg viewBox="0 0 520 250" role="img" aria-label="FilmScript production calendar illustration">
-                  <text x="21" y="28" class="fs-svg-muted-text" font-size="9.5" font-weight="700">PRODUCTION CALENDAR</text><text x="384" y="28" class="fs-svg-muted-text" font-size="9.5">WEEK 06 — WEEK 10</text>
+                  <text x="21" y="28" class="fs-svg-muted-text" font-size="9.5" font-weight="700">PRODUCTION CALENDAR</text><text x="384" y="28" class="fs-svg-muted-text" font-size="9.5">WEEK 06 TO WEEK 10</text>
                   <path d="M20 45 C138 41 293 47 500 42 M20 86 C152 82 320 88 500 83 M20 127 C151 123 325 129 500 124 M20 168 C152 164 324 170 500 165 M20 209 C153 205 325 211 500 206" class="fs-svg-soft" stroke-width="1"></path>
                   <path d="M125 44 L125 210 M218 44 L218 210 M311 44 L311 210 M404 44 L404 210" class="fs-svg-soft" stroke-width="1" stroke-dasharray="3 5"></path>
                   <text x="27" y="69" class="fs-svg-text" font-size="10.5">Casting</text><path d="M128 57 C175 53 214 58 255 55 L253 76 C210 80 171 75 129 78 Z" style="fill:#BA75172B;stroke:#BA7517;" stroke-width="1"></path><text x="148" y="70" fill="#BA7517" font-size="9.5" font-weight="700">82%</text>
@@ -372,13 +420,14 @@
 
       <section class="fs-connection-section" aria-labelledby="connection-title">
         <h2 id="connection-title">One change moves through the whole production.</h2>
-        <p>Update a scene and the next decisions stay traceable—from the visual idea to the final date on the calendar.</p>
+        <p>Update a scene and the next decisions stay traceable, from the visual idea to the final date on the calendar.</p>
         <div class="fs-connection-flow" aria-label="FilmScript connected workflow">
-          <div class="fs-flow-step"><svg class="fs-card-frame" viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true"><path d="M4 9 C18 3 44 8 96 4 L97 91 C71 97 35 92 3 97 Z"></path></svg><span style="position:relative;z-index:1;"><strong>Script</strong><small>The source</small></span></div>
-          <div class="fs-flow-step"><svg class="fs-card-frame" viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true"><path d="M2 5 C30 2 66 7 98 3 L96 95 C63 99 29 92 4 98 Z"></path></svg><span style="position:relative;z-index:1;"><strong>Imagine</strong><small>The visual world</small></span></div>
-          <div class="fs-flow-step"><svg class="fs-card-frame" viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true"><path d="M5 3 C33 7 62 1 96 6 L98 93 C69 96 34 91 2 96 Z"></path></svg><span style="position:relative;z-index:1;"><strong>Breakdown</strong><small>What the scene needs</small></span></div>
-          <div class="fs-flow-step"><svg class="fs-card-frame" viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true"><path d="M3 7 C25 2 58 8 97 3 L95 97 C65 93 33 99 2 94 Z"></path></svg><span style="position:relative;z-index:1;"><strong>Plan</strong><small>Shots, days and cost</small></span></div>
-          <div class="fs-flow-step"><svg class="fs-card-frame" viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true"><path d="M2 4 C37 8 69 1 98 7 L96 94 C68 99 31 93 4 97 Z"></path></svg><span style="position:relative;z-index:1;"><strong>Delivery</strong><small>The final milestone</small></span></div>
+          <a class="fs-flow-step" href="#editor" aria-label="Go to Script Editor"><svg class="fs-card-frame" viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true"><path d="M4 9 C18 3 44 8 96 4 L97 91 C71 97 35 92 3 97 Z"></path></svg><span class="fs-flow-step-copy"><strong>Script</strong><small>The source</small></span><span class="fs-flow-link-mark" aria-hidden="true">↗</span></a>
+          <a class="fs-flow-step" href="#imagine" aria-label="Go to Imagine"><svg class="fs-card-frame" viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true"><path d="M2 5 C30 2 66 7 98 3 L96 95 C63 99 29 92 4 98 Z"></path></svg><span class="fs-flow-step-copy"><strong>Imagine</strong><small>The visual world</small></span><span class="fs-flow-link-mark" aria-hidden="true">↗</span></a>
+          <a class="fs-flow-step" href="#breakdown" aria-label="Go to Breakdown"><svg class="fs-card-frame" viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true"><path d="M5 3 C33 7 62 1 96 6 L98 93 C69 96 34 91 2 96 Z"></path></svg><span class="fs-flow-step-copy"><strong>Breakdown</strong><small>Scene requirements</small></span><span class="fs-flow-link-mark" aria-hidden="true">↗</span></a>
+          <a class="fs-flow-step" href="#stripboard" aria-label="Go to Stripboard"><svg class="fs-card-frame" viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true"><path d="M3 7 C25 2 58 8 97 3 L95 97 C65 93 33 99 2 94 Z"></path></svg><span class="fs-flow-step-copy"><strong>Stripboard</strong><small>The shooting order</small></span><span class="fs-flow-link-mark" aria-hidden="true">↗</span></a>
+          <a class="fs-flow-step" href="#budget" aria-label="Go to Budget"><svg class="fs-card-frame" viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true"><path d="M2 4 C37 8 69 1 98 7 L96 94 C68 99 31 93 4 97 Z"></path></svg><span class="fs-flow-step-copy"><strong>Budget</strong><small>Plan and actuals</small></span><span class="fs-flow-link-mark" aria-hidden="true">↗</span></a>
+          <a class="fs-flow-step" href="#calendar" aria-label="Go to Calendar"><svg class="fs-card-frame" viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true"><path d="M4 5 C33 1 66 6 97 4 L98 92 C69 98 34 93 3 97 Z"></path></svg><span class="fs-flow-step-copy"><strong>Calendar</strong><small>The final milestone</small></span><span class="fs-flow-link-mark" aria-hidden="true">↗</span></a>
         </div>
       </section>
 
@@ -386,8 +435,8 @@
         <h2>One script. One source of truth.</h2>
         <p>Open FilmScript and keep every creative and production decision connected from the first scene to delivery.</p>
         <div class="fs-cta-row" style="display: flex; gap: 16px; margin-top: 30px; align-items: center; justify-content: center;">
-          <button type="button" data-testid="landing-primary-final" onClick="{{ goScripts }}" class="fs-double-outline fs-outline-control fs-outline-control--primary" style="min-width: 154px; min-height: 50px;"><span style="font-size: 15px; font-weight: 600;">{{ landingPrimaryLabel }}</span></button>
-          <button type="button" onClick="{{ navPricing }}" class="fs-double-outline fs-outline-control fs-outline-control--secondary" style="min-width: 142px; min-height: 50px;"><span style="font-size: 15px; font-weight: 500;">See pricing</span><span class="fs-control-arrow" aria-hidden="true">›</span></button>
+          <button type="button" data-testid="landing-primary-final" onClick="{{ goScripts }}" class="fs-landing-cta fs-landing-cta--primary"><span>{{ landingPrimaryLabel }}</span></button>
+          <button type="button" onClick="{{ navPricing }}" class="fs-landing-cta fs-landing-cta--secondary"><span>Compare plans</span><span class="fs-control-arrow" aria-hidden="true">›</span></button>
         </div>
       </section>
 
@@ -429,6 +478,9 @@
         <div style="font-size: 11px; letter-spacing: 1.6px; text-transform: uppercase; color: var(--accent, #BA7517); font-weight: 600; text-align: center;">Confirm plan</div>
         <h2 style="font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; font-weight: 700; font-size: 24px; letter-spacing: -0.5px; color: var(--ink, #2C2C2A); margin: 12px 0 0; text-align: center;">{{ checkoutPlanName }}</h2>
         <div style="text-align: center; margin-top: 8px; font-size: 15px; color: var(--muted, #888780);">{{ checkoutPlanPrice }}</div>
+        <sc-if value="{{ checkoutIsPlanChange }}" hint-placeholder-val="{{ false }}">
+          <div style="margin-top: 18px; padding: 11px 13px; border: 1px solid var(--hair, #E7E4DA); border-radius: 11px; background: var(--soft, #EFEBE1); font-size: 12px; line-height: 1.48; color: var(--ink, #2C2C2A);">This replaces your current plan. Your FilmScript work stays exactly where it is; only your access changes.</div>
+        </sc-if>
 
         <sc-if value="{{ checkoutHasLink }}" hint-placeholder-val="{{ true }}">
         <div onClick="{{ openPayLink }}" class="fsx-lift" style="position: relative; text-align: center; margin-top: 24px; padding: 13px; cursor: pointer;">
@@ -483,6 +535,8 @@ class Component extends DCLogic {
     input: '',
     loading: false,
     plan: null,
+    billingPlan: null,
+    entitlements: null,
     pendingPlan: null,
     checkoutOpen: false,
     checkoutPlan: null,
@@ -519,7 +573,7 @@ class Component extends DCLogic {
     try {
       const me = await (sync ? window.filmscriptBilling.sync(checkoutId) : window.filmscriptBilling.me());
       const user = me.authenticated && me.email ? { name: me.name || me.email.split('@')[0], email: me.email, picture: me.picture || null, initial: (me.name || me.email).charAt(0).toUpperCase() } : null;
-      this.setState({ plan: me.plan || null, user, profileName: user?.name || '', profileNameDraft: user?.name || '' });
+      this.setState({ plan: this._canonicalPlan(me.plan), billingPlan: String(me.billingPlan || me.plan || '').trim().toLowerCase() || null, entitlements: me.entitlements || null, user, profileName: user?.name || '', profileNameDraft: user?.name || '' });
       return me;
     } catch (e) {}
   }
@@ -532,16 +586,23 @@ class Component extends DCLogic {
         if (en.isIntersecting) {
           en.target.style.opacity = '1';
           en.target.style.transform = 'translateY(0px)';
+          const revealed = en.target;
+          window.setTimeout(() => {
+            revealed.style.removeProperty('opacity');
+            revealed.style.removeProperty('transform');
+            revealed.style.removeProperty('transition');
+          }, 760);
           io.unobserve(en.target);
         }
       });
     }, { root: c, rootMargin: '0px 0px -70px 0px', threshold: 0.06 });
     const bottom = c.getBoundingClientRect().bottom;
-    Array.from(c.children).forEach(el => {
+    const revealTargets = c.querySelectorAll('.fs-section-heading, .fs-feature-card, .fs-connection-section > h2, .fs-connection-section > p, .fs-flow-step, .fs-final-cta');
+    Array.from(revealTargets).forEach((el, index) => {
       if (el.getBoundingClientRect().top < bottom - 40) return;
-      el.style.transition = 'opacity .65s ease, transform .65s cubic-bezier(.2,.7,.2,1)';
+      el.style.transition = 'opacity .52s ease ' + ((index % 3) * 45) + 'ms, transform .62s cubic-bezier(.16,1,.3,1) ' + ((index % 3) * 45) + 'ms';
       el.style.opacity = '0';
-      el.style.transform = 'translateY(22px)';
+      el.style.transform = 'translateY(18px)';
       io.observe(el);
     });
   }
@@ -896,6 +957,22 @@ Write Lumiere's next reply only:`;
     this.setState({ plan });
   }
 
+  _canonicalPlan(plan) {
+    // Existing subscriptions are presented as Creator while billing migrates them.
+    if (plan === 'full') return 'full';
+    if (plan === 'creator' || plan === 'basic' || plan === 'lumiere') return 'creator';
+    return null;
+  }
+
+  _hasLumiereAccess() {
+    const entitlements = this.state.entitlements || {};
+    return !!this._canonicalPlan(this.state.plan)
+      || entitlements?.lumiereChat === true
+      || entitlements?.textGeneration === true
+      || !!entitlements?.lumiere?.chat
+      || !!entitlements?.capabilities?.lumiereChat;
+  }
+
   _startCheckout(plan) {
     window.filmscriptFunnel?.track?.('plan_selected', { plan, cycle: 'monthly' });
     if (!this.state.user) {
@@ -920,20 +997,23 @@ Write Lumiere's next reply only:`;
     const isScripts = screen === 'scripts';
     const isEditor = screen === 'editor';
 
-    const plan = this.state.plan || null;
-    const lumiereUnlocked = plan === 'lumiere';
+    const plan = this._canonicalPlan(this.state.plan);
+    const hasPaidPlan = !!plan;
+    const hasPlan = hasPaidPlan;
+    const noPlan = !hasPaidPlan;
+    const isCreatorPlan = plan === 'creator';
+    const isFullPlan = plan === 'full';
+    const lumiereUnlocked = this._hasLumiereAccess();
     const lumiereLocked = !lumiereUnlocked;
-    const hasPlan = !!plan;
-    const noPlan = !plan;
-    const isBasicPlan = plan === 'basic';
-    const isLumierePlan = plan === 'lumiere';
-    const planLabel = plan === 'lumiere' ? 'FilmScript Pro · $19.99 / month' : plan === 'basic' ? 'FilmScript Basic · $12.99 / month' : 'Free';
+    const planLabel = isFullPlan ? 'FilmScript Full · $39.99 / month' : isCreatorPlan ? 'FilmScript Creator · $24.99 / month' : 'Free';
     const checkoutPlanKey = this.state.checkoutPlan;
-    const checkoutPlanName = checkoutPlanKey === 'lumiere' ? 'FilmScript Pro' : checkoutPlanKey === 'basic' ? 'FilmScript Basic' : 'Free';
-    const checkoutPlanPrice = checkoutPlanKey === 'lumiere' ? '$19.99 / month' : '$12.99 / month';
+    const checkoutPlanName = checkoutPlanKey === 'full' ? 'FilmScript Full' : checkoutPlanKey === 'creator' ? 'FilmScript Creator' : 'Free';
+    const checkoutPlanPrice = checkoutPlanKey === 'full' ? '$39.99 / month' : checkoutPlanKey === 'creator' ? '$24.99 / month' : '$0 / month';
     const checkoutConfirmStep = this.state.checkoutStep !== 'success';
     const checkoutSuccessStep = this.state.checkoutStep === 'success';
     const checkoutHasLink = !!checkoutPlanKey;
+    const billingPlan = String(this.state.billingPlan || '').trim().toLowerCase();
+    const checkoutIsPlanChange = !!billingPlan && !!checkoutPlanKey && billingPlan !== checkoutPlanKey;
 
     const mkIcon = (paths) => React.createElement('svg', { viewBox: '0 0 24 24', width: '100%', height: '100%', fill: 'none', stroke: 'currentColor', strokeWidth: 1.5, strokeLinecap: 'round', strokeLinejoin: 'round' },
       paths.map((d, i) => React.createElement('path', { key: i, d })));
@@ -943,7 +1023,7 @@ Write Lumiere's next reply only:`;
       { title: 'Narrative arc', body: 'Maps the rise and fall of tension across your script so the structure actually lands.', iconEl: mkIcon(['M3.5 18 Q7 17 9 11 Q11 5 14 8.5 Q16.5 11.5 20.5 6']) },
       { title: 'Character analysis', body: 'Tracks motivations and arcs, and tells you when a character drifts off their want.', iconEl: mkIcon(['M12 5.4 Q14.6 5.4 14.7 8.4 Q14.6 11.2 12 11.2 Q9.4 11.2 9.3 8.4 Q9.4 5.4 12 5.4 Z', 'M5.4 19 Q5.6 13.4 12 13.3 Q18.4 13.4 18.6 19']) },
       { title: 'WGA format checker', body: 'Keeps every scene heading, slug and margin on industry standard, automatically.', iconEl: mkIcon(['M6.4 4.5 Q5.2 8 5.2 12 Q5.2 16 6.4 19.5 L17 19.4 Q18.4 19.4 18.4 18 L18.4 8 L14 4.6 Z', 'M13.8 4.6 L13.9 8.2 L18.2 8', 'M8.4 12 Q11 11.7 15 12', 'M8.4 15.4 Q10.6 15.2 13.6 15.4']) },
-      { icon: 'scene', title: 'Scene suggestions', body: 'Stuck mid-scene? Lumiere offers angles to improve it — you decide what stays.', iconEl: mkIcon(['M12 4 L13.6 9 L19 9 L14.7 12.2 L16.3 17.2 L12 14 L7.7 17.2 L9.3 12.2 L5 9 L10.4 9 Z']) },
+      { icon: 'scene', title: 'Scene suggestions', body: 'Stuck mid-scene? Lumiere offers angles to improve it. You decide what stays.', iconEl: mkIcon(['M12 4 L13.6 9 L19 9 L14.7 12.2 L16.3 17.2 L12 14 L7.7 17.2 L9.3 12.2 L5 9 L10.4 9 Z']) },
     ];
 
 
@@ -1064,7 +1144,7 @@ Write Lumiere's next reply only:`;
       authOpen: this.state.authOpen,
       signedIn: !!this.state.user,
       signedOut: !this.state.user,
-      landingPrimaryLabel: this.state.user ? 'Open Scripts' : 'Log in',
+      landingPrimaryLabel: this.state.user ? 'Open Scripts' : 'Sign up free',
       userInitial: (this.state.profileName || (this.state.user ? this.state.user.name : 'Writer')).trim().charAt(0).toUpperCase() || 'W',
       userEmail: this.state.user ? this.state.user.email : '',
       userName: this.state.profileName || (this.state.user ? this.state.user.name : 'Writer'),
@@ -1075,9 +1155,9 @@ Write Lumiere's next reply only:`;
       closeAuth: () => this.setState({ authOpen: false }),
       stop: (e) => { e.stopPropagation(); },
       googleLogIn: () => { window.location.href = window.filmscriptBilling.googleSignInUrl(); },
-      signOut: async () => { try { await window.filmscriptBilling.logout(); } catch (e) {} this.setState({ user: null, plan: null, accountOpen: false }); },
+      signOut: async () => { try { await window.filmscriptBilling.logout(); } catch (e) {} this.setState({ user: null, plan: null, billingPlan: null, entitlements: null, accountOpen: false }); },
 
-      plan, planLabel, hasPlan, noPlan, isBasicPlan, isLumierePlan,
+      plan, planLabel, hasPlan, noPlan, hasPaidPlan, isCreatorPlan, isFullPlan,
       lumiereUnlocked, lumiereLocked,
       unlockBtnPath: this._roughPath(180, 44, 2, 999, 14),
 
@@ -1103,20 +1183,24 @@ Write Lumiere's next reply only:`;
       openTerms: () => this.setState({ accountOpen: false, termsOpen: true }),
       closeTerms: () => this.setState({ termsOpen: false }),
       cancelPlan: () => { window.location.href = 'Subscription.dc.html?returnTo=Features.dc.html'; },
-      upgradeToLumiere: () => this._startCheckout('lumiere'),
+      upgradeToFull: () => this._startCheckout('full'),
       goLandingFromAccount: () => { window.location.href = 'Pricing.dc.html'; },
 
-      chooseLumiere: () => this._startCheckout('lumiere'),
-      chooseBasic: () => this._startCheckout('basic'),
-      openCheckoutLumiere: () => this._startCheckout('lumiere'),
-      openCheckoutBasic: () => this._startCheckout('basic'),
+      chooseFull: () => this._startCheckout('full'),
+      chooseCreator: () => this._startCheckout('creator'),
+      openCheckoutFull: () => this._startCheckout('full'),
+      openCheckoutCreator: () => this._startCheckout('creator'),
 
       checkoutOpen: this.state.checkoutOpen,
-      checkoutConfirmStep, checkoutSuccessStep, checkoutPlanName, checkoutPlanPrice, checkoutHasLink,
+      checkoutConfirmStep, checkoutSuccessStep, checkoutPlanName, checkoutPlanPrice, checkoutHasLink, checkoutIsPlanChange,
       openPayLink: async () => {
         try {
           const language = window.filmscriptLanguage?.get?.() || document.documentElement.lang || 'en';
-          const result = await window.filmscriptBilling.checkout(this.state.checkoutPlan, this.state.user?.email, language);
+          const billingPlan = String(this.state.billingPlan || '').trim().toLowerCase();
+          const changingPlan = !!billingPlan && billingPlan !== this.state.checkoutPlan;
+          const result = changingPlan
+            ? await window.filmscriptBilling.switchPlan(this.state.checkoutPlan, language)
+            : await window.filmscriptBilling.checkout(this.state.checkoutPlan, this.state.user?.email, language);
           window.filmscriptBilling.trackCheckoutRedirected(this.state.checkoutPlan);
           window.location.href = result.checkoutUrl;
         }
