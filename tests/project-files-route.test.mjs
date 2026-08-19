@@ -45,11 +45,13 @@ test("project-files aliases retain authenticated screenplay and production route
   const bootstrap = spawnSync(process.execPath, ["--input-type=module", "-e", `
     import { connectGoogleIdentity, createSession } from "./database.js";
     const session = createSession();
+    const anonymous = createSession();
     connectGoogleIdentity(session.session.id, { sub: "project_files_owner", email: "project-files@example.com", name: "Project Files Owner", email_verified: true });
-    console.log(session.token);
+    console.log(JSON.stringify({ owner: session.token, anonymous: anonymous.token }));
   `], { cwd: ROOT, env: { ...process.env, FILMSCRIPT_DATA_DIR: dataDir }, encoding: "utf8" });
   assert.equal(bootstrap.status, 0, bootstrap.stderr);
-  const cookie = `filmscript_sid=${encodeURIComponent(bootstrap.stdout.trim().split("\n").at(-1))}`;
+  const tokens = JSON.parse(bootstrap.stdout.trim().split("\n").at(-1));
+  const cookie = `filmscript_sid=${encodeURIComponent(tokens.owner)}`;
   const running = await startServer(dataDir, { SESSION_COOKIE_DOMAIN: "filmscript.test" });
   t.after(async () => { await stopServer(running.child); await fs.rm(dataDir, { recursive: true, force: true }); });
 
@@ -70,6 +72,8 @@ test("project-files aliases retain authenticated screenplay and production route
   assert.ok(sharedToken);
   const sharedOnlyList = await fetch(`${running.url}/api/project-files`, { headers: { Cookie: `filmscript_shared_sid=${sharedToken}` } });
   assert.equal(sharedOnlyList.status, 200);
+  const migratedList = await fetch(`${running.url}/api/project-files`, { headers: { Cookie: `filmscript_sid=${encodeURIComponent(tokens.anonymous)}; filmscript_shared_sid=${sharedToken}` } });
+  assert.equal(migratedList.status, 200);
 
   const screenplay = await fetch(`${running.url}/api/project-files/${scriptId}`, { headers: { Cookie: cookie } });
   assert.equal(screenplay.status, 200);
