@@ -5,6 +5,14 @@
   "outputDirectory": "dist",
   "rewrites": [
     {
+      "source": "/workspace/projects",
+      "destination": "/api/scripts-proxy"
+    },
+    {
+      "source": "/workspace/projects/:path*",
+      "destination": "https://api.filmscript.app/api/scripts/:path*"
+    },
+    {
       "source": "/workspace/scripts",
       "destination": "/api/scripts-proxy"
     },

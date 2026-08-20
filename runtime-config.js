@@ -9,10 +9,15 @@
       || 'http://localhost:4173',
   ).replace(/\/$/, '');
   const fileMode = window.location?.protocol === 'file:';
-  const apiUrl = String(
+  const officialHost = window.location?.hostname === 'filmscript.app' || window.location?.hostname === 'www.filmscript.app';
+  // The official frontend already proxies /api and /auth to AWS through
+  // Vercel. Keep browser requests first-party so embedded browsers and privacy
+  // tools cannot block the API subdomain or withhold its session cookie.
+  const hostedApiDefault = '';
+  const apiUrl = officialHost ? '' : String(
     configured.apiUrl
       || window.FILMSCRIPT_API_URL
-      || (fileMode ? localApiUrl : ''),
+      || (fileMode ? localApiUrl : hostedApiDefault),
   ).replace(/\/$/, '');
   const erpApiUrl = String(
     configured.erpApiUrl
@@ -24,12 +29,17 @@
       || window.FILMSCRIPT_ERP_ENVIRONMENT
       || '',
   ).trim().toLowerCase();
-  const firstPartyApi = configured.firstPartyApi === true || String(configured.firstPartyApi || '').toLowerCase() === 'true';
+  const firstPartyApi = officialHost
+    || configured.firstPartyApi === true
+    || String(configured.firstPartyApi || '').toLowerCase() === 'true';
   const resolveApiUrl = (pathname) => {
     const path = pathname.startsWith('/') ? pathname : `/${pathname}`;
-    // Browser privacy tools can block generic `/api/*` paths. Production
-    // routes those first-party calls through `/workspace/*`, which Vercel
-    // rewrites to the private API without exposing a different browser origin.
+    // Some embedded-browser privacy lists block a path containing `/scripts`
+    // even when it is first-party. Use a neutral public route and translate it
+    // back to the unchanged AWS API path at Vercel's edge.
+    if (firstPartyApi && (path === '/api/scripts' || path.startsWith('/api/scripts/'))) {
+      return `${apiUrl}/workspace/projects${path.slice('/api/scripts'.length)}`;
+    }
     const firstPartyPath = firstPartyApi && (path === '/api' || path.startsWith('/api/'))
       ? `/workspace${path.slice(4)}`
       : path;
