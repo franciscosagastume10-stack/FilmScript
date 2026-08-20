@@ -34,6 +34,7 @@ const frontendFiles = [
   "lumiere-preferences.js",
   "pdf-import.js",
   "scripts-client.js",
+  "project-client.js",
   "preproduction-client.js",
   "canvas-client.js",
   "canvas-workspace.js",

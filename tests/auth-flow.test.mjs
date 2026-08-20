@@ -132,6 +132,10 @@ test('Vercel completes the Google handoff through a same-origin cookie proxy', a
   for (const page of [featuresPage, scriptsPage, editorPage]) {
     assert.match(page, /runtime-config\.js\?v=20260820-auth-session3/);
   }
+  for (const page of [scriptsPage, editorPage]) {
+    assert.match(page, /project-client\.js\?v=20260820-browser-safe1/);
+    assert.doesNotMatch(page, /src="\.\/scripts-client\.js/);
+  }
   assert.match(fs.readFileSync(path.join(root, 'auth-complete.html'), 'utf8'),
     /fetch\(`\/api\/auth-complete\?handoff=/);
 
