@@ -9,6 +9,8 @@ const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const runtimeConfig = fs.readFileSync(path.join(root, 'runtime-config.js'), 'utf8');
 const billingClient = fs.readFileSync(path.join(root, 'billing-client.js'), 'utf8');
 const featuresPage = fs.readFileSync(path.join(root, 'Features.dc.html'), 'utf8');
+const scriptsPage = fs.readFileSync(path.join(root, 'App.dc.html'), 'utf8');
+const editorPage = fs.readFileSync(path.join(root, 'Editor v5.dc.html'), 'utf8');
 const vercelConfig = JSON.parse(fs.readFileSync(path.join(root, 'vercel.json'), 'utf8'));
 const vercelIgnore = fs.readFileSync(path.join(root, '.vercelignore'), 'utf8');
 
@@ -104,6 +106,13 @@ test('Vercel completes the Google handoff through a same-origin cookie proxy', a
   assert.match(vercelIgnore, /^!api\/auth-complete\.js$/m);
   assert.match(vercelIgnore, /^!api\/scripts-proxy\.js$/m);
   assert.doesNotMatch(vercelIgnore, /^api$/m);
+  const runtimeHeader = vercelConfig.headers.find((entry) => entry.source === '/runtime-config.js');
+  assert.deepEqual(runtimeHeader?.headers, [
+    { key: 'Cache-Control', value: 'public, max-age=0, must-revalidate' },
+  ]);
+  for (const page of [featuresPage, scriptsPage, editorPage]) {
+    assert.match(page, /runtime-config\.js\?v=20260820-auth-session2/);
+  }
   assert.match(fs.readFileSync(path.join(root, 'auth-complete.html'), 'utf8'),
     /fetch\(`\/api\/auth-complete\?handoff=/);
 
