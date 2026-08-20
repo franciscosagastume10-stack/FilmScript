@@ -5,11 +5,7 @@
   "outputDirectory": "dist",
   "rewrites": [
     {
-      "source": "/api/auth/complete",
-      "destination": "/api/auth-complete"
-    },
-    {
-      "source": "/api/:path*",
+      "source": "/api/:path((?!auth-complete).*)",
       "destination": "https://api.filmscript.app/api/:path*"
     },
     {

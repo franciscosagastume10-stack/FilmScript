@@ -90,11 +90,9 @@ test('the Features landing opens one clean Google authentication panel', () => {
 });
 
 test('Vercel completes the Google handoff through a same-origin cookie proxy', async (t) => {
-  assert.deepEqual(vercelConfig.rewrites[0], {
-    source: '/api/auth/complete',
-    destination: '/api/auth-complete',
-  });
-  assert.equal(vercelConfig.rewrites[1].source, '/api/:path*');
+  assert.equal(vercelConfig.rewrites[0].source, '/api/:path((?!auth-complete).*)');
+  assert.match(fs.readFileSync(path.join(root, 'auth-complete.html'), 'utf8'),
+    /fetch\(`\/api\/auth-complete\?handoff=/);
 
   const originalFetch = globalThis.fetch;
   const sid = 'filmscript_sid=authenticated; Path=/; HttpOnly; SameSite=Lax';

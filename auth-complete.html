@@ -30,7 +30,7 @@
       retry.addEventListener('click', () => location.replace(`/auth/google?returnTo=${encodeURIComponent('/App.dc.html')}`));
       if (!handoff) return fail();
       history.replaceState({}, '', '/auth-complete.html');
-      fetch(`/api/auth/complete?handoff=${encodeURIComponent(handoff)}`, { credentials:'include', cache:'no-store' })
+      fetch(`/api/auth-complete?handoff=${encodeURIComponent(handoff)}`, { credentials:'include', cache:'no-store' })
         .then(async (response) => ({ response, data:await response.json().catch(() => ({})) }))
         .then(({ response, data }) => {
           if (!response.ok || !data.ok) return fail();
