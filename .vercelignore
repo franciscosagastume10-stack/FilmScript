@@ -2,7 +2,8 @@
 .env.local
 .DS_Store
 .vercel
-api
+api/*
+!api/auth-complete.js
 data
 dist
 node_modules

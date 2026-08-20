@@ -10,6 +10,7 @@ const runtimeConfig = fs.readFileSync(path.join(root, 'runtime-config.js'), 'utf
 const billingClient = fs.readFileSync(path.join(root, 'billing-client.js'), 'utf8');
 const featuresPage = fs.readFileSync(path.join(root, 'Features.dc.html'), 'utf8');
 const vercelConfig = JSON.parse(fs.readFileSync(path.join(root, 'vercel.json'), 'utf8'));
+const vercelIgnore = fs.readFileSync(path.join(root, '.vercelignore'), 'utf8');
 
 function runBillingClient(pathname, search = '') {
   const redirects = [];
@@ -91,6 +92,9 @@ test('the Features landing opens one clean Google authentication panel', () => {
 
 test('Vercel completes the Google handoff through a same-origin cookie proxy', async (t) => {
   assert.equal(vercelConfig.rewrites[0].source, '/api/:path((?!auth-complete).*)');
+  assert.match(vercelIgnore, /^api\/\*$/m);
+  assert.match(vercelIgnore, /^!api\/auth-complete\.js$/m);
+  assert.doesNotMatch(vercelIgnore, /^api$/m);
   assert.match(fs.readFileSync(path.join(root, 'auth-complete.html'), 'utf8'),
     /fetch\(`\/api\/auth-complete\?handoff=/);
 
