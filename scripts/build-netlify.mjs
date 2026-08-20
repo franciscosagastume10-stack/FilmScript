@@ -6,6 +6,8 @@ const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const output = path.join(root, "dist");
 const frontendFiles = [
   "App.dc.html",
+  "auth-complete.html",
+  "auth-google.html",
   "Editor v5.dc.html",
   "Features.dc.html",
   "Pricing.dc.html",
