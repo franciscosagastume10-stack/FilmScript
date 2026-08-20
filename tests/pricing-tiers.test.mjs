@@ -49,11 +49,18 @@ test('the current billing and entitlement layer recognizes Creator and Full with
 
 test('a Google account can hold only one paid plan and confirms a plan change', () => {
   assert.match(server, /error: "plan_change_required"/);
+  assert.match(server, /async function handlePlanSwitchPreview/);
   assert.match(server, /async function handlePlanSwitch/);
+  assert.match(server, /\/api\/subscription\/switch\/preview/);
   assert.match(server, /\/api\/subscription\/switch/);
-  assert.match(server, /method: "DELETE"/);
+  assert.match(server, /proration_preview/);
+  const switchImplementation = server.slice(server.indexOf('async function handlePlanSwitch(req, res)'), server.indexOf('async function handleRecurrenteWebhook'));
+  assert.match(switchImplementation, /method: "PUT"/);
+  assert.doesNotMatch(switchImplementation, /method: "DELETE"/);
   assert.match(pricing, /checkoutIsPlanChange/);
-  assert.match(pricing, /switchPlan\(this\.state\.checkoutPlan, language\)/);
+  assert.match(pricing, /previewPlanSwitch\(this\.state\.checkoutPlan, language\)/);
+  assert.match(pricing, /switchPlan\(this\.state\.checkoutPlan, language, existingPreview\.switchToken\)/);
+  assert.match(pricing, /credits and uses already consumed this period are preserved/);
 });
 
 test('legacy billing plans use the explicit switch flow when moving to Creator or Full', () => {

@@ -19,6 +19,10 @@ import {
   getBudgetReceipt,
   getCanvasLibrary,
   getCanvasWorkspace,
+  createSubscriptionSwitchPreview,
+  claimSubscriptionSwitchPreview,
+  completeSubscriptionSwitchPreview,
+  failSubscriptionSwitchPreview,
   getSubscription,
   getUser,
   loadBillingSnapshot,
@@ -391,6 +395,13 @@ const LUMIERE_CREDIT_SESSION_MS = 8 * 60 * 60 * 1000;
 const IMAGE_CREDITS_PER_FULL_CYCLE = 1000;
 const IMAGE_CREDITS_PER_CREATOR_CYCLE = 100;
 const FREE_FEATURE_ALLOWANCES = Object.freeze({ analysis: 1, breakdown: 1, storyboard: 1 });
+// A chat request may be retried by a browser after a dropped response. Keep a
+// short-lived, server-side receipt for that idempotency key so the retry can
+// return the same Lumiere answer without spending a second prompt.
+const TEXT_IDEMPOTENCY_RECEIPT_MS = 30 * 60 * 1000;
+// A pricing preview authorizes one exact switch for a short period. The
+// browser never chooses the provider mode or amount when it confirms.
+const SUBSCRIPTION_SWITCH_PREVIEW_TTL_MS = 10 * 60 * 1000;
 // A Free feature is reserved while its background job runs, then settled only
 // when FilmScript actually receives and applies a result. This prevents an
 // unavailable provider or interrupted job from permanently spending a
@@ -4976,8 +4987,12 @@ function reserveTextCredits(userId, amount, reservationId) {
   const reservations = entry.textReservations && typeof entry.textReservations === "object" ? entry.textReservations : {};
   const timestamp = Date.now();
   for (const [key, reservation] of Object.entries(reservations)) if (Date.parse(reservation?.expiresAt || "") <= timestamp) delete reservations[key];
-  if (reservations[reservationId]) return { allowed: true, reservationId, amount: reservations[reservationId].amount, duplicate: true };
-  const reserved = Object.values(reservations).reduce((sum, reservation) => sum + Math.max(0, Number(reservation?.amount) || 0), 0);
+  const existing = reservations[reservationId];
+  if (existing?.state === "settled") return { allowed: false, reason: "already_completed", reservationId, amount: existing.amount, duplicate: true };
+  if (existing) return { allowed: true, reservationId, amount: existing.amount, duplicate: true };
+  const reserved = Object.values(reservations)
+    .filter((reservation) => reservation?.state !== "settled")
+    .reduce((sum, reservation) => sum + Math.max(0, Number(reservation?.amount) || 0), 0);
   const available = state?.unlimited ? Number.MAX_SAFE_INTEGER : Math.max(0, lumiereCreditAvailability(state).available - reserved);
   if (available < required) return { allowed: false, reason: "insufficient_credits", available };
   reservations[reservationId] = { amount: required, createdAt: new Date().toISOString(), expiresAt: new Date(timestamp + 30 * 60_000).toISOString() };
@@ -4986,12 +5001,43 @@ function reserveTextCredits(userId, amount, reservationId) {
   return { allowed: true, reservationId, amount: required, available };
 }
 
-function settleTextCredits(userId, reservationId) {
+function textCreditReceipt(userId, reservationId) {
+  const entry = loadLumiereCreditsSnapshot()[userId] || {};
+  const reservation = entry.textReservations?.[reservationId];
+  if (!reservation || reservation.state !== "settled" || Date.parse(reservation.expiresAt || "") <= Date.now()) return null;
+  const receipt = reservation.receipt;
+  if (!receipt || typeof receipt !== "object" || !String(receipt.reply || "").trim()) return null;
+  return {
+    reply: String(receipt.reply).slice(0, 50_000),
+    provider: String(receipt.provider || "openai").slice(0, 80),
+    model: String(receipt.model || OPENAI_TEXT_MODEL).slice(0, 160),
+    requiredCredits: Math.max(1, Number(receipt.requiredCredits) || 1),
+  };
+}
+
+function settleTextCredits(userId, reservationId, receipt = null) {
   const snapshot = loadLumiereCreditsSnapshot(); const entry = snapshot[userId] || {};
   const reservations = entry.textReservations && typeof entry.textReservations === "object" ? entry.textReservations : {};
   const reservation = reservations[reservationId];
   if (!reservation) return false;
-  delete reservations[reservationId]; snapshot[userId] = { ...entry, textReservations: reservations }; saveLumiereCreditsSnapshot(snapshot);
+  if (reservation.state === "settled") return true;
+  if (receipt && typeof receipt === "object") {
+    reservations[reservationId] = {
+      ...reservation,
+      state: "settled",
+      settledAt: new Date().toISOString(),
+      expiresAt: new Date(Date.now() + TEXT_IDEMPOTENCY_RECEIPT_MS).toISOString(),
+      receipt: {
+        reply: String(receipt.reply || "").slice(0, 50_000),
+        provider: String(receipt.provider || "openai").slice(0, 80),
+        model: String(receipt.model || OPENAI_TEXT_MODEL).slice(0, 160),
+        requiredCredits: Math.max(1, Number(receipt.requiredCredits) || 1),
+      },
+    };
+  } else {
+    delete reservations[reservationId];
+  }
+  snapshot[userId] = { ...entry, textReservations: reservations }; saveLumiereCreditsSnapshot(snapshot);
   consumeLumiereCredit(userId, reservation.amount);
   return true;
 }
@@ -4999,7 +5045,7 @@ function settleTextCredits(userId, reservationId) {
 function releaseTextCredits(userId, reservationId) {
   const snapshot = loadLumiereCreditsSnapshot(); const entry = snapshot[userId] || {};
   const reservations = entry.textReservations && typeof entry.textReservations === "object" ? entry.textReservations : {};
-  if (!reservations[reservationId]) return false;
+  if (!reservations[reservationId] || reservations[reservationId].state === "settled") return false;
   delete reservations[reservationId]; snapshot[userId] = { ...entry, textReservations: reservations }; saveLumiereCreditsSnapshot(snapshot);
   return true;
 }
@@ -5023,6 +5069,9 @@ function lumierePlanRequired(res, { feature = "this Lumiere feature", image = fa
     error: image ? "image_generation_plan_required" : "filmscript_creator_required",
     message,
     upgrade: "creator",
+    requiredCredits: image ? OPENAI_STORYBOARD_CREDIT_COST : 1,
+    status: 403,
+    serverValidated: true,
   });
 }
 
@@ -5035,6 +5084,9 @@ function imageGenerationRequired(res, userId, access) {
     message: "Your image credits are used for this cycle. They renew automatically with your subscription.",
     credits: creditsSummary(userId),
     upgrade: "full",
+    requiredCredits: OPENAI_STORYBOARD_CREDIT_COST,
+    status: 429,
+    serverValidated: true,
   });
 }
 
@@ -5626,12 +5678,31 @@ function recurrenteSubscriptionCheckoutId(subscription) {
     || null;
 }
 
+function recurrenteSubscriptionProductIds(subscription) {
+  const products = [
+    subscription?.product?.id,
+    subscription?.product_id,
+    subscription?.price?.product?.id,
+    subscription?.price?.product_id,
+  ];
+  const items = Array.isArray(subscription?.items)
+    ? subscription.items
+    : Array.isArray(subscription?.subscription_items)
+      ? subscription.subscription_items
+      : [];
+  for (const item of items) {
+    products.push(
+      item?.product?.id,
+      item?.product_id,
+      item?.price?.product?.id,
+      item?.price?.product_id,
+    );
+  }
+  return [...new Set(products.map((value) => String(value || "").trim()).filter(Boolean))];
+}
+
 function recurrenteSubscriptionProductId(subscription) {
-  return subscription?.product?.id
-    || subscription?.product_id
-    || subscription?.price?.product?.id
-    || subscription?.price?.product_id
-    || null;
+  return recurrenteSubscriptionProductIds(subscription)[0] || null;
 }
 
 function recurrenteSubscriptionMatchesConfiguredProduct(subscription, expectedPlan = null) {
@@ -6074,14 +6145,14 @@ async function handleCheckout(req, res) {
     return json(res, 409, { error: "subscription_already_active", message: String(cfg.name) + " is already active for this Google account." });
   }
   // A second checkout for another paid tier would create two provider
-  // subscriptions. A deliberate, confirmed switch must use the dedicated
-  // endpoint below so the former subscription is closed first.
+  // subscriptions. A deliberate switch must use the dedicated native-update
+  // flow below so the existing subscription and billing cycle are preserved.
   if (current.active) {
     return json(res, 409, {
       error: "plan_change_required",
       currentPlan: current.subscription?.plan || null,
       requestedPlan: plan,
-      message: "Confirm the plan change before starting a new checkout.",
+      message: "Review the plan-change preview before confirming the update.",
     });
   }
   const item = { product_id: cfg.productId, quantity: 1 };
@@ -6173,16 +6244,71 @@ async function createCheckoutForPlan({ sid, plan, language, cfg, tracking }) {
   return { checkoutId: checkout.id, checkoutUrl };
 }
 
-async function handlePlanSwitch(req, res) {
+function recurrenteProrationPreview(payload) {
+  const data = payload?.data?.proration || payload?.data || payload?.proration || payload || {};
+  const amount = Number(
+    data?.net_amount_in_cents
+      ?? data?.netAmountInCents
+      ?? data?.amount_in_cents
+      ?? data?.amountInCents
+      ?? 0,
+  );
+  const chargeable = data?.chargeable === true || data?.is_chargeable === true;
+  return {
+    netAmountInCents: Number.isFinite(amount) ? Math.round(amount) : 0,
+    currency: String(data?.currency || data?.currency_code || "USD").trim().toUpperCase() || "USD",
+    chargeable,
+  };
+}
+
+function subscriptionSwitchProviderResult(subscription) {
+  const period = recurrenteSubscriptionPeriodValues(subscription);
+  return {
+    id: subscription?.id || null,
+    status: recurrenteSubscriptionStatus(subscription),
+    productIds: recurrenteSubscriptionProductIds(subscription),
+    currentPeriodStart: normalizeBillingTimestamp(period.start),
+    currentPeriodEnd: normalizeBillingTimestamp(period.end),
+  };
+}
+
+function subscriptionSwitchItems(fromProductId, toProductId) {
+  return [
+    { product_id: fromProductId, deleted: true },
+    { product_id: toProductId, quantity: 1 },
+  ];
+}
+
+function subscriptionSwitchPreviewResponse({ token, expiresAt, preview, fromPlan, toPlan, mode }) {
+  return {
+    switchToken: token,
+    expiresAt,
+    fromPlan,
+    toPlan,
+    mode,
+    // Recurrente determines the money amount. FilmScript never tries to
+    // subtract used AI/image credits from the provider's billing math; those
+    // usage ledgers continue in their existing billing cycle unchanged.
+    charge: {
+      chargeable: mode === "now_and_charge",
+      amountInCents: Math.max(0, preview.netAmountInCents),
+      currency: preview.currency,
+    },
+    creditUsagePreserved: true,
+  };
+}
+
+async function handlePlanSwitchPreview(req, res) {
   let body;
   try { body = JSON.parse(await readBody(req, 32 * 1024)); } catch { return json(res, 400, { error: "invalid request body" }); }
   const plan = String(body.plan || "").trim().toLowerCase();
-  const language = String(body.language || "").trim().toLowerCase().startsWith("es") ? "es" : "en";
   const cfg = planConfig(plan);
-  const tracking = checkoutTracking(body);
-  if (!cfg || !BILLING_PLAN_KEYS.includes(plan)) return json(res, 400, { error: "unsupported_plan", message: "Choose FilmScript Creator or FilmScript Full." });
-  if (tracking.error) return json(res, 400, { error: tracking.error });
-  if (body.confirm !== true) return json(res, 400, { error: "plan_switch_confirmation_required" });
+  if (!cfg || !BILLING_PLAN_KEYS.includes(plan)) {
+    return json(res, 400, { error: "unsupported_plan", message: "Choose FilmScript Creator or FilmScript Full." });
+  }
+  if (!cfg.productId) {
+    return json(res, 503, { error: "recurrente_product_not_configured", message: `${cfg.name} is not configured right now.` });
+  }
   const sid = sessionId(req, res);
   if (!sid) return googleRequired(res);
 
@@ -6190,45 +6316,253 @@ async function handlePlanSwitch(req, res) {
   try {
     current = await synchronizeRecurrenteSubscription(sid, { force: true });
   } catch (error) {
-    return json(res, error.status || 502, { error: "recurrente_unavailable", message: "FilmScript could not verify your current plan. Nothing was changed." });
-  }
-  if (!current.active) {
-    try { return json(res, 201, await createCheckoutForPlan({ sid, plan, language, cfg, tracking })); }
-    catch (error) { return json(res, error.status || 502, { error: error.code || "checkout_unavailable", message: error.message }); }
-  }
-  if (current.subscription?.plan === plan) return json(res, 409, { error: "subscription_already_active", message: `${cfg.name} is already active for this Google account.` });
-
-  const db = loadBilling();
-  const user = db.users[sid];
-  const previousPlan = user?.subscription?.plan;
-  const subscriptionId = user?.subscription?.subscriptionId || current.subscription?.id || null;
-  if (!user?.subscription || !subscriptionId) {
-    return json(res, 409, { error: "no_recurrente_subscription", message: "FilmScript could not safely locate the current subscription. Nothing was changed." });
-  }
-  try {
-    const remote = await recurrenteRequest(`/subscriptions/${encodeURIComponent(subscriptionId)}`);
-    const remoteStatus = recurrenteSubscriptionStatus(remote?.data || remote);
-    if (!RECURRENTE_CANCELED_SUBSCRIPTION_STATUSES.has(remoteStatus)) {
-      await recurrenteRequest(`/subscriptions/${encodeURIComponent(subscriptionId)}`, { method: "DELETE" });
-    }
-  } catch (error) {
-    return json(res, error.status || 502, { error: "recurrente_plan_switch_failed", message: "Recurrente could not close the current plan. Nothing was changed." });
-  }
-  user.subscription.status = "canceled";
-  user.subscription.updatedAt = new Date().toISOString();
-  if (user.subscription.checkoutId && db.checkouts[user.subscription.checkoutId]) db.checkouts[user.subscription.checkoutId].status = "canceled";
-  saveBilling(db);
-  billingVerificationCache.delete(sid);
-  try {
-    const checkout = await createCheckoutForPlan({ sid, plan, language, cfg, tracking });
-    return json(res, 201, { ...checkout, switchedFrom: previousPlan, switchedTo: plan });
-  } catch (error) {
     return json(res, error.status || 502, {
-      error: error.code || "checkout_unavailable",
-      previousPlan,
-      message: `Your previous plan was canceled, but ${cfg.name} checkout could not be opened. Please try again or contact support.`,
+      error: "recurrente_unavailable",
+      message: "FilmScript could not verify your current plan. Nothing was changed.",
     });
   }
+  if (!current.active) {
+    return json(res, 409, {
+      error: "no_active_subscription",
+      message: "Start a plan checkout before requesting a plan change.",
+      checkoutRequired: true,
+    });
+  }
+
+  const localSubscription = getSubscription(sid);
+  const subscriptionId = localSubscription?.subscriptionId || current.subscription?.id || null;
+  if (!subscriptionId) {
+    return json(res, 409, {
+      error: "no_recurrente_subscription",
+      message: "FilmScript could not safely locate the current subscription. Nothing was changed.",
+    });
+  }
+
+  let remoteSubscription;
+  try {
+    const response = await recurrenteRequest(`/subscriptions/${encodeURIComponent(subscriptionId)}`);
+    remoteSubscription = response?.data || response;
+  } catch (error) {
+    return json(res, error.status || 502, {
+      error: "recurrente_unavailable",
+      message: "FilmScript could not verify the current subscription. Nothing was changed.",
+    });
+  }
+  if (!RECURRENTE_ACTIVE_SUBSCRIPTION_STATUSES.has(recurrenteSubscriptionStatus(remoteSubscription))) {
+    return json(res, 409, {
+      error: "subscription_not_active",
+      message: "This subscription is no longer active. Nothing was changed.",
+    });
+  }
+  const fromProductId = recurrenteSubscriptionProductIds(remoteSubscription)
+    .find((productId) => !!planFromProductId(productId));
+  const fromPlan = planFromProductId(fromProductId);
+  if (!fromProductId || !fromPlan) {
+    return json(res, 409, {
+      error: "unsupported_subscription_product",
+      message: "FilmScript could not safely identify the current plan. Nothing was changed.",
+    });
+  }
+  if (fromPlan === plan) {
+    return json(res, 409, {
+      error: "subscription_already_active",
+      message: `${cfg.name} is already active for this Google account.`,
+    });
+  }
+
+  const request = {
+    items: subscriptionSwitchItems(fromProductId, cfg.productId),
+    // Preview the immediate-charge case first. The returned `chargeable`
+    // flag decides whether the confirmed update may use this mode.
+    mode: "now_and_charge",
+    fromProductId,
+    toProductId: cfg.productId,
+  };
+  let providerPreview;
+  try {
+    providerPreview = await recurrenteRequest(
+      `/subscriptions/${encodeURIComponent(subscriptionId)}/proration_preview`,
+      { method: "POST", body: JSON.stringify({ items: request.items, mode: request.mode }) },
+    );
+  } catch (error) {
+    return json(res, error.status || 502, {
+      error: "recurrente_proration_unavailable",
+      message: "FilmScript could not calculate the plan change right now. Nothing was changed.",
+    });
+  }
+  const preview = recurrenteProrationPreview(providerPreview);
+  // A provider preview can explicitly say there is no immediate collection.
+  // In that case apply the subscription edit with `now`, never by opening a
+  // full-price checkout.
+  const mode = preview.chargeable && preview.netAmountInCents > 0 ? "now_and_charge" : "now";
+  const token = crypto.randomBytes(32).toString("base64url");
+  const expiresAt = new Date(Date.now() + SUBSCRIPTION_SWITCH_PREVIEW_TTL_MS).toISOString();
+  try {
+    createSubscriptionSwitchPreview({
+      token,
+      userId: sid,
+      subscriptionId,
+      fromPlan,
+      toPlan: cfg.key,
+      mode,
+      request,
+      preview,
+      idempotencyKey: `subswitch_${crypto.randomBytes(18).toString("hex")}`,
+      expiresAt,
+    });
+  } catch (error) {
+    if (error?.code === "subscription_switch_in_progress") {
+      return json(res, 409, {
+        error: "subscription_switch_in_progress",
+        message: "FilmScript is still reconciling a previous plan change. Refresh billing before trying again.",
+        expiresAt: error.expiresAt || null,
+      });
+    }
+    throw error;
+  }
+  return json(res, 200, subscriptionSwitchPreviewResponse({ token, expiresAt, preview, fromPlan, toPlan: cfg.key, mode }));
+}
+
+function switchPreviewConflict(res, state, preview) {
+  const messages = {
+    missing: "This plan-change preview is not valid. Request a new preview before confirming.",
+    expired: "This plan-change preview expired. Request a new preview before confirming.",
+    superseded: "A newer plan-change preview was created. Confirm that newer preview instead.",
+    failed: "This plan-change preview can no longer be used. Request a new preview.",
+    processing: "FilmScript is still reconciling this plan change. Do not submit another change yet.",
+  };
+  return json(res, state === "processing" ? 409 : 410, {
+    error: `subscription_switch_preview_${state}`,
+    message: messages[state] || "This plan-change preview can no longer be used. Request a new preview.",
+    expiresAt: preview?.expiresAt || null,
+  });
+}
+
+async function handlePlanSwitch(req, res) {
+  let body;
+  try { body = JSON.parse(await readBody(req, 32 * 1024)); } catch { return json(res, 400, { error: "invalid request body" }); }
+  if (body.confirm !== true) {
+    return json(res, 400, { error: "plan_switch_confirmation_required", message: "Review the exact plan-change preview before confirming." });
+  }
+  const token = typeof body.switchToken === "string" ? body.switchToken.trim() : "";
+  if (!/^[A-Za-z0-9_-]{32,128}$/.test(token)) {
+    return json(res, 400, { error: "subscription_switch_preview_required", message: "Request a plan-change preview before confirming." });
+  }
+  const sid = sessionId(req, res);
+  if (!sid) return googleRequired(res);
+  const claimed = claimSubscriptionSwitchPreview({ token, userId: sid });
+  if (claimed.state === "applied") {
+    return json(res, 200, {
+      applied: true,
+      idempotent: true,
+      fromPlan: claimed.preview.fromPlan,
+      toPlan: claimed.preview.toPlan,
+      mode: claimed.preview.mode,
+      creditUsagePreserved: true,
+    });
+  }
+  if (claimed.state !== "claimed") return switchPreviewConflict(res, claimed.state, claimed.preview);
+  const preview = claimed.preview;
+  const cfg = planConfig(preview.toPlan);
+  const suppliedPlan = body.plan == null ? null : String(body.plan).trim().toLowerCase();
+  if (!cfg || !BILLING_PLAN_KEYS.includes(preview.toPlan) || !cfg.productId || (suppliedPlan && suppliedPlan !== preview.toPlan)) {
+    failSubscriptionSwitchPreview({ token, userId: sid, errorCode: "preview_payload_mismatch" });
+    return json(res, 409, {
+      error: "subscription_switch_preview_mismatch",
+      message: "The confirmation does not match the server-issued plan-change preview.",
+    });
+  }
+
+  let liveSubscription;
+  try {
+    const response = await recurrenteRequest(`/subscriptions/${encodeURIComponent(preview.subscriptionId)}`);
+    liveSubscription = response?.data || response;
+  } catch (error) {
+    // No mutation was sent when this read failed, so leaving the same preview
+    // usable is safe and avoids forcing the customer to start over.
+    failSubscriptionSwitchPreview({ token, userId: sid, errorCode: "subscription_lookup_failed", retryable: true });
+    return json(res, error.status || 502, {
+      error: "recurrente_unavailable",
+      message: "FilmScript could not verify the current subscription. Nothing was changed.",
+    });
+  }
+  const liveProductIds = recurrenteSubscriptionProductIds(liveSubscription);
+  if (!RECURRENTE_ACTIVE_SUBSCRIPTION_STATUSES.has(recurrenteSubscriptionStatus(liveSubscription))
+    || !liveProductIds.includes(preview.request.fromProductId)) {
+    failSubscriptionSwitchPreview({ token, userId: sid, errorCode: "subscription_changed" });
+    return json(res, 409, {
+      error: "subscription_changed_since_preview",
+      message: "The current subscription changed after this preview. Request a new preview before confirming.",
+    });
+  }
+
+  let updatedPayload;
+  try {
+    updatedPayload = await recurrenteRequest(`/subscriptions/${encodeURIComponent(preview.subscriptionId)}`, {
+      method: "PUT",
+      // Recurrente does not document this header specifically for subscription
+      // updates, so FilmScript also enforces one-shot use locally. Sending it
+      // remains a best-effort replay key if the provider supports it.
+      headers: { "Idempotency-Key": preview.idempotencyKey },
+      body: JSON.stringify({ items: preview.request.items, mode: preview.mode }),
+    });
+  } catch (error) {
+    if (Number.isInteger(error.status) && error.status >= 400 && error.status < 500) {
+      // Recurrente documents that rejected `now_and_charge` updates are not
+      // applied. Require a fresh preview rather than reusing a failed intent.
+      failSubscriptionSwitchPreview({ token, userId: sid, errorCode: `provider_${error.status}` });
+      return json(res, error.status, {
+        error: "recurrente_plan_switch_rejected",
+        message: "The plan change was not accepted. Your current plan was kept unchanged.",
+      });
+    }
+    // A timeout or 5xx can be ambiguous: the provider may have completed the
+    // mutation after the connection dropped. Keep the token processing and do
+    // not risk a duplicate charge by replaying it automatically.
+    return json(res, error.status || 502, {
+      error: "subscription_switch_pending_reconciliation",
+      message: "FilmScript could not confirm the provider response. Your current plan was not canceled; refresh billing before trying again.",
+    });
+  }
+
+  const updatedSubscription = updatedPayload?.data || updatedPayload || {};
+  completeSubscriptionSwitchPreview({ token, userId: sid, providerResult: subscriptionSwitchProviderResult(updatedSubscription) });
+
+  // Preserve the same subscription id and billing boundary. Changing a tier
+  // increases the allowance but leaves both existing text and image usage
+  // ledgers intact for the already-active billing period.
+  const db = loadBilling();
+  const stored = db.users[sid]?.subscription;
+  if (stored && stored.subscriptionId === preview.subscriptionId) {
+    const cycleSource = { ...stored, ...updatedSubscription };
+    const updatedStatus = recurrenteSubscriptionStatus(updatedSubscription);
+    db.users[sid].subscription = {
+      ...stored,
+      plan: preview.toPlan,
+      status: RECURRENTE_ACTIVE_SUBSCRIPTION_STATUSES.has(updatedStatus)
+        ? "active"
+        : (updatedStatus !== "unknown" ? updatedStatus : stored.status),
+      subscriptionId: updatedSubscription?.id || stored.subscriptionId,
+      ...imageCreditCycleFields(cycleSource),
+      updatedAt: new Date().toISOString(),
+    };
+    saveBilling(db);
+  }
+  billingVerificationCache.delete(sid);
+  try { await synchronizeRecurrenteSubscription(sid, { force: true }); } catch {}
+  return json(res, 200, {
+    applied: true,
+    idempotent: false,
+    fromPlan: preview.fromPlan,
+    toPlan: preview.toPlan,
+    mode: preview.mode,
+    charge: {
+      chargeable: preview.mode === "now_and_charge",
+      amountInCents: Math.max(0, Number(preview.preview?.netAmountInCents) || 0),
+      currency: preview.preview?.currency || "USD",
+    },
+    creditUsagePreserved: true,
+  });
 }
 
 async function handleRecurrenteWebhook(req, res) {
@@ -7333,6 +7667,23 @@ const PUBLIC_STATIC_FILES = new Set([
   "invitation-access.js",
 ]);
 
+const LUMIERE_IDEMPOTENCY_KEY = /^[A-Za-z0-9][A-Za-z0-9_-]{7,127}$/;
+
+function lumiereIdempotencyKey(payload, headers = {}) {
+  const bodyKey = String(payload?.idempotencyKey || "").trim();
+  const headerValue = headers["idempotency-key"] || headers["x-idempotency-key"] || "";
+  const headerKey = String(Array.isArray(headerValue) ? headerValue[0] || "" : headerValue).trim();
+  if (bodyKey && headerKey && bodyKey !== headerKey) {
+    return { error: "The request id did not match the request header." };
+  }
+  const key = bodyKey || headerKey;
+  if (!key) return { key: `lchat_${crypto.randomBytes(18).toString("hex")}`, generated: true };
+  if (!LUMIERE_IDEMPOTENCY_KEY.test(key)) {
+    return { error: "The request id must contain 8 to 128 letters, numbers, hyphens, or underscores." };
+  }
+  return { key, generated: false };
+}
+
 async function handleLumiere(req, res) {
   const sid = sessionId(req, res);
   if (!sid) return googleRequired(res);
@@ -7343,20 +7694,10 @@ async function handleLumiere(req, res) {
       message: "Lumiere is already answering another request for this account.",
     });
   }
-  if (!hasLumiereChatAccess(sid)) {
-    const plan = lumierePlanKey(sid);
-    if (plan === "free") {
-      return json(res, 402, {
-        error: "lumiere_credits_exhausted",
-        message: "Your Free Lumiere prompts are used. Choose Creator or Full to keep the conversation going.",
-        credits: creditsSummary(sid),
-      });
-    }
-    return lumierePlanRequired(res);
-  }
   let messages;
   let maxTokens = 1024;
   let requestedLanguage = 'en';
+  let requestKey = '';
   try {
     const payload = JSON.parse(await readBody(req, 512 * 1024));
     if (!Array.isArray(payload.messages) || payload.messages.length === 0 || payload.messages.length > 50) {
@@ -7371,19 +7712,87 @@ async function handleLumiere(req, res) {
     requestedLanguage = normalizeLumiereLanguage(payload.language);
     const requestedMaxTokens = Number(payload.maxTokens);
     if (Number.isFinite(requestedMaxTokens)) maxTokens = Math.max(256, Math.min(4096, Math.round(requestedMaxTokens)));
+    const idempotency = lumiereIdempotencyKey(payload, req.headers);
+    if (idempotency.error) throw Object.assign(new Error(idempotency.error), { code: "invalid_idempotency_key" });
+    requestKey = idempotency.key;
   } catch (error) {
     return json(res, error?.status === 413 ? 413 : 400, {
-      error: error?.status === 413 ? "request_too_large" : "invalid request body",
+      error: error?.status === 413 ? "request_too_large" : error?.code || "invalid request body",
+      message: error?.code === "invalid_idempotency_key" ? error.message : undefined,
     });
   }
-  if (!hasLumiereCredits(sid)) {
+  const reservationId = `lumiere:${requestKey}`;
+  const previousReply = textCreditReceipt(sid, reservationId);
+  if (previousReply) {
+    const credits = creditsSummary(sid);
+    return json(res, 200, {
+      ...previousReply,
+      idempotencyKey: requestKey,
+      replayed: true,
+      remainingCredits: credits.remaining,
+      credits,
+    });
+  }
+  if (!hasLumiereChatAccess(sid)) {
+    const credits = creditsSummary(sid);
+    const plan = lumierePlanKey(sid);
+    const freePlan = plan === "free";
+    const creatorPlan = plan === "creator";
+    // A paid writer who has used their allowance must never be told they lack
+    // access to a plan they already own. Keep the response explicit so the UI
+    // can offer the meaningful next step: Creator may move to Full; Full
+    // simply renews on its current billing window.
+    return json(res, plan === "full" ? 429 : 402, {
+      error: "lumiere_credits_exhausted",
+      message: freePlan
+        ? "Your Free Lumiere prompts are used. Choose Creator or Full to keep the conversation going."
+        : creatorPlan
+          ? "Your Creator Lumiere prompt allowance is used for this window. Upgrade to Full or wait for your allowance to renew."
+          : "Your Full Lumiere prompt allowance is used for this window. It renews automatically with your plan.",
+      credits,
+      remainingCredits: credits.remaining,
+      availableCredits: credits.remaining,
+      requiredCredits: 1,
+      plan,
+      upgrade: creatorPlan ? "full" : (freePlan ? "creator" : null),
+      status: plan === "full" ? 429 : 402,
+      serverValidated: true,
+    });
+  }
+  const reservation = reserveTextCredits(sid, 1, reservationId);
+  if (!reservation.allowed) {
+    if (reservation.reason === "already_completed") {
+      return json(res, 409, {
+        error: "lumiere_request_already_completed",
+        message: "This Lumiere request has already completed. Send a new request to ask again.",
+        idempotencyKey: requestKey,
+        requiredCredits: 1,
+        credits: creditsSummary(sid),
+      });
+    }
+    const credits = creditsSummary(sid);
     return json(res, 402, {
       error: "lumiere_credits_exhausted",
       message: "Your Lumiere prompt allowance is currently empty. It refreshes automatically with your plan.",
+      credits,
+      remainingCredits: credits.remaining,
+      requiredCredits: 1,
+      upgrade: "creator",
+      status: 402,
+      serverValidated: true,
+    });
+  }
+  if (reservation.duplicate) {
+    return json(res, 409, {
+      error: "lumiere_request_in_progress",
+      message: "Lumiere is already answering this request.",
+      idempotencyKey: requestKey,
+      requiredCredits: 1,
       credits: creditsSummary(sid),
     });
   }
   activeLumiereChats.add(sid);
+  let settled = false;
   try {
     const personalization = buildLumierePersonalizationSystem(sid);
     const response = await requestLumiere({
@@ -7401,14 +7810,26 @@ async function handleLumiere(req, res) {
       .map((b) => b.text)
       .join("").trim();
     if (!reply) throw Object.assign(new Error("Lumiere returned no reply."), { status: 502 });
-    consumeLumiereCredit(sid);
+    settled = settleTextCredits(sid, reservationId, {
+      reply,
+      provider: "openai",
+      model: response.model || OPENAI_TEXT_MODEL,
+      requiredCredits: 1,
+    });
+    if (!settled) throw Object.assign(new Error("Lumiere could not settle this request safely."), { status: 409, code: "lumiere_credit_settlement_failed" });
+    const credits = creditsSummary(sid);
     json(res, 200, {
       reply,
       provider: "openai",
       model: response.model || OPENAI_TEXT_MODEL,
-      credits: creditsSummary(sid),
+      idempotencyKey: requestKey,
+      replayed: false,
+      requiredCredits: 1,
+      remainingCredits: credits.remaining,
+      credits,
     });
   } catch (err) {
+    if (!settled) releaseTextCredits(sid, reservationId);
     console.error("Lumiere API error:", err.status || "", err.message);
     const message = lumiereFailureMessage(err);
     json(res, lumiereFailureStatus(err), { error: "openai_unavailable", message });
@@ -8090,10 +8511,13 @@ export function requestHandler(req, res) {
       handleCalendar(req, res, pathname.split("/")[3]).catch((err) => json(res, err.status || 500, { error: err.message }));
     } else if ((req.method === "GET" || req.method === "POST") && /^\/api\/scripts\/scr_[a-f0-9]+\/preproduction$/.test(pathname)) {
       handlePreproduction(req, res, pathname.split("/")[3]).catch((err) => json(res, err.status || 500, { error: err.message }));
-    } else if (req.method === "POST" && req.url === "/api/checkout") {
+    } else if (req.method === "POST" && pathname === "/api/checkout") {
       if (enforceRateLimit(req, res, "checkout", 10, 10 * 60 * 1000)) return;
       handleCheckout(req, res).catch((err) => json(res, err.status || 500, { error: err.message }));
-    } else if (req.method === "POST" && req.url === "/api/subscription/switch") {
+    } else if (req.method === "POST" && pathname === "/api/subscription/switch/preview") {
+      if (enforceRateLimit(req, res, "subscription-switch-preview", 10, 10 * 60 * 1000)) return;
+      handlePlanSwitchPreview(req, res).catch((err) => json(res, err.status || 500, { error: err.message }));
+    } else if (req.method === "POST" && pathname === "/api/subscription/switch") {
       if (enforceRateLimit(req, res, "subscription-switch", 4, 10 * 60 * 1000)) return;
       handlePlanSwitch(req, res).catch((err) => json(res, err.status || 500, { error: err.message }));
     } else if (req.method === "POST" && req.url === "/api/credits/checkout") {
@@ -8147,6 +8571,11 @@ export const __entitlementTesting = Object.freeze({
   reserveFreeAllowance,
   settleFreeAllowanceReservation,
   releaseFreeAllowanceReservation,
+  lumiereCreditsFor,
+  reserveTextCredits,
+  settleTextCredits,
+  releaseTextCredits,
+  textCreditReceipt,
   imageCreditsFor,
   reserveImageCredits,
   settleImageCreditReservation,

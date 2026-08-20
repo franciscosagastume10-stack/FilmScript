@@ -13,10 +13,11 @@
 <script src="./theme-preference.js?v=20260720-themefade1"></script>
 <script defer src="./language-preference.js?v=20260819-billing-glass1"></script>
 <script defer src="./ui-sounds.js?v=20260804-imagine-live2"></script>
-<script defer src="./billing-client.js?v=20260716-profile-safe1"></script>
+<script defer src="./billing-client.js?v=20260820-proration1"></script>
 <script defer src="./credit-indicator.js?v=20260819-account-menu2"></script>
 <script defer src="./profile-onboarding.js?v=20260716-profile1"></script>
-<script defer src="./lumiere-client.js?v=20260731-plan-entitlements2"></script>
+<script defer src="./lumiere-client.js?v=20260820-credit-usage1"></script>
+<script defer src="./lumiere-access-modal.js?v=20260820-access-modal1"></script>
 <script defer src="./lumiere-preferences.js?v=20260819-lumiere-ui1"></script>
 <script defer src="./writing-idle.js?v=20260713-idle1"></script>
 <script defer src="./character-name-tools.js?v=20260713-names1"></script>
@@ -25,7 +26,7 @@
 <script defer src="./preproduction-client.js?v=20260819-collab2"></script>
 <script defer src="./canvas-client.js?v=20260819-collab2"></script>
 <script defer src="./canvas-workspace.js?v=20260819-imagine-frost150"></script>
-<script defer src="./analysis-client.js?v=20260713-language1"></script>
+<script defer src="./analysis-client.js?v=20260820-access-gate1"></script>
     <script type="module" src="./analysis-workspace.js?v=20260731-plan-entitlements2"></script>
 <script defer src="./budget-client.js?v=20260720-allocationdonut2"></script>
 <script type="module" src="./budget-workspace.js?v=20260801-budget-glass1"></script>
@@ -2543,12 +2544,22 @@ class Component extends DCLogic {
 
   _fetchCredits() {
     fetch(window.filmscriptApiUrl ? window.filmscriptApiUrl('/api/credits') : '/api/credits', { credentials: 'include' })
-      .then(r => r.json())
+      .then(r => {
+        if (!r.ok) throw new Error(`Credit request failed (${r.status})`);
+        return r.json();
+      })
       .then(d => {
         // The credit service now returns discrete image credits plus the
         // Lumiere text windows. Accept the older shape too, so an editor tab
         // never breaks during a rolling deployment.
-        if (d && typeof d === 'object') this.setState({ credits: d });
+        if (d && typeof d === 'object') {
+          const remaining = Number(d.remaining);
+          const knownBalance = d.unlimited === true || Number.isFinite(remaining);
+          this.setState({
+            credits: d,
+            ...(knownBalance ? { lumiereChatAccess: d.unlimited === true || remaining > 0 } : {}),
+          });
+        }
       })
       .catch(() => {});
   }
@@ -2636,6 +2647,15 @@ class Component extends DCLogic {
   }
 
   _hasLumiereChatAccess() {
+    // The API balance is the source of truth once it has loaded. This makes a
+    // consumed Free or paid allowance stop locally at once instead of looking
+    // as though a tool can be pressed forever.
+    const balance = this.state.credits;
+    if (balance && typeof balance === 'object') {
+      if (balance.unlimited === true) return true;
+      const remaining = Number(balance.remaining);
+      if (Number.isFinite(remaining)) return remaining > 0;
+    }
     return this.state.lumiereChatAccess === true || this._hasLumiereAccess();
   }
 
@@ -2727,17 +2747,36 @@ class Component extends DCLogic {
     } catch {}
   }
 
+  _presentLumiereAccess(detail = {}) {
+    window.dispatchEvent(new CustomEvent('filmscript:upgrade-required', {
+      detail: {
+        serverValidated: true,
+        status: 402,
+        requiredCredits: 1,
+        availableCredits: Number(this.state.credits?.remaining),
+        ...detail,
+      },
+    }));
+  }
+
   _requireLumierePlan(message = 'Lumiere is included with Creator and Full. Your scripts and manual production work remain available to edit and export.') {
     if (this._hasLumiereAccess()) return true;
-    this.setState({ paywallOpen: true, lumiereOpen: true, lumiereClosing: false });
-    if (message) this._toast(message);
+    this._presentLumiereAccess({
+      error: 'filmscript_creator_required',
+      requiredTier: 'creator',
+      message,
+    });
     return false;
   }
 
   _requireLumiereChat(message = 'Your Lumiere credits are used up. Choose Creator or Full to keep asking questions.') {
     if (this._hasLumiereChatAccess()) return true;
-    this.setState({ paywallOpen: true, lumiereOpen: true, lumiereClosing: false });
-    if (message) this._toast(message);
+    this._presentLumiereAccess({
+      error: 'lumiere_credits_exhausted',
+      requiredTier: 'creator',
+      message,
+      availableCredits: 0,
+    });
     return false;
   }
 
@@ -2841,7 +2880,7 @@ class Component extends DCLogic {
   }
 
   _askLumiereAfterWritingPause() {
-    if (!this._requireLumierePlan()) return;
+    if (!this._requireLumiereChat()) return;
     const prompt = this._writingContinuationPrompt();
     this._writingIdle?.pause();
     clearTimeout(this._writingIdleCopyTimer);
@@ -2886,6 +2925,17 @@ class Component extends DCLogic {
     document.addEventListener('visibilitychange', this._creditsVisibilityHandler);
     this._themeHandler = (event) => this.setState({ darkMode: event?.detail?.theme === 'dark' });
     window.addEventListener('filmscript:theme-change', this._themeHandler);
+    this._creditsUpdatedHandler = (event) => {
+      const credits = event?.detail;
+      if (!credits || typeof credits !== 'object') return;
+      const remaining = Number(credits.remaining);
+      const knownBalance = credits.unlimited === true || Number.isFinite(remaining);
+      this.setState({
+        credits,
+        ...(knownBalance ? { lumiereChatAccess: credits.unlimited === true || remaining > 0 } : {}),
+      });
+    };
+    window.addEventListener('filmscript:credits-updated', this._creditsUpdatedHandler);
     this._refreshBilling();
     this._loadImportedScript().then(() => {
       this._restoreWorkMode();
@@ -2997,7 +3047,12 @@ class Component extends DCLogic {
       if (document.hidden) this._dismissWritingIdleNudge();
     };
     document.addEventListener('visibilitychange', this._writingIdleVisibilityHandler);
-    this._proRequiredHandler = () => this._requireLumierePlan();
+    this._proRequiredHandler = (event) => {
+      // Server-confirmed failures are presented by the shared, focused access
+      // dialog. Keep the legacy bridge only for older feature clients.
+      if (event?.detail?.serverValidated === true) return;
+      this._requireLumierePlan(event?.detail?.message);
+    };
     window.addEventListener('filmscript:pro-required', this._proRequiredHandler);
     this._analysisOpenEditorHandler = () => this.switchWorkMode('editor');
     this._analysisOpenSceneHandler = (event) => this.openAnalysisScene(event?.detail?.sceneNumber);
@@ -3374,7 +3429,7 @@ class Component extends DCLogic {
   }
 
   openAnalysisInLumiere(prompt) {
-    if (!this._requireLumierePlan()) return;
+    if (!this._requireLumiereChat()) return;
     const input = String(prompt || 'Help me understand the current screenplay Analysis.').trim();
     this._playWorkModeSound();
     this.setState({ workMode: 'editor', lumiereOpen: true, lumiereClosing: false, input }, () => {
@@ -6907,7 +6962,7 @@ class Component extends DCLogic {
     this.closeCharacterNameRoom();
     this.setState({ formatCheckActive: true, formatCheckExportIntent: false, formatCheckError: '' });
     if (existing.status === 'complete' && existing.scriptHash === currentHash) return;
-    if (!this._requireLumierePlan()) {
+    if (!this._requireLumiereChat()) {
       this.setState({ formatCheckActive: false });
       return;
     }
@@ -6920,7 +6975,7 @@ class Component extends DCLogic {
 
   async analyzeFormatCheck(options = {}) {
     if (this.state.formatCheckLoading) return;
-    if (!this._requireLumierePlan()) return;
+    if (!this._requireLumiereChat()) return;
     const blocks = this._formatCheckBlocks();
     if (!blocks.some((block) => block.text)) return;
     const forExport = options.forExport === true || (options.forExport !== false && this.state.formatCheckExportIntent);
@@ -6987,7 +7042,7 @@ ${JSON.stringify(blocks)}`;
 
   recheckFormat() {
     if (this.state.formatCheckLoading) return;
-    if (!this._requireLumierePlan()) return;
+    if (!this._requireLumiereChat()) return;
     this.analyzeFormatCheck({ forExport: this.state.formatCheckExportIntent });
   }
 
@@ -7164,11 +7219,14 @@ ${JSON.stringify(blocks)}`;
     this.closeCharacterNameRoom();
     this.setState({ titleRoomActive: true, nameRoomActive: false, formatCheckActive: false, titleRoomError: '', titleRoomOutdated: !matches });
     if (matches) return;
-    if (!this._requireLumierePlan()) {
+    if (!this._requireLumiereChat()) {
       this.setState({ titleRoomActive: false });
       return;
     }
-    window.setTimeout(() => this.analyzeTitleRoom({ autoRegenerate: this._titleRoomAnswersComplete(room.answers) }), 0);
+    // Opening the room may spend one explicit analysis use. Never chain a
+    // second title-generation request from the same click: generation remains
+    // a separate, visible user decision.
+    window.setTimeout(() => this.analyzeTitleRoom({ autoRegenerate: false }), 0);
   }
 
   closeTitleRoom() {
@@ -7178,7 +7236,7 @@ ${JSON.stringify(blocks)}`;
 
   async analyzeTitleRoom({ autoRegenerate = false } = {}) {
     if (this.state.titleRoomLoading) return;
-    if (!this._requireLumierePlan()) return;
+    if (!this._requireLumiereChat()) return;
     const screenplay = this._getScript();
     if (screenplay.replace(/\s+/g, '').length < 80) return;
     const scriptHash = this._titleRoomHash(screenplay);
@@ -7290,7 +7348,7 @@ ${screenplay}`;
 
   async generateTitleRoom(isAutomatic = false) {
     if (this.state.titleRoomLoading || !this._titleRoomAnswersComplete()) return;
-    if (!this._requireLumierePlan()) return;
+    if (!this._requireLumiereChat()) return;
     const screenplay = this._getScript();
     const room = this._normalizeTitleRoomState(this.state.titleRoom);
     this.setState({ titleRoomLoading: true, titleRoomError: '', titleRoom: { ...room, stage: 'ready' } });
@@ -7336,7 +7394,7 @@ ${screenplay}`;
     const room = this._normalizeTitleRoomState(this.state.titleRoom);
     const title = room.titles.find((item) => item.id === titleId);
     if (!title) return;
-    if (!this._requireLumierePlan()) return;
+    if (!this._requireLumiereChat()) return;
     if (action === 'compare') {
       const firstId = room.compareIds[0];
       if (!firstId) {
@@ -7393,13 +7451,10 @@ ${screenplay}`;
     const scriptHash = this._titleRoomHash(this._getScript());
     if (scriptHash === room.scriptHash) return;
     clearTimeout(this._titleRoomSyncTimer);
-    this.setState({ titleRoomOutdated: true });
-    if (!this._hasLumiereAccess()) return;
-    this._titleRoomSyncTimer = window.setTimeout(() => {
-      if (this.state.titleRoomActive && !this.state.titleRoomLoading) {
-        this.analyzeTitleRoom({ autoRegenerate: this._titleRoomAnswersComplete() });
-      }
-    }, 6000);
+    // Script edits must never spend Lumiere uses in the background. Preserve
+    // the current result and clearly mark it stale until the writer chooses
+    // to refresh it themselves.
+    if (!this.state.titleRoomOutdated) this.setState({ titleRoomOutdated: true });
   }
 
   // ---------- Character Name Generator ----------
@@ -7555,7 +7610,7 @@ ${screenplay}`;
       formatCheckActive: false,
     });
     if (!knownCharacters.length || matches) return;
-    if (!this._requireLumierePlan()) {
+    if (!this._requireLumiereChat()) {
       this.setState({ nameRoomActive: false });
       return;
     }
@@ -7569,7 +7624,7 @@ ${screenplay}`;
 
   async analyzeCharacterNames() {
     if (this.state.nameRoomLoading) return;
-    if (!this._requireLumierePlan()) return;
+    if (!this._requireLumiereChat()) return;
     const blocks = this._formatCheckBlocks();
     const allKnownCharacters = this._characterCueSummary(blocks);
     if (!allKnownCharacters.length) return;
@@ -7725,7 +7780,7 @@ ${JSON.stringify(blocks.map(({ blockIndex, pageNumber, type, text }) => ({ block
   }
 
   async moreCharacterNames(characterId) {
-    if (this.state.nameRoomActionLoading || !this._requireLumierePlan()) return;
+    if (this.state.nameRoomActionLoading || !this._requireLumiereChat()) return;
     const room = this._normalizeCharacterNameState(this.state.nameRoom);
     const character = room.characters.find((item) => item.id === characterId);
     if (!character) return;
@@ -7878,6 +7933,14 @@ Write Lumiere's next reply only:`;
       });
       this._fetchCredits();
     } catch (e) {
+      const accessDenied = e?.serverValidated === true
+        && ['lumiere_credits_exhausted', 'insufficient_credits', 'filmscript_creator_required', 'full_plan_required'].includes(e?.code);
+      if (accessDenied) {
+        // The shared Liquid Glass access dialog has already explained the
+        // server-confirmed limit. Do not fabricate an assistant reply.
+        this.setState({ loading: false }, () => this._queueChatSave(this.state.chat));
+        return;
+      }
       const message = String(e?.message || '').trim() || 'I lost the connection to the projection room for a moment. Ask me again?';
       this.setState(s => ({ chat: [...s.chat, { who: 'l', text: message, cliche: clicheRequest }], loading: false }), () => {
         this._scrollChat();
@@ -7931,6 +7994,7 @@ Write Lumiere's next reply only:`;
     if (this._writingIdleVisibilityHandler) document.removeEventListener('visibilitychange', this._writingIdleVisibilityHandler);
     if (this._creditsVisibilityHandler) document.removeEventListener('visibilitychange', this._creditsVisibilityHandler);
     if (this._themeHandler) window.removeEventListener('filmscript:theme-change', this._themeHandler);
+    if (this._creditsUpdatedHandler) window.removeEventListener('filmscript:credits-updated', this._creditsUpdatedHandler);
     if (this._proRequiredHandler) window.removeEventListener('filmscript:pro-required', this._proRequiredHandler);
     if (this._analysisOpenEditorHandler) window.removeEventListener('filmscript:analysis-open-editor', this._analysisOpenEditorHandler);
     if (this._analysisOpenSceneHandler) window.removeEventListener('filmscript:analysis-open-scene', this._analysisOpenSceneHandler);
@@ -9657,7 +9721,7 @@ Write Lumiere's next reply only:`;
       titleRoomReferencesInput: (event) => this.updateTitleRoomField('references', event.target.value),
       titleRoomReferencesBlur: (event) => this.updateTitleRoomField('references', event.target.value, true),
       titleRoomGenerate: () => this.generateTitleRoom(),
-      titleRoomRegenerate: () => this.generateTitleRoom(),
+      titleRoomRegenerate: () => this.analyzeTitleRoom({ autoRegenerate: false }),
       titleRoomEditDirection: () => {
         const next = { ...titleRoom, stage: 'questions', questionIndex: 0 };
         this.setState({ titleRoom: next });

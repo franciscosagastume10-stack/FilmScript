@@ -148,11 +148,42 @@ sqlite.exec(`
   );
   CREATE INDEX IF NOT EXISTS checkouts_user_status_idx ON checkouts(user_id, status, created_at DESC);
 
+  -- A switch preview is an authorization to apply one exact provider mutation,
+  -- not a payment record. Tokens are hashed at rest and expire quickly so an
+  -- old browser confirmation can never silently change a subscription later.
+  CREATE TABLE IF NOT EXISTS subscription_switch_previews (
+    token_hash TEXT PRIMARY KEY,
+    user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    subscription_id TEXT NOT NULL,
+    from_plan TEXT NOT NULL,
+    to_plan TEXT NOT NULL,
+    mode TEXT NOT NULL,
+    request_json TEXT NOT NULL,
+    preview_json TEXT NOT NULL,
+    idempotency_key TEXT NOT NULL UNIQUE,
+    status TEXT NOT NULL,
+    created_at TEXT NOT NULL,
+    expires_at TEXT NOT NULL,
+    claimed_at TEXT,
+    completed_at TEXT,
+    provider_result_json TEXT,
+    error_code TEXT
+  );
+  CREATE INDEX IF NOT EXISTS subscription_switch_previews_user_idx
+    ON subscription_switch_previews(user_id, expires_at DESC);
+
   CREATE TABLE IF NOT EXISTS oauth_states (
     state_hash TEXT PRIMARY KEY,
     session_id TEXT NOT NULL REFERENCES sessions(id) ON DELETE CASCADE,
     return_to TEXT NOT NULL,
     created_at TEXT NOT NULL
+  );
+
+  CREATE TABLE IF NOT EXISTS auth_handoffs (
+    token_hash TEXT PRIMARY KEY,
+    session_id TEXT NOT NULL REFERENCES sessions(id) ON DELETE CASCADE,
+    return_to TEXT NOT NULL,
+    expires_at TEXT NOT NULL
   );
 
   CREATE TABLE IF NOT EXISTS processed_events (
@@ -789,6 +820,33 @@ function consumeOauthState(state) {
   })();
 }
 
+// The OAuth callback is hosted on the API subdomain while the workspace is
+// hosted on filmscript.app. A short-lived, one-time handoff lets the workspace
+// establish its own first-party cookie before it loads private data. This
+// avoids relying on browser-specific subdomain cookie propagation after Google
+// returns from its account chooser.
+function createAuthHandoff(sessionId, returnTo) {
+  const token = crypto.randomBytes(32).toString("base64url");
+  const now = Date.now();
+  sqlite.prepare("DELETE FROM auth_handoffs WHERE expires_at <= ?").run(new Date(now).toISOString());
+  sqlite.prepare(`
+    INSERT INTO auth_handoffs (token_hash, session_id, return_to, expires_at)
+    VALUES (?, ?, ?, ?)
+  `).run(hashSecret(token), sessionId, returnTo, new Date(now + 2 * 60 * 1000).toISOString());
+  return token;
+}
+
+function consumeAuthHandoff(token) {
+  if (!token) return null;
+  return sqlite.transaction(() => {
+    const key = hashSecret(token);
+    const row = sqlite.prepare("SELECT * FROM auth_handoffs WHERE token_hash = ?").get(key);
+    if (row) sqlite.prepare("DELETE FROM auth_handoffs WHERE token_hash = ?").run(key);
+    if (!row || Date.parse(row.expires_at) <= Date.now()) return null;
+    return { sessionId: row.session_id, returnTo: row.return_to };
+  })();
+}
+
 function transferOwnership(fromUserId, toUserId) {
   if (!fromUserId || !toUserId || fromUserId === toUserId) return;
   sqlite.prepare("UPDATE scripts SET user_id = ? WHERE user_id = ?").run(toUserId, fromUserId);
@@ -866,6 +924,165 @@ function normalizeProfileGender(value) {
   return normalized;
 }
 
+function rowToSubscriptionSwitchPreview(row) {
+  if (!row) return null;
+  return {
+    tokenHash: row.token_hash,
+    userId: row.user_id,
+    subscriptionId: row.subscription_id,
+    fromPlan: row.from_plan,
+    toPlan: row.to_plan,
+    mode: row.mode,
+    request: parseJson(row.request_json, {}),
+    preview: parseJson(row.preview_json, {}),
+    idempotencyKey: row.idempotency_key,
+    status: row.status,
+    createdAt: row.created_at,
+    expiresAt: row.expires_at,
+    claimedAt: row.claimed_at || null,
+    completedAt: row.completed_at || null,
+    providerResult: parseJson(row.provider_result_json, null),
+    errorCode: row.error_code || null,
+  };
+}
+
+// Keep a durable, one-time server authorization between the read-only
+// proration preview and the paid provider mutation. The opaque token itself is
+// never stored, and the idempotency key is bound to this exact request.
+function createSubscriptionSwitchPreview({
+  token,
+  userId,
+  subscriptionId,
+  fromPlan,
+  toPlan,
+  mode,
+  request,
+  preview,
+  idempotencyKey,
+  expiresAt,
+}) {
+  if (!token || !userId || !subscriptionId || !fromPlan || !toPlan || !mode || !idempotencyKey || !expiresAt) {
+    throw new Error("Invalid subscription switch preview");
+  }
+  const createdAt = nowIso();
+  const tokenHash = hashSecret(token);
+  sqlite.transaction(() => {
+    // A timeout after the provider mutation is deliberately left in
+    // `processing` so a second browser action cannot charge twice. Once the
+    // short authorization window expires, the API must re-check provider state
+    // before it can issue a new preview.
+    sqlite.prepare(`
+      UPDATE subscription_switch_previews
+      SET status = 'expired', completed_at = ?
+      WHERE user_id = ? AND subscription_id = ? AND status = 'processing' AND expires_at <= ?
+    `).run(createdAt, userId, subscriptionId, createdAt);
+    const inFlight = sqlite.prepare(`
+      SELECT expires_at FROM subscription_switch_previews
+      WHERE user_id = ? AND subscription_id = ? AND status = 'processing'
+      LIMIT 1
+    `).get(userId, subscriptionId);
+    if (inFlight) {
+      const error = Object.assign(new Error("A plan change is still being reconciled."), {
+        code: "subscription_switch_in_progress",
+        expiresAt: inFlight.expires_at,
+      });
+      throw error;
+    }
+    sqlite.prepare(`
+      UPDATE subscription_switch_previews
+      SET status = 'superseded', completed_at = ?
+      WHERE user_id = ? AND subscription_id = ? AND status = 'issued'
+    `).run(createdAt, userId, subscriptionId);
+    sqlite.prepare("DELETE FROM subscription_switch_previews WHERE expires_at <= ? AND status IN ('issued', 'failed', 'superseded', 'expired')")
+      .run(createdAt);
+    sqlite.prepare(`
+      INSERT INTO subscription_switch_previews (
+        token_hash, user_id, subscription_id, from_plan, to_plan, mode,
+        request_json, preview_json, idempotency_key, status, created_at, expires_at
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'issued', ?, ?)
+    `).run(
+      tokenHash,
+      userId,
+      subscriptionId,
+      fromPlan,
+      toPlan,
+      mode,
+      stringify(request),
+      stringify(preview),
+      idempotencyKey,
+      createdAt,
+      expiresAt,
+    );
+  })();
+  return rowToSubscriptionSwitchPreview(
+    sqlite.prepare("SELECT * FROM subscription_switch_previews WHERE token_hash = ?").get(tokenHash),
+  );
+}
+
+function claimSubscriptionSwitchPreview({ token, userId }) {
+  if (!token || !userId) return { state: "missing", preview: null };
+  const tokenHash = hashSecret(token);
+  const timestamp = nowIso();
+  return sqlite.transaction(() => {
+    const row = sqlite.prepare("SELECT * FROM subscription_switch_previews WHERE token_hash = ?").get(tokenHash);
+    if (!row || row.user_id !== userId) return { state: "missing", preview: null };
+    if (Date.parse(row.expires_at) <= Date.now() && ["issued", "processing"].includes(row.status)) {
+      sqlite.prepare(`
+        UPDATE subscription_switch_previews
+        SET status = 'expired', completed_at = ?
+        WHERE token_hash = ? AND status IN ('issued', 'processing')
+      `).run(timestamp, tokenHash);
+      return {
+        state: "expired",
+        preview: rowToSubscriptionSwitchPreview(sqlite.prepare("SELECT * FROM subscription_switch_previews WHERE token_hash = ?").get(tokenHash)),
+      };
+    }
+    const preview = rowToSubscriptionSwitchPreview(row);
+    if (row.status === "applied") return { state: "applied", preview };
+    if (row.status === "processing") return { state: "processing", preview };
+    if (row.status !== "issued") return { state: row.status, preview };
+    const result = sqlite.prepare(`
+      UPDATE subscription_switch_previews
+      SET status = 'processing', claimed_at = ?
+      WHERE token_hash = ? AND user_id = ? AND status = 'issued'
+    `).run(timestamp, tokenHash, userId);
+    if (result.changes !== 1) return { state: "processing", preview };
+    return {
+      state: "claimed",
+      preview: rowToSubscriptionSwitchPreview(sqlite.prepare("SELECT * FROM subscription_switch_previews WHERE token_hash = ?").get(tokenHash)),
+    };
+  })();
+}
+
+function completeSubscriptionSwitchPreview({ token, userId, providerResult = null }) {
+  if (!token || !userId) return null;
+  const tokenHash = hashSecret(token);
+  sqlite.prepare(`
+    UPDATE subscription_switch_previews
+    SET status = 'applied', completed_at = ?, provider_result_json = ?, error_code = NULL
+    WHERE token_hash = ? AND user_id = ? AND status = 'processing'
+  `).run(nowIso(), stringify(providerResult), tokenHash, userId);
+  return rowToSubscriptionSwitchPreview(
+    sqlite.prepare("SELECT * FROM subscription_switch_previews WHERE token_hash = ? AND user_id = ?").get(tokenHash, userId),
+  );
+}
+
+function failSubscriptionSwitchPreview({ token, userId, errorCode = "provider_error", retryable = false }) {
+  if (!token || !userId) return null;
+  const tokenHash = hashSecret(token);
+  const status = retryable ? "issued" : "failed";
+  sqlite.prepare(`
+    UPDATE subscription_switch_previews
+    SET status = ?, claimed_at = CASE WHEN ? = 'issued' THEN NULL ELSE claimed_at END,
+      completed_at = CASE WHEN ? = 'issued' THEN NULL ELSE ? END,
+      error_code = ?
+    WHERE token_hash = ? AND user_id = ? AND status = 'processing'
+  `).run(status, status, status, nowIso(), String(errorCode || "provider_error").slice(0, 160), tokenHash, userId);
+  return rowToSubscriptionSwitchPreview(
+    sqlite.prepare("SELECT * FROM subscription_switch_previews WHERE token_hash = ? AND user_id = ?").get(tokenHash, userId),
+  );
+}
+
 function normalizeBirthDate(value) {
   if (value === undefined) return undefined;
   if (value === null || String(value).trim() === "") return null;
@@ -916,10 +1133,15 @@ function databaseHealth() {
 
 export {
   DATABASE_PATH,
+  claimSubscriptionSwitchPreview,
   connectGoogleIdentity,
+  completeSubscriptionSwitchPreview,
+  consumeAuthHandoff,
   consumeOauthState,
+  createAuthHandoff,
   createOauthState,
   createSession,
+  createSubscriptionSwitchPreview,
   databaseHealth,
   deleteSessionByToken,
   getSessionById,
@@ -927,6 +1149,7 @@ export {
   getBudgetReceipt,
   getCanvasLibrary,
   getCanvasWorkspace,
+  failSubscriptionSwitchPreview,
   getSubscription,
   getUser,
   loadBillingSnapshot,

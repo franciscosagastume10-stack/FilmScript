@@ -15,20 +15,21 @@
 <script defer src="./funnel-tracking.js?v=20260716-erp1"></script>
 <script defer src="./scripts-access-guard.js?v=20260713-auth-guard1"></script>
 <script src="./theme-preference.js?v=20260712-theme1"></script>
-<script defer src="./language-preference.js?v=20260731-plan-credits4"></script>
+<script defer src="./language-preference.js?v=20260819-scripts-ui2"></script>
 <script defer src="./ui-sounds.js?v=20260728-calendar-complete1"></script>
-<script defer src="./billing-client.js?v=20260716-profile-safe1"></script>
-<script defer src="./credit-indicator.js?v=20260801-credit-panel1"></script>
+<script defer src="./billing-client.js?v=20260820-proration1"></script>
+<script defer src="./credit-indicator.js?v=20260819-account-menu2"></script>
 <script defer src="./profile-onboarding.js?v=20260727-profile3"></script>
-<script defer src="./lumiere-client.js?v=20260731-plan-entitlements2"></script>
-<script defer src="./lumiere-preferences.js?v=20260713-taste1"></script>
+<script defer src="./lumiere-client.js?v=20260820-credit-usage1"></script>
+<script defer src="./lumiere-access-modal.js?v=20260820-access-modal1"></script>
+<script defer src="./lumiere-preferences.js?v=20260819-lumiere-ui1"></script>
 <script defer src="./pdf-import.js"></script>
 <script defer src="./project-client.js?v=20260820-browser-safe1"></script>
-<script defer src="./preproduction-client.js?v=20260819-shotlist-phase6"></script>
-<script defer src="./platform-client.js?v=20260819-translation-phase7"></script>
+<script defer src="./preproduction-client.js?v=20260819-collab2"></script>
+<script defer src="./platform-client.js?v=20260819-account1"></script>
 <link rel="stylesheet" href="./auth-modal.css?v=20260712-auth2">
 <link rel="stylesheet" href="./filmscript-controls.css?v=20260716-typography1">
-<link rel="stylesheet" href="./platform-ui.css?v=20260819-phase1c1">
+<link rel="stylesheet" href="./platform-ui.css?v=20260819-frost150">
 </head>
 <body>
 <x-dc>
@@ -189,6 +190,46 @@
     font-family: "Helvetica Neue", Helvetica, Arial, sans-serif;
     filter: none !important;
   }
+  /* Scripts surface: calm Liquid Glass controls and readable screenplay cards. */
+  .fs-scripts-actions .fs-scripts-action {
+    border: 1px solid color-mix(in srgb, var(--line, #2C2C2A) 28%, transparent) !important;
+    border-radius: 999px !important;
+    background: color-mix(in srgb, var(--surface, #FFFEF9) 58%, transparent) !important;
+    box-shadow: inset 0 1px 0 rgba(255,255,255,.52), 0 8px 24px rgba(30,28,23,.07) !important;
+    backdrop-filter: blur(18px) saturate(1.15);
+    -webkit-backdrop-filter: blur(18px) saturate(1.15);
+    transition: transform .16s cubic-bezier(.2,.8,.2,1), border-color .16s ease, background-color .16s ease, box-shadow .16s ease !important;
+  }
+  .fs-scripts-actions .fs-scripts-action::before,
+  .fs-scripts-actions .fs-scripts-action::after { display: none !important; }
+  .fs-scripts-actions .fs-scripts-action:hover { transform: translateY(-2px) !important; border-color: color-mix(in srgb, var(--accent, #BA7517) 58%, transparent) !important; background: color-mix(in srgb, var(--accent, #BA7517) 10%, var(--surface, #FFFEF9)) !important; box-shadow: inset 0 1px 0 rgba(255,255,255,.58), 0 12px 28px rgba(30,28,23,.11) !important; }
+  .fs-scripts-actions .fs-scripts-action--primary { background: color-mix(in srgb, var(--accent, #BA7517) 82%, var(--surface, #FFFEF9)) !important; border-color: color-mix(in srgb, var(--accent, #BA7517) 70%, var(--line, #2C2C2A)) !important; }
+  .fs-scripts-actions .fs-scripts-action:focus-visible { outline: 3px solid color-mix(in srgb, var(--accent, #BA7517) 48%, transparent); outline-offset: 4px; }
+  .fs-script-card { min-height: 232px !important; padding: 19px !important; border-radius: 22px !important; background: color-mix(in srgb, var(--surface, #FFFEF9) 62%, transparent) !important; border: 1px solid color-mix(in srgb, var(--line, #2C2C2A) 18%, transparent) !important; box-shadow: inset 0 1px 0 rgba(255,255,255,.45), 0 12px 32px rgba(30,28,23,.065) !important; backdrop-filter: blur(16px) saturate(1.12); -webkit-backdrop-filter: blur(16px) saturate(1.12); transition: transform .18s cubic-bezier(.2,.8,.2,1), border-color .18s ease, box-shadow .18s ease, background-color .18s ease !important; }
+  .fs-script-card::before { background: transparent !important; border: 0 !important; filter: none !important; }
+  .fs-script-card:hover { transform: translateY(-4px) !important; border-color: color-mix(in srgb, var(--accent, #BA7517) 46%, transparent) !important; background: color-mix(in srgb, var(--surface, #FFFEF9) 76%, transparent) !important; box-shadow: inset 0 1px 0 rgba(255,255,255,.55), 0 18px 40px rgba(30,28,23,.11) !important; }
+  .fs-script-card:has(.fs-script-import-progress) { cursor: default !important; border-color: color-mix(in srgb, var(--accent, #BA7517) 42%, transparent) !important; background: color-mix(in srgb, var(--accent, #BA7517) 6%, var(--surface, #FFFEF9)) !important; }
+  .fs-script-card:has(.fs-script-import-progress):hover { transform: none !important; }
+  .fs-script-card:has(.fs-script-import-progress) .fs-script-thumb-regular { display: none !important; }
+  .fs-script-thumb { width: 58px; height: 76px; display: grid; place-items: center; border: 1px solid color-mix(in srgb, var(--accent, #BA7517) 36%, var(--line, #2C2C2A)); border-radius: 9px 7px 10px 8px; background: linear-gradient(145deg, color-mix(in srgb, var(--surface, #FFFEF9) 84%, transparent), color-mix(in srgb, var(--accent, #BA7517) 7%, var(--bg, #F5F0E8))); box-shadow: inset 0 1px 0 rgba(255,255,255,.58), 3px 4px 0 color-mix(in srgb, var(--accent, #BA7517) 12%, transparent); transition: transform .18s cubic-bezier(.2,.8,.2,1); }
+  .fs-script-card:hover .fs-script-thumb { transform: translateY(-2px) rotate(-1.5deg); }
+  .fs-script-thumb svg { width: 30px; height: 38px; }
+  .fs-script-thumb-line { stroke: currentColor; stroke-linecap: round; opacity: .42; }
+  .fs-script-card-title { font-size: 16px !important; line-height: 1.18; overflow-wrap: anywhere; }
+  .fs-script-card-meta { margin-top: 7px !important; font-size: 11px !important; }
+  .fs-script-card-menu { border: 1px solid color-mix(in srgb, var(--line, #2C2C2A) 18%, transparent) !important; border-radius: 14px !important; background: color-mix(in srgb, var(--surface, #FFFEF9) 78%, transparent) !important; box-shadow: 0 16px 34px rgba(30,28,23,.15), inset 0 1px 0 rgba(255,255,255,.55) !important; backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px); }
+  .fs-script-card-menu button:hover { background: color-mix(in srgb, var(--accent, #BA7517) 10%, transparent) !important; }
+  .fs-script-import-progress { margin-top: auto; padding-top: 16px; }
+  .fs-script-import-progress-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; color: var(--ink, #2C2C2A); font-size: 11px; font-weight: 700; }
+  .fs-script-import-progress-head span:last-child { color: var(--accent, #BA7517); font-variant-numeric: tabular-nums; }
+  .fs-script-import-track { height: 5px; margin-top: 9px; overflow: hidden; border-radius: 999px; background: color-mix(in srgb, var(--muted, #888780) 16%, transparent); }
+  .fs-script-import-fill { height: 100%; border-radius: inherit; background: var(--accent, #BA7517); box-shadow: 0 0 12px color-mix(in srgb, var(--accent, #BA7517) 45%, transparent); transition: width .28s cubic-bezier(.2,.8,.2,1); }
+  .fs-script-import-dots { display: inline-flex; gap: 3px; margin-left: 4px; vertical-align: middle; }
+  .fs-script-import-dots i { width: 3px; height: 3px; border-radius: 50%; background: currentColor; animation: fs-import-dot .9s ease-in-out infinite; }
+  .fs-script-import-dots i:nth-child(2) { animation-delay: .12s; } .fs-script-import-dots i:nth-child(3) { animation-delay: .24s; }
+  @keyframes fs-import-dot { 0%,100% { transform: translateY(0); opacity: .35; } 50% { transform: translateY(-2px); opacity: 1; } }
+  @media (prefers-reduced-transparency: reduce) { .fs-scripts-actions .fs-scripts-action, .fs-script-card, .fs-script-card-menu { background: var(--surface, #FFFEF9) !important; backdrop-filter: none; -webkit-backdrop-filter: none; } }
+  @media (prefers-reduced-motion: reduce) { .fs-script-import-dots i { animation: none; } .fs-scripts-actions .fs-scripts-action, .fs-script-card, .fs-script-thumb { transition: none !important; } }
   @media (max-width: 700px) {
     .fs-scripts-dashboard { position: relative; isolation: isolate; padding: 30px 20px 44px !important; background-size: cover !important; background-position: center !important; background-attachment: scroll !important; }
     .fs-scripts-dashboard::before { content: ""; position: absolute; inset: 0; z-index: 0; pointer-events: none; background: color-mix(in srgb, var(--bg, #F5F0E8) 87%, transparent); }
@@ -227,11 +268,8 @@
   .fs-tip { position: absolute; top: 100%; left: 50%; transform: translateX(-50%) translateY(7px); background: #2C2C2A; color: #FFFEF9; font-size: 11px; font-weight: 500; padding: 5px 9px; border-radius: 8px; white-space: nowrap; opacity: 0; pointer-events: none; transition: opacity .14s; z-index: 30; }
   .fs-tip::before { content: ""; position: absolute; bottom: 100%; left: 50%; transform: translateX(-50%); border: 5px solid transparent; border-bottom-color: #2C2C2A; }
   .fs-tipwrap:hover .fs-tip { opacity: 1; }
-  .fs-menuitem { padding: 9px 14px; font-size: 13px; color: var(--ink, #2C2C2A); cursor: pointer; border-radius: 8px; transition: background-color .13s ease, color .13s ease; }
-  .fs-menuitem:hover { background: rgba(186,117,23,.1); color: #BA7517; }
-  .fs-account-menu { isolation: isolate; background: transparent !important; border: 0 !important; filter: none !important; color: var(--ink, #2C2C2A); }
-  .fs-account-menu::before { content: ""; position: absolute; inset: 0; z-index: 0; pointer-events: none; background: var(--surface, #FFFEF9); border: 1.4px solid var(--line, #2C2C2A); border-radius: 14px 13px 15px 12px; filter: url(#fs-sketch); }
-  .fs-account-menu > * { position: relative; z-index: 1; }
+  .fs-menuitem:not(.fs-profile-menu-item) { padding: 9px 14px; font-size: 13px; color: var(--ink, #2C2C2A); cursor: pointer; border-radius: 8px; transition: background-color .13s ease, color .13s ease; }
+  .fs-menuitem:not(.fs-profile-menu-item):hover { background: rgba(186,117,23,.1); color: #BA7517; }
   .fs-profile-sheet { animation: fs-sheet .34s cubic-bezier(.2,.8,.25,1.08) both; }
   [data-testid="account-details-panel"] { font-family: var(--fs-font-text); -webkit-font-smoothing: antialiased; text-rendering: optimizeLegibility; }
   [data-testid="account-details-panel"] * { font-family: inherit; }
@@ -274,29 +312,30 @@
         <div onClick="{{ openAuth }}" class="fsx-scale" style="font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; font-size: 13px; font-weight: 600; color: #2C2C2A; background: #FFFEF9; padding: 7px 16px; border-radius: 999px; cursor: pointer;">Sign up</div>
       </sc-if>
       <sc-if value="{{ signedIn }}" hint-placeholder-val="{{ false }}">
-        <div style="position: relative;">
+        <div class="v5-account-popover-host" style="position: relative;">
           <div data-testid="account-avatar" onClick="{{ toggleAccount }}" title="{{ userEmail }}" style="width: 28px; height: 28px; border-radius: 50%; background: var(--accent, #BA7517); color: #FFFEF9; display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 600; cursor: pointer;">{{ userInitial }}</div>
           <sc-if value="{{ accountOpen }}" hint-placeholder-val="{{ false }}">
-          <div class="fs-account-menu" data-filmscript-profile-panel style="position: absolute; right: 0; top: 38px; z-index: 60; width: 234px; padding: 14px 14px 8px; background: var(--surface, #FFFEF9); border: 1.4px solid var(--line, #2C2C2A); border-radius: 14px; filter: url(#fs-sketch); animation: fs-pop .2s ease both;">
-            <div style="font-size: 12.5px; font-weight: 600; color: var(--ink, #2C2C2A); word-break: break-all;">{{ userEmail }}</div>
-            <div style="font-size: 11.5px; color: var(--muted, #888780); margin-top: 4px;">{{ planLabel }}</div>
-            <div style="height: 1px; background: var(--soft, #e4e2d8); margin: 10px 0 6px;"></div>
-            <div class="fs-menuitem" onClick="{{ goScripts }}">My scripts</div>
-            <div class="fs-menuitem" onClick="{{ openAccountDetails }}">Account details</div>
-            <div class="fs-menuitem" data-filmscript-open-profile>Personal profile</div>
-            <sc-if value="{{ hasPaidPlan }}" hint-placeholder-val="{{ false }}"><div class="fs-menuitem" onClick="{{ openLumierePreferences }}">Personalize Lumiere</div></sc-if>
-            <div class="fs-menuitem" onClick="{{ openTerms }}">Terms & conditions</div>
-            <div style="height: 1px; background: var(--soft, #e4e2d8); margin: 6px 0;"></div>
+          <div class="fs-account-menu fs-profile-popover" data-filmscript-profile-panel role="menu" aria-label="Account menu">
+            <div class="fs-profile-identity">
+              <strong title="{{ userEmail }}">{{ userEmail }}</strong>
+              <small>{{ planLabel }}</small>
+            </div>
+            <div class="fs-profile-menu" role="none">
+              <button type="button" class="fs-menuitem fs-profile-menu-item" onClick="{{ goScripts }}" role="menuitem"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 5.5h6l2 2h8v11H4z"></path></svg><span>My scripts</span></button>
+              <button type="button" class="fs-menuitem fs-profile-menu-item" onClick="{{ openAccount }}" role="menuitem"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="8" r="3.5"></circle><path d="M5.5 20c.7-4 2.9-6 6.5-6s5.8 2 6.5 6"></path></svg><span>Account</span></button>
+              <sc-if value="{{ hasPaidPlan }}" hint-placeholder-val="{{ false }}"><button type="button" class="fs-menuitem fs-profile-menu-item" onClick="{{ openLumierePreferences }}" role="menuitem"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m12 3 1.6 5.4L19 10l-5.4 1.6L12 17l-1.6-5.4L5 10l5.4-1.6Z"></path><path d="m18.5 16 .6 1.7 1.7.6-1.7.6-.6 1.7-.6-1.7-1.7-.6 1.7-.6Z"></path></svg><span>Personalize Lumiere</span></button></sc-if>
+              <button type="button" class="fs-menuitem fs-profile-menu-item" onClick="{{ openTerms }}" role="menuitem"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 3.5h9l3 3V20.5H6z"></path><path d="M15 3.5v4h3M9 11h6M9 14.5h6"></path></svg><span>Terms &amp; conditions</span></button>
+            </div>
             <sc-if value="{{ isCreatorPlan }}" hint-placeholder-val="{{ false }}">
-              <div class="fs-menuitem" onClick="{{ upgradeToFull }}">Upgrade to Full</div>
+              <button type="button" class="fs-menuitem fs-profile-menu-item" onClick="{{ upgradeToFull }}" role="menuitem"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m12 4 2.1 4.5L19 10l-3.5 3.5.8 5-4.3-2.3-4.3 2.3.8-5L5 10l4.9-1.5Z"></path></svg><span>Upgrade to Full</span></button>
             </sc-if>
             <sc-if value="{{ noPlan }}" hint-placeholder-val="{{ true }}">
-              <div class="fs-menuitem" onClick="{{ goLandingFromAccount }}">Choose a plan</div>
+              <button type="button" class="fs-menuitem fs-profile-menu-item" onClick="{{ goLandingFromAccount }}" role="menuitem"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3.5" y="6" width="17" height="12" rx="2.5"></rect><path d="M3.5 10h17M7 14h3"></path></svg><span>Choose a plan</span></button>
             </sc-if>
             <sc-if value="{{ hasPlan }}" hint-placeholder-val="{{ false }}">
-              <div class="fs-menuitem" onClick="{{ cancelPlan }}">Plan and billing</div>
+              <button type="button" class="fs-menuitem fs-profile-menu-item" onClick="{{ cancelPlan }}" role="menuitem"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3.5" y="6" width="17" height="12" rx="2.5"></rect><path d="M3.5 10h17M7 14h3"></path></svg><span>Plan and billing</span></button>
             </sc-if>
-            <div class="fs-menuitem" onClick="{{ signOut }}">Sign out</div>
+            <button type="button" class="fs-menuitem fs-profile-menu-item fs-profile-signout" onClick="{{ signOut }}" role="menuitem"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M10 4H5v16h5M14 8l4 4-4 4M8 12h10"></path></svg><span>Sign out</span></button>
           </div>
           </sc-if>
         </div>
@@ -322,7 +361,7 @@
   <div data-testid="account-details-overlay" onClick="{{ closeAccountDetails }}" style="position: fixed; inset: 0; z-index: 1200; isolation: isolate; pointer-events: auto; background: rgba(35,35,34,.28); display: flex; align-items: center; justify-content: center; padding: 24px;">
     <div data-testid="account-details-panel" class="fs-profile-sheet" onClick="{{ stop }}" style="position: relative; z-index: 1; width: min(520px, 100%); max-height: 88vh; overflow-y: auto; background: var(--surface, #FFFEF9); border: 1.5px solid var(--line, #2C2C2A); border-radius: 20px; padding: 26px; box-shadow: 0 18px 55px rgba(35,35,34,.2);">
       <div style="display: flex; align-items: center; gap: 14px;"><div style="width: 46px; height: 46px; border-radius: 50%; background: var(--accent, #BA7517); color: #FFFEF9; display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 17px;">{{ userInitial }}</div><div style="flex: 1;"><div style="font-size: 20px; font-weight: 700; color: var(--ink, #2C2C2A);">Your account</div><div style="font-size: 12.5px; color: var(--muted, #888780); margin-top: 4px;">Connected securely with Google.</div></div><div onClick="{{ closeAccountDetails }}" style="font-size: 22px; color: var(--muted, #888780); cursor: pointer;">×</div></div>
-      <div style="margin-top: 24px; display: grid; gap: 9px;"><div style="padding: 14px; border: 1px solid var(--soft, #E4E2D8); border-radius: 13px;"><div style="display: flex; justify-content: space-between;"><div style="font-size: 10px; text-transform: uppercase; letter-spacing: 1.2px; color: var(--muted, #888780);">Name</div><div onClick="{{ saveProfileName }}" style="font-size: 11px; color: var(--accent, #BA7517); font-weight: 700; cursor: pointer;">{{ profileSaveLabel }}</div></div><input value="{{ profileNameDraft }}" onInput="{{ onProfileName }}" aria-label="Name" style="width: 100%; margin-top: 7px; padding: 0; border: none; outline: none; background: transparent; color: var(--ink, #2C2C2A); font-size: 14px; font-family: inherit;"></div><div style="padding: 14px; border: 1px solid var(--soft, #E4E2D8); border-radius: 13px;"><div style="font-size: 10px; text-transform: uppercase; letter-spacing: 1.2px; color: var(--muted, #888780);">Email</div><div style="margin-top: 5px; font-size: 14px; color: var(--ink, #2C2C2A); word-break: break-word;">{{ userEmail }}</div></div></div>
+      <div style="margin-top: 24px; display: grid; gap: 9px;"><div style="padding: 14px; border: 1px solid var(--soft, #E4E2D8); border-radius: 13px;"><div style="display: flex; justify-content: space-between;"><div style="font-size: 10px; text-transform: uppercase; letter-spacing: 1.2px; color: var(--muted, #888780);">Name</div><div onClick="{{ saveProfileName }}" style="font-size: 11px; color: var(--accent, #BA7517); font-weight: 700; cursor: pointer;">{{ profileSaveLabel }}</div></div><input value="{{ profileNameDraft }}" onInput="{{ onProfileName }}" aria-label="Name" style="width: 100%; margin-top: 7px; padding: 0; border: none; outline: none; background: transparent; color: var(--ink, #2C2C2A); font-size: 14px; font-family: inherit;"></div><div style="min-width: 0; padding: 14px; border: 1px solid var(--soft, #E4E2D8); border-radius: 13px;"><div style="font-size: 10px; text-transform: uppercase; letter-spacing: 1.2px; color: var(--muted, #888780);">Email</div><div title="{{ userEmail }}" style="min-width: 0; margin-top: 5px; font-size: 14px; color: var(--ink, #2C2C2A); white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">{{ userEmail }}</div></div></div>
       <button type="button" class="fs-profile-lumiere" onClick="{{ openLumierePreferences }}"><span style="width: 34px; height: 34px; flex: 0 0 34px; display: grid; place-items: center; border-radius: 10px 11px 9px 10px; color: var(--accent, #BA7517); background: rgba(186,117,23,.1);"><svg viewBox="0 0 24 24" style="width: 18px; height: 18px;" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3.2l.8 2.1 2.2.7 1.9-1.1 1.7 1.7-1.1 2 .6 2.1 2.2.8-.1 2.3-2.2.7-.7 2.2 1.1 1.9-1.7 1.7-1.9-1.1-2.2.6-.8 2.2-2.3-.1-.7-2.2-2.1-.7-2 1.1-1.7-1.7 1.1-1.9-.6-2.2-2.2-.8.1-2.3 2.2-.7.7-2.1-1.1-2 1.7-1.7 2 1.1 2.1-.7.8-2.1z"></path><circle cx="12" cy="12" r="3"></circle></svg></span><span style="min-width: 0; flex: 1;"><span style="display: block; font-size: 13px; font-weight: 650;">Personalize Lumiere</span><span style="display: block; margin-top: 3px; color: var(--muted, #888780); font-size: 11.5px; line-height: 1.4;">Directors, films and the kind of feedback that serves your voice.</span></span><span aria-hidden="true" style="color: var(--accent, #BA7517);">→</span></button>
       <div style="margin-top: 18px; padding: 15px; border-radius: 15px; background: var(--bg, #F5F0E8);"><div style="font-size: 10px; text-transform: uppercase; letter-spacing: 1.2px; color: var(--muted, #888780);">Subscription</div><div style="font-size: 17px; font-weight: 700; color: var(--ink, #2C2C2A); margin-top: 7px;">{{ planLabel }}</div><sc-if value="{{ noPlan }}" hint-placeholder-val="{{ true }}"><span onClick="{{ goLandingFromAccount }}" role="button" tabindex="0" style="display: inline-block; margin-top: 8px; color: var(--accent, #BA7517); font-size: 12px; font-weight: 700; cursor: pointer;">Choose a plan →</span></sc-if><sc-if value="{{ hasPlan }}" hint-placeholder-val="{{ false }}"><div style="font-size: 12px; color: var(--accent, #BA7517); margin-top: 5px;">{{ accountStatus }}</div></sc-if></div>
       <div style="margin-top: 22px; text-align: right;"><div onClick="{{ closeAccountDetails }}" style="display: inline-block; padding: 10px 17px; border-radius: 10px; background: var(--ink, #2C2C2A); color: var(--surface, #FFFEF9); font-size: 13px; font-weight: 600; cursor: pointer;">Done</div></div>
@@ -341,7 +380,7 @@
       <div aria-label="{{ greeting }}" style="font-family: var(--fs-font-display); font-weight: 900; font-size: clamp(31px, 3.25vw, 46px); line-height: 1.12; letter-spacing: -.75px; color: var(--ink, #2C2C2A); animation: fs-rise .32s ease both;"><span>{{ greetingTyped }}</span><span class="fs-type-caret" aria-hidden="true">|</span></div>
       <div style="font-size: 14px; color: var(--muted, #888780); margin-top: 13px; max-width: 490px; line-height: 1.55; animation: fs-rise .5s ease both .09s;">{{ homeSub }}</div>
       <div class="fs-scripts-actions" style="position: absolute; right: 0; top: 28px; width: 366px;">
-      <button type="button" onClick="{{ newScript }}" class="fs-double-outline fs-outline-control fs-outline-control--primary fs-scripts-action" style="position: absolute; right: 0; top: 0; width: 176px; height: 44px; animation: fs-rise .5s ease both .16s;">
+      <button type="button" onClick="{{ newScript }}" class="fs-double-outline fs-outline-control fs-outline-control--primary fs-scripts-action fs-scripts-action--primary" style="position: absolute; right: 0; top: 0; width: 176px; height: 44px; animation: fs-rise .5s ease both .16s;">
         <div style="position: relative; height: 100%; display: flex; align-items: center; justify-content: center; gap: 9px; color: #1A1A1A;">
           <span style="position: relative; width: 15px; height: 15px;">
             <span style="position: absolute; top: 50%; left: 0; width: 15px; height: 1.6px; background: currentColor; transform: translateY(-50%);"></span>
@@ -350,7 +389,7 @@
           <span style="font-size: 13.5px; font-weight: 600;">New script</span>
         </div>
       </button>
-      <button type="button" onClick="{{ importScript }}" class="fs-double-outline fs-outline-control fs-outline-control--secondary fs-scripts-action" style="--fs-frame-bg: {{ importButtonBackground }}; position: absolute; left: 0; top: 0; width: 176px; height: 44px; animation: fs-rise .5s ease both .22s;">
+      <button type="button" onClick="{{ importScript }}" disabled="{{ importingScriptOn }}" aria-busy="{{ importingScriptOn }}" class="fs-double-outline fs-outline-control fs-outline-control--secondary fs-scripts-action" style="--fs-frame-bg: {{ importButtonBackground }}; position: absolute; left: 0; top: 0; width: 176px; height: 44px; animation: fs-rise .5s ease both .22s;">
         <div style="position: relative; height: 100%; display: flex; align-items: center; justify-content: center; gap: 9px; color: var(--ink, #2C2C2A);">
           <svg viewBox="0 0 20 20" style="width: 16px; height: 16px;" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M10 3.4 Q10.2 7.5 10 12.2 M6.8 9.2 Q9 12.3 10 12.4 Q11 12.3 13.2 9.2 M4 13.6 L4 15.8 Q4 16.6 4.8 16.6 L15.2 16.6 Q16 16.6 16 15.8 L16 13.6"></path></svg>
           <span style="font-size: 13.5px; font-weight: 600;">Import script</span>
@@ -384,7 +423,16 @@
     </sc-if>
     <sc-for list="{{ cards }}" as="card" hint-placeholder-count="5">
           <div onClick="{{ card.open }}" onKeyDown="{{ card.onKey }}" role="button" tabindex="0" aria-label="{{ card.openLabel }}" class="fsx-lift fs-script-card" style="position: relative; min-height: 224px; padding: 18px; cursor: pointer; border-radius: 15px; animation: fs-rise .35s ease both {{ card.delay }}; display: flex; flex-direction: column;">
-            <div style="position: relative; width: 55px; flex: 0 0 55px;">
+            <sc-if value="{{ card.importing }}" hint-placeholder-val="false">
+              <div class="fs-script-thumb" aria-hidden="true"><svg viewBox="0 0 30 38" fill="none"><path d="M6 2.5h12l6 6v27H6z" stroke="currentColor" stroke-width="1.2" stroke-linejoin="round"/><path d="M18 2.5v7h6" stroke="currentColor" stroke-width="1.2" stroke-linejoin="round"/><path class="fs-script-thumb-line" d="M10 16h10M10 21h8M10 26h10" stroke-width="1.3"/></svg></div>
+            </sc-if>
+            <sc-if value="{{ card.importing }}" hint-placeholder-val="false">
+              <div class="fs-script-import-progress" role="status" aria-live="polite">
+                <div class="fs-script-import-progress-head"><span>{{ card.importStage }}<span class="fs-script-import-dots" aria-hidden="true"><i></i><i></i><i></i></span></span><span>{{ card.importPercent }}%</span></div>
+                <div class="fs-script-import-track" aria-hidden="true"><div class="fs-script-import-fill" style="width: {{ card.importPercent }}%;"></div></div>
+              </div>
+            </sc-if>
+            <div class="fs-script-thumb-regular" style="position: relative; width: 58px; flex: 0 0 58px;">
               <svg viewBox="0 0 62 84" style="width: 55px; height: auto; display: block;">
                 <path d="{{ card.thumbPath }}" style="fill: var(--bg, #F5F0E8); stroke: var(--line, #2C2C2A);" stroke-width="1.3" stroke-linejoin="round" stroke-linecap="round"></path>
                 <sc-for list="{{ thumbLines }}" as="ln" hint-placeholder-count="6">
@@ -400,9 +448,9 @@
               <div onClick="{{ card.toggleMenu }}" title="Script options" style="position: absolute; right: 13px; top: 13px; width: 30px; height: 30px; display: flex; align-items: center; justify-content: center; color: var(--muted, #888780); font-size: 18px; border-radius: 8px; cursor: pointer; letter-spacing: 1px;">•••
                 <sc-if value="{{ card.menuOpen }}" hint-placeholder-val="false">
                   <div class="fs-script-card-menu" style="position: absolute; z-index: 10; right: 0; top: 30px; width: 126px; padding: 6px; background: var(--surface, #FFFEF9); border: 1.3px solid var(--line, #2C2C2A); border-radius: 10px 9px 11px 8px; color: var(--ink, #2C2C2A); font-size: 12px; font-weight: 600; letter-spacing: 0; white-space: nowrap;">
-                    <div onClick="{{ card.rename }}" style="padding: 6px 7px; border-radius: 6px; cursor: pointer;">Rename</div>
-                    <div onClick="{{ card.translate }}" style="padding: 6px 7px; border-radius: 6px; cursor: pointer;">Translate Script</div>
-                    <div onClick="{{ card.remove }}" style="padding: 6px 7px; border-radius: 6px; cursor: pointer; color: #B33B32;">Delete script</div>
+                    <button type="button" onClick="{{ card.rename }}" style="display:block; width:100%; padding: 8px 7px; border:0; border-radius: 6px; background:transparent; color:inherit; font:inherit; text-align:left; cursor:pointer;">Rename</button>
+                    <button type="button" onClick="{{ card.translate }}" style="display:block; width:100%; padding: 8px 7px; border:0; border-radius: 6px; background:transparent; color:inherit; font:inherit; text-align:left; cursor:pointer;">Translate Script</button>
+                    <button type="button" onClick="{{ card.remove }}" style="display:block; width:100%; padding: 8px 7px; border:0; border-radius: 6px; background:transparent; color:#B33B32; font:inherit; text-align:left; cursor:pointer;">Delete script</button>
                   </div>
                 </sc-if>
               </div>
@@ -732,19 +780,20 @@
 
       <sc-if value="{{ checkoutConfirmStep }}" hint-placeholder-val="{{ true }}">
       <div>
-        <div style="font-size: 11px; letter-spacing: 1.6px; text-transform: uppercase; color: var(--accent, #BA7517); font-weight: 600; text-align: center;">Confirm plan</div>
+        <div style="font-size: 11px; letter-spacing: 1.6px; text-transform: uppercase; color: var(--accent, #BA7517); font-weight: 600; text-align: center;">{{ checkoutHeading }}</div>
         <h2 style="font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; font-weight: 700; font-size: 24px; letter-spacing: -0.5px; color: var(--ink, #2C2C2A); margin: 12px 0 0; text-align: center;">{{ checkoutPlanName }}</h2>
         <div style="text-align: center; margin-top: 8px; font-size: 15px; color: var(--muted, #888780);">{{ checkoutPlanPrice }}</div>
+        <sc-if value="{{ checkoutIsPlanChange }}" hint-placeholder-val="{{ false }}"><div style="margin-top: 18px; padding: 12px 13px; border: 1px solid var(--hair, #E7E4DA); border-radius: 12px; background: color-mix(in srgb, var(--accent, #BA7517) 8%, var(--soft, #EFEBE1)); font-size: 12px; line-height: 1.5; color: var(--ink, #2C2C2A);">{{ checkoutSwitchSummary }}<div style="margin-top: 7px; color: var(--muted, #888780);">{{ checkoutUsageNote }}</div></div></sc-if>
 
         <sc-if value="{{ checkoutHasLink }}" hint-placeholder-val="{{ true }}">
-        <div onClick="{{ openPayLink }}" class="fsx-lift" style="position: relative; text-align: center; margin-top: 24px; padding: 13px; cursor: pointer;">
+        <div onClick="{{ openPayLink }}" aria-busy="{{ checkoutActionBusy }}" class="fsx-lift" style="position: relative; text-align: center; margin-top: 24px; padding: 13px; cursor: pointer;">
           <svg viewBox="0 0 320 48" preserveAspectRatio="none" style="position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none;"><path d="{{ planBtnPath }}" style="fill: var(--accent, #BA7517); stroke: var(--accent, #BA7517);" stroke-width="1.6" stroke-linejoin="round"></path></svg>
-          <span style="position: relative; font-size: 14px; font-weight: 600; color: #FFFEF9;">Continue to checkout</span>
+          <span style="position: relative; font-size: 14px; font-weight: 600; color: #FFFEF9;">{{ checkoutActionLabel }}</span>
         </div>
         </sc-if>
 
         <div style="margin-top: 18px; padding: 13px 15px; border: 1.4px solid var(--line, #2C2C2A); border-radius: 14px; background: var(--bg, #F5F0E8); filter: url(#fs-sketch);">
-          <div style="font-size: 12px; line-height: 1.55; color: var(--muted, #888780);">You will return to FilmScript after payment. FilmScript verifies the checkout securely and unlocks your selected plan automatically.</div>
+          <div style="font-size: 12px; line-height: 1.55; color: var(--muted, #888780);">{{ checkoutUsageNote }}</div>
         </div>
       </div>
       </sc-if>
@@ -754,11 +803,11 @@
         <div style="width: 44px; height: 44px; color: var(--accent, #BA7517); margin: 0 auto;">
           <svg viewBox="0 0 24 24" style="width: 100%; height: 100%;" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"></circle><path d="M7.8 12.3 L10.4 15 L16.4 8.8"></path></svg>
         </div>
-        <h2 style="font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; font-weight: 700; font-size: 22px; letter-spacing: -0.5px; color: var(--ink, #2C2C2A); margin: 16px 0 0;">You are all set</h2>
-        <p style="font-size: 13.5px; line-height: 1.55; color: var(--muted, #888780); margin: 8px 0 0;">{{ checkoutPlanName }} is active. Your payment was verified securely.</p>
+        <h2 style="font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; font-weight: 700; font-size: 22px; letter-spacing: -0.5px; color: var(--ink, #2C2C2A); margin: 16px 0 0;">{{ checkoutSuccessTitle }}</h2>
+        <p style="font-size: 13.5px; line-height: 1.55; color: var(--muted, #888780); margin: 8px 0 0;">{{ checkoutSuccessCopy }}</p>
         <div onClick="{{ continueAfterCheckout }}" class="fsx-lift" style="position: relative; text-align: center; margin-top: 22px; padding: 13px; cursor: pointer;">
           <svg viewBox="0 0 320 48" preserveAspectRatio="none" style="position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none;"><path d="{{ planBtnPath }}" style="fill: var(--accent, #BA7517); stroke: var(--accent, #BA7517);" stroke-width="1.6" stroke-linejoin="round"></path></svg>
-          <span style="position: relative; font-size: 14px; font-weight: 600; color: #FFFEF9;">Continue to Scripts</span>
+          <span style="position: relative; font-size: 14px; font-weight: 600; color: #FFFEF9;">{{ checkoutContinueLabel }}</span>
         </div>
       </div>
       </sc-if>
@@ -794,6 +843,9 @@ class Component extends DCLogic {
     checkoutOpen: false,
     checkoutPlan: null,
     checkoutStep: 'confirm',
+    checkoutSwitchPreview: null,
+    checkoutSubmitting: false,
+    checkoutChangeApplied: false,
     accountOpen: false,
     accountDetailsOpen: false,
     termsOpen: false,
@@ -807,6 +859,7 @@ class Component extends DCLogic {
   scriptsLoading: true,
   scriptsLoaded: false,
   scriptsLoadError: '',
+  importingScript: null,
     parallaxX: 0,
     parallaxY: 0,
     scriptMenuId: null,
@@ -829,6 +882,23 @@ class Component extends DCLogic {
   STORAGE_KEY = 'filmscript_doc_v1';
 
   async componentDidMount() {
+    if (this.state.screen === 'editor') { window.location.replace('Editor v5.dc.html'); return; }
+    // The writing-desk greeting belongs to the shell, not to script data.
+    // Start it immediately so authentication and script syncing never hold it back.
+    this._typeGreeting();
+    this._proRequiredHandler = (event) => {
+      const detail = event?.detail || {};
+      // The shared access dialog owns server-confirmed denials. Do not put a
+      // second legacy paywall behind it.
+      if (detail.serverValidated === true) return;
+      if (detail.checkoutPlan === 'full') return this._startCheckout('full');
+      return this._requireLumierePlan(detail.message);
+    };
+    this._languageHandler = () => this._typeGreeting();
+    this._themeHandler = (event) => this.setState({ darkMode: event?.detail?.theme === 'dark' });
+    window.addEventListener('filmscript:pro-required', this._proRequiredHandler);
+    window.addEventListener('filmscript:language-change', this._languageHandler);
+    window.addEventListener('filmscript:theme-change', this._themeHandler);
     const scriptsAccessGranted = await window.filmscriptScriptsAccess?.ready;
     if (scriptsAccessGranted === false) {
       this.setState({
@@ -838,7 +908,6 @@ class Component extends DCLogic {
       });
       return;
     }
-    if (this.state.screen === 'editor') { window.location.replace('Editor v5.dc.html'); return; }
     window.filmscriptSounds?.preload('profile');
     window.filmscriptSounds?.preload('scriptOpen');
     window.filmscriptSounds?.preload('darkModeOn');
@@ -848,17 +917,8 @@ class Component extends DCLogic {
     // Complete the account refresh before querying user-owned scripts.  On an OAuth
     // return this avoids racing the new session cookie / identity hydration.
     const me = await this._refreshBilling(params.get('payment') === 'success', params.get('checkout_id'));
-    if (me?.authenticated && params.get('profile') === '1') this.setState({ accountDetailsOpen: true });
+    if (me?.authenticated && params.get('profile') === '1') window.filmscriptPlatform?.openAccount?.();
     await this._loadScripts({ retries: 5 });
-    this._typeGreeting();
-    this._proRequiredHandler = (event) => {
-      const detail = event?.detail || {};
-      if (detail.checkoutPlan === 'full') return this._startCheckout('full');
-      return this._requireLumierePlan(detail.message);
-    };
-    this._languageHandler = () => this._typeGreeting();
-    window.addEventListener('filmscript:pro-required', this._proRequiredHandler);
-    window.addEventListener('filmscript:language-change', this._languageHandler);
   }
 
   componentWillUnmount() {
@@ -867,6 +927,7 @@ class Component extends DCLogic {
     if (this._parallaxFrame) cancelAnimationFrame(this._parallaxFrame);
     if (this._proRequiredHandler) window.removeEventListener('filmscript:pro-required', this._proRequiredHandler);
     if (this._languageHandler) window.removeEventListener('filmscript:language-change', this._languageHandler);
+    if (this._themeHandler) window.removeEventListener('filmscript:theme-change', this._themeHandler);
     this._flushChatSave();
   }
 
@@ -994,9 +1055,24 @@ class Component extends DCLogic {
       || !!entitlements?.capabilities?.lumiereChat;
   }
 
+  _presentLumiereAccess(detail = {}) {
+    window.dispatchEvent(new CustomEvent('filmscript:upgrade-required', {
+      detail: {
+        serverValidated: true,
+        status: 403,
+        requiredCredits: 1,
+        ...detail,
+      },
+    }));
+  }
+
   _requireLumierePlan(message = 'FilmScript Creator at $24.99 / month unlocks ongoing Lumiere work. Your scripts and manual production work remain available to edit and export.') {
     if (this._hasLumiereAccess()) return true;
-    this.setState({ paywallOpen: true, lumiereOpen: true, toast: message });
+    this._presentLumiereAccess({
+      error: 'filmscript_creator_required',
+      requiredTier: 'creator',
+      message,
+    });
     return false;
   }
 
@@ -1322,26 +1398,32 @@ class Component extends DCLogic {
   }
 
   async _importFile(file) {
-    this.setState({ importNote: 'Reading ' + file.name + '…' });
+    const importId = `importing-${Date.now()}`;
+    this.setState({ importNote: '', importingScript: { id: importId, title: file.name || 'Imported screenplay', stage: 'Uploading screenplay', percent: 12 } });
     try {
       const name = (file.name || '').toLowerCase();
       let blocks;
       const imported = await window.filmscriptScripts.import(file);
+      this.setState((state) => ({ importingScript: state.importingScript ? { ...state.importingScript, title: imported.script.title || state.importingScript.title, stage: 'Reading screenplay', percent: 46 } : null }));
       const text = imported.script.text;
       // The server reads PDF line positions, which is far more reliable than
       // guessing types from flattened text in the browser.
       blocks = imported.script.blocks || (name.endsWith('.pdf') ? this._parseGuess(text) : (this._parseFS(text) || this._parseGuess(text)));
       blocks = (blocks || []).filter(b => b.type === 'pagebreak' || (b.text || '').trim());
       if (!blocks.length) throw new Error('empty');
+      this.setState((state) => ({ importingScript: state.importingScript ? { ...state.importingScript, stage: 'Saving screenplay', percent: 78 } : null }));
       await window.filmscriptScripts.saveBlocks(imported.script.id, blocks);
       this._importedBlocks = blocks;
       this._importedTitle = imported.script.title;
       this._activeImportedScript = imported.script.id;
       this._importedRev = (this._importedRev || 0) + 1;
       this._pagesKey = null; this._pagesCache = null;
+      this.setState((state) => ({ importingScript: state.importingScript ? { ...state.importingScript, stage: 'Finishing import', percent: 96 } : null }));
+      await this._loadScripts({ retries: 2 });
+      this.setState({ importingScript: null, importNote: '' });
       this._enterScript(`Editor v5.dc.html?script=${encodeURIComponent(imported.script.id)}`, imported.script.title, imported.script.id);
     } catch (e) {
-      this.setState({ importNote: e.message === 'nopdf'
+      this.setState({ importingScript: null, importNote: e.message === 'nopdf'
         ? 'That PDF keeps its text locked away. Export it as .fs or plain text and try again.'
         : 'Could not read that file. Try a .fs or plain text export.' });
     }
@@ -1432,6 +1514,9 @@ class Component extends DCLogic {
 
   toggleScriptMenu(event, id) {
     event.stopPropagation();
+    // The options panel lives inside the card trigger. Only the trigger itself
+    // toggles the menu; actions inside it must remain clickable.
+    if (event.target !== event.currentTarget && event.target.closest?.('.fs-script-card-menu')) return;
     this.setState((state) => ({ scriptMenuId: state.scriptMenuId === id ? null : id }));
   }
 
@@ -1461,7 +1546,7 @@ class Component extends DCLogic {
       await window.filmscriptScripts.remove(script.id);
       this.setState((state) => ({ importedScripts: state.importedScripts.filter((item) => item.id !== script.id), scriptMenuId: null }));
     } catch (error) {
-      this.setState({ scriptMenuId: null, importNote: 'Could not delete that script. Please try again.' });
+      this.setState({ scriptMenuId: null, importNote: error?.message || 'Could not delete that script. Please try again.' });
     }
   }
 
@@ -1479,7 +1564,7 @@ class Component extends DCLogic {
         scriptMenuId: null,
       }));
     } catch (error) {
-      this.setState({ scriptMenuId: null, importNote: 'Could not rename that script. Please try again.' });
+      this.setState({ scriptMenuId: null, importNote: error?.message || 'Could not rename that script. Please try again.' });
     }
   }
 
@@ -1754,7 +1839,7 @@ Write Lumiere's next reply only:`;
     if (!this.state.user) {
       this.setState({ authOpen: true, pendingPlan: plan, accountOpen: false });
     } else {
-      this.setState({ checkoutOpen: true, checkoutPlan: plan, checkoutStep: 'confirm', accountOpen: false });
+      this.setState({ checkoutOpen: true, checkoutPlan: plan, checkoutStep: 'confirm', checkoutSwitchPreview: null, checkoutSubmitting: false, checkoutChangeApplied: false, accountOpen: false });
     }
   }
 
@@ -1829,6 +1914,44 @@ Write Lumiere's next reply only:`;
     const checkoutConfirmStep = this.state.checkoutStep !== 'success';
     const checkoutSuccessStep = this.state.checkoutStep === 'success';
     const checkoutHasLink = !!checkoutPlanKey;
+    const billingPlan = String(this.state.billingPlan || '').trim().toLowerCase();
+    const checkoutIsPlanChange = !!billingPlan && !!checkoutPlanKey && billingPlan !== checkoutPlanKey;
+    const checkoutSpanish = String(window.filmscriptLanguage?.get?.() || document.documentElement.lang || 'en').toLowerCase().startsWith('es');
+    const checkoutSwitchPreview = this.state.checkoutSwitchPreview;
+    const checkoutCharge = checkoutSwitchPreview?.charge || null;
+    const checkoutChargeAmount = Number(checkoutCharge?.amountInCents || 0) / 100;
+    const checkoutChargeLabel = checkoutCharge?.currency
+      ? new Intl.NumberFormat(checkoutSpanish ? 'es-GT' : 'en-US', { style: 'currency', currency: checkoutCharge.currency }).format(checkoutChargeAmount)
+      : '';
+    const checkoutActionBusy = this.state.checkoutSubmitting === true;
+    const checkoutSwitchSummary = !checkoutIsPlanChange
+      ? ''
+      : !checkoutSwitchPreview
+        ? (checkoutSpanish ? 'Primero calcularemos el ajuste exacto de tu período actual. Todavía no se hará ningún cobro.' : 'First we will calculate the exact adjustment for your current billing period. Nothing will be charged yet.')
+        : checkoutCharge?.chargeable
+          ? (checkoutSpanish ? `Hoy se cobrará ${checkoutChargeLabel}. Es el ajuste exacto calculado para tu período actual.` : `${checkoutChargeLabel} will be charged today. This is the exact adjustment calculated for your current billing period.`)
+          : (checkoutSpanish ? 'No habrá un cobro inmediato. El cambio se aplicará a tu suscripción actual.' : 'There is no immediate charge. The change will apply to your current subscription.');
+    const checkoutUsageNote = checkoutIsPlanChange
+      ? (checkoutSpanish ? 'Tus créditos y usos ya consumidos de este período se conservan; el plan nuevo solo amplía lo que queda disponible.' : 'Your credits and uses already consumed this period are preserved; the new plan only expands what remains available.')
+      : (checkoutSpanish ? 'Volverás a FilmScript después del pago. Verificamos el pago de forma segura y activamos tu plan automáticamente.' : 'You will return to FilmScript after payment. FilmScript verifies the checkout securely and unlocks your selected plan automatically.');
+    const checkoutActionLabel = checkoutActionBusy
+      ? (checkoutSpanish ? 'Preparando…' : 'Preparing…')
+      : checkoutIsPlanChange
+        ? (checkoutSwitchPreview ? (checkoutSpanish ? 'Confirmar cambio de plan' : 'Confirm plan change') : (checkoutSpanish ? 'Ver ajuste exacto' : 'View exact adjustment'))
+        : (checkoutSpanish ? 'Continuar al pago' : 'Continue to checkout');
+    const checkoutHeading = checkoutSpanish ? 'Confirmar plan' : 'Confirm plan';
+    const checkoutChangeApplied = this.state.checkoutChangeApplied === true;
+    const checkoutSuccessTitle = checkoutChangeApplied
+      ? (checkoutSpanish ? 'Plan actualizado' : 'Plan updated')
+      : (checkoutSpanish ? 'Todo listo' : 'You are all set');
+    const checkoutSuccessCopy = checkoutChangeApplied
+      ? (checkoutSpanish
+        ? `${checkoutPlanName} ya está activo. Conservamos los créditos y usos que ya consumiste en este período.`
+        : `${checkoutPlanName} is now active. Your credits and uses already consumed this period were preserved.`)
+      : (checkoutSpanish
+        ? `${checkoutPlanName} está activo. Verificamos tu pago de forma segura.`
+        : `${checkoutPlanName} is active. Your payment was verified securely.`);
+    const checkoutContinueLabel = checkoutSpanish ? 'Ir a mis guiones' : 'Continue to Scripts';
 
     const mkIcon = (paths) => React.createElement('svg', { viewBox: '0 0 24 24', width: '100%', height: '100%', fill: 'none', stroke: 'currentColor', strokeWidth: 1.5, strokeLinecap: 'round', strokeLinejoin: 'round' },
       paths.map((d, i) => React.createElement('path', { key: i, d })));
@@ -1849,7 +1972,19 @@ Write Lumiere's next reply only:`;
       };
       return timeOf(b) - timeOf(a);
     });
+    const importingCard = this.state.importingScript ? [{
+      id: this.state.importingScript.id,
+      title: this.state.importingScript.title,
+      meta: 'Importing screenplay',
+      importing: true,
+      importStage: this.state.importingScript.stage,
+      importPercent: this.state.importingScript.percent,
+      canDelete: false,
+      openLabel: `Importing ${this.state.importingScript.title}`,
+      open: () => {},
+    }] : [];
     const cardData = [
+      ...importingCard,
       ...orderedImportedScripts.map((s) => ({
         id: s.id, title: s.title, updatedAt: s.updatedAt, meta: typeof s.pages === 'number' ? `${s.pages} pages · imported` : 'Imported screenplay',
         canDelete: true, menuOpen: this.state.scriptMenuId === s.id,
@@ -1943,6 +2078,7 @@ Write Lumiere's next reply only:`;
       greetingTyped: this.state.greetingTyped,
       cards, thumbLines, messages, scriptsSearch,
       scriptsLoading: Boolean(this.state.scriptsLoading),
+      importingScriptOn: Boolean(this.state.importingScript),
       scriptsLoadError: this.state.scriptsLoadError || '',
       showScriptsLoading: Boolean(this.state.scriptsLoading) && cards.length === 0,
       noSearchResults: Boolean(this.state.scriptsLoaded) && !this.state.scriptsLoading && Boolean((this.state.scriptsSearch || '').trim()) && cards.length === 0,
@@ -2035,6 +2171,10 @@ Write Lumiere's next reply only:`;
       toggleAccount: () => { if (!this.state.accountOpen) window.filmscriptSounds?.play('profile'); this.setState(s => ({ accountOpen: !s.accountOpen })); },
       accountDetailsOpen: this.state.accountDetailsOpen,
       termsOpen: this.state.termsOpen,
+      openAccount: () => {
+        this.setState({ accountOpen: false, accountDetailsOpen: false });
+        window.filmscriptPlatform?.openAccount?.();
+      },
       openAccountDetails: () => this.setState(s => ({ accountOpen: false, accountDetailsOpen: true, profileNameDraft: s.profileName || (s.user ? s.user.name : 'Writer') })),
       openLumierePreferences: () => { this.setState({ accountOpen: false, accountDetailsOpen: false }); window.filmscriptLumierePreferences?.open(); },
       closeAccountDetails: () => {
@@ -2063,21 +2203,47 @@ Write Lumiere's next reply only:`;
       openCheckoutCreator: () => { this.setState({ paywallOpen: false }); this._startCheckout('creator'); },
 
       checkoutOpen: this.state.checkoutOpen,
-      checkoutConfirmStep, checkoutSuccessStep, checkoutPlanName, checkoutPlanPrice, checkoutHasLink,
+      checkoutConfirmStep, checkoutSuccessStep, checkoutPlanName, checkoutPlanPrice, checkoutHasLink, checkoutIsPlanChange,
+      checkoutSwitchPreview: Boolean(checkoutSwitchPreview), checkoutSwitchSummary, checkoutUsageNote, checkoutActionLabel, checkoutActionBusy, checkoutHeading, checkoutSuccessTitle, checkoutSuccessCopy, checkoutContinueLabel,
       openPayLink: async () => {
+        if (this.state.checkoutSubmitting || !this.state.checkoutPlan) return;
+        this.setState({ checkoutSubmitting: true });
         try {
           const language = window.filmscriptLanguage?.get?.() || document.documentElement.lang || 'en';
           const billingPlan = String(this.state.billingPlan || '').trim().toLowerCase();
           const changingPlan = !!billingPlan && billingPlan !== this.state.checkoutPlan;
-          const result = changingPlan
-            ? await window.filmscriptBilling.switchPlan(this.state.checkoutPlan, language)
-            : await window.filmscriptBilling.checkout(this.state.checkoutPlan, this.state.user?.email, language);
+          if (changingPlan) {
+            const existingPreview = this.state.checkoutSwitchPreview;
+            if (!existingPreview?.switchToken) {
+              try {
+                const preview = await window.filmscriptBilling.previewPlanSwitch(this.state.checkoutPlan, language);
+                this.setState({ checkoutSwitchPreview: preview, checkoutSubmitting: false });
+                return;
+              } catch (error) {
+                // A billing record can be momentarily stale after cancellation
+                // or renewal. In that case the server explicitly asks us to
+                // use the ordinary checkout instead of guessing a proration.
+                if (!error?.data?.checkoutRequired) throw error;
+              }
+            } else {
+              const result = await window.filmscriptBilling.switchPlan(this.state.checkoutPlan, language, existingPreview.switchToken);
+              if (!result?.applied) throw new Error('FilmScript could not confirm this plan change. Nothing was charged.');
+              await this._refreshBilling();
+              this.setState({ checkoutStep: 'success', checkoutSwitchPreview: null, checkoutSubmitting: false, checkoutChangeApplied: true });
+              return;
+            }
+          }
+          const result = await window.filmscriptBilling.checkout(this.state.checkoutPlan, this.state.user?.email, language);
           window.filmscriptBilling.trackCheckoutRedirected(this.state.checkoutPlan);
+          if (!result?.checkoutUrl) throw new Error('FilmScript could not open secure checkout. Please try again.');
           window.location.href = result.checkoutUrl;
         }
-        catch (e) { this.setState({ toast: e.message }); }
+        catch (e) {
+          const stalePreview = /subscription_switch_preview_(?:expired|missing|superseded|failed)|subscription_changed_since_preview|subscription_switch_preview_mismatch/.test(String(e?.code || ''));
+          this.setState({ toast: e.message || 'FilmScript could not complete this action.', checkoutSubmitting: false, ...(stalePreview ? { checkoutSwitchPreview: null } : {}) });
+        }
       },
-      closeCheckout: () => this.setState({ checkoutOpen: false, checkoutStep: 'confirm', checkoutPlan: null }),
+      closeCheckout: () => this.setState({ checkoutOpen: false, checkoutStep: 'confirm', checkoutPlan: null, checkoutSwitchPreview: null, checkoutSubmitting: false, checkoutChangeApplied: false }),
       continueAfterCheckout: () => this.setState({ checkoutOpen: false, checkoutStep: 'confirm', checkoutPlan: null, screen: 'scripts', lumiereOpen: true }),
     };
   }

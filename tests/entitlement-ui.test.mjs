@@ -91,7 +91,7 @@ test("Plan and billing uses a concise section heading without repeating the plan
 
 test("Plan and billing initializes its account client before reading the signed-in member", async () => {
   const subscription = await fs.readFile(path.join(ROOT, "Subscription.dc.html"), "utf8");
-  assert.match(subscription, /<script src="\.\/billing-client\.js\?v=20260819-subscription-ready1"><\/script>/);
+  assert.match(subscription, /<script src="\.\/billing-client\.js\?v=20260820-proration1"><\/script>/);
   assert.doesNotMatch(subscription, /<script defer src="\.\/billing-client\.js/);
   assert.match(subscription, /const billingReady = async \(\) => \{/);
   assert.match(subscription, /const billing = await billingReady\(\);\s*account = await billing\.me\(\)/);
@@ -1141,7 +1141,7 @@ test("the account mini menu is spacious Liquid Glass with themed credits and a r
     assert.match(page, /<button type="button"[^>]*fs-profile-menu-item/);
   }
   assert.match(css, /\.fs-profile-popover \{[^}]*top:calc\(100% \+ 14px\)!important/);
-  assert.match(css, /\.fs-profile-popover \{[^}]*backdrop-filter:blur\(42px\) saturate\(1\.25\)!important/);
+  assert.match(css, /\.fs-profile-popover \{[^}]*backdrop-filter:blur\(150px\) saturate\(1\.75\)[^}]*!important/);
   assert.match(css, /\.fs-profile-menu-item \{[^}]*min-height:42px[^}]*text-align:left/);
   assert.match(css, /\.fs-profile-signout \{[^}]*color:var\(--semantic-danger\)!important/);
   assert.match(css, /prefers-reduced-transparency: reduce[^}]*\.fs-profile-popover/);

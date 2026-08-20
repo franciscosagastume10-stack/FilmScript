@@ -12,12 +12,13 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Courier+Prime:wght@400;700&amp;display=swap" rel="stylesheet">
-  <script src="./runtime-config.js?v=20260711-cancel1"></script>
+  <script src="./runtime-config.js?v=20260819-auth-proxy1"></script>
   <script src="./theme-preference.js?v=20260712-theme1"></script>
-  <script defer src="./language-preference.js?v=20260731-plan-credits4"></script>
+  <script defer src="./language-preference.js?v=20260819-billing-glass1"></script>
   <script defer src="./ui-sounds.js?v=20260728-calendar-complete1"></script>
-<script defer src="./billing-client.js?v=20260716-profile-safe1"></script>
-<script defer src="./credit-indicator.js?v=20260801-credit-panel1"></script>
+<!-- Billing must exist before the inline subscription controller starts. -->
+<script src="./billing-client.js?v=20260820-proration1"></script>
+<script defer src="./credit-indicator.js?v=20260819-account-menu2"></script>
   <script defer src="./profile-onboarding.js?v=20260716-profile1"></script>
   <style>
     :root {
@@ -405,6 +406,63 @@
     :root[data-filmscript-theme="dark"] .eyebrow { color: #ffc63b; }
     :root[data-filmscript-theme="dark"] .badge { color: #ffd36b; }
     :root[data-filmscript-theme="dark"] .feature-icon { color: #ffc63b; }
+
+    /* Current FilmScript account surface: restrained Liquid Glass, theme-aware
+       color, readable type and short motion. */
+    body {
+      background:
+        radial-gradient(circle at 14% 12%, color-mix(in srgb, var(--accent) 11%, transparent) 0 12%, transparent 38%),
+        radial-gradient(circle at 88% 68%, color-mix(in srgb, var(--accent) 7%, transparent) 0 10%, transparent 35%),
+        var(--bg);
+      background-attachment: fixed;
+    }
+    body::before, body::after { content:""; position:fixed; z-index:-1; pointer-events:none; border-radius:50%; filter:blur(18px); opacity:.72; }
+    body::before { width:280px; height:280px; left:-120px; top:24%; background:color-mix(in srgb,var(--accent) 12%,transparent); animation:glass-drift 9s ease-in-out infinite alternate; }
+    body::after { width:330px; height:330px; right:-150px; top:46%; background:color-mix(in srgb,var(--surface-soft) 72%,transparent); animation:glass-drift 11s ease-in-out -3s infinite alternate-reverse; }
+    .topbar { position:sticky; top:0; z-index:20; height:64px; border-color:color-mix(in srgb,var(--hair) 74%,transparent); background:color-mix(in srgb,var(--bg) 72%,transparent); box-shadow:0 1px 0 rgba(255,255,255,.22); backdrop-filter:blur(24px) saturate(1.18); -webkit-backdrop-filter:blur(24px) saturate(1.18); }
+    .back { min-width:82px; min-height:44px; justify-content:center; border:1px solid color-mix(in srgb,var(--hair) 80%,transparent); border-radius:999px; background:color-mix(in srgb,var(--surface) 58%,transparent); backdrop-filter:blur(14px); -webkit-backdrop-filter:blur(14px); transition:transform 150ms cubic-bezier(.2,.8,.2,1),background-color 150ms ease,border-color 150ms ease; }
+    .back:hover { transform:translateY(-1px); border-color:color-mix(in srgb,var(--accent) 42%,var(--hair)); background:color-mix(in srgb,var(--surface) 78%,transparent); }
+    main { place-items:start center; padding:44px 24px 72px; }
+    .sheet { width:min(980px,100%); padding:clamp(28px,4vw,46px); border:1px solid color-mix(in srgb,var(--hair) 80%,rgba(255,255,255,.4)); border-radius:30px; background:linear-gradient(150deg,color-mix(in srgb,var(--surface) 78%,transparent),color-mix(in srgb,var(--surface-soft) 58%,transparent)); box-shadow:inset 0 1px 0 rgba(255,255,255,.46),0 30px 90px rgba(30,28,23,.13); backdrop-filter:blur(34px) saturate(1.18); -webkit-backdrop-filter:blur(34px) saturate(1.18); }
+    .sheet::before { inset:4px; border-color:color-mix(in srgb,var(--line) 14%,transparent); border-radius:26px; }
+    .sheet::after { display:none; }
+    .content { animation:content-reveal 220ms cubic-bezier(.2,.8,.2,1) both; }
+    .eyebrow { color:color-mix(in srgb,var(--accent) 78%,var(--ink)); }
+    h1 { font-size:clamp(32px,5vw,48px); letter-spacing:-1.8px; }
+    .lede { max-width:680px; }
+    .plan-hero { margin-top:28px; padding:26px; border-color:color-mix(in srgb,var(--accent) 28%,var(--hair)); border-radius:24px; background:linear-gradient(140deg,color-mix(in srgb,var(--surface) 70%,transparent),color-mix(in srgb,var(--accent) 7%,var(--surface-soft))); box-shadow:inset 0 1px 0 rgba(255,255,255,.42),0 14px 38px rgba(31,29,25,.07); backdrop-filter:blur(22px) saturate(1.12); -webkit-backdrop-filter:blur(22px) saturate(1.12); }
+    .plan-heading h2 { font-size:28px; }
+    .plan-price { padding:8px 12px; border:1px solid color-mix(in srgb,var(--accent) 25%,var(--hair)); border-radius:999px; background:color-mix(in srgb,var(--surface) 56%,transparent); }
+    .plan-account { overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+    .plan-highlights { position:relative; z-index:1; display:flex; flex-wrap:wrap; gap:7px; margin-top:17px; padding-top:16px; border-top:1px solid color-mix(in srgb,var(--hair) 78%,transparent); }
+    .plan-highlight { display:inline-flex; align-items:center; min-height:30px; padding:0 10px; border:1px solid color-mix(in srgb,var(--hair) 82%,transparent); border-radius:999px; background:color-mix(in srgb,var(--surface) 52%,transparent); color:var(--muted); font-size:10.5px; font-weight:690; }
+    .section-title { margin-top:32px; font-size:19px; }
+    .feature-grid { grid-template-columns:repeat(3,minmax(0,1fr)); gap:12px; }
+    .feature-card { min-height:138px; padding:17px; border:1px solid color-mix(in srgb,var(--hair) 78%,rgba(255,255,255,.34)); border-radius:20px; background:linear-gradient(145deg,color-mix(in srgb,var(--surface) 67%,transparent),color-mix(in srgb,var(--surface-soft) 46%,transparent)); box-shadow:inset 0 1px 0 rgba(255,255,255,.34),0 8px 22px rgba(30,28,23,.045); backdrop-filter:blur(18px); -webkit-backdrop-filter:blur(18px); transition:transform 160ms cubic-bezier(.2,.8,.2,1),border-color 160ms ease,box-shadow 160ms ease; }
+    .feature-card::before,.feature-card::after { display:none; }
+    .feature-card:hover { transform:translateY(-3px); border-color:color-mix(in srgb,var(--accent) 46%,var(--hair)); background:linear-gradient(145deg,color-mix(in srgb,var(--surface) 74%,transparent),color-mix(in srgb,var(--accent) 6%,var(--surface-soft))); box-shadow:inset 0 1px 0 rgba(255,255,255,.38),0 13px 30px rgba(30,28,23,.075); }
+    .feature-icon { width:32px; height:32px; border-radius:11px; background:color-mix(in srgb,var(--accent) 12%,transparent); color:color-mix(in srgb,var(--accent) 78%,var(--ink)); }
+    .feature-name { margin-top:12px; font-size:13px; }
+    .feature-description { font-size:11.5px; }
+    .desk-note { border:0; border-radius:999px; transform:none; background:color-mix(in srgb,var(--accent) 18%,var(--surface)); box-shadow:none; }
+    .desk-note::before { display:none; }
+    .plan-card { border:1px solid color-mix(in srgb,var(--hair) 80%,rgba(255,255,255,.3)); border-radius:21px; background:linear-gradient(145deg,color-mix(in srgb,var(--surface) 65%,transparent),color-mix(in srgb,var(--surface-soft) 48%,transparent)); box-shadow:inset 0 1px 0 rgba(255,255,255,.34); backdrop-filter:blur(18px); -webkit-backdrop-filter:blur(18px); }
+    .plan-card::before,.plan-card::after { display:none; }
+    .button { border-radius:999px; transition:transform 140ms cubic-bezier(.2,.8,.2,1),box-shadow 140ms ease,background-color 140ms ease,opacity 140ms ease; }
+    .button:hover:not(:disabled) { transform:translateY(-2px); box-shadow:0 8px 18px rgba(30,28,23,.09); }
+    .button-secondary { background:color-mix(in srgb,var(--surface) 54%,transparent); backdrop-filter:blur(12px); -webkit-backdrop-filter:blur(12px); }
+    .confirm { padding:16px; border:1px solid color-mix(in srgb,var(--hair) 82%,transparent); border-radius:18px; background:color-mix(in srgb,var(--surface) 50%,transparent); }
+    @keyframes glass-drift { to { transform:translate3d(18px,-14px,0) scale(1.04); } }
+    @keyframes content-reveal { from { opacity:0; transform:translateY(6px); } to { opacity:1; transform:none; } }
+    :root[data-filmscript-theme="mint"] { --accent:#4f9a79; --accent-hover:#43866a; --bg:#f3faf6; --surface:#fbfffc; --surface-soft:#e8f3ed; }
+    :root[data-filmscript-theme="tangerine"] { --accent:#e87932; --accent-hover:#d56826; --bg:#fff7f1; --surface:#fffdf9; --surface-soft:#f9ece2; }
+    :root[data-filmscript-theme="lavender"] { --accent:#8a72c5; --accent-hover:#7860b3; --bg:#f8f5fc; --surface:#fffefe; --surface-soft:#eee9f6; }
+    :root[data-filmscript-theme="sky"] { --accent:#4f8fb8; --accent-hover:#407fa8; --bg:#f3f8fb; --surface:#fcfeff; --surface-soft:#e7f0f5; }
+    :root[data-filmscript-theme="rose"] { --accent:#c9697a; --accent-hover:#b85a6b; --bg:#fcf5f6; --surface:#fffdfd; --surface-soft:#f5e7e9; }
+    :root[data-filmscript-theme="sun"] { --accent:#d89a16; --accent-hover:#c28912; --bg:#fffaf0; --surface:#fffef9; --surface-soft:#f8efd9; }
+    @media (max-width:820px) { .feature-grid { grid-template-columns:repeat(2,minmax(0,1fr)); } }
+    @media (max-width:600px) { main { padding:22px 12px 40px; } .sheet { padding:26px 19px; border-radius:24px; } .feature-grid { grid-template-columns:1fr; } .plan-highlights { display:grid; grid-template-columns:1fr 1fr; } }
+    @media (prefers-reduced-transparency:reduce) { .topbar,.sheet,.plan-hero,.feature-card,.plan-card,.back,.button-secondary { background:var(--surface)!important; backdrop-filter:none!important; -webkit-backdrop-filter:none!important; } }
   </style>
 </head>
 <body>
@@ -453,6 +511,12 @@
             <div class="plan-price" id="overview-plan-price">$39.99 / month</div>
           </div>
           <div class="plan-account" id="overview-email">Connected Google account</div>
+          <div class="plan-highlights" aria-label="Plan highlights">
+            <span class="plan-highlight">Real-time collaboration</span>
+            <span class="plan-highlight">Comments and notifications</span>
+            <span class="plan-highlight">Shared Project</span>
+            <span class="plan-highlight" id="overview-credit-highlight">1,000 image credits monthly</span>
+          </div>
         </div>
 
         <h2 class="section-title" id="overview-features-title">Everything included</h2>
@@ -460,38 +524,48 @@
         <div class="feature-grid">
           <div class="feature-card">
             <div class="feature-icon"><svg viewBox="0 0 24 24"><path class="icon-page" d="M6 3.5h8l4 4V20H6z"/><path class="icon-writing" d="M14 3.5V8h4M9 12h6M9 15.5h5"/></svg></div>
-            <div class="feature-name">Screenplay editor</div>
-            <div class="feature-description">Professional formatting, scene navigation and focused writing.</div>
+            <div class="feature-name">Screenplay and translation</div>
+            <div class="feature-description">Professional formatting, safe simultaneous editing and independent translated projects.</div>
           </div>
           <div class="feature-card" id="lumiere-feature-card">
             <div class="feature-icon"><svg viewBox="0 0 24 24"><path class="icon-star-main" d="m12 3 1.5 5.5L19 10l-5.5 1.5L12 17l-1.5-5.5L5 10l5.5-1.5z"/><path class="icon-star-small" d="m18.5 16 .7 2.3 2.3.7-2.3.7-.7 2.3-.7-2.3-2.3-.7 2.3-.7z"/></svg></div>
             <div class="feature-name">Lumiere</div>
-            <div class="feature-description">Script feedback, analysis and conversations saved per screenplay.</div>
+            <div class="feature-description">Script analysis, breakdown generation and creative conversations saved per screenplay.</div>
           </div>
-          <div class="feature-card" id="image-credit-feature-card" hidden>
+          <div class="feature-card" id="image-credit-feature-card">
             <div class="feature-icon"><svg viewBox="0 0 24 24"><rect x="4" y="4" width="16" height="16" rx="2"/><circle cx="9" cy="9" r="1.5"/><path d="m5.8 18 4.5-4.7 3.2 3 2-2.1 2.7 3.2"/></svg></div>
-            <div class="feature-name">1,000 image credits</div>
+            <div class="feature-name" id="image-credit-feature-name">1,000 image credits</div>
             <div class="feature-description">Every AI image in Imagine, Boards, and Shot List uses 3 credits.</div>
           </div>
           <div class="feature-card">
             <div class="feature-icon"><svg viewBox="0 0 24 24"><path class="icon-grid" d="M4 5h16v14H4zM4 10h16M10 10v9M15 10v9"/><path class="icon-grid-label" d="M7 7.5h5"/></svg></div>
-            <div class="feature-name">Script breakdowns</div>
-            <div class="feature-description">Editable cast, props, wardrobe, locations and production elements.</div>
+            <div class="feature-name">Breakdown and split view</div>
+            <div class="feature-description">Editable production elements beside the live screenplay, linked to exact script evidence.</div>
           </div>
           <div class="feature-card">
             <div class="feature-icon"><svg viewBox="0 0 24 24"><path class="icon-strip" d="M4 5.5h16v3H4z"/><path class="icon-strip" d="M4 10.5h16v3H4z"/><path class="icon-strip" d="M4 15.5h16v3H4z"/><path class="icon-shot-spine" d="M8 4v16"/></svg></div>
-            <div class="feature-name">Stripboards</div>
-            <div class="feature-description">Drag scenes into a practical shooting order and export the plan.</div>
+            <div class="feature-name">Production planning</div>
+            <div class="feature-description">Stripboard, Shot List, Calendar and scene-linked planning in one workflow.</div>
           </div>
           <div class="feature-card">
             <div class="feature-icon"><svg viewBox="0 0 24 24"><path d="M4 6h16v12H4z"/><path class="icon-shot-spine" d="M8 6v12"/><path class="icon-shot-rows" d="M12 9h5M12 12h5M12 15h3"/></svg></div>
-            <div class="feature-name">Shot lists</div>
-            <div class="feature-description" id="shot-feature-description">Editable camera coverage generated scene by scene with Lumiere.</div>
+            <div class="feature-name">Budget and cash flow</div>
+            <div class="feature-description" id="shot-feature-description">Connected budgets, weekly cash flow, expenses and production-ready exports.</div>
+          </div>
+          <div class="feature-card">
+            <div class="feature-icon"><svg viewBox="0 0 24 24"><circle cx="9" cy="9" r="3"/><circle cx="16.5" cy="10" r="2.3"/><path d="M3.8 20c.3-4 2-6.1 5.2-6.1s5 2.1 5.3 6.1M14 15c3.5-.5 5.5 1.1 5.9 4.3"/></svg></div>
+            <div class="feature-name">Collaboration and activity</div>
+            <div class="feature-description">Live presence, cursors, comments, mentions, notifications and meaningful project history.</div>
+          </div>
+          <div class="feature-card">
+            <div class="feature-icon"><svg viewBox="0 0 24 24"><path d="M4 5h16v14H4zM8 9h8M8 12h6M8 15h4"/><path d="m17 3 3 2-3 2"/></svg></div>
+            <div class="feature-name">Shared Project</div>
+            <div class="feature-description">A secure, read-only web view that always reflects the latest sections you choose.</div>
           </div>
           <div class="feature-card">
             <div class="feature-icon"><svg viewBox="0 0 24 24"><path d="M7 3.5h8l3 3V20H7zM15 3.5V7h3"/><path class="icon-pdf-lines" d="M10 12h5M10 15h5"/><path class="icon-pdf-back" d="M4 8v10h3"/></svg></div>
-            <div class="feature-name">PDF exports</div>
-            <div class="feature-description">Export scripts and production documents with FilmScript watermark.</div>
+            <div class="feature-name">Canvas, files and exports</div>
+            <div class="feature-description">Canvas, Imagine, selected files and professional PDF exports across production modules.</div>
           </div>
         </div>
 
@@ -623,6 +697,21 @@
       const byId = (id) => document.getElementById(id);
       const playSound = (name) => window.filmscriptSounds?.play(name);
       const show = (name) => views.forEach((view) => { byId(view + '-view').hidden = view !== name; });
+      const syncDocumentTitle = () => {
+        document.title = document.documentElement.lang === 'es'
+          ? 'Plan y facturación · FilmScript'
+          : 'Plan and billing · FilmScript';
+      };
+      window.addEventListener('filmscript:language-change', syncDocumentTitle);
+      window.addEventListener('DOMContentLoaded', syncDocumentTitle, { once: true });
+      new MutationObserver(syncDocumentTitle).observe(document.documentElement, { attributes: true, attributeFilter: ['lang'] });
+      syncDocumentTitle();
+      const billingReady = async () => {
+        if (window.filmscriptBilling?.me) return window.filmscriptBilling;
+        await new Promise((resolve) => window.addEventListener('DOMContentLoaded', resolve, { once: true }));
+        if (window.filmscriptBilling?.me) return window.filmscriptBilling;
+        throw new Error('FilmScript billing is still loading. Please try again.');
+      };
       const goBack = () => { window.location.href = returnTo; };
       document.querySelectorAll('.js-back').forEach((button) => button.addEventListener('click', goBack));
       byId('top-back').addEventListener('click', () => {
@@ -662,10 +751,10 @@
           ? 'The complete workflow, including Lumiere text tools and 1,000 monthly image credits.'
           : 'The connected writing and production workflow, including Lumiere text tools and manual visual work.';
         byId('lumiere-feature-card').hidden = false;
-        byId('image-credit-feature-card').hidden = !isFull;
-        byId('shot-feature-description').textContent = isFull
-          ? 'Editable camera coverage with AI image references available from your 1,000 monthly credits.'
-          : 'Editable camera coverage generated scene by scene with Lumiere.';
+        byId('image-credit-feature-card').hidden = false;
+        byId('image-credit-feature-name').textContent = isFull ? '1,000 image credits' : '100 image credits';
+        byId('overview-credit-highlight').textContent = isFull ? '1,000 image credits monthly' : '100 image credits monthly';
+        byId('shot-feature-description').textContent = 'Connected budgets, weekly cash flow, expenses and production-ready exports.';
         byId('overview-status').textContent = 'Active';
         byId('overview-environment').hidden = true;
         byId('overview-provider').textContent = recurringSubscription ? 'Managed securely with Recurrente' : 'Payment verified securely';
@@ -725,10 +814,11 @@
       async function load() {
         show('loading');
         try {
-          account = await window.filmscriptBilling.me();
+          const billing = await billingReady();
+          account = await billing.me();
           if (!account.authenticated) return show('signin');
           try {
-            management = await window.filmscriptBilling.manageSubscription();
+            management = await billing.manageSubscription();
           } catch (error) {
             // Never show a raw provider implementation error (for example
             // “reading 'me'”) to a FilmScript member. The account response is

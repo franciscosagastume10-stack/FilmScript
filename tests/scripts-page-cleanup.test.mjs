@@ -16,6 +16,17 @@ test('Scripts does not show the default PDF format helper', () => {
   assert.match(app, /importNoteOn: !!String\(this\.state\.importNote/);
 });
 
+test('Scripts shows a clear inline import card while a screenplay is being saved', () => {
+  assert.match(app, /importingScript: null/);
+  assert.match(app, /Uploading screenplay/);
+  assert.match(app, /Reading screenplay/);
+  assert.match(app, /Saving screenplay/);
+  assert.match(app, /Finishing import/);
+  assert.match(app, /fs-script-import-progress/);
+  assert.match(app, /importingScriptOn: Boolean\(this\.state\.importingScript\)/);
+  assert.match(app, /await this\._loadScripts\(\{ retries: 2 \}\)/);
+});
+
 test('PDF imports classify scene headings independently of their horizontal position', () => {
   const extractor = fs.readFileSync(path.join(root, 'pdf_extract.py'), 'utf8');
   assert.match(extractor, /Scene headings are the source of truth/);
@@ -28,7 +39,7 @@ test('PDF imports keep the uploaded filename as the screenplay title', () => {
   const editor = fs.readFileSync(path.join(root, 'Editor v5.dc.html'), 'utf8');
   assert.match(server, /Only remove the transport extension/);
   assert.doesNotMatch(server, /replace\(\/_-\+\/g, " "\)/);
-  assert.match(editor, /stored\.source === 'pdf' \? \(stored\.title \|\| 'Untitled screenplay'\)/);
+  assert.match(editor, /stored\.source === 'pdf' \? \(stored\.title \|\| this\.state\.docTitle \|\| 'Screenplay'\)/);
 });
 
 test('PDF opening transition formats long underscore titles without changing the stored title', () => {

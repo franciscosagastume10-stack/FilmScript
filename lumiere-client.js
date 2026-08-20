@@ -7,9 +7,12 @@
   let accountRequest = null;
   const upgradeErrors = new Set([
     'filmscript_creator_required',
+    'paid_plan_required',
+    'full_plan_required',
     'image_generation_plan_required',
     'image_credits_exhausted',
     'lumiere_credits_exhausted',
+    'insufficient_credits',
     // Keep this for an in-flight deployment where an older API is still
     // answering requests while the new entitlement model rolls out.
     'filmscript_pro_required',
@@ -24,10 +27,20 @@
       detail.requiredTier = 'creator';
     } else if (detail.error === 'lumiere_credits_exhausted') {
       detail.message = detail.message || 'Your included Lumiere prompts are used. Creator at $24.99/month unlocks ongoing Lumiere work.';
-      detail.requiredTier = 'creator';
+      detail.requiredTier = detail.requiredTier || detail.upgrade || (detail.plan === 'creator' ? 'full' : 'creator');
     }
     window.dispatchEvent(new CustomEvent('filmscript:pro-required', { detail }));
     window.dispatchEvent(new CustomEvent('filmscript:upgrade-required', { detail }));
+  };
+  const idempotencyKey = () => {
+    try {
+      if (typeof crypto?.randomUUID === 'function') return `lchat_${crypto.randomUUID()}`;
+      const bytes = new Uint8Array(18);
+      crypto.getRandomValues(bytes);
+      return `lchat_${Array.from(bytes, (byte) => byte.toString(16).padStart(2, '0')).join('')}`;
+    } catch {
+      return `lchat_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 16)}`;
+    }
   };
   const getAccount = async ({ refresh = false } = {}) => {
     if (!refresh && account) return account;
@@ -66,19 +79,36 @@
   const lumiere = window.lumiere || {};
   window.lumiere = lumiere;
   lumiere.complete = async ({ messages, maxTokens, surface = 'workspace', projectId = currentProjectId(), module, sceneId } = {}) => {
+    // Every deliberate tool press gets one stable request identity. The API
+    // reserves and settles exactly one Lumiere use for this id, so a replayed
+    // browser request can never spend the same action twice.
+    const requestId = idempotencyKey();
     const res = await fetch(resolve("/api/lumiere"), {
       method: "POST",
       credentials: "include",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ messages, maxTokens, surface, language: interfaceLanguage(), projectId, module, sceneId }),
+      headers: { "Content-Type": "application/json", "Idempotency-Key": requestId },
+      body: JSON.stringify({ messages, maxTokens, surface, projectId, module, sceneId, language: interfaceLanguage(), idempotencyKey: requestId }),
     });
     if (!res.ok) {
       const data = await res.json().catch(() => ({}));
+      if (data?.credits && typeof data.credits === 'object') {
+        window.dispatchEvent(new CustomEvent('filmscript:credits-updated', { detail: data.credits }));
+      }
       if (res.status === 401) window.dispatchEvent(new CustomEvent('filmscript:auth-required'));
       if ((res.status === 402 || res.status === 403 || res.status === 429) && upgradeErrors.has(data.error)) notifyUpgrade(data);
-      throw new Error(data.message || data.error || "Lumiere proxy error " + res.status);
+      const error = new Error(data.message || data.error || "Lumiere proxy error " + res.status);
+      error.code = data.error || null;
+      error.status = res.status;
+      error.credits = data.credits || null;
+      error.requiredCredits = data.requiredCredits ?? null;
+      error.availableCredits = data.availableCredits ?? null;
+      error.serverValidated = data.serverValidated === true;
+      throw error;
     }
     const data = await res.json();
+    if (data?.credits && typeof data.credits === 'object') {
+      window.dispatchEvent(new CustomEvent('filmscript:credits-updated', { detail: data.credits }));
+    }
     return data.reply || "";
   };
 })();

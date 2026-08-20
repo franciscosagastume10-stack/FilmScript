@@ -8,15 +8,16 @@
 <!-- Vercel Web Analytics: production page views and navigation. -->
 <script defer src="/_vercel/insights/script.js"></script>
 <script src="./support.js"></script>
-<script src="./runtime-config.js?v=20260710-auth1"></script>
+<script src="./runtime-config.js?v=20260819-auth-proxy1"></script>
 <script defer src="./funnel-tracking.js?v=20260716-erp1"></script>
 <script src="./theme-preference.js?v=20260712-theme1"></script>
-<script defer src="./language-preference.js?v=20260731-plan-credits4"></script>
+<script defer src="./language-preference.js?v=20260819-billing-glass1"></script>
 <script defer src="./ui-sounds.js?v=20260728-calendar-complete1"></script>
-<script defer src="./billing-client.js?v=20260716-profile-safe1"></script>
-<script defer src="./credit-indicator.js?v=20260801-credit-panel1"></script>
-<script defer src="./lumiere-client.js?v=20260731-plan-entitlements2"></script>
-<script defer src="./lumiere-preferences.js?v=20260713-taste1"></script>
+<script defer src="./billing-client.js?v=20260820-proration1"></script>
+<script defer src="./credit-indicator.js?v=20260819-account-menu1"></script>
+<script defer src="./lumiere-client.js?v=20260820-credit-usage1"></script>
+<script defer src="./lumiere-access-modal.js?v=20260820-access-modal1"></script>
+<script defer src="./lumiere-preferences.js?v=20260819-lumiere-ui1"></script>
 <link rel="stylesheet" href="./auth-modal.css?v=20260712-auth2">
 <link rel="stylesheet" href="./filmscript-controls.css?v=20260716-typography1">
 </head>
@@ -365,22 +366,22 @@
 
       <sc-if value="{{ checkoutConfirmStep }}" hint-placeholder-val="{{ true }}">
       <div>
-        <div style="font-size: 11px; letter-spacing: 1.6px; text-transform: uppercase; color: var(--accent, #BA7517); font-weight: 600; text-align: center;">Confirm plan</div>
+        <div style="font-size: 11px; letter-spacing: 1.6px; text-transform: uppercase; color: var(--accent, #BA7517); font-weight: 600; text-align: center;">{{ checkoutHeading }}</div>
         <h2 style="font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; font-weight: 700; font-size: 24px; letter-spacing: -0.5px; color: var(--ink, #2C2C2A); margin: 12px 0 0; text-align: center;">{{ checkoutPlanName }}</h2>
         <div style="text-align: center; margin-top: 8px; font-size: 15px; color: var(--muted, #888780);">{{ checkoutPlanPrice }}</div>
         <sc-if value="{{ checkoutIsPlanChange }}" hint-placeholder-val="{{ false }}">
-          <div style="margin-top: 18px; padding: 11px 13px; border: 1px solid var(--hair, #E7E4DA); border-radius: 11px; background: var(--soft, #EFEBE1); font-size: 12px; line-height: 1.48; color: var(--ink, #2C2C2A);">This replaces your current plan. Your FilmScript work stays exactly where it is; only your access changes.</div>
+          <div style="margin-top: 18px; padding: 12px 13px; border: 1px solid var(--hair, #E7E4DA); border-radius: 12px; background: color-mix(in srgb, var(--accent, #BA7517) 8%, var(--soft, #EFEBE1)); font-size: 12px; line-height: 1.5; color: var(--ink, #2C2C2A);">{{ checkoutSwitchSummary }}<div style="margin-top: 7px; color: var(--muted, #888780);">{{ checkoutUsageNote }}</div></div>
         </sc-if>
 
         <sc-if value="{{ checkoutHasLink }}" hint-placeholder-val="{{ true }}">
-        <div onClick="{{ openPayLink }}" class="fsx-lift" style="position: relative; text-align: center; margin-top: 24px; padding: 13px; cursor: pointer;">
+        <div onClick="{{ openPayLink }}" aria-busy="{{ checkoutActionBusy }}" class="fsx-lift" style="position: relative; text-align: center; margin-top: 24px; padding: 13px; cursor: pointer;">
           <svg viewBox="0 0 320 48" preserveAspectRatio="none" style="position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none;"><path d="{{ planBtnPath }}" style="fill: var(--accent, #BA7517); stroke: var(--accent, #BA7517);" stroke-width="1.6" stroke-linejoin="round"></path></svg>
-          <span style="position: relative; font-size: 14px; font-weight: 600; color: #FFFEF9;">Continue to checkout</span>
+          <span style="position: relative; font-size: 14px; font-weight: 600; color: #FFFEF9;">{{ checkoutActionLabel }}</span>
         </div>
         </sc-if>
 
         <div style="margin-top: 18px; padding: 13px 15px; border: 1.4px solid var(--line, #2C2C2A); border-radius: 14px; background: var(--bg, #F5F0E8); filter: url(#fs-sketch);">
-          <div style="font-size: 12px; line-height: 1.55; color: var(--muted, #888780);">You will return to FilmScript after payment. FilmScript verifies the checkout securely and unlocks your selected plan automatically.</div>
+          <div style="font-size: 12px; line-height: 1.55; color: var(--muted, #888780);">{{ checkoutUsageNote }}</div>
         </div>
       </div>
       </sc-if>
@@ -390,11 +391,11 @@
         <div style="width: 44px; height: 44px; color: var(--accent, #BA7517); margin: 0 auto;">
           <svg viewBox="0 0 24 24" style="width: 100%; height: 100%;" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"></circle><path d="M7.8 12.3 L10.4 15 L16.4 8.8"></path></svg>
         </div>
-        <h2 style="font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; font-weight: 700; font-size: 22px; letter-spacing: -0.5px; color: var(--ink, #2C2C2A); margin: 16px 0 0;">You are all set</h2>
-        <p style="font-size: 13.5px; line-height: 1.55; color: var(--muted, #888780); margin: 8px 0 0;">{{ checkoutPlanName }} is active. Your payment was verified securely.</p>
+        <h2 style="font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; font-weight: 700; font-size: 22px; letter-spacing: -0.5px; color: var(--ink, #2C2C2A); margin: 16px 0 0;">{{ checkoutSuccessTitle }}</h2>
+        <p style="font-size: 13.5px; line-height: 1.55; color: var(--muted, #888780); margin: 8px 0 0;">{{ checkoutSuccessCopy }}</p>
         <div onClick="{{ continueAfterCheckout }}" class="fsx-lift" style="position: relative; text-align: center; margin-top: 22px; padding: 13px; cursor: pointer;">
           <svg viewBox="0 0 320 48" preserveAspectRatio="none" style="position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none;"><path d="{{ planBtnPath }}" style="fill: var(--accent, #BA7517); stroke: var(--accent, #BA7517);" stroke-width="1.6" stroke-linejoin="round"></path></svg>
-          <span style="position: relative; font-size: 14px; font-weight: 600; color: #FFFEF9;">Continue to Scripts</span>
+          <span style="position: relative; font-size: 14px; font-weight: 600; color: #FFFEF9;">{{ checkoutContinueLabel }}</span>
         </div>
       </div>
       </sc-if>
@@ -431,6 +432,9 @@ class Component extends DCLogic {
     checkoutOpen: false,
     checkoutPlan: null,
     checkoutStep: 'confirm',
+    checkoutSwitchPreview: null,
+    checkoutSubmitting: false,
+    checkoutChangeApplied: false,
     accountOpen: false,
     accountDetailsOpen: false,
     termsOpen: false,
@@ -865,7 +869,7 @@ Write Lumiere's next reply only:`;
     if (!this.state.user) {
       this.setState({ authOpen: true, pendingPlan: plan, accountOpen: false });
     } else {
-      this.setState({ checkoutOpen: true, checkoutPlan: plan, checkoutStep: 'confirm', accountOpen: false });
+      this.setState({ checkoutOpen: true, checkoutPlan: plan, checkoutStep: 'confirm', checkoutSwitchPreview: null, checkoutSubmitting: false, checkoutChangeApplied: false, accountOpen: false });
     }
   }
 
@@ -901,6 +905,42 @@ Write Lumiere's next reply only:`;
     const checkoutHasLink = !!checkoutPlanKey;
     const billingPlan = String(this.state.billingPlan || '').trim().toLowerCase();
     const checkoutIsPlanChange = !!billingPlan && !!checkoutPlanKey && billingPlan !== checkoutPlanKey;
+    const checkoutSpanish = String(window.filmscriptLanguage?.get?.() || document.documentElement.lang || 'en').toLowerCase().startsWith('es');
+    const checkoutSwitchPreview = this.state.checkoutSwitchPreview;
+    const checkoutCharge = checkoutSwitchPreview?.charge || null;
+    const checkoutChargeAmount = Number(checkoutCharge?.amountInCents || 0) / 100;
+    const checkoutChargeLabel = checkoutCharge?.currency
+      ? new Intl.NumberFormat(checkoutSpanish ? 'es-GT' : 'en-US', { style: 'currency', currency: checkoutCharge.currency }).format(checkoutChargeAmount)
+      : '';
+    const checkoutActionBusy = this.state.checkoutSubmitting === true;
+    const checkoutSwitchSummary = !checkoutIsPlanChange
+      ? ''
+      : !checkoutSwitchPreview
+        ? (checkoutSpanish ? 'Primero calcularemos el ajuste exacto de tu período actual. Todavía no se hará ningún cobro.' : 'First we will calculate the exact adjustment for your current billing period. Nothing will be charged yet.')
+        : checkoutCharge?.chargeable
+          ? (checkoutSpanish ? `Hoy se cobrará ${checkoutChargeLabel}. Es el ajuste exacto calculado para tu período actual.` : `${checkoutChargeLabel} will be charged today. This is the exact adjustment calculated for your current billing period.`)
+          : (checkoutSpanish ? 'No habrá un cobro inmediato. El cambio se aplicará a tu suscripción actual.' : 'There is no immediate charge. The change will apply to your current subscription.');
+    const checkoutUsageNote = checkoutIsPlanChange
+      ? (checkoutSpanish ? 'Tus créditos y usos ya consumidos de este período se conservan; el plan nuevo solo amplía lo que queda disponible.' : 'Your credits and uses already consumed this period are preserved; the new plan only expands what remains available.')
+      : (checkoutSpanish ? 'Volverás a FilmScript después del pago. Verificamos el pago de forma segura y activamos tu plan automáticamente.' : 'You will return to FilmScript after payment. FilmScript verifies the checkout securely and unlocks your selected plan automatically.');
+    const checkoutActionLabel = checkoutActionBusy
+      ? (checkoutSpanish ? 'Preparando…' : 'Preparing…')
+      : checkoutIsPlanChange
+        ? (checkoutSwitchPreview ? (checkoutSpanish ? 'Confirmar cambio de plan' : 'Confirm plan change') : (checkoutSpanish ? 'Ver ajuste exacto' : 'View exact adjustment'))
+        : (checkoutSpanish ? 'Continuar al pago' : 'Continue to checkout');
+    const checkoutHeading = checkoutSpanish ? 'Confirmar plan' : 'Confirm plan';
+    const checkoutChangeApplied = this.state.checkoutChangeApplied === true;
+    const checkoutSuccessTitle = checkoutChangeApplied
+      ? (checkoutSpanish ? 'Plan actualizado' : 'Plan updated')
+      : (checkoutSpanish ? 'Todo listo' : 'You are all set');
+    const checkoutSuccessCopy = checkoutChangeApplied
+      ? (checkoutSpanish
+        ? `${checkoutPlanName} ya está activo. Conservamos los créditos y usos que ya consumiste en este período.`
+        : `${checkoutPlanName} is now active. Your credits and uses already consumed this period were preserved.`)
+      : (checkoutSpanish
+        ? `${checkoutPlanName} está activo. Verificamos tu pago de forma segura.`
+        : `${checkoutPlanName} is active. Your payment was verified securely.`);
+    const checkoutContinueLabel = checkoutSpanish ? 'Ir a mis guiones' : 'Continue to Scripts';
 
     const mkIcon = (paths) => React.createElement('svg', { viewBox: '0 0 24 24', width: '100%', height: '100%', fill: 'none', stroke: 'currentColor', strokeWidth: 1.5, strokeLinecap: 'round', strokeLinejoin: 'round' },
       paths.map((d, i) => React.createElement('path', { key: i, d })));
@@ -1083,19 +1123,42 @@ Write Lumiere's next reply only:`;
 
       checkoutOpen: this.state.checkoutOpen,
       checkoutConfirmStep, checkoutSuccessStep, checkoutPlanName, checkoutPlanPrice, checkoutHasLink, checkoutIsPlanChange,
+      checkoutSwitchPreview: Boolean(checkoutSwitchPreview), checkoutSwitchSummary, checkoutUsageNote, checkoutActionLabel, checkoutActionBusy, checkoutHeading, checkoutSuccessTitle, checkoutSuccessCopy, checkoutContinueLabel,
       openPayLink: async () => {
+        if (this.state.checkoutSubmitting || !this.state.checkoutPlan) return;
+        this.setState({ checkoutSubmitting: true });
         try {
           const language = window.filmscriptLanguage?.get?.() || document.documentElement.lang || 'en';
           const billingPlan = String(this.state.billingPlan || '').trim().toLowerCase();
           const changingPlan = !!billingPlan && billingPlan !== this.state.checkoutPlan;
-          const result = changingPlan
-            ? await window.filmscriptBilling.switchPlan(this.state.checkoutPlan, language)
-            : await window.filmscriptBilling.checkout(this.state.checkoutPlan, this.state.user?.email, language);
+          if (changingPlan) {
+            const existingPreview = this.state.checkoutSwitchPreview;
+            if (!existingPreview?.switchToken) {
+              try {
+                const preview = await window.filmscriptBilling.previewPlanSwitch(this.state.checkoutPlan, language);
+                this.setState({ checkoutSwitchPreview: preview, checkoutSubmitting: false });
+                return;
+              } catch (error) {
+                if (!error?.data?.checkoutRequired) throw error;
+              }
+            } else {
+              const result = await window.filmscriptBilling.switchPlan(this.state.checkoutPlan, language, existingPreview.switchToken);
+              if (!result?.applied) throw new Error('FilmScript could not confirm this plan change. Nothing was charged.');
+              await this._refreshBilling();
+              this.setState({ checkoutStep: 'success', checkoutSwitchPreview: null, checkoutSubmitting: false, checkoutChangeApplied: true });
+              return;
+            }
+          }
+          const result = await window.filmscriptBilling.checkout(this.state.checkoutPlan, this.state.user?.email, language);
           window.filmscriptBilling.trackCheckoutRedirected(this.state.checkoutPlan);
+          if (!result?.checkoutUrl) throw new Error('FilmScript could not open secure checkout. Please try again.');
           window.location.href = result.checkoutUrl;
-        } catch (e) { this.setState({ toast: e.message }); }
+        } catch (e) {
+          const stalePreview = /subscription_switch_preview_(?:expired|missing|superseded|failed)|subscription_changed_since_preview|subscription_switch_preview_mismatch/.test(String(e?.code || ''));
+          this.setState({ toast: e.message || 'FilmScript could not complete this action.', checkoutSubmitting: false, ...(stalePreview ? { checkoutSwitchPreview: null } : {}) });
+        }
       },
-      closeCheckout: () => this.setState({ checkoutOpen: false, checkoutStep: 'confirm', checkoutPlan: null }),
+      closeCheckout: () => this.setState({ checkoutOpen: false, checkoutStep: 'confirm', checkoutPlan: null, checkoutSwitchPreview: null, checkoutSubmitting: false, checkoutChangeApplied: false }),
       continueAfterCheckout: () => { window.location.href = 'App.dc.html'; },
     };
   }

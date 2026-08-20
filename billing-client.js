@@ -41,6 +41,10 @@
       const error = new Error(data.message || data.error || `Account error ${response.status}`);
       error.code = data.error || null;
       error.status = response.status;
+      // Keep structured server decisions available to the checkout surface.
+      // In particular, an inactive subscription may safely fall back to a
+      // normal hosted checkout instead of pretending it can be prorated.
+      error.data = data;
       if (response.status === 401) window.dispatchEvent(new CustomEvent('filmscript:auth-required'));
       throw error;
     }
@@ -77,18 +81,29 @@
       });
       return { ...result, checkoutUrl: checkoutUrlForLanguage(result.checkoutUrl, nextLanguage) };
     },
-    switchPlan: async (plan, language = null) => {
+    previewPlanSwitch: async (plan, language = null) => {
       const nextLanguage = normalizeLanguage(language || document.documentElement.lang || window.filmscriptLanguage?.get?.());
       const tracking = window.filmscriptFunnel?.context?.() || {};
-      const payload = { plan, language: nextLanguage, confirm: true };
+      const payload = { plan, language: nextLanguage };
       if (tracking.visitorId) payload.visitorId = tracking.visitorId;
       if (tracking.sessionId) payload.sessionId = tracking.sessionId;
       if (tracking.attribution) payload.attribution = tracking.attribution;
-      const result = await api('/api/subscription/switch', {
+      return api('/api/subscription/switch/preview', {
         method: 'POST',
         body: JSON.stringify(payload),
       });
-      return { ...result, checkoutUrl: checkoutUrlForLanguage(result.checkoutUrl, nextLanguage) };
+    },
+    switchPlan: async (plan, language = null, switchToken = '') => {
+      const nextLanguage = normalizeLanguage(language || document.documentElement.lang || window.filmscriptLanguage?.get?.());
+      const tracking = window.filmscriptFunnel?.context?.() || {};
+      const payload = { plan, language: nextLanguage, confirm: true, switchToken };
+      if (tracking.visitorId) payload.visitorId = tracking.visitorId;
+      if (tracking.sessionId) payload.sessionId = tracking.sessionId;
+      if (tracking.attribution) payload.attribution = tracking.attribution;
+      return api('/api/subscription/switch', {
+        method: 'POST',
+        body: JSON.stringify(payload),
+      });
     },
     trackCheckoutRedirected: (plan) => window.filmscriptFunnel?.track?.('checkout_redirected', { plan, cycle: 'monthly' }),
     createCreditsResetCheckout: async (language = null) => {

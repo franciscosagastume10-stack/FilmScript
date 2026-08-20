@@ -41,6 +41,26 @@ function runLedgerScenario() {
     );
     const settledAllowance = entitlements.freeAllowancesFor(freeUser.id).analysis;
 
+    const textReservationId = "lumiere:request-safe-retry";
+    const textBefore = entitlements.lumiereCreditsFor(freeUser.id);
+    const textFirstReservation = entitlements.reserveTextCredits(freeUser.id, 1, textReservationId);
+    const textDuplicateReservation = entitlements.reserveTextCredits(freeUser.id, 1, textReservationId);
+    const textHeld = entitlements.lumiereCreditsFor(freeUser.id);
+    const textSettled = entitlements.settleTextCredits(freeUser.id, textReservationId, {
+      reply: "A grounded Lumiere reply.",
+      provider: "openai",
+      model: "gpt-5.6-luna",
+      requiredCredits: 1,
+    });
+    const textAfter = entitlements.lumiereCreditsFor(freeUser.id);
+    const textReceipt = entitlements.textCreditReceipt(freeUser.id, textReservationId);
+    const textReleaseAfterSettlement = entitlements.releaseTextCredits(freeUser.id, textReservationId);
+
+    const releasedTextReservationId = "lumiere:request-release-on-failure";
+    const releasedTextReservation = entitlements.reserveTextCredits(freeUser.id, 1, releasedTextReservationId);
+    const textReleased = entitlements.releaseTextCredits(freeUser.id, releasedTextReservationId);
+    const textAfterRelease = entitlements.lumiereCreditsFor(freeUser.id);
+
     const fullSession = createSession();
     const fullUser = connectGoogleIdentity(fullSession.session.id, {
       sub: "full-credit-reservation-test",
@@ -94,6 +114,19 @@ function runLedgerScenario() {
         secondAllowed: secondReservation.allowed,
         settled,
         settledAllowance,
+      },
+      text: {
+        before: textBefore,
+        first: textFirstReservation,
+        duplicate: textDuplicateReservation,
+        held: textHeld,
+        settled: textSettled,
+        after: textAfter,
+        receipt: textReceipt,
+        releaseAfterSettlement: textReleaseAfterSettlement,
+        releaseReservation: releasedTextReservation,
+        released: textReleased,
+        afterRelease: textAfterRelease,
       },
       images: { beforeSettlement, settledImage, afterSettlement },
     }));
@@ -256,6 +289,21 @@ test("Free grants settle only after a result and image reservations charge their
   assert.equal(scenario.free.settledAllowance.remaining, 0);
   assert.equal(scenario.free.settledAllowance.reserved, false);
 
+  assert.equal(scenario.text.before.used, 0);
+  assert.equal(scenario.text.first.allowed, true);
+  assert.equal(scenario.text.first.duplicate, undefined);
+  assert.equal(scenario.text.duplicate.allowed, true);
+  assert.equal(scenario.text.duplicate.duplicate, true);
+  assert.equal(scenario.text.held.used, 0, "a pending request must not consume a prompt");
+  assert.equal(scenario.text.settled, true);
+  assert.equal(scenario.text.after.used, 1, "a completed request must consume exactly one prompt");
+  assert.equal(scenario.text.receipt.reply, "A grounded Lumiere reply.");
+  assert.equal(scenario.text.receipt.requiredCredits, 1);
+  assert.equal(scenario.text.releaseAfterSettlement, false, "a completed request receipt cannot be released into a refund");
+  assert.equal(scenario.text.releaseReservation.allowed, true);
+  assert.equal(scenario.text.released, true);
+  assert.equal(scenario.text.afterRelease.used, 1, "a provider failure release must not consume a prompt");
+
   assert.equal(scenario.images.beforeSettlement.period, scenario.currentPeriod);
   assert.equal(scenario.images.beforeSettlement.used, 0);
   assert.equal(scenario.images.beforeSettlement.reserved, 0);
@@ -311,4 +359,16 @@ test("every Free background job passes a reservation through to a settle-or-rele
     assert.match(server, new RegExp(`settleFreeAllowanceReservation\\((?:sid|billingUserId), "${feature}", freeAllowanceReservationId\\)`));
     assert.match(server, new RegExp(`releaseActiveFreeAllowanceReservation\\((?:sid|projectBillingOwnerId\\(scriptId\\) \\|\\| sid), "${feature}"\\)`));
   }
+});
+
+test("every Lumiere chat request reserves one prompt before provider work and settles an idempotent receipt", () => {
+  const server = fs.readFileSync(path.join(ROOT, "server.js"), "utf8");
+  assert.match(server, /const LUMIERE_IDEMPOTENCY_KEY =/);
+  assert.match(server, /const reservationId = `lumiere:\$\{requestKey\}`/);
+  assert.match(server, /reserveTextCredits\(sid, 1, reservationId\)/);
+  assert.match(server, /settleTextCredits\(sid, reservationId, \{/);
+  assert.match(server, /releaseTextCredits\(sid, reservationId\)/);
+  assert.match(server, /requiredCredits: 1/);
+  assert.match(server, /serverValidated: true/);
+  assert.match(server, /function textCreditReceipt\(/);
 });

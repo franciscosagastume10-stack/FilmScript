@@ -31,6 +31,7 @@ const frontendFiles = [
   "credit-indicator.js",
   "profile-onboarding.js",
   "lumiere-client.js",
+  "lumiere-access-modal.js",
   "lumiere-preferences.js",
   "pdf-import.js",
   "scripts-client.js",
