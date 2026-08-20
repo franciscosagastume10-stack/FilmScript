@@ -9,34 +9,32 @@
 <script defer src="/_vercel/insights/script.js"></script>
 <script src="./support.js"></script>
 <script defer src="./seamless-navigation.js?v=20260728-route1"></script>
-<script src="./runtime-config.js?v=20260710-auth1"></script>
+<script src="./runtime-config.js?v=20260819-auth-proxy1"></script>
 <script src="./theme-preference.js?v=20260720-themefade1"></script>
-<script defer src="./language-preference.js?v=20260731-plan-credits4"></script>
+<script defer src="./language-preference.js?v=20260819-billing-glass1"></script>
 <script defer src="./ui-sounds.js?v=20260804-imagine-live2"></script>
 <script defer src="./billing-client.js?v=20260716-profile-safe1"></script>
-<script defer src="./credit-indicator.js?v=20260801-credit-panel1"></script>
+<script defer src="./credit-indicator.js?v=20260819-account-menu2"></script>
 <script defer src="./profile-onboarding.js?v=20260716-profile1"></script>
 <script defer src="./lumiere-client.js?v=20260731-plan-entitlements2"></script>
-<script defer src="./lumiere-preferences.js?v=20260713-taste1"></script>
+<script defer src="./lumiere-preferences.js?v=20260819-lumiere-ui1"></script>
 <script defer src="./writing-idle.js?v=20260713-idle1"></script>
 <script defer src="./character-name-tools.js?v=20260713-names1"></script>
 <script defer src="./pdf-import.js?v=20260731-scenes3"></script>
-<script defer src="./scripts-client.js?v=20260820-project-files1"></script>
-<script defer src="./preproduction-client.js?v=20260819-shotlist-phase6"></script>
-<script defer src="./canvas-client.js?v=20260820-project-files1"></script>
-<script defer src="./canvas-workspace.js?v=20260819-phase1c1"></script>
-<script defer src="./analysis-client.js?v=20260820-project-files1"></script>
-<script type="module" src="./analysis-workspace.js?v=20260731-plan-entitlements2"></script>
-<script type="module" src="./breakdown-workspace.js?v=20260819-breakdown-script-links1"></script>
-<script type="module" src="./translation-workspace.js?v=20260819-translation-compare1"></script>
-<script defer src="./budget-client.js?v=20260820-project-files1"></script>
+<script defer src="./scripts-client.js?v=20260713-names1"></script>
+<script defer src="./preproduction-client.js?v=20260819-collab2"></script>
+<script defer src="./canvas-client.js?v=20260819-collab2"></script>
+<script defer src="./canvas-workspace.js?v=20260819-imagine-frost150"></script>
+<script defer src="./analysis-client.js?v=20260713-language1"></script>
+    <script type="module" src="./analysis-workspace.js?v=20260731-plan-entitlements2"></script>
+<script defer src="./budget-client.js?v=20260720-allocationdonut2"></script>
 <script type="module" src="./budget-workspace.js?v=20260801-budget-glass1"></script>
-<script defer src="./calendar-client.js?v=20260820-project-files1"></script>
+<script defer src="./calendar-client.js?v=20260727-calendar3"></script>
 <script type="module" src="./calendar-workspace.js?v=20260801-calendar-glass1"></script>
-<script defer src="./platform-client.js?v=20260819-translation-phase7"></script>
-<script defer src="./assets/vendor/realtime-collaboration.bundle.js?v=20260819-phase1c1"></script>
+<script defer src="./platform-client.js?v=20260819-account1"></script>
+<script defer src="./assets/vendor/realtime-collaboration.bundle.js?v=20260819-collab2"></script>
 <link rel="stylesheet" href="./filmscript-controls.css?v=20260716-typography1">
-<link rel="stylesheet" href="./platform-ui.css?v=20260819-phase1c1">
+<link rel="stylesheet" href="./platform-ui.css?v=20260819-frost150">
 <link rel="prefetch" href="./App.dc.html" as="document">
 </head>
 <body>
@@ -58,7 +56,8 @@
   html.fs-route-enter.fs-route-enter-active body { opacity: 1; transition: opacity .22s ease; }
   @media (prefers-reduced-motion: reduce) { ::view-transition-old(root), ::view-transition-new(root) { animation: none; } }
   body { font-family: "Helvetica Neue", Helvetica, Arial, sans-serif; }
-  .fs-brand-mark { min-width: 118px; height: 32px; flex: 0 0 118px; display: flex; align-items: center; cursor: pointer; }
+  .v5-topbar { min-height: 56px; }
+  .fs-brand-mark { min-width: 128px; height: 42px; flex: 0 0 128px; display: flex; align-items: center; cursor: pointer; }
   .fs-brand-word { display: block; color: #FFFEF9; font-family: "SF Pro Display", "SF Pro Text", -apple-system, BlinkMacSystemFont, "Helvetica Neue", Arial, sans-serif; font-size: 21px; font-weight: 900; line-height: 1; letter-spacing: -1px; opacity: .98; transition: opacity .16s ease, transform .16s ease; }
   .fs-brand-mark:hover .fs-brand-word { opacity: .78; transform: translateY(-1px); }
   @media (max-width: 620px) {
@@ -93,7 +92,10 @@
   .v5tipwrap:hover .v5tip { opacity: 1; }
   .v5nav { color: #a9a8a1; }
   .v5nav:hover { color: #FFFEF9; background: rgba(255,255,255,.07); }
-  .v5-work-mode { position: relative; isolation: isolate; flex: 0 0 auto; appearance: none; min-height: 30px; border: 0; border-radius: 8px; background: transparent; color: #a9a8a1; font-family: "Helvetica Neue", Helvetica, Arial, sans-serif; font-size: 12.5px; font-weight: 400; letter-spacing: .28px; line-height: 1; padding: 7px 12px; cursor: pointer; transition: color .18s ease, transform .12s ease; }
+  .v5-work-mode { position: relative; isolation: isolate; flex: 0 0 auto; appearance: none; min-height: 38px; border: 0; border-radius: 9px; background: transparent; color: #a9a8a1; font-family: "Helvetica Neue", Helvetica, Arial, sans-serif; font-size: 12.5px; font-weight: 400; letter-spacing: .28px; line-height: 1; padding: 9px 14px; cursor: pointer; transition: color .18s ease, transform .12s ease; }
+  .v5-top-actions { gap: 14px !important; }
+  .v5-theme-toggle { width: 40px !important; height: 40px !important; padding: 8px !important; }
+  .v5-topbar [data-testid="account-avatar"] { width: 34px !important; height: 34px !important; font-size: 12px !important; }
   .v5-work-mode::before { content: ""; position: absolute; inset: 0; z-index: -1; border: 1px solid rgba(255,254,249,.24); border-radius: 8px 9px 7px 8px; background: rgba(255,255,255,.055); box-shadow: 0 4px 12px rgba(0,0,0,.1); opacity: 0; transform: translateY(2px) scale(.91, .76); transition: opacity .16s ease, transform .18s cubic-bezier(.2,.8,.2,1), background-color .18s ease; pointer-events: none; }
   .v5-work-mode:hover::before, .v5-work-mode:focus-visible::before { opacity: 1; transform: translateY(0) scale(1); }
   .v5-work-mode:not([aria-pressed="true"]):hover { color: #FFFEF9; }
@@ -336,12 +338,37 @@
   .v5-breakdown-export:hover:not(:disabled) { filter: brightness(1.12); transform: translateY(-1px); }
   .v5-breakdown-save { height: 36px; padding: 0 15px; border: 1px solid var(--accent, #BA7517); border-radius: 9px 10px 8px 10px; background: var(--accent-soft, rgba(186,117,23,.11)); color: var(--ink, #2C2C2A); font: 700 11.5px/1 inherit; cursor: pointer; transition: transform .16s ease, background-color .16s ease, border-color .16s ease; }
   .v5-breakdown-save:hover { background: var(--accent, #BA7517); border-color: var(--accent, #BA7517); transform: translateY(-1px); }
-  .v5-breakdown-sheet { position: relative; min-width: 940px; overflow: hidden; isolation: isolate; border: 1px solid var(--sheet-line, #B9B3A7); border-radius: 15px 12px 16px 13px; background: var(--surface, #FFFEF9); box-shadow: 0 16px 42px rgba(35,35,34,.08), 2px 3px 0 color-mix(in srgb, var(--sheet-line, #B9B3A7) 34%, transparent); color: var(--ink, #2C2C2A); animation: v5-rise .28s ease both; transition: border-color .18s ease, box-shadow .18s ease, transform .18s ease; }
-  .v5-breakdown-sheet::after { content: ""; position: absolute; z-index: 4; inset: 4px; border: 1px solid color-mix(in srgb, var(--sheet-line, #B9B3A7) 56%, transparent); border-radius: 11px 14px 12px 10px; pointer-events: none; }
+  .v5-breakdown-loader { position: relative; width: min(100%, 960px); margin: clamp(30px, 7vh, 74px) auto 0; padding: clamp(24px, 4vw, 44px); overflow: hidden; isolation: isolate; border: 1px solid color-mix(in srgb, var(--sheet-line, #B9B3A7) 52%, transparent); border-radius: 28px 24px 31px 23px; background: linear-gradient(142deg, color-mix(in srgb, var(--surface, #FFFEF9) 75%, transparent), color-mix(in srgb, var(--surface, #FFFEF9) 54%, var(--accent-soft, rgba(186,117,23,.11)))); box-shadow: 0 26px 70px color-mix(in srgb, var(--ink, #2C2C2A) 11%, transparent), inset 0 1px 0 color-mix(in srgb, white 72%, transparent); backdrop-filter: blur(32px) saturate(1.32); -webkit-backdrop-filter: blur(32px) saturate(1.32); animation: v5-breakdown-loader-in .36s cubic-bezier(.2,.8,.2,1) both; }
+  .v5-breakdown-loader::before { content: ""; position: absolute; z-index: -1; width: 430px; height: 430px; top: -285px; left: -130px; border-radius: 45% 55% 48% 52%; background: radial-gradient(circle at 58% 64%, color-mix(in srgb, var(--accent, #BA7517) 22%, transparent), transparent 64%); animation: v5-breakdown-loader-drift 4.2s ease-in-out infinite alternate; }
+  .v5-breakdown-loader-head { display: grid; grid-template-columns: 56px minmax(0, 1fr); align-items: center; gap: 17px; max-width: 680px; }
+  .v5-breakdown-loader-mark { position: relative; width: 56px; height: 56px; display: grid; place-items: center; border: 1px solid color-mix(in srgb, var(--accent, #BA7517) 36%, transparent); border-radius: 19px 16px 21px 15px; background: color-mix(in srgb, var(--surface, #FFFEF9) 66%, transparent); box-shadow: 0 12px 24px color-mix(in srgb, var(--accent, #BA7517) 14%, transparent), inset 0 1px 0 color-mix(in srgb, white 72%, transparent); backdrop-filter: blur(18px); -webkit-backdrop-filter: blur(18px); }
+  .v5-breakdown-loader-mark::before, .v5-breakdown-loader-mark::after { content: ""; position: absolute; border: 1.5px solid var(--accent, #BA7517); border-radius: 8px 7px 9px 6px; }
+  .v5-breakdown-loader-mark::before { width: 23px; height: 29px; transform: rotate(-7deg) translate(-3px, 1px); opacity: .42; }
+  .v5-breakdown-loader-mark::after { width: 25px; height: 31px; transform: rotate(5deg) translate(3px, -1px); box-shadow: inset 0 -9px 0 color-mix(in srgb, var(--accent, #BA7517) 12%, transparent); animation: v5-breakdown-loader-page 1.45s ease-in-out infinite; }
+  .v5-breakdown-loader-kicker { display: block; color: var(--accent, #BA7517); font-size: 9.5px; font-weight: 820; letter-spacing: 1.55px; text-transform: uppercase; }
+  .v5-breakdown-loader h2 { margin: 6px 0 0; color: var(--ink, #2C2C2A); font-size: clamp(22px, 3vw, 31px); font-weight: 790; letter-spacing: -.9px; line-height: 1.05; }
+  .v5-breakdown-loader p { margin: 8px 0 0; color: var(--muted, #888780); font-size: 12px; line-height: 1.52; }
+  .v5-breakdown-loader-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; margin-top: 30px; }
+  .v5-breakdown-loader-card { position: relative; min-height: 112px; overflow: hidden; border: 1px solid color-mix(in srgb, var(--sheet-line, #B9B3A7) 45%, transparent); border-radius: 17px 14px 19px 13px; background: color-mix(in srgb, var(--surface, #FFFEF9) 58%, transparent); box-shadow: 0 12px 25px color-mix(in srgb, var(--ink, #2C2C2A) 6%, transparent), inset 0 1px 0 color-mix(in srgb, white 65%, transparent); backdrop-filter: blur(20px) saturate(1.2); -webkit-backdrop-filter: blur(20px) saturate(1.2); animation: v5-breakdown-loader-card 1.65s ease-in-out infinite; animation-delay: calc(var(--loader-card, 0) * 90ms); }
+  .v5-breakdown-loader-card::before { content: ""; position: absolute; inset: 0; background: linear-gradient(108deg, transparent 20%, color-mix(in srgb, white 52%, transparent) 43%, transparent 66%); transform: translateX(-120%); animation: v5-breakdown-loader-shimmer 1.65s ease-in-out infinite; animation-delay: calc(var(--loader-card, 0) * 90ms); }
+  .v5-breakdown-loader-card i, .v5-breakdown-loader-card b, .v5-breakdown-loader-card span { position: absolute; left: 15px; display: block; overflow: hidden; border-radius: 999px; background: color-mix(in srgb, var(--muted, #888780) 16%, transparent); }
+  .v5-breakdown-loader-card i { top: 15px; width: 7px; height: 7px; background: var(--accent, #BA7517); box-shadow: 0 0 0 4px color-mix(in srgb, var(--accent, #BA7517) 13%, transparent); }
+  .v5-breakdown-loader-card b { top: 35px; width: 43%; height: 7px; }
+  .v5-breakdown-loader-card span { top: 56px; width: calc(100% - 30px); height: 6px; box-shadow: 0 15px 0 color-mix(in srgb, var(--muted, #888780) 11%, transparent), 0 30px 0 color-mix(in srgb, var(--muted, #888780) 8%, transparent); }
+  .v5-breakdown-loader-status { display: flex; align-items: center; gap: 9px; margin-top: 18px; color: var(--muted, #888780); font-size: 10.5px; font-weight: 650; }
+  .v5-breakdown-loader-status::before { content: ""; width: 8px; height: 8px; border-radius: 50%; background: var(--accent, #BA7517); box-shadow: 0 0 0 0 color-mix(in srgb, var(--accent, #BA7517) 28%, transparent); animation: v5-breakdown-loader-pulse 1.25s ease-out infinite; }
+  @keyframes v5-breakdown-loader-in { from { opacity: 0; transform: translateY(9px) scale(.985); } to { opacity: 1; transform: none; } }
+  @keyframes v5-breakdown-loader-page { 0%,100% { transform: rotate(5deg) translate(3px,-1px); } 50% { transform: rotate(1deg) translate(1px,-3px); } }
+  @keyframes v5-breakdown-loader-drift { to { transform: translate(32px, 18px) rotate(8deg); } }
+  @keyframes v5-breakdown-loader-card { 0%,100% { transform: translateY(0); border-color: color-mix(in srgb, var(--sheet-line, #B9B3A7) 45%, transparent); } 50% { transform: translateY(-3px); border-color: color-mix(in srgb, var(--accent, #BA7517) 34%, transparent); } }
+  @keyframes v5-breakdown-loader-shimmer { 45%,100% { transform: translateX(120%); } }
+  @keyframes v5-breakdown-loader-pulse { 70%,100% { box-shadow: 0 0 0 8px color-mix(in srgb, var(--accent, #BA7517) 0%, transparent); } }
+  .v5-breakdown-sheet { position: relative; min-width: 940px; overflow: visible; isolation: isolate; padding: 2px; border: 0; border-radius: 22px; background: transparent; box-shadow: none; color: var(--ink, #2C2C2A); animation: v5-rise .28s ease both; }
+  .v5-breakdown-sheet::after { display: none; }
   .v5-breakdown-sheet.is-editable { cursor: text; }
-  .v5-breakdown-sheet.is-editable:hover { border-color: color-mix(in srgb, var(--accent, #BA7517) 52%, var(--sheet-line, #B9B3A7)); box-shadow: 0 18px 46px rgba(35,35,34,.10), 2px 3px 0 color-mix(in srgb, var(--accent, #BA7517) 20%, transparent); }
-  .v5-breakdown-sheet.is-editing, .v5-breakdown-sheet:focus-within { border-color: var(--accent, #BA7517); box-shadow: 0 0 0 3px var(--accent-soft, rgba(186,117,23,.11)), 0 18px 46px rgba(35,35,34,.10); }
-  .v5-breakdown-sheet-header { display: grid; grid-template-columns: 1fr 1.35fr 1fr; gap: 30px; padding: 21px 24px 18px; border-bottom: 1px solid var(--sheet-line, #B9B3A7); background: linear-gradient(180deg, color-mix(in srgb, var(--soft, #EFEBE1) 64%, var(--surface, #FFFEF9)), var(--surface, #FFFEF9)); }
+  .v5-breakdown-sheet.is-editable:hover .v5-breakdown-sheet-header { border-color: color-mix(in srgb, var(--accent, #BA7517) 42%, var(--sheet-line, #B9B3A7)); }
+  .v5-breakdown-sheet.is-editing .v5-breakdown-sheet-header, .v5-breakdown-sheet:focus-within .v5-breakdown-sheet-header { border-color: color-mix(in srgb, var(--accent, #BA7517) 62%, var(--sheet-line, #B9B3A7)); box-shadow: 0 0 0 3px var(--accent-soft, rgba(186,117,23,.11)), 0 17px 38px color-mix(in srgb, var(--ink, #2C2C2A) 8%, transparent); }
+  .v5-breakdown-sheet-header { display: grid; grid-template-columns: 1fr 1.35fr 1fr; gap: 30px; padding: 21px 24px 18px; border: 1px solid color-mix(in srgb, var(--sheet-line, #B9B3A7) 62%, transparent); border-radius: 20px 17px 22px 16px; background: linear-gradient(145deg, color-mix(in srgb, var(--surface, #FFFEF9) 76%, transparent), color-mix(in srgb, var(--soft, #EFEBE1) 51%, transparent)); box-shadow: 0 15px 34px color-mix(in srgb, var(--ink, #2C2C2A) 7%, transparent), inset 0 1px 0 color-mix(in srgb, white 70%, transparent); backdrop-filter: blur(25px) saturate(1.24); -webkit-backdrop-filter: blur(25px) saturate(1.24); transition: border-color .18s ease, box-shadow .18s ease; }
   .v5-breakdown-meta-group { display: grid; gap: 8px; align-content: start; }
   .v5-breakdown-meta-row { display: grid; grid-template-columns: 82px 1fr; gap: 9px; align-items: baseline; min-width: 0; }
   .v5-breakdown-meta-group.is-right .v5-breakdown-meta-row { grid-template-columns: 72px 1fr; }
@@ -351,17 +378,23 @@
   .v5-breakdown-title-lockup strong { display: block; font-size: 16px; font-weight: 780; letter-spacing: .15px; text-transform: uppercase; }
   .v5-breakdown-title-lockup span { display: block; margin-top: 5px; color: var(--muted, #888780); font-size: 9.5px; font-weight: 700; letter-spacing: 1.7px; text-transform: uppercase; }
   .v5-breakdown-title-mark { width: 72px; height: 3px; margin: 9px auto 0; border-radius: 999px 60% 999px 45%; background: var(--accent, #BA7517); transform: rotate(-1.2deg); }
-  .v5-breakdown-scene-meta { display: grid; gap: 8px; padding: 13px 24px 14px; border-bottom: 1px solid var(--sheet-line, #B9B3A7); background: color-mix(in srgb, var(--surface, #FFFEF9) 92%, var(--soft, #EFEBE1)); }
+  .v5-breakdown-scene-meta { display: grid; gap: 9px; margin-top: 13px; padding: 15px 20px 16px; border: 1px solid color-mix(in srgb, var(--sheet-line, #B9B3A7) 52%, transparent); border-radius: 17px 20px 15px 19px; background: color-mix(in srgb, var(--surface, #FFFEF9) 68%, transparent); box-shadow: 0 12px 28px color-mix(in srgb, var(--ink, #2C2C2A) 6%, transparent), inset 0 1px 0 color-mix(in srgb, white 62%, transparent); backdrop-filter: blur(22px) saturate(1.2); -webkit-backdrop-filter: blur(22px) saturate(1.2); }
   .v5-breakdown-scene-meta .v5-breakdown-meta-row.is-description { grid-template-columns: 126px 1fr; }
   .v5-breakdown-scene-meta .v5-breakdown-meta-row.is-pair { grid-template-columns: 58px 1fr 70px 1fr; }
   .v5-breakdown-scene-meta .v5-breakdown-meta-row.is-sequence { grid-template-columns: 76px 1fr 80px 1fr; }
-  .v5-breakdown-cell { position: relative; min-width: 0; padding: 13px 14px 15px; background: var(--surface, #FFFEF9); transition: background-color .16s ease, box-shadow .16s ease; }
-  .v5-breakdown-cell::before { content: ""; position: absolute; top: 0; left: 13px; right: 13px; height: 2px; border-radius: 999px 72% 999px 58%; background: var(--category-color, var(--accent, #BA7517)); opacity: .72; transform: rotate(var(--category-tilt, -.3deg)); pointer-events: none; }
-  .v5-breakdown-cell:hover { z-index: 2; background: var(--category-soft, var(--accent-soft, rgba(186,117,23,.11))); box-shadow: inset 3px 0 0 color-mix(in srgb, var(--category-color, var(--accent, #BA7517)) 72%, transparent); }
+  .v5-breakdown-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); grid-template-rows: minmax(112px, auto) minmax(104px, auto) minmax(148px, auto) minmax(122px, auto) minmax(108px, auto); gap: 13px; margin-top: 13px; padding: 1px; }
+  .v5-breakdown-cell { position: relative; min-width: 0; padding: 16px 16px 17px; overflow: hidden; border: 1px solid color-mix(in srgb, var(--category-color, var(--accent, #BA7517)) 27%, var(--sheet-line, #B9B3A7)); border-radius: 18px 15px 20px 14px; background: linear-gradient(145deg, color-mix(in srgb, var(--surface, #FFFEF9) 76%, transparent), color-mix(in srgb, var(--category-soft, var(--accent-soft, rgba(186,117,23,.11))) 58%, transparent)); box-shadow: 0 13px 28px color-mix(in srgb, var(--ink, #2C2C2A) 7%, transparent), inset 0 1px 0 color-mix(in srgb, white 68%, transparent); backdrop-filter: blur(24px) saturate(1.22); -webkit-backdrop-filter: blur(24px) saturate(1.22); animation: v5-breakdown-card-in .34s cubic-bezier(.2,.8,.2,1) both; transition: border-color .18s ease, box-shadow .18s ease, transform .18s cubic-bezier(.2,.8,.2,1), background-color .18s ease; }
+  .v5-breakdown-cell:nth-child(2n) { border-radius: 15px 20px 16px 19px; }
+  .v5-breakdown-cell:nth-child(3n) { border-radius: 20px 16px 18px 15px; }
+  .v5-breakdown-cell::before { content: ""; position: absolute; top: 0; left: 16px; right: 16px; height: 3px; border-radius: 999px 72% 999px 58%; background: var(--category-color, var(--accent, #BA7517)); opacity: .8; transform: rotate(var(--category-tilt, -.3deg)); pointer-events: none; }
+  .v5-breakdown-cell::after { content: ""; position: absolute; z-index: -1; width: 118px; height: 118px; top: -78px; right: -50px; border-radius: 50%; background: radial-gradient(circle, color-mix(in srgb, var(--category-color, var(--accent, #BA7517)) 14%, transparent), transparent 68%); pointer-events: none; }
+  .v5-breakdown-cell:hover { z-index: 2; border-color: color-mix(in srgb, var(--category-color, var(--accent, #BA7517)) 56%, var(--sheet-line, #B9B3A7)); background: linear-gradient(145deg, color-mix(in srgb, var(--surface, #FFFEF9) 82%, transparent), color-mix(in srgb, var(--category-soft, var(--accent-soft, rgba(186,117,23,.11))) 72%, transparent)); box-shadow: 0 19px 36px color-mix(in srgb, var(--ink, #2C2C2A) 10%, transparent), inset 0 1px 0 color-mix(in srgb, white 75%, transparent); transform: translateY(-2px) rotate(var(--category-tilt, -.2deg)); }
+  .v5-breakdown-cell:nth-child(1) { animation-delay: 20ms; } .v5-breakdown-cell:nth-child(2) { animation-delay: 45ms; } .v5-breakdown-cell:nth-child(3) { animation-delay: 70ms; } .v5-breakdown-cell:nth-child(4) { animation-delay: 95ms; } .v5-breakdown-cell:nth-child(5) { animation-delay: 120ms; } .v5-breakdown-cell:nth-child(n+6) { animation-delay: 145ms; }
+  @keyframes v5-breakdown-card-in { from { opacity: 0; transform: translateY(8px) scale(.985); } to { opacity: 1; transform: none; } }
   .v5-breakdown-cell-label { display: flex; align-items: center; gap: 7px; margin-bottom: 8px; color: var(--category-color, var(--ink, #2C2C2A)); font-size: 9.5px; font-weight: 780; letter-spacing: .65px; text-transform: uppercase; }
   .v5-breakdown-cell-label::before { content: ""; width: 5px; height: 5px; flex: 0 0 5px; border-radius: 50%; background: var(--category-color, var(--accent, #BA7517)); box-shadow: 0 0 0 3px var(--category-soft, var(--accent-soft, rgba(186,117,23,.11))); }
-  .v5-breakdown-entry { position: relative; padding: 4px 5px; border-radius: 6px 7px 5px 6px; }
-  .v5-breakdown-entry-link { width: 100%; display: block; border: 0; outline: none; background: transparent; color: inherit; font: inherit; text-align: left; cursor: pointer; transition: background-color .15s ease, transform .15s ease; }
+  .v5-breakdown-entry { position: relative; min-width: 0; max-width: 100%; padding: 4px 5px; border-radius: 6px 7px 5px 6px; overflow-wrap: anywhere; }
+  .v5-breakdown-entry-link { width: 100%; min-width: 0; display: block; box-sizing: border-box; border: 0; outline: none; background: transparent; color: inherit; font: inherit; text-align: left; cursor: pointer; transition: background-color .15s ease, transform .15s ease; }
   .v5-breakdown-entry.is-static { width: 100%; display: block; border: 0; outline: none; background: transparent; color: inherit; font: inherit; text-align: left; cursor: default; }
   .v5-breakdown-entry-link:hover { background: var(--category-soft, var(--accent-soft, rgba(186,117,23,.11))); transform: translateX(1px); }
   .v5-breakdown-entry-link:focus-visible { outline: 2px solid var(--category-color, var(--accent, #BA7517)); outline-offset: 1px; }
@@ -389,8 +422,8 @@
   @media (prefers-reduced-motion: reduce) { .v5-character-context-menu { animation: none; } }
   .v5-breakdown-entry-jump { position: absolute; top: 4px; right: 5px; color: var(--category-color, var(--accent, #BA7517)); font-size: 11px; font-weight: 800; opacity: 0; transform: translate(-2px, 2px); transition: opacity .15s ease, transform .15s ease; }
   .v5-breakdown-entry-link:hover .v5-breakdown-entry-jump, .v5-breakdown-entry-link:focus-visible .v5-breakdown-entry-jump { opacity: .9; transform: none; }
-  .v5-breakdown-entry-name { font-size: 11px; font-weight: 660; line-height: 1.35; }
-  .v5-breakdown-entry-description { margin-top: 2px; color: var(--muted, #888780); font-size: 10px; line-height: 1.42; }
+  .v5-breakdown-entry-name { max-width: 100%; font-size: 11px; font-weight: 660; line-height: 1.35; overflow-wrap: anywhere; word-break: break-word; }
+  .v5-breakdown-entry-description { max-width: 100%; margin-top: 2px; color: var(--muted, #888780); font-size: 10px; line-height: 1.42; overflow-wrap: anywhere; word-break: break-word; }
   .v5-breakdown-entry-appearances { display: inline-flex; align-items: center; gap: 4px; margin-top: 3px; color: var(--category-color, var(--accent, #BA7517)); font-size: 9px; font-weight: 740; letter-spacing: .18px; }
   .v5-breakdown-entry-appearances::before { content: "↗"; font-size: 10px; line-height: 1; }
   .v5-breakdown-empty { display: inline-flex; align-items: center; gap: 6px; color: var(--muted, #888780); font-size: 10.5px; }
@@ -413,13 +446,13 @@
   ::highlight(v5-breakdown-notes) { background-color: rgba(138,108,93,.20); text-decoration: underline 2px #8A6C5D; }
   ::highlight(v5-breakdown-music) { background-color: rgba(105,104,161,.20); text-decoration: underline 2px #6968A1; }
   ::highlight(v5-breakdown-sound) { background-color: rgba(62,124,143,.20); text-decoration: underline 2px #3E7C8F; }
-  html.v5-breakdown-highlight-fading *::highlight(v5-breakdown-cast),html.v5-breakdown-highlight-fading *::highlight(v5-breakdown-extras),html.v5-breakdown-highlight-fading *::highlight(v5-breakdown-props),html.v5-breakdown-highlight-fading *::highlight(v5-breakdown-stunts),html.v5-breakdown-highlight-fading *::highlight(v5-breakdown-vehicles-animals),html.v5-breakdown-highlight-fading *::highlight(v5-breakdown-special-fx),html.v5-breakdown-highlight-fading *::highlight(v5-breakdown-wardrobe),html.v5-breakdown-highlight-fading *::highlight(v5-breakdown-makeup-hair),html.v5-breakdown-highlight-fading *::highlight(v5-breakdown-set-dressing),html.v5-breakdown-highlight-fading *::highlight(v5-breakdown-greenery),html.v5-breakdown-highlight-fading *::highlight(v5-breakdown-equipment),html.v5-breakdown-highlight-fading *::highlight(v5-breakdown-notes),html.v5-breakdown-highlight-fading *::highlight(v5-breakdown-music),html.v5-breakdown-highlight-fading *::highlight(v5-breakdown-sound) { background-color: transparent; text-decoration-color: transparent; transition: background-color .48s ease, text-decoration-color .48s ease; }
-  .v5-breakdown-reference-fallback { border-radius: 2px; background: var(--reference-soft, rgba(173,126,24,.20)); text-decoration-line: underline; text-decoration-color: var(--reference-color, #AD7E18); text-decoration-thickness: 2px; text-underline-offset: 3px; box-shadow: 0 2px 0 color-mix(in srgb, var(--reference-color, #AD7E18) 16%, transparent); animation: v5-reference-reveal .22s ease both; transition:background-color .48s ease,text-decoration-color .48s ease,box-shadow .48s ease; }
-  .v5-breakdown-reference-fallback.is-fading { background: transparent; text-decoration-color: transparent; box-shadow: none; }
+  .v5-breakdown-reference-fallback { border-radius: 2px; background: var(--reference-soft, rgba(173,126,24,.20)); text-decoration-line: underline; text-decoration-color: var(--reference-color, #AD7E18); text-decoration-thickness: 2px; text-underline-offset: 3px; box-shadow: 0 2px 0 color-mix(in srgb, var(--reference-color, #AD7E18) 16%, transparent); animation: v5-reference-reveal .22s ease both; }
   @keyframes v5-reference-reveal { from { background: transparent; text-decoration-color: transparent; } to { background: var(--reference-soft, rgba(173,126,24,.20)); text-decoration-color: var(--reference-color, #AD7E18); } }
-  @media (prefers-reduced-motion: reduce) { .v5-production-sync-dot.is-stale { animation: none; } .v5-breakdown-start { animation: none; } .v5-breakdown-start-card, .v5-breakdown-start-button { transition: none; } }
-  @media (max-width: 860px) { .v5-production-header { align-items: flex-start; flex-direction: column; } .v5-production-header-actions { width: 100%; justify-content: flex-start; flex-wrap: wrap; } .v5-breakdown-toolbar { align-items: flex-start; flex-direction: column; } .v5-breakdown-actions { width: 100%; justify-content: flex-start; flex-wrap: wrap; } .v5-breakdown-scene-heading { max-width: 64vw; } .v5-breakdown-start-grid { grid-template-columns: 1fr; } .v5-breakdown-start-card { min-height: 250px; } }
-  @media (max-width: 560px) { .v5-breakdown-generation-progress { grid-template-columns: auto minmax(0, 1fr); gap: 10px; } .v5-breakdown-generation-count { grid-column: 2; text-align: left; } }
+  @supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) { .v5-breakdown-loader, .v5-breakdown-sheet-header, .v5-breakdown-scene-meta, .v5-breakdown-cell { background-color: var(--surface, #FFFEF9); } }
+  @media (prefers-reduced-transparency: reduce) { .v5-breakdown-loader, .v5-breakdown-sheet-header, .v5-breakdown-scene-meta, .v5-breakdown-cell { background: var(--surface, #FFFEF9); backdrop-filter: none; -webkit-backdrop-filter: none; } }
+  @media (prefers-reduced-motion: reduce) { .v5-production-sync-dot.is-stale, .v5-breakdown-loader, .v5-breakdown-loader::before, .v5-breakdown-loader-mark::after, .v5-breakdown-loader-card, .v5-breakdown-loader-card::before, .v5-breakdown-loader-status::before, .v5-breakdown-cell, .v5-breakdown-start { animation: none; } .v5-breakdown-cell, .v5-breakdown-start-card, .v5-breakdown-start-button { transition: none; } }
+  @media (max-width: 860px) { .v5-production-header { align-items: flex-start; flex-direction: column; } .v5-production-header-actions { width: 100%; justify-content: flex-start; flex-wrap: wrap; } .v5-breakdown-toolbar { align-items: flex-start; flex-direction: column; } .v5-breakdown-actions { width: 100%; justify-content: flex-start; flex-wrap: wrap; } .v5-breakdown-scene-heading { max-width: 64vw; } .v5-breakdown-start-grid { grid-template-columns: 1fr; } .v5-breakdown-start-card { min-height: 250px; } .v5-breakdown-loader-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+  @media (max-width: 560px) { .v5-breakdown-generation-progress { grid-template-columns: auto minmax(0, 1fr); gap: 10px; } .v5-breakdown-generation-count { grid-column: 2; text-align: left; } .v5-breakdown-loader { padding: 22px 18px; } .v5-breakdown-loader-head { grid-template-columns: 46px minmax(0, 1fr); gap: 13px; } .v5-breakdown-loader-mark { width: 46px; height: 46px; } .v5-breakdown-loader-grid { gap: 9px; } .v5-breakdown-loader-card { min-height: 96px; } }
   .v5-stripboard-board { position: relative; animation: v5-rise .28s ease both; }
   .v5-strip-keyboard-status { min-height: 18px; padding: 0 4px; color: var(--muted, #888780); font-size: 10px; font-weight: 650; }
   .v5-strip-view-switch { display: inline-flex; padding: 3px; gap: 2px; border: 1px solid var(--hair, #E7E4DA); border-radius: 10px; background: color-mix(in srgb, var(--surface, #FFFEF9) 88%, var(--soft, #F3F0E8)); box-shadow: 0 1px 0 rgba(35,35,34,.04); }
@@ -452,6 +485,9 @@
   .v5-strip-history-actions button:last-child { margin-left: auto; border-color: var(--ink, #2C2C2A); background: var(--ink, #2C2C2A); color: var(--surface, #FFFEF9); }
   .v5-strip-history-actions button:hover { background: var(--accent-soft, rgba(186,117,23,.11)); border-color: var(--accent, #BA7517); }
   .v5-strip-history-actions button:last-child:hover { background: var(--accent, #BA7517); color: #1A1A1A; }
+  /* Restore is an available action for every saved draft, not only the latest one. */
+  .v5-strip-history-actions button:last-child,
+  .v5-strip-history-actions button:last-child:disabled { margin-left: auto; border-color: var(--accent, #BA7517) !important; background: var(--accent, #BA7517) !important; color: #1A1A1A !important; opacity: 1 !important; filter: none !important; cursor: pointer !important; pointer-events: auto !important; }
   .v5-stripboard-toolbar { display:flex; align-items:flex-end; justify-content:space-between; gap:20px; margin-bottom:14px; }
   .v5-stripboard-toolbar-copy { min-width:0; }
   .v5-stripboard-toolbar-controls { display:grid; justify-items:end; gap:8px; min-width:0; }
@@ -920,6 +956,54 @@
   @keyframes v5-format-target { 0% { outline-color: transparent; background-color: transparent; } 25%, 75% { outline-color: var(--accent, #BA7517); background-color: var(--accent-soft, rgba(186,117,23,.11)); } 100% { outline-color: transparent; background-color: transparent; } }
   .v5-format-target { outline: 2px solid transparent; outline-offset: 5px; animation: v5-format-target 1.45s ease both; }
   .v5-editor-workspace, .v5-production-shell { animation: v5-mode-panel-in .2s cubic-bezier(.2,.8,.2,1) both; transform-origin: 50% 32%; }
+  .v5-breakdown-split-toggle { min-height: 38px; display: inline-flex; align-items: center; justify-content: center; gap: 7px; padding: 0 12px; border: 1px solid var(--hair, #E7E4DA); border-radius: 11px 13px 10px 12px; background: color-mix(in srgb, var(--surface, #FFFEF9) 86%, transparent); color: var(--ink, #2C2C2A); box-shadow: inset 0 1px 0 color-mix(in srgb, #fff 62%, transparent), 0 5px 16px rgba(35,35,34,.06); backdrop-filter: blur(12px) saturate(1.08); -webkit-backdrop-filter: blur(12px) saturate(1.08); font: 700 10.5px/1 inherit; white-space: nowrap; cursor: pointer; transition: color .16s ease, border-color .16s ease, background-color .16s ease, transform .16s cubic-bezier(.2,.8,.2,1), box-shadow .16s ease; }
+  .v5-breakdown-split-toggle svg { width: 16px; height: 16px; flex: 0 0 16px; }
+  .v5-breakdown-split-toggle:hover, .v5-breakdown-split-toggle:focus-visible { color: var(--accent, #BA7517); border-color: color-mix(in srgb, var(--accent, #BA7517) 58%, var(--hair, #E7E4DA)); background: color-mix(in srgb, var(--accent-soft, rgba(186,117,23,.11)) 72%, var(--surface, #FFFEF9)); outline: none; transform: translateY(-1px); box-shadow: inset 0 1px 0 color-mix(in srgb, #fff 70%, transparent), 0 8px 22px rgba(35,35,34,.09); }
+  .v5-breakdown-split-toggle:active { transform: scale(.98); }
+  .v5-breakdown-split-toggle[aria-pressed="true"] { border-color: color-mix(in srgb, var(--accent, #BA7517) 64%, var(--hair, #E7E4DA)); background: var(--accent-soft, rgba(186,117,23,.11)); color: var(--accent, #BA7517); }
+  .v5-breakdown-workspace { min-width: 0; }
+  .v5-breakdown-workspace.is-split { height: clamp(620px, calc(100vh - 190px), 880px); display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 18px; align-items: stretch; }
+  .v5-breakdown-workspace.is-split > .v5-breakdown-scroll { min-width: 0; height: 100%; margin: 0; padding-top: 0; overflow: auto; overscroll-behavior: contain; }
+  .v5-breakdown-script-pane { position: sticky; top: 0; min-width: 0; height: 100%; overflow: hidden; border: 1px solid color-mix(in srgb, var(--hair, #E7E4DA) 86%, transparent); border-radius: 18px 16px 20px 17px; background: color-mix(in srgb, var(--surface, #FFFEF9) 88%, transparent); box-shadow: inset 0 1px 0 color-mix(in srgb, #fff 68%, transparent), 0 16px 42px rgba(35,35,34,.09); backdrop-filter: blur(16px) saturate(1.05); -webkit-backdrop-filter: blur(16px) saturate(1.05); animation: v5-rise .22s cubic-bezier(.2,.8,.2,1) both; }
+  .v5-breakdown-toolbar.is-split { justify-content: flex-end; }
+  .v5-breakdown-toolbar.is-split > .v5-breakdown-navigator { display: none; }
+  .v5-breakdown-pane-navigator { display: none; }
+  .v5-breakdown-workspace.is-split .v5-breakdown-pane-navigator { position: sticky; z-index: 8; top: 0; min-height: 58px; display: flex; align-items: center; justify-content: flex-start; gap: 10px; margin: 0 0 10px; padding: 9px 10px; border: 1px solid color-mix(in srgb, var(--hair, #E7E4DA) 82%, transparent); border-radius: 16px 14px 17px 13px; background: linear-gradient(145deg, color-mix(in srgb, var(--surface, #FFFEF9) 91%, transparent), color-mix(in srgb, var(--bg, #F5F0E8) 78%, transparent)); box-shadow: inset 0 1px 0 rgba(255,255,255,.5), 0 8px 22px rgba(35,35,34,.07); backdrop-filter: blur(16px) saturate(1.08); -webkit-backdrop-filter: blur(16px) saturate(1.08); }
+  .v5-breakdown-workspace.is-split .v5-breakdown-pane-navigator .v5-breakdown-scene-heading { max-width: min(420px, 38vw); }
+  .v5-breakdown-script-head { height: 50px; display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 0 15px 0 17px; border-bottom: 1px solid var(--hair, #E7E4DA); background: color-mix(in srgb, var(--surface, #FFFEF9) 78%, transparent); }
+  .v5-breakdown-script-head strong { display: block; color: var(--ink, #2C2C2A); font-size: 12px; letter-spacing: -.05px; }
+  .v5-breakdown-script-head span { display: block; margin-top: 2px; color: var(--muted, #888780); font-size: 9.5px; }
+  .v5-breakdown-script-status { flex: 0 0 auto; display: inline-flex; align-items: center; gap: 6px; color: var(--muted, #888780); font-size: 9.5px; font-weight: 700; }
+  .v5-breakdown-script-status::before { content: ""; width: 6px; height: 6px; border-radius: 50%; background: var(--accent, #BA7517); box-shadow: 0 0 0 3px var(--accent-soft, rgba(186,117,23,.11)); }
+  .v5-breakdown-script-frame-wrap { position: relative; height: calc(100% - 50px); min-height: 0; background: var(--bg, #F5F0E8); }
+  .v5-breakdown-script-frame { display: block; width: 100%; height: 100%; border: 0; background: var(--bg, #F5F0E8); opacity: 0; transition: opacity .22s ease; }
+  .v5-breakdown-script-frame.is-ready { opacity: 1; }
+  .v5-breakdown-script-loading { position: absolute; inset: 0; z-index: 1; display: grid; place-items: center; pointer-events: none; transition: opacity .18s ease, visibility .18s ease; }
+  .v5-breakdown-script-loading.is-ready { opacity: 0; visibility: hidden; }
+  .v5-breakdown-script-loading span { display: inline-flex; align-items: center; gap: 9px; color: var(--muted, #888780); font-size: 10.5px; font-weight: 650; }
+  .v5-breakdown-script-loading i { width: 17px; height: 17px; border: 2px solid color-mix(in srgb, var(--accent, #BA7517) 22%, transparent); border-top-color: var(--accent, #BA7517); border-radius: 50%; animation: v5-spin .7s linear infinite; }
+  @keyframes v5-spin { to { transform: rotate(360deg); } }
+  .v5-app-shell.is-breakdown-embed .v5-topbar,
+  .v5-app-shell.is-breakdown-embed .v5-editor-toolbar,
+  .v5-app-shell.is-breakdown-embed .v5-mobile-nav,
+  .v5-app-shell.is-breakdown-embed .v5-mobile-more-scrim,
+  .v5-app-shell.is-breakdown-embed .v5-mobile-more-sheet,
+  .v5-app-shell.is-breakdown-embed .v5-editor-page-area > [aria-label="Screenplay zoom controls"] { display: none !important; }
+  .v5-app-shell.is-breakdown-embed .v5-editor-workspace { height: 100vh; }
+  .v5-app-shell.is-breakdown-embed-loading .v5-editor-workspace { opacity: 0; pointer-events: none; }
+  .v5-breakdown-embed-loader { position: fixed; inset: 0; z-index: 120; display: grid; place-items: center; background: var(--bg, #F5F0E8); color: var(--muted, #888780); opacity: 1; animation: v5-embed-loader-in .2s cubic-bezier(.2,.8,.2,1) both; }
+  .v5-breakdown-embed-loader > span { display: inline-flex; align-items: center; gap: 10px; font-size: 11px; font-weight: 650; letter-spacing: .01em; }
+  .v5-breakdown-embed-loader i { width: 17px; height: 17px; border: 2px solid color-mix(in srgb, var(--accent, #BA7517) 20%, transparent); border-top-color: var(--accent, #BA7517); border-radius: 50%; animation: v5-spin .7s linear infinite; }
+  @keyframes v5-embed-loader-in { from { opacity: 0; transform: scale(.99); } to { opacity: 1; transform: none; } }
+  .v5-app-shell.is-breakdown-embed .v5-editor-page-area > div:first-child { padding: 26px 22px 74px !important; scrollbar-color: color-mix(in srgb, var(--muted, #888780) 62%, transparent) transparent; }
+  .v5-app-shell.is-breakdown-embed .v5-screenplay-stage { margin-inline: auto !important; }
+  body:has(.v5-app-shell.is-breakdown-embed) .fs-mobile-nav { display: none !important; }
+  body:has(.v5-app-shell.is-breakdown-embed), body:has(.v5-app-shell.is-breakdown-embed) .v5-app-shell { padding-bottom: 0 !important; }
+  @media (max-width: 1120px) {
+    .v5-breakdown-workspace.is-split { height: auto; grid-template-columns: minmax(0, 1fr); gap: 16px; }
+    .v5-breakdown-script-pane { position: relative; height: min(66vh, 700px); min-height: 470px; }
+    .v5-breakdown-workspace.is-split > .v5-breakdown-scroll { height: auto; max-height: none; }
+  }
   .v5-production-shell-calendar { overflow: auto !important; }
   .v5-production-shell-calendar > div { width: 100%; min-height: 0; }
   .v5-production-shell-calendar filmscript-calendar { display: block; width: 100%; height: 100%; min-height: 0; }
@@ -940,14 +1024,118 @@
   @media (prefers-reduced-motion: reduce) {
     .v5-editor-workspace, .v5-production-shell, .v5-screenplay-stage, .v5-stripboard-entering .v5-strip, .v5-stripboard-entering .v5-strip-divider, .v5-writing-pause, .v5-writing-pause-lens::after, .v5-writing-pause-lens svg, .v5-name-card, .v5-name-context, .v5-name-confirm, .v5-analysis-focus, .v5-analysis-focus::after, .v5-analysis-background i { animation: none !important; }
     .v5-name-card, .v5-name-suggestion, .v5-name-action { transition-duration: .01ms !important; }
+    .v5-breakdown-script-loading i { animation-duration: 1.4s !important; }
+  }
+
+  /* Shared Liquid Glass controls for pre-production workspaces. The layout,
+     interactions and production colour meaning stay unchanged. */
+  .v5-top-actions {
+    min-height: 42px !important;
+    padding: 4px 6px !important;
+    gap: 5px !important;
+    border: 1px solid rgba(255,254,249,.2) !important;
+    border-radius: 999px !important;
+    background: linear-gradient(135deg, rgba(255,255,255,.12), rgba(255,255,255,.045)) !important;
+    box-shadow: inset 0 1px 0 rgba(255,255,255,.18), 0 8px 22px rgba(0,0,0,.16) !important;
+    backdrop-filter: blur(18px) saturate(135%) !important;
+    -webkit-backdrop-filter: blur(18px) saturate(135%) !important;
+  }
+  .v5-top-actions > button,
+  .v5-top-actions [data-testid="account-avatar"] {
+    border-radius: 999px !important;
+  }
+  .v5-work-modes { justify-content: flex-start !important; gap: 2px !important; }
+  .v5-work-mode { min-height: 36px; padding: 8px 10px; font-size: 11.5px; }
+  .v5-theme-toggle:hover,
+  .v5-theme-toggle:focus-visible { background: rgba(255,255,255,.1) !important; transform: translateY(-1px); }
+  .v5-theme-toggle:focus-visible { outline: 2px solid var(--accent, #BA7517); outline-offset: 2px; }
+  .v5-strip-toolbar-actions,
+  .v5-strip-view-switch,
+  .v5-strip-history > button,
+  .v5-strip-toolbar-top > button {
+    border-color: color-mix(in srgb, var(--surface, #FFFEF9) 70%, var(--hair, #E7E4DA)) !important;
+    background: linear-gradient(135deg, color-mix(in srgb, var(--surface, #FFFEF9) 72%, transparent), color-mix(in srgb, var(--soft, #EFEBE1) 48%, transparent)) !important;
+    box-shadow: inset 0 1px 0 color-mix(in srgb, var(--surface, #FFFEF9) 82%, transparent), 0 8px 20px color-mix(in srgb, var(--ink, #2C2C2A) 7%, transparent) !important;
+    backdrop-filter: blur(16px) saturate(135%);
+    -webkit-backdrop-filter: blur(16px) saturate(135%);
+  }
+  .v5-strip-toolbar-actions > button,
+  .v5-strip-history > button,
+  .v5-strip-toolbar-top > button,
+  .v5-strip-view-switch button {
+    min-height: 34px !important;
+    border-radius: 999px !important;
+    transition: transform .16s cubic-bezier(.2,.8,.2,1), background-color .16s ease, border-color .16s ease, color .16s ease, box-shadow .16s ease;
+  }
+  .v5-strip-toolbar-actions > button:hover:not(:disabled),
+  .v5-strip-history > button:hover:not(:disabled),
+  .v5-strip-toolbar-top > button:hover:not(:disabled),
+  .v5-strip-view-switch button:hover { transform: translateY(-1px); box-shadow: 0 5px 15px color-mix(in srgb, var(--ink, #2C2C2A) 10%, transparent); }
+  .v5-strip-toolbar-actions > button:focus-visible,
+  .v5-strip-history > button:focus-visible,
+  .v5-strip-toolbar-top > button:focus-visible,
+  .v5-strip-view-switch button:focus-visible { outline: 2px solid var(--accent, #BA7517); outline-offset: 2px; }
+  .v5-strip-toolbar-actions > button:last-child { border-color: color-mix(in srgb, var(--accent, #BA7517) 70%, var(--hair, #E7E4DA)) !important; background: var(--accent, #BA7517) !important; color: #171714 !important; box-shadow: 0 6px 16px color-mix(in srgb, var(--accent, #BA7517) 20%, transparent) !important; }
+  .v5-stripboard-board {
+    border-color: color-mix(in srgb, var(--surface, #FFFEF9) 72%, var(--sheet-line, #B9B3A7)) !important;
+    background: linear-gradient(135deg, color-mix(in srgb, var(--surface, #FFFEF9) 78%, transparent), color-mix(in srgb, var(--soft, #EFEBE1) 34%, transparent)) !important;
+    box-shadow: inset 0 1px 0 color-mix(in srgb, var(--surface, #FFFEF9) 82%, transparent), 0 18px 42px color-mix(in srgb, var(--ink, #2C2C2A) 9%, transparent) !important;
+    backdrop-filter: blur(18px) saturate(122%);
+    -webkit-backdrop-filter: blur(18px) saturate(122%);
+  }
+  .v5-stripboard-head { color: var(--muted, #888780); }
+  .v5-strip { box-shadow: 0 1px 0 color-mix(in srgb, var(--surface, #FFFEF9) 62%, transparent); }
+  .v5-strip:hover { box-shadow: 0 8px 20px color-mix(in srgb, var(--ink, #2C2C2A) 11%, transparent); }
+  .v5-strip-bulkbar,
+  .v5-strip-history-popover,
+  .v5-strip-bulk-popover {
+    border-color: color-mix(in srgb, var(--surface, #FFFEF9) 72%, var(--hair, #E7E4DA)) !important;
+    background: linear-gradient(135deg, color-mix(in srgb, var(--surface, #FFFEF9) 84%, transparent), color-mix(in srgb, var(--soft, #EFEBE1) 52%, transparent)) !important;
+    box-shadow: 0 22px 46px color-mix(in srgb, var(--ink, #2C2C2A) 16%, transparent), inset 0 1px 0 color-mix(in srgb, var(--surface, #FFFEF9) 86%, transparent) !important;
+    backdrop-filter: blur(24px) saturate(135%);
+    -webkit-backdrop-filter: blur(24px) saturate(135%);
+  }
+  .v5-strip-bulk-action,
+  .v5-strip-history-actions button,
+  .v5-strip-move,
+  .v5-strip-select {
+    min-height: 34px;
+    border-radius: 999px !important;
+    background: color-mix(in srgb, var(--surface, #FFFEF9) 62%, transparent) !important;
+    transition: transform .16s cubic-bezier(.2,.8,.2,1), background-color .16s ease, border-color .16s ease, box-shadow .16s ease;
+  }
+  .v5-strip-bulk-action:hover,
+  .v5-strip-history-actions button:hover,
+  .v5-strip-move:hover,
+  .v5-strip-select:hover { box-shadow: 0 5px 14px color-mix(in srgb, var(--ink, #2C2C2A) 10%, transparent); }
+
+  .v5-shotlist-toolbar-actions { padding: 5px !important; border: 1px solid color-mix(in srgb, var(--surface, #FFFEF9) 70%, var(--hair, #E7E4DA)) !important; border-radius: 999px !important; background: linear-gradient(135deg, color-mix(in srgb, var(--surface, #FFFEF9) 72%, transparent), color-mix(in srgb, var(--soft, #EFEBE1) 48%, transparent)) !important; box-shadow: inset 0 1px 0 color-mix(in srgb, var(--surface, #FFFEF9) 82%, transparent), 0 8px 20px color-mix(in srgb, var(--ink, #2C2C2A) 7%, transparent) !important; backdrop-filter: blur(16px) saturate(135%); -webkit-backdrop-filter: blur(16px) saturate(135%); }
+  .v5-shotlist-button { min-height: 40px; border-radius: 999px !important; border-color: color-mix(in srgb, var(--surface, #FFFEF9) 72%, var(--hair, #E7E4DA)); background: color-mix(in srgb, var(--surface, #FFFEF9) 68%, transparent); box-shadow: inset 0 1px 0 color-mix(in srgb, var(--surface, #FFFEF9) 84%, transparent); transition: transform .16s cubic-bezier(.2,.8,.2,1), border-color .16s ease, background-color .16s ease, box-shadow .16s ease; }
+  .v5-shotlist-button:hover:not(:disabled) { transform: translateY(-1px); box-shadow: 0 7px 17px color-mix(in srgb, var(--ink, #2C2C2A) 10%, transparent); }
+  .v5-shotlist-button:focus-visible { outline: 2px solid var(--accent, #BA7517); outline-offset: 2px; }
+  .v5-shotlist-button-primary { background: var(--accent, #BA7517) !important; border-color: var(--accent, #BA7517) !important; color: #171714 !important; box-shadow: 0 7px 18px color-mix(in srgb, var(--accent, #BA7517) 20%, transparent) !important; }
+  .v5-shotlist-button-dark { background: color-mix(in srgb, var(--ink, #2C2C2A) 86%, transparent) !important; border-color: color-mix(in srgb, var(--ink, #2C2C2A) 76%, transparent) !important; color: var(--surface, #FFFEF9) !important; }
+  .v5-shotlist-scene { border-color: color-mix(in srgb, var(--surface, #FFFEF9) 72%, var(--sheet-line, #B9B3A7)); background: linear-gradient(135deg, color-mix(in srgb, var(--surface, #FFFEF9) 80%, transparent), color-mix(in srgb, var(--soft, #EFEBE1) 38%, transparent)); box-shadow: inset 0 1px 0 color-mix(in srgb, var(--surface, #FFFEF9) 86%, transparent), 0 18px 42px color-mix(in srgb, var(--ink, #2C2C2A) 9%, transparent); backdrop-filter: blur(16px) saturate(122%); -webkit-backdrop-filter: blur(16px) saturate(122%); }
+  .v5-shotlist-scene:hover { box-shadow: inset 0 1px 0 color-mix(in srgb, var(--surface, #FFFEF9) 90%, transparent), 0 22px 48px color-mix(in srgb, var(--ink, #2C2C2A) 13%, transparent); }
+  .v5-shotlist-scene-header { border-bottom-color: color-mix(in srgb, var(--hair, #E7E4DA) 76%, transparent); }
+  .v5-shotlist-scene-number,
+  .v5-shotlist-scene-count,
+  .v5-shotlist-time-bridge { border-radius: 999px !important; background: color-mix(in srgb, var(--surface, #FFFEF9) 62%, transparent); backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px); }
+  .v5-shotlist-scroll { scrollbar-color: color-mix(in srgb, var(--ink, #2C2C2A) 25%, transparent) transparent; }
+  .v5-shotlist-row:hover { background: color-mix(in srgb, var(--accent-soft, rgba(186,117,23,.11)) 58%, transparent); }
+  @media (prefers-reduced-transparency: reduce) {
+    .v5-top-actions, .v5-strip-toolbar-actions, .v5-strip-view-switch, .v5-strip-history-popover, .v5-strip-bulk-popover, .v5-strip-bulkbar, .v5-shotlist-toolbar-actions, .v5-shotlist-scene { backdrop-filter: none; -webkit-backdrop-filter: none; background: var(--surface, #FFFEF9) !important; }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .v5-strip-toolbar-actions > button, .v5-strip-history > button, .v5-strip-toolbar-top > button, .v5-strip-view-switch button, .v5-shotlist-button, .v5-strip-bulk-action { transition-duration: .01ms !important; }
   }
 </style>
 </helmet>
 
-<div class="v5-app-shell" data-screen-label="Editor v5" style="--accent: {{ accent }}; --accent-soft: {{ accentSoft }}; --bg: {{ bg }}; --chrome: {{ chrome }}; --surface: {{ surface }}; --ink: {{ ink }}; --muted: {{ muted }}; --hair: {{ hair }}; --soft: {{ soft }}; --sheet-line: {{ sheetLine }}; height: 100vh; width: 100%; display: flex; flex-direction: column; background: var(--bg, #F5F0E8); color: var(--ink, #2C2C2A); overflow: hidden; font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; transition: background-color .3s ease;">
+<div class="v5-app-shell {{ shellClass }}" data-screen-label="Editor v5" style="--accent: {{ accent }}; --accent-soft: {{ accentSoft }}; --bg: {{ bg }}; --chrome: {{ chrome }}; --surface: {{ surface }}; --ink: {{ ink }}; --muted: {{ muted }}; --hair: {{ hair }}; --soft: {{ soft }}; --sheet-line: {{ sheetLine }}; height: 100vh; width: 100%; display: flex; flex-direction: column; background: var(--bg, #F5F0E8); color: var(--ink, #2C2C2A); overflow: hidden; font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; transition: background-color .3s ease;">
 
   <!-- ============ TOPBAR ============ -->
-  <div class="v5-topbar" style="height: 44px; flex: 0 0 44px; background: var(--chrome, #232322); display: flex; align-items: center; padding: 0 18px; gap: 16px; user-select: none;">
+  <div class="v5-topbar" style="height: 56px; flex: 0 0 56px; background: var(--chrome, #232322); display: flex; align-items: center; padding: 0 22px; gap: 20px; user-select: none;">
     <div class="fs-brand-mark" data-filmscript-brand onClick="{{ goScripts }}" role="link" aria-label="FilmScript, go to scripts"><span class="fs-brand-word">FilmScript</span></div>
     <div class="v5-work-modes" style="flex: 1; min-width: 0; display: flex; justify-content: center; gap: 3px; overflow-x: auto; scrollbar-width: none;">
       <button type="button" class="v5-work-mode" onClick="{{ goScripts }}" aria-label="Go to scripts">Scripts</button>
@@ -967,22 +1155,22 @@
           <svg class="v5-theme-icon v5-theme-icon-moon" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><path d="M17.5 10.66 A7.5 7.5 0 1 1 9.34 2.5 A5.83 5.83 0 0 0 17.5 10.66 Z"></path></svg>
         </sc-if>
       </button>
-      <div style="position: relative;" data-v5-pop="1">
+      <div class="v5-account-popover-host" style="position: relative;" data-v5-pop="1">
         <div data-testid="account-avatar" ref="{{ bindAccountBtn }}" class="v5send" title="{{ accountEmail }}" style="width: 27px; height: 27px; border-radius: 50%; background: var(--accent, #BA7517); color: #FFFEF9; display: flex; align-items: center; justify-content: center; font-size: 11.5px; font-weight: 600; cursor: pointer; transition: transform .15s ease;">{{ userInitial }}</div>
         <sc-if value="{{ accountOpen }}" hint-placeholder-val="{{ false }}">
-        <div ref="{{ bindAccountList }}" data-filmscript-profile-panel style="position: absolute; right: 0; top: 36px; z-index: 220; width: 212px; padding: 6px; background: var(--surface, #FFFEF9); border: 1px solid var(--hair, #E7E4DA); border-radius: 12px; box-shadow: 0 10px 32px rgba(35,35,34,.16); animation: v5-rise .18s ease both;">
-          <div style="padding: 9px 11px 10px; border-bottom: 1px solid var(--hair, #E7E4DA); margin-bottom: 5px;">
-            <div style="font-size: 12.5px; font-weight: 600; color: var(--ink, #2C2C2A);">{{ accountName }}</div>
-            <div style="font-size: 10.5px; color: var(--muted, #888780); margin-top: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">{{ accountEmail }}</div>
-            <div style="font-size: 11px; color: var(--muted, #888780); margin-top: 4px;">{{ accountPlan }}</div>
+        <div ref="{{ bindAccountList }}" class="fs-profile-popover" data-filmscript-profile-panel role="menu" aria-label="Account menu">
+          <div class="fs-profile-identity">
+            <strong>{{ accountName }}</strong>
+            <span title="{{ accountEmail }}">{{ accountEmail }}</span>
+            <small>{{ accountPlan }}</small>
           </div>
-          <div data-act="a-scripts" class="v5row" style="padding: 8px 11px; font-size: 12.5px; color: var(--ink, #2C2C2A); cursor: pointer; border-radius: 8px; transition: box-shadow .13s ease;">My scripts</div>
-          <div data-act="a-account" class="v5row" style="padding: 8px 11px; font-size: 12.5px; color: var(--ink, #2C2C2A); cursor: pointer; border-radius: 8px; transition: box-shadow .13s ease;">Account details</div>
-          <div data-filmscript-open-profile class="v5row" style="padding: 8px 11px; font-size: 12.5px; color: var(--ink, #2C2C2A); cursor: pointer; border-radius: 8px; transition: box-shadow .13s ease;">Personal profile</div>
-          <sc-if value="{{ isLumierePlan }}" hint-placeholder-val="{{ false }}"><div data-act="a-lumiere" class="v5row" style="padding: 8px 11px; font-size: 12.5px; color: var(--ink, #2C2C2A); cursor: pointer; border-radius: 8px; transition: box-shadow .13s ease;">Personalize Lumiere</div></sc-if>
-          <div data-act="a-pricing" class="v5row" style="padding: 8px 11px; font-size: 12.5px; color: var(--ink, #2C2C2A); cursor: pointer; border-radius: 8px; transition: box-shadow .13s ease;">Plan and billing</div>
-          <div data-act="a-theme" class="v5row" style="padding: 8px 11px; font-size: 12.5px; color: var(--ink, #2C2C2A); cursor: pointer; border-radius: 8px; transition: box-shadow .13s ease;">{{ themeLabel }}</div>
-          <div data-act="a-signout" class="v5row" style="padding: 8px 11px; font-size: 12.5px; color: var(--muted, #888780); cursor: pointer; border-radius: 8px; transition: box-shadow .13s ease;">Sign out</div>
+          <div class="fs-profile-menu" role="none">
+            <button type="button" data-act="a-scripts" class="fs-profile-menu-item" role="menuitem"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 5.5h6l2 2h8v11H4z"></path></svg><span>My scripts</span></button>
+            <button type="button" data-act="a-account" class="fs-profile-menu-item" role="menuitem"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="8" r="3.5"></circle><path d="M5.5 20c.7-4 2.9-6 6.5-6s5.8 2 6.5 6"></path></svg><span>Account</span></button>
+            <sc-if value="{{ isLumierePlan }}" hint-placeholder-val="{{ false }}"><button type="button" data-act="a-lumiere" class="fs-profile-menu-item" role="menuitem"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m12 3 1.6 5.4L19 10l-5.4 1.6L12 17l-1.6-5.4L5 10l5.4-1.6Z"></path><path d="m18.5 16 .6 1.7 1.7.6-1.7.6-.6 1.7-.6-1.7-1.7-.6 1.7-.6Z"></path></svg><span>Personalize Lumiere</span></button></sc-if>
+            <button type="button" data-act="a-pricing" class="fs-profile-menu-item" role="menuitem"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3.5" y="6" width="17" height="12" rx="2.5"></rect><path d="M3.5 10h17M7 14h3"></path></svg><span>Plan and billing</span></button>
+          </div>
+          <button type="button" data-act="a-signout" class="fs-profile-menu-item fs-profile-signout" role="menuitem"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M10 4H5v16h5M14 8l4 4-4 4M8 12h10"></path></svg><span>Sign out</span></button>
         </div>
         </sc-if>
       </div>
@@ -1106,10 +1294,6 @@
     <film-script-analysis script-id="{{ activeScriptId }}" project-title="{{ docTitle }}" pro-active="{{ analysisUnlocked }}"></film-script-analysis>
   </sc-if>
 
-  <sc-if value="{{ translationMode }}" hint-placeholder-val="false">
-    <film-script-translation script-id="{{ activeScriptId }}" job-id="{{ translationJobId }}" target-language="{{ translationTargetLanguage }}" project-title="{{ docTitle }}"></film-script-translation>
-  </sc-if>
-
   <sc-if value="{{ productionMode }}" hint-placeholder-val="false">
   <div ref="{{ bindProductionScroll }}" class="v5-production-shell {{ productionShellClass }}" style="flex: 1; min-height: 0; overflow: auto; padding: {{ productionShellPadding }}; background: var(--bg, #F5F0E8);">
     <div style="max-width: {{ productionMaxWidth }}; margin: 0 auto; height: {{ productionInnerHeight }};">
@@ -1123,8 +1307,24 @@
       </div>
       </sc-if>
       <sc-if value="{{ productionAccessNotice }}" hint-placeholder-val="false"><div class="v5-access-note" data-testid="production-access-notice"><div style="width: 8px; height: 8px; flex: 0 0 8px; border-radius: 50%; background: var(--accent, #BA7517); box-shadow: 0 0 0 5px var(--accent-soft, rgba(186,117,23,.11));"></div><div class="v5-access-note-copy"><div style="font-size: 9.5px; font-weight: 750; letter-spacing: 1.2px; text-transform: uppercase; color: var(--accent, #BA7517);">Lumiere pass used</div><div style="font-size: 13.5px; font-weight: 700; color: var(--ink, #2C2C2A); margin-top: 4px;">Your existing production work stays yours.</div><div style="font-size: 11.5px; line-height: 1.55; color: var(--muted, #888780); margin-top: 4px;">Keep editing breakdowns, stripboards, shot lists, budgets, and calendars. Creator unlocks more Lumiere; Full also includes 1,000 image credits each month.</div></div><button type="button" class="v5-access-note-action" onClick="{{ goPricing }}">View plans</button></div></sc-if>
-      <sc-if value="{{ productionLoading }}" hint-placeholder-val="false"><div style="padding: 72px; text-align: center; color: var(--muted, #888780);">Loading screenplay data…</div></sc-if>
-      <sc-if value="{{ breakdownMode }}" hint-placeholder-val="false"><film-script-breakdown script-id="{{ activeScriptId }}" project-title="{{ docTitle }}" pro-active="{{ analysisUnlocked }}"></film-script-breakdown></sc-if>
+      <sc-if value="{{ breakdownLoading }}" hint-placeholder-val="false">
+        <section class="v5-breakdown-loader" role="status" aria-live="polite" aria-label="Loading Breakdown">
+          <div class="v5-breakdown-loader-head">
+            <div class="v5-breakdown-loader-mark" aria-hidden="true"></div>
+            <div><span class="v5-breakdown-loader-kicker">Connected preproduction</span><h2>Preparing your Breakdown</h2><p>Opening the screenplay, organizing its scenes and connecting every production department.</p></div>
+          </div>
+          <div class="v5-breakdown-loader-grid" aria-hidden="true">
+            <div class="v5-breakdown-loader-card" style="--loader-card:0"><i></i><b></b><span></span></div>
+            <div class="v5-breakdown-loader-card" style="--loader-card:1"><i></i><b></b><span></span></div>
+            <div class="v5-breakdown-loader-card" style="--loader-card:2"><i></i><b></b><span></span></div>
+            <div class="v5-breakdown-loader-card" style="--loader-card:3"><i></i><b></b><span></span></div>
+            <div class="v5-breakdown-loader-card" style="--loader-card:4"><i></i><b></b><span></span></div>
+            <div class="v5-breakdown-loader-card" style="--loader-card:5"><i></i><b></b><span></span></div>
+          </div>
+          <div class="v5-breakdown-loader-status">Organizing scene departments…</div>
+        </section>
+      </sc-if>
+      <sc-if value="{{ productionGenericLoading }}" hint-placeholder-val="false"><div style="padding: 72px; text-align: center; color: var(--muted, #888780);">Loading screenplay data…</div></sc-if>
       <sc-if value="{{ breakdownStartVisible }}" hint-placeholder-val="false">
         <section class="v5-breakdown-start" aria-labelledby="breakdown-start-title">
           <div class="v5-breakdown-start-head">
@@ -1157,7 +1357,7 @@
       <sc-if value="{{ productionProgress }}" hint-placeholder-val="false"><div style="margin: 24px 0; padding: 13px 15px; background: var(--surface, #FFFEF9); border: 1px solid var(--hair, #E7E4DA); border-radius: 11px; font-size: 13px; color: var(--ink, #2C2C2A);">{{ productionProgressText }}</div></sc-if>
       <sc-if value="{{ canvasWorkspaceVisible }}" hint-placeholder-val="false"><film-script-canvas script-id="{{ activeScriptId }}" project-title="{{ docTitle }}" initial-view="{{ canvasInitialView }}"></film-script-canvas></sc-if>
       <sc-if value="{{ breakdownHasData }}" hint-placeholder-val="false">
-        <div class="v5-breakdown-toolbar">
+        <div class="v5-breakdown-toolbar {{ breakdownWorkspaceClass }}">
           <div class="v5-breakdown-navigator">
             <button type="button" class="v5-breakdown-nav-button" onClick="{{ breakdownPrev }}" aria-label="Previous breakdown scene" aria-disabled="{{ breakdownPrevDisabled }}" style="cursor: {{ breakdownPrevCursor }}; opacity: {{ breakdownPrevOpacity }};">‹</button>
             <div class="v5-breakdown-scene-copy">
@@ -1169,15 +1369,34 @@
           <div class="v5-breakdown-actions">
             <div class="v5-breakdown-edit-hint" aria-live="polite"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"></path><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L8 18l-4 1 1-4Z"></path></svg><span>{{ breakdownSaveLabel }}</span></div>
             <sc-if value="{{ breakdownEditing }}" hint-placeholder-val="false"><button type="button" class="v5-breakdown-save" onClick="{{ breakdownSave }}">Save</button></sc-if>
+            <button type="button" class="v5-breakdown-split-toggle" data-testid="breakdown-split-toggle" onClick="{{ breakdownSplitToggle }}" aria-pressed="{{ breakdownSplitView }}" aria-label="{{ breakdownSplitAriaLabel }}" title="{{ breakdownSplitAriaLabel }}"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4" width="18" height="16" rx="2.5"></rect><path d="M11 4v16"></path><path d="m7.4 9-2 3 2 3"></path><path d="m15.7 9 2 3-2 3"></path></svg><span>{{ breakdownSplitLabel }}</span></button>
             <sc-if value="{{ breakdownManualOrigin }}" hint-placeholder-val="false"><button type="button" class="v5-breakdown-lumiere-generate" onClick="{{ breakdownGenerateWithLumiere }}" disabled="{{ breakdownGenerateDisabled }}" aria-label="Generate this manual breakdown with Lumiere"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m12 2.8 1.65 5.55L19.2 10l-5.55 1.65L12 17.2l-1.65-5.55L4.8 10l5.55-1.65Z"></path><path d="m18.3 15.7.7 1.9 1.9.7-1.9.7-.7 1.9-.7-1.9-1.9-.7 1.9-.7Z"></path></svg><span>{{ breakdownGenerateLabel }}</span></button></sc-if>
             <div class="v5-breakdown-origin">{{ breakdownOrigin }}</div>
             <div class="v5-breakdown-status" style="color: {{ breakdownStatusColor }};">{{ breakdownStatus }}</div>
-            <div style="position:relative;"><button type="button" class="v5-breakdown-export" data-testid="breakdown-export" onClick="{{ breakdownExportToggle }}" disabled="{{ breakdownExportDisabled }}" style="opacity: {{ breakdownExportOpacity }};">{{ breakdownExportLabel }}</button><sc-if value="{{ breakdownExportOpen }}" hint-placeholder-val="false"><div role="dialog" aria-label="Export breakdown by department" style="position:absolute; z-index:18; right:0; top:calc(100% + 8px); width:270px; padding:12px; border:1px solid var(--sheet-line,#B9B3A7); border-radius:14px 11px 15px 12px; background:var(--surface,#FFFEF9); box-shadow:0 18px 42px rgba(35,35,34,.18);"><strong style="display:block; font-size:11px; color:var(--ink,#2C2C2A);">Export a department packet</strong><span style="display:block; margin:4px 0 9px; color:var(--muted,#888780); font-size:9.5px; line-height:1.4;">Only the selected department’s elements are included.</span><select value="{{ breakdownExportDepartment }}" onChange="{{ breakdownExportDepartmentChange }}" style="width:100%; height:34px; padding:0 9px; border:1px solid var(--hair,#E7E4DA); border-radius:8px; background:var(--bg,#F5F0E8); color:var(--ink,#2C2C2A); font:650 10.5px inherit;"><sc-for list="{{ breakdownExportDepartments }}" as="department" hint-placeholder-count="12"><option value="{{ department }}">{{ department }}</option></sc-for></select><div style="display:grid; grid-template-columns:repeat(3,1fr); gap:5px; margin-top:9px;"><button type="button" onClick="{{ breakdownExportPdf }}" style="height:29px; border:1px solid var(--hair,#E7E4DA); border-radius:7px; background:transparent; font:700 9.5px inherit; cursor:pointer;">PDF</button><button type="button" onClick="{{ breakdownExportExcel }}" style="height:29px; border:1px solid var(--hair,#E7E4DA); border-radius:7px; background:transparent; font:700 9.5px inherit; cursor:pointer;">Excel</button><button type="button" onClick="{{ breakdownExportPrint }}" style="height:29px; border:1px solid var(--hair,#E7E4DA); border-radius:7px; background:transparent; font:700 9.5px inherit; cursor:pointer;">Print</button></div></div></sc-if></div>
+            <div style="position:relative; display:flex; gap:8px; align-items:center;"><button type="button" class="v5-breakdown-export v5-breakdown-export-pdf" data-testid="breakdown-export-pdf" onClick="{{ breakdownExport }}" disabled="{{ breakdownExportDisabled }}" style="opacity: {{ breakdownExportOpacity }};">{{ breakdownExportLabel }}</button><button type="button" class="v5-breakdown-export" data-testid="breakdown-export-options" onClick="{{ breakdownExportToggle }}" disabled="{{ breakdownExportDisabled }}" aria-label="More breakdown export options" style="opacity: {{ breakdownExportOpacity }}; min-width:38px; padding-inline:10px;">•••</button><sc-if value="{{ breakdownExportOpen }}" hint-placeholder-val="false"><div role="dialog" aria-label="Export breakdown by department" style="position:absolute; z-index:18; right:0; top:calc(100% + 8px); width:270px; padding:12px; border:1px solid var(--sheet-line,#B9B3A7); border-radius:14px 11px 15px 12px; background:var(--surface,#FFFEF9); box-shadow:0 18px 42px rgba(35,35,34,.18);"><strong style="display:block; font-size:11px; color:var(--ink,#2C2C2A);">Export a department packet</strong><span style="display:block; margin:4px 0 9px; color:var(--muted,#888780); font-size:9.5px; line-height:1.4;">Only the selected department’s elements are included.</span><select value="{{ breakdownExportDepartment }}" onChange="{{ breakdownExportDepartmentChange }}" style="width:100%; height:34px; padding:0 9px; border:1px solid var(--hair,#E7E4DA); border-radius:8px; background:var(--bg,#F5F0E8); color:var(--ink,#2C2C2A); font:650 10.5px inherit;"><sc-for list="{{ breakdownExportDepartments }}" as="department" hint-placeholder-count="12"><option value="{{ department }}">{{ department }}</option></sc-for></select><div style="display:grid; grid-template-columns:repeat(3,1fr); gap:5px; margin-top:9px;"><button type="button" onClick="{{ breakdownExportPdf }}" style="height:29px; border:1px solid var(--hair,#E7E4DA); border-radius:7px; background:transparent; font:700 9.5px inherit; cursor:pointer;">PDF</button><button type="button" onClick="{{ breakdownExportExcel }}" style="height:29px; border:1px solid var(--hair,#E7E4DA); border-radius:7px; background:transparent; font:700 9.5px inherit; cursor:pointer;">Excel</button><button type="button" onClick="{{ breakdownExportPrint }}" style="height:29px; border:1px solid var(--hair,#E7E4DA); border-radius:7px; background:transparent; font:700 9.5px inherit; cursor:pointer;">Print</button></div></div></sc-if></div>
           </div>
         </div>
         <sc-if value="{{ breakdownGenerationActive }}" hint-placeholder-val="false"><section class="v5-breakdown-generation-progress" aria-live="polite" aria-label="Lumiere breakdown generation progress"><div class="v5-breakdown-generation-spark" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="m12 2.8 1.65 5.55L19.2 10l-5.55 1.65L12 17.2l-1.65-5.55L4.8 10l5.55-1.65Z"></path></svg></div><div class="v5-breakdown-generation-copy"><strong>Generating your full breakdown</strong><span>{{ breakdownGenerationText }}</span><div class="v5-breakdown-generation-track" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="{{ breakdownGenerationPercent }}"><i style="--breakdown-progress: {{ breakdownGenerationPercent }}%;"></i></div></div><div class="v5-breakdown-generation-count">{{ breakdownGenerationCount }}</div></section></sc-if>
 
-        <div class="v5-breakdown-scroll">
+        <div class="v5-breakdown-workspace {{ breakdownWorkspaceClass }}" data-testid="breakdown-workspace">
+          <sc-if value="{{ breakdownSplitView }}" hint-placeholder-val="false">
+            <aside class="v5-breakdown-script-pane" data-testid="breakdown-script-pane" aria-label="Editable screenplay beside breakdown">
+              <header class="v5-breakdown-script-head"><div><strong>Script</strong><span>Edit while you break down the scene</span></div><div class="v5-breakdown-script-status">Autosave on</div></header>
+              <div class="v5-breakdown-script-frame-wrap">
+                <div class="v5-breakdown-script-loading {{ breakdownScriptReadyClass }}" aria-live="polite"><span><i aria-hidden="true"></i>Opening screenplay…</span></div>
+                <iframe class="v5-breakdown-script-frame {{ breakdownScriptReadyClass }}" data-testid="breakdown-script-frame" src="{{ breakdownScriptSrc }}" title="Editable screenplay" loading="eager" onLoad="{{ breakdownScriptLoaded }}"></iframe>
+              </div>
+            </aside>
+          </sc-if>
+          <div class="v5-breakdown-scroll">
+          <div class="v5-breakdown-pane-navigator" data-testid="breakdown-pane-navigator" aria-label="Breakdown scene navigation">
+            <button type="button" class="v5-breakdown-nav-button" onClick="{{ breakdownPrev }}" aria-label="Previous breakdown scene" aria-disabled="{{ breakdownPrevDisabled }}" style="cursor: {{ breakdownPrevCursor }}; opacity: {{ breakdownPrevOpacity }};">‹</button>
+            <div class="v5-breakdown-scene-copy">
+              <div class="v5-breakdown-scene-count">Scene {{ breakdownSceneNo }} of {{ breakdownSceneTotal }}</div>
+              <div class="v5-breakdown-scene-heading">{{ breakdownSceneHeading }}</div>
+            </div>
+            <button type="button" class="v5-breakdown-nav-button" onClick="{{ breakdownNext }}" aria-label="Next breakdown scene" aria-disabled="{{ breakdownNextDisabled }}" style="cursor: {{ breakdownNextCursor }}; opacity: {{ breakdownNextOpacity }};">›</button>
+          </div>
           <div class="v5-breakdown-sheet {{ breakdownSheetState }}" data-scene-id="{{ breakdownSceneId }}" onClick="{{ breakdownActivateEditing }}" onKeyDown="{{ breakdownSheetKeyDown }}" aria-label="Breakdown sheet. Click any field to edit.">
             <div class="v5-breakdown-sheet-header">
               <div class="v5-breakdown-meta-group">
@@ -1204,9 +1423,9 @@
               <div class="v5-breakdown-meta-row is-sequence"><strong class="v5-breakdown-meta-label">Sequence</strong><span data-breakdown-focus="Sequence"><sc-if value="{{ breakdownEditing }}" hint-placeholder-val="false"><input class="v5-breakdown-input" aria-label="Sequence" value="{{ breakdownSequence }}" onInput="{{ breakdownSequenceInput }}" onBlur="{{ breakdownSequenceBlur }}"></sc-if><sc-if value="{{ breakdownViewing }}" hint-placeholder-val="true"><span class="v5-breakdown-value" style="display:block;">{{ breakdownSequence }}</span></sc-if></span><strong class="v5-breakdown-meta-label">Script Day</strong><span data-breakdown-focus="Script day"><sc-if value="{{ breakdownEditing }}" hint-placeholder-val="false"><input class="v5-breakdown-input" aria-label="Script day" value="{{ breakdownScriptDay }}" onInput="{{ breakdownScriptDayInput }}" onBlur="{{ breakdownScriptDayBlur }}"></sc-if><sc-if value="{{ breakdownViewing }}" hint-placeholder-val="true"><span class="v5-breakdown-value" style="display:block;">{{ breakdownScriptDay }}</span></sc-if></span></div>
             </div>
 
-            <div style="display: grid; grid-template-columns: repeat(3, 1fr); grid-template-rows: minmax(112px, auto) minmax(104px, auto) minmax(148px, auto) minmax(122px, auto) minmax(108px, auto);">
+            <div class="v5-breakdown-grid">
               <sc-for list="{{ breakdownCells }}" as="cell" hint-placeholder-count="14">
-                <div class="v5-breakdown-cell" data-breakdown-focus="{{ cell.label }}" style="{{ cell.categoryStyle }} grid-column: {{ cell.column }}; grid-row: {{ cell.row }}; border-right: {{ cell.borderRight }}; border-bottom: {{ cell.borderBottom }};">
+                <div class="v5-breakdown-cell" data-breakdown-focus="{{ cell.label }}" style="{{ cell.categoryStyle }} grid-column: {{ cell.column }}; grid-row: {{ cell.row }};">
                   <div class="v5-breakdown-cell-label">{{ cell.label }}</div>
                   <sc-if value="{{ cell.editing }}" hint-placeholder-val="false"><textarea class="v5-breakdown-textarea" aria-label="{{ cell.label }}" value="{{ cell.editText }}" onInput="{{ cell.onInput }}" onBlur="{{ cell.onBlur }}"></textarea></sc-if>
                   <sc-if value="{{ cell.viewing }}" hint-placeholder-val="true">
@@ -1223,6 +1442,7 @@
               </sc-for>
             </div>
           </div>
+        </div>
         </div>
       </sc-if>
       <sc-if value="{{ stripboardHasData }}" hint-placeholder-val="false">
@@ -1344,7 +1564,6 @@
           <div class="v5-shotlist-toolbar-copy"><button type="button" class="v5-shotlist-button" onClick="{{ canvasBack }}" style="margin-bottom: 11px;">← Canvas</button><div style="font-size: 11px; font-weight: 750; letter-spacing: 1.05px; text-transform: uppercase; color: var(--accent, #BA7517);">Scene coverage</div><div style="font-size: 12px; color: var(--muted, #888780); margin-top: 4px;">{{ shotListSummary }}</div></div>
           <span style="font-size: 10.5px; color: var(--muted, #888780); white-space: nowrap;">{{ shotListSaveLabel }}</span>
           <div class="v5-shotlist-toolbar-actions">
-            <button type="button" class="v5-shotlist-button v5-shotlist-button-primary" data-testid="shotlist-generate" onClick="{{ shotListGenerate }}" disabled="{{ shotListGenerateDisabled }}">{{ shotListGenerateLabel }}</button>
             <button type="button" class="v5-shotlist-button v5-shotlist-button-primary" data-testid="shotlist-add-scene" onClick="{{ shotListAddScene }}" disabled="{{ shotListAddSceneDisabled }}">{{ shotListAddSceneLabel }}</button>
             <button type="button" class="v5-shotlist-button" data-testid="shotlist-edit" onClick="{{ shotListEdit }}" disabled="{{ shotListEditDisabled }}">{{ shotListEditLabel }}</button>
             <button type="button" class="v5-shotlist-button v5-shotlist-button-dark" data-testid="shotlist-export" onClick="{{ shotListExport }}" disabled="{{ shotListExportDisabled }}">{{ shotListExportLabel }}</button>
@@ -1372,7 +1591,6 @@
                       <span class="v5-shot-reference-caption">{{ scene.referenceCaption }}</span><span class="v5-shot-reference-loading">Saving…</span>
                     </button>
                     <span class="v5-shotlist-scene-count">{{ scene.countLabel }}</span>
-                    <sc-if value="{{ scene.diffVisible }}" hint-placeholder-val="false"><span class="v5-shotlist-scene-count" title="Changes from the latest Lumiere generation">{{ scene.diffSummary }}</span></sc-if>
                     <button type="button" class="v5-shotlist-button" data-testid="{{ scene.addTestId }}" onClick="{{ scene.addShot }}" disabled="{{ scene.addShotDisabled }}" title="{{ scene.addShotTitle }}">{{ scene.addShotLabel }}</button>
                     <sc-if value="{{ scene.generateAvailable }}" hint-placeholder-val="true"><button type="button" class="v5-shotlist-button" onClick="{{ scene.generate }}" disabled="{{ scene.generateDisabled }}">{{ scene.generateLabel }}</button></sc-if>
                     <sc-if value="{{ scene.deleteAvailable }}" hint-placeholder-val="false"><button type="button" class="v5-shot-action" onClick="{{ scene.remove }}" aria-label="Delete manual scene">×</button></sc-if>
@@ -1399,8 +1617,8 @@
                           <sc-if value="{{ shot.viewing }}" hint-placeholder-val="true"><span style="font-size: 11.5px; font-weight: 650; color: var(--ink, #2C2C2A); padding-right: 14px;">{{ shot.size }}</span><span style="font-size: 11.5px; color: var(--ink, #2C2C2A); padding-right: 14px;">{{ shot.angle }}</span><span style="font-size: 11.5px; color: var(--ink, #2C2C2A); padding-right: 14px;">{{ shot.focalLengthDisplay }}</span></sc-if>
                           <sc-if value="{{ shot.editing }}" hint-placeholder-val="false"><input class="v5-shot-input" aria-label="Shot size" placeholder="e.g. Medium" value="{{ shot.size }}" onInput="{{ shot.sizeInput }}" onBlur="{{ shot.sizeBlur }}"><input class="v5-shot-input" aria-label="Shot angle" placeholder="e.g. Eye level" value="{{ shot.angle }}" onInput="{{ shot.angleInput }}" onBlur="{{ shot.angleBlur }}"><input class="v5-shot-input" aria-label="Lens focal length" placeholder="e.g. 50mm" value="{{ shot.focalLength }}" onInput="{{ shot.focalLengthInput }}" onBlur="{{ shot.focalLengthBlur }}"></sc-if>
                           <span class="v5-shot-time-control"><button type="button" class="v5-shot-time-button" onClick="{{ shot.openTime }}" aria-label="Set duration for shot {{ shot.number }}" title="Set duration in 15-minute intervals">{{ shot.timeDisplay }}</button></span>
-                          <sc-if value="{{ shot.viewing }}" hint-placeholder-val="true"><span style="font-size: 11.5px; color: var(--ink, #2C2C2A); padding-right: 14px;">{{ shot.movement }}</span><span style="font-size: 11.5px; line-height: 1.45; color: var(--muted, #888780);"><span style="display:block;">{{ shot.descriptionDisplay }}</span><span style="display:block; margin-top:4px; font-size:9.5px; font-weight:700; letter-spacing:.25px; color:var(--accent,#BA7517); text-transform:capitalize;">{{ shot.productionMeta }}</span></span></sc-if>
-                          <sc-if value="{{ shot.editing }}" hint-placeholder-val="false"><input class="v5-shot-input" aria-label="Shot movement" placeholder="e.g. Static" value="{{ shot.movement }}" onInput="{{ shot.movementInput }}" onBlur="{{ shot.movementBlur }}"><div style="display:grid; gap:6px;"><textarea class="v5-shot-input" aria-label="Shot description" placeholder="Describe what the camera captures" value="{{ shot.description }}" onInput="{{ shot.descriptionInput }}" onBlur="{{ shot.descriptionBlur }}"></textarea><input class="v5-shot-input" aria-label="Camera" placeholder="Camera" value="{{ shot.camera }}" onInput="{{ shot.cameraInput }}" onBlur="{{ shot.cameraBlur }}"><input class="v5-shot-input" aria-label="Characters or subject" placeholder="Characters / subject" value="{{ shot.characters }}" onInput="{{ shot.charactersInput }}" onBlur="{{ shot.charactersBlur }}"><input class="v5-shot-input" aria-label="Production notes" placeholder="Production notes" value="{{ shot.notes }}" onInput="{{ shot.notesInput }}" onBlur="{{ shot.notesBlur }}"><input class="v5-shot-input" aria-label="Shot status" placeholder="planned" value="{{ shot.status }}" onInput="{{ shot.statusInput }}" onBlur="{{ shot.statusBlur }}"></div><div class="v5-shot-actions"><button type="button" class="v5-shot-action" onClick="{{ shot.moveUp }}" disabled="{{ shot.moveUpDisabled }}" aria-label="Move shot up">↑</button><button type="button" class="v5-shot-action" onClick="{{ shot.moveDown }}" disabled="{{ shot.moveDownDisabled }}" aria-label="Move shot down">↓</button><button type="button" class="v5-shot-action" onClick="{{ shot.remove }}" aria-label="Delete shot">×</button></div></sc-if>
+                          <sc-if value="{{ shot.viewing }}" hint-placeholder-val="true"><span style="font-size: 11.5px; color: var(--ink, #2C2C2A); padding-right: 14px;">{{ shot.movement }}</span><span style="font-size: 11.5px; line-height: 1.45; color: var(--muted, #888780);">{{ shot.descriptionDisplay }}</span></sc-if>
+                          <sc-if value="{{ shot.editing }}" hint-placeholder-val="false"><input class="v5-shot-input" aria-label="Shot movement" placeholder="e.g. Static" value="{{ shot.movement }}" onInput="{{ shot.movementInput }}" onBlur="{{ shot.movementBlur }}"><textarea class="v5-shot-input" aria-label="Shot description" placeholder="Describe what the camera captures" value="{{ shot.description }}" onInput="{{ shot.descriptionInput }}" onBlur="{{ shot.descriptionBlur }}"></textarea><div class="v5-shot-actions"><button type="button" class="v5-shot-action" onClick="{{ shot.moveUp }}" disabled="{{ shot.moveUpDisabled }}" aria-label="Move shot up">↑</button><button type="button" class="v5-shot-action" onClick="{{ shot.moveDown }}" disabled="{{ shot.moveDownDisabled }}" aria-label="Move shot down">↓</button><button type="button" class="v5-shot-action" onClick="{{ shot.remove }}" aria-label="Delete shot">×</button></div></sc-if>
                         </div>
                       </sc-for>
                     </sc-if>
@@ -2125,20 +2343,20 @@
   &quot;lumiereStartOpen&quot;: { &quot;editor&quot;: &quot;boolean&quot;, &quot;default&quot;: true, &quot;tsType&quot;: &quot;boolean&quot;, &quot;section&quot;: &quot;Layout&quot; }
 }">
 class Component extends DCLogic {
+  _isBreakdownEmbed = new URLSearchParams(window.location.search).get('embed') === 'breakdown';
+
   state = {
     darkMode: window.filmscriptTheme?.isDark() ?? false,
     activeScriptId: new URLSearchParams(window.location.search).get('script') || null,
-    translationJobId: new URLSearchParams(window.location.search).get('translationJob') || '',
-    translationTargetLanguage: new URLSearchParams(window.location.search).get('targetLanguage') || '',
     workMode: (() => {
       const params = new URLSearchParams(window.location.search);
       const scriptId = params.get('script');
-      const allowed = ['editor', 'analysis', 'translation', 'breakdown', 'stripboard', 'imagine', 'canvas', 'shotlist', 'budget', 'calendar'];
+      const allowed = ['editor', 'analysis', 'breakdown', 'stripboard', 'imagine', 'canvas', 'budget', 'calendar'];
       let mode = params.get('view') || '';
       if (!mode) {
         try { mode = localStorage.getItem(scriptId ? `filmscript_work_mode_${scriptId}` : 'filmscript_work_mode_default') || ''; } catch (e) {}
       }
-      if (mode === 'shotlist') return 'shotlist';
+      if (mode === 'shotlist') return 'canvas';
       return allowed.includes(mode) ? mode : 'editor';
     })(),
     mobileMenuOpen: false,
@@ -2158,13 +2376,17 @@ class Component extends DCLogic {
     productionProject: null,
     productionLoading: false,
     productionRefreshBusy: false,
-    shotListJob: null,
     breakdownSceneIndex: 0,
     breakdownEditing: false,
     breakdownFormSaving: false,
     breakdownExporting: false,
     breakdownExportOpen: false,
     breakdownExportDepartment: 'Entire Breakdown',
+    breakdownSplitView: (() => {
+      const scriptId = new URLSearchParams(window.location.search).get('script') || 'default';
+      try { return localStorage.getItem(`filmscript_breakdown_split_${scriptId}`) === '1'; } catch (error) { return false; }
+    })(),
+    breakdownSplitLoaded: false,
     breakdownManualStarting: false,
     breakdownManualGenerating: false,
     characterVisualGenerating: {},
@@ -2218,7 +2440,7 @@ class Component extends DCLogic {
     visualReferenceWorkspace: null,
     shotListExporting: false,
     shotListAddingScene: false,
-    railOpen: this.props.showSceneRail ?? true,
+    railOpen: this._isBreakdownEmbed ? false : (this.props.showSceneRail ?? true),
     railClosing: false,
     scenePickerOpen: false,
     scenePickerLocations: [],
@@ -2227,7 +2449,7 @@ class Component extends DCLogic {
     scenePickerTimes: [],
     characterPickerOpen: false,
     characterPickerNames: [],
-    lumiereOpen: this.props.lumiereStartOpen ?? true,
+    lumiereOpen: this._isBreakdownEmbed ? false : (this.props.lumiereStartOpen ?? true),
     lumiereClosing: false,
     writingIdleNudge: false,
     writingIdlePromptCopied: false,
@@ -2300,8 +2522,13 @@ class Component extends DCLogic {
     paywallOpen: false,
     modal: null,
     toast: '',
-    docTitle: 'Untitled screenplay',
-    tpEnabled: true,
+    docTitle: (() => {
+      const params = new URLSearchParams(window.location.search);
+      return params.get('title') || (this._isBreakdownEmbed ? '' : 'Untitled screenplay');
+    })(),
+    tpEnabled: !this._isBreakdownEmbed,
+    breakdownEmbedReady: !this._isBreakdownEmbed,
+    breakdownEmbedLoadError: false,
     tpCredit: 'Written by',
     tpAuthor: '',
     tpDate: '',
@@ -2515,7 +2742,8 @@ class Component extends DCLogic {
   }
 
   _writingIdleCanShow() {
-    return !this._unmounted
+    return !this._isBreakdownEmbed
+      && !this._unmounted
       && !document.hidden
       && this.state.workMode === 'editor'
       && !this.state.modal
@@ -2656,6 +2884,8 @@ class Component extends DCLogic {
       this._startCreditsPolling();
     };
     document.addEventListener('visibilitychange', this._creditsVisibilityHandler);
+    this._themeHandler = (event) => this.setState({ darkMode: event?.detail?.theme === 'dark' });
+    window.addEventListener('filmscript:theme-change', this._themeHandler);
     this._refreshBilling();
     this._loadImportedScript().then(() => {
       this._restoreWorkMode();
@@ -2775,30 +3005,12 @@ class Component extends DCLogic {
     this._analysisAskHandler = (event) => this.openAnalysisInLumiere(event?.detail?.prompt);
     this._analysisBackgroundHandler = (event) => this._setAnalysisBackground(event?.detail || {});
     this._canvasShotlistHandler = () => this.openCanvasShotList();
-    this._breakdownOpenReferenceHandler = (event) => {
-      const detail = event?.detail || {};
-      const activeScriptId = this.state.activeScriptId || this._activeScriptId;
-      if (!Number.isFinite(Number(detail.sceneNumber)) || Number(detail.sceneNumber) < 1) return;
-      if (detail.scriptId && activeScriptId && detail.scriptId !== activeScriptId) return;
-      this.openBreakdownReference(detail.sceneNumber, detail.categoryKey, detail.references, detail.label);
-    };
-    this._shotListJobUpdateHandler = (event) => {
-      const job = event?.detail?.job;
-      const scriptId = this.state.activeScriptId || this._activeScriptId;
-      if (!job || job.type !== 'shot_list' || !scriptId || job.projectId !== scriptId) return;
-      this.setState({ shotListJob: job });
-      if (['completed', 'failed'].includes(job.status)) this._refreshShotListProject(job.status === 'completed');
-    };
-    this._shotListJobCompletedHandler = (event) => this._shotListJobUpdateHandler(event);
     window.addEventListener('filmscript:analysis-open-editor', this._analysisOpenEditorHandler);
     window.addEventListener('filmscript:analysis-open-scene', this._analysisOpenSceneHandler);
     window.addEventListener('filmscript:analysis-open-mode', this._analysisOpenModeHandler);
     window.addEventListener('filmscript:analysis-ask-lumiere', this._analysisAskHandler);
     window.addEventListener('filmscript:analysis-background', this._analysisBackgroundHandler);
     window.addEventListener('filmscript:canvas-shotlist', this._canvasShotlistHandler);
-    window.addEventListener('filmscript:breakdown-open-reference', this._breakdownOpenReferenceHandler);
-    window.addEventListener('filmscript:ai.job.updated', this._shotListJobUpdateHandler);
-    window.addEventListener('filmscript:ai.job.completed', this._shotListJobCompletedHandler);
     setTimeout(() => { if (this._autoFit) this.fillPage(1); }, 0);
     setTimeout(() => this._snapshot('First draft'), 700);
   };
@@ -2887,7 +3099,16 @@ class Component extends DCLogic {
 
   async _loadImportedScript() {
     const scriptId = new URLSearchParams(window.location.search).get('script');
-    if (!scriptId || !window.filmscriptScripts) return;
+    if (!scriptId || !window.filmscriptScripts) {
+      if (this._isBreakdownEmbed && scriptId && (this._breakdownEmbedRetryCount || 0) < 8) {
+        clearTimeout(this._breakdownEmbedRetryTimer);
+        this._breakdownEmbedRetryCount = (this._breakdownEmbedRetryCount || 0) + 1;
+        this._breakdownEmbedRetryTimer = window.setTimeout(() => {
+          if (!this._unmounted) this._loadImportedScript();
+        }, 180);
+      }
+      return;
+    }
     try {
       const stored = (await window.filmscriptScripts.get(scriptId)).script;
       this._activeScriptId = stored.id;
@@ -2899,8 +3120,10 @@ class Component extends DCLogic {
       this._editorNode = null;
       this.setState({
         activeScriptId: stored.id,
-        docTitle: stored.source === 'pdf' ? (stored.title || 'Untitled screenplay') : (cover.title || stored.title || 'Untitled screenplay'),
+        docTitle: stored.source === 'pdf' ? (stored.title || this.state.docTitle || 'Screenplay') : (cover.title || stored.title || this.state.docTitle || 'Screenplay'),
         tpEnabled: true,
+        breakdownEmbedReady: true,
+        breakdownEmbedLoadError: false,
         tpCredit: cover.credit || 'Written by',
         tpAuthor: cover.hasCover ? cover.author : '',
         tpDate: cover.date,
@@ -2916,9 +3139,21 @@ class Component extends DCLogic {
         currentPage: 0,
         activeScene: 1,
       });
+      this._breakdownEmbedRetryCount = 0;
       if (recovery) this._toast('Recovered the latest local screenplay changes.');
       this._connectScriptRealtime(stored.id, recovery?.blocks || null);
-    } catch (error) { this.setState({ toast: 'Could not open this screenplay.' }); }
+    } catch (error) {
+      if (this._isBreakdownEmbed) {
+        this.setState({ breakdownEmbedReady: false, breakdownEmbedLoadError: true });
+        clearTimeout(this._breakdownEmbedRetryTimer);
+        this._breakdownEmbedRetryCount = (this._breakdownEmbedRetryCount || 0) + 1;
+        if (this._breakdownEmbedRetryCount <= 8) this._breakdownEmbedRetryTimer = window.setTimeout(() => {
+          if (!this._unmounted) this._loadImportedScript();
+        }, 700);
+      } else {
+        this.setState({ toast: 'Could not open this screenplay.' });
+      }
+    }
   }
 
   async _connectScriptRealtime(scriptId, recoveryBlocks = null) {
@@ -2928,7 +3163,6 @@ class Component extends DCLogic {
       this._realtimeScript = await window.FilmScriptRealtime.connectScript(scriptId, {
         clientId: window.filmscriptPlatform?.clientId,
         onBlocks: (blocks, origin) => { if (origin !== 'local') this._applyRealtimeScriptBlocks(blocks); },
-        contextProvider: () => { const block = this._currentBlock(); const sceneNumber = Number(this.state.activeScene) || 1; return { blockId:block?.dataset?.blockId || null, sceneId:`scene_${sceneNumber}`, sceneLabel:`Scene ${sceneNumber}` }; },
       });
       if (recoveryBlocks?.length) this._realtimeScript.syncBlocks(recoveryBlocks);
     } catch (error) { window.setTimeout(() => this._connectScriptRealtime(scriptId, recoveryBlocks), 2000); }
@@ -2951,7 +3185,7 @@ class Component extends DCLogic {
   }
 
   _broadcastEditorSelection() {
-    if (this.state.workMode !== 'editor' || !window.filmscriptPlatform?.sendPresence) return;
+    if (this._isBreakdownEmbed || this.state.workMode !== 'editor' || !window.filmscriptPlatform?.sendPresence) return;
     const selection = window.getSelection(); const block = this._currentBlock(); if (!selection?.anchorNode || !block?.dataset?.blockId) return;
     const offset = (node, value) => { try { const range = document.createRange(); range.setStart(node, 0); range.setEnd(value, value === selection.anchorNode ? selection.anchorOffset : selection.focusOffset); return Math.max(0, range.toString().length); } catch { return 0; } };
     window.filmscriptPlatform.sendPresence({ type:'cursor.updated', sceneId:block.closest?.('[data-scene-id]')?.dataset?.sceneId || null, selection:{ blockId:block.dataset.blockId, anchorOffset:offset(block, selection.anchorNode), focusOffset:offset(block, selection.focusNode), collapsed:selection.isCollapsed } });
@@ -2966,11 +3200,8 @@ class Component extends DCLogic {
   }
 
   _rememberWorkMode(mode, canvasTool = this.state.canvasTool) {
-    const allowedModes = ['editor', 'analysis', 'translation', 'breakdown', 'stripboard', 'imagine', 'canvas', 'shotlist', 'budget', 'calendar'];
+    const allowedModes = ['editor', 'analysis', 'breakdown', 'stripboard', 'imagine', 'canvas', 'shotlist', 'budget', 'calendar'];
     if (!allowedModes.includes(mode)) return;
-    // Translation is a contextual compare view tied to one durable job. It
-    // must never become the default workspace for this screenplay.
-    if (mode === 'translation') return;
     try {
       localStorage.setItem(this._workModeStorageKey(), mode);
       if (mode === 'canvas') localStorage.setItem(this._canvasToolStorageKey(), canvasTool === 'shotlist' ? 'shotlist' : 'home');
@@ -2986,7 +3217,7 @@ class Component extends DCLogic {
   }
 
   _restoreWorkMode() {
-    const allowedModes = ['editor', 'analysis', 'translation', 'breakdown', 'stripboard', 'imagine', 'canvas', 'shotlist', 'budget', 'calendar'];
+    const allowedModes = ['editor', 'analysis', 'breakdown', 'stripboard', 'imagine', 'canvas', 'shotlist', 'budget', 'calendar'];
     const params = new URLSearchParams(window.location.search);
     let savedMode = params.get('view') || '';
     if (!savedMode) {
@@ -3002,7 +3233,7 @@ class Component extends DCLogic {
   }
 
   async switchWorkMode(mode, options = {}) {
-    const allowedModes = ['editor', 'analysis', 'translation', 'breakdown', 'stripboard', 'imagine', 'canvas', 'shotlist', 'budget', 'calendar'];
+    const allowedModes = ['editor', 'analysis', 'breakdown', 'stripboard', 'imagine', 'canvas', 'shotlist', 'budget', 'calendar'];
     if (!allowedModes.includes(mode)) return;
     if (this.state.mobileMenuOpen) this.setState({ mobileMenuOpen: false });
     const requestedCanvasTool = mode === 'canvas' && options.canvasTool === 'shotlist' ? 'shotlist' : 'home';
@@ -3041,10 +3272,6 @@ class Component extends DCLogic {
       this.setState({ workMode: 'analysis', stripboardTimePopoverSceneId: null, stripboardTimePopoverEventId: null }, () => {
         this._restartWorkModeMotion();
       });
-      return;
-    }
-    if (mode === 'translation') {
-      this.setState({ workMode: 'translation', productionLoading: false, stripboardTimePopoverSceneId: null, stripboardTimePopoverEventId: null }, () => this._restartWorkModeMotion());
       return;
     }
     if ((mode === 'canvas' && requestedCanvasTool === 'home') || mode === 'imagine') {
@@ -3160,17 +3387,16 @@ class Component extends DCLogic {
   async analyzeProduction() {
     const scriptId = this.state.activeScriptId || this._activeScriptId;
     if (!scriptId || !window.filmscriptPreproduction) return;
-    const shotListMode = this.state.workMode === 'shotlist' || (this.state.workMode === 'canvas' && this.state.canvasTool === 'shotlist');
-    const feature = shotListMode ? 'storyboard' : 'breakdown';
+    const feature = this.state.workMode === 'canvas' && this.state.canvasTool === 'shotlist' ? 'storyboard' : 'breakdown';
     if (!this._canUseLumiereFeature(feature)) {
       this._requireLumierePlan('Your included Lumiere pass has been used. Choose Creator or Full for more production AI.');
       return;
     }
     try {
-      const result = shotListMode
+      const result = this.state.workMode === 'canvas' && this.state.canvasTool === 'shotlist'
         ? await window.filmscriptPreproduction.generateShotLists(scriptId)
         : await window.filmscriptPreproduction.analyze(scriptId);
-      this.setState({ productionProject: result.project || null, ...(shotListMode ? { shotListJob: result.job || null } : {}) }, () => this._pollProduction());
+      this.setState({ productionProject: result.project || null }, () => this._pollProduction());
     } catch (error) {
       this._toast('Lumiere could not start the analysis.');
     }
@@ -3297,8 +3523,6 @@ class Component extends DCLogic {
 
   _clearBreakdownReferenceHighlight() {
     clearTimeout(this._breakdownHighlightTimer);
-    clearTimeout(this._breakdownHighlightFadeTimer);
-    document.documentElement.classList.remove('v5-breakdown-highlight-fading');
     if (window.CSS?.highlights) this._breakdownHighlightNames().forEach((name) => window.CSS.highlights.delete(name));
     document.querySelectorAll('[data-breakdown-reference]').forEach((highlight) => {
       const parent = highlight.parentNode;
@@ -3309,23 +3533,9 @@ class Component extends DCLogic {
     });
   }
 
-  _fadeBreakdownReferenceHighlight() {
-    document.documentElement.classList.add('v5-breakdown-highlight-fading');
-    document.querySelectorAll('[data-breakdown-reference]').forEach((highlight) => highlight.classList.add('is-fading'));
-    this._breakdownHighlightFadeTimer = window.setTimeout(() => this._clearBreakdownReferenceHighlight(), 480);
-  }
-
-  _breakdownHighlightCategory(categoryKey) {
-    const key = String(categoryKey || '').replace(/-/g, '_');
-    return ({
-      vehicles: 'vehicles_animals', animals: 'vehicles_animals', visual_effects: 'special_fx', special_effects: 'special_fx',
-      locations: 'notes', camera: 'equipment', lighting: 'equipment', grip: 'equipment', production_notes: 'notes', safety_notes: 'notes',
-    })[key] || key || 'notes';
-  }
-
   _breakdownReferenceColor(categoryKey) {
     const colors = { cast: '#C65B50', extras: '#D18736', props: '#AD7E18', stunts: '#B44E68', vehicles_animals: '#3F8780', special_fx: '#765F9C', wardrobe: '#93647F', makeup_hair: '#B86876', set_dressing: '#8C6B4E', greenery: '#56805A', equipment: '#4F7796', notes: '#8A6C5D', music: '#6968A1', sound: '#3E7C8F' };
-    return colors[this._breakdownHighlightCategory(categoryKey)] || '#BA7517';
+    return colors[String(categoryKey || '')] || '#BA7517';
   }
 
   _findBreakdownTextRanges(block, reference) {
@@ -3368,13 +3578,12 @@ class Component extends DCLogic {
   _highlightBreakdownReference(sceneNumber, categoryKey, references) {
     const sceneHeading = document.querySelector(`[data-scene-no="${Number(sceneNumber)}"]`);
     if (!sceneHeading) return false;
-    // Collect through the next scene heading across every screenplay page so
-    // an excerpt near a page break still resolves to the exact source words.
-    const allBlocks = Array.from(document.querySelectorAll('[data-fs-page] [data-type]'));
-    const sceneStart = allBlocks.indexOf(sceneHeading);
-    if (sceneStart < 0) return false;
-    const sceneEnd = allBlocks.findIndex((block, index) => index > sceneStart && block.dataset?.type === 'scene');
-    const sceneBlocks = allBlocks.slice(sceneStart, sceneEnd < 0 ? undefined : sceneEnd);
+    const sceneBlocks = [];
+    let block = sceneHeading;
+    while (block && (block === sceneHeading || block.dataset?.type !== 'scene')) {
+      sceneBlocks.push(block);
+      block = block.nextElementSibling;
+    }
     const candidates = Array.from(new Set((references || []).map((value) => String(value || '').trim()).filter(Boolean)));
     let target = null;
     for (const reference of candidates) {
@@ -3392,7 +3601,7 @@ class Component extends DCLogic {
     }
     if (!target) return false;
     this._clearBreakdownReferenceHighlight();
-    const highlightKey = `v5-breakdown-${this._breakdownHighlightCategory(categoryKey).replace(/_/g, '-')}`;
+    const highlightKey = `v5-breakdown-${String(categoryKey || 'notes').replace(/_/g, '-')}`;
     if (window.CSS?.highlights && window.Highlight) {
       window.CSS.highlights.set(highlightKey, new window.Highlight(...target.ranges));
     } else {
@@ -3410,9 +3619,7 @@ class Component extends DCLogic {
       }
     }
     target.block.scrollIntoView({ behavior: 'smooth', block: 'center' });
-    // Keep the evidence fully visible for five seconds, then fade it away
-    // instead of abruptly removing the user's visual anchor.
-    this._breakdownHighlightTimer = window.setTimeout(() => this._fadeBreakdownReferenceHighlight(), 5000);
+    this._breakdownHighlightTimer = window.setTimeout(() => this._clearBreakdownReferenceHighlight(), 4600);
     return true;
   }
 
@@ -3514,7 +3721,7 @@ class Component extends DCLogic {
     const documentId = `breakdown:${sceneId}:${section}`; const entityKey = `${documentId}:${sceneId}`; const baseVersion = this._collaborationVersions?.get(entityKey) || 0;
     const task = previous.catch(() => {}).then(async () => {
       if (window.filmscriptPlatform?.sendOperation) {
-        const result = await window.filmscriptPlatform.sendOperation({ module:'breakdown', documentId, entityType:'breakdown_card', entityId:sceneId, baseVersion, current:{ id:sceneId, version:baseVersion, [key]:previousValue }, previous:{ [key]:previousValue }, patch:{ [key]:savedValue }, operationType:'field.set', metadata:{ sceneId, sceneLabel:sceneBefore?.title || sceneBefore?.heading || `Scene ${sceneId}` } });
+        const result = await window.filmscriptPlatform.sendOperation({ module:'breakdown', documentId, entityType:'breakdown_card', entityId:sceneId, baseVersion, current:{ id:sceneId, version:baseVersion, [key]:previousValue }, previous:{ [key]:previousValue }, patch:{ [key]:savedValue }, operationType:'field.set' });
         if (!this._collaborationVersions) this._collaborationVersions = new Map(); this._collaborationVersions.set(entityKey, result.entity?.version || baseVersion);
       }
       return window.filmscriptPreproduction.saveScene(scriptId, sceneId, { [section]: { [key]: savedValue } });
@@ -3584,22 +3791,29 @@ class Component extends DCLogic {
   async exportBreakdownPdf() {
     if (this.state.breakdownExporting) return;
     const scriptId = this.state.activeScriptId || this._activeScriptId;
-    if (!scriptId || !window.filmscriptPreproduction) return;
+    if (!scriptId || !window.filmscriptPreproduction?.exportPdf) return;
     document.activeElement?.blur?.();
     if (this._pendingBreakdownSave) {
       try { await this._pendingBreakdownSave; } catch (error) {}
     }
-    this.setState({ breakdownEditing: false, breakdownExporting: true });
-    const link = document.createElement('a');
-    const base = String(this.state.docTitle || 'FilmScript').replace(/[^a-z0-9 _-]+/gi, '').trim() || 'FilmScript';
-    const breakdownPath = `/api/project-files/${encodeURIComponent(scriptId)}/preproduction/breakdown.pdf`;
-    link.href = window.filmscriptApiUrl ? window.filmscriptApiUrl(breakdownPath) : breakdownPath;
-    link.download = `${base} breakdown.pdf`;
-    document.body.appendChild(link);
-    link.click();
-    link.remove();
-    this._toast('Breakdown PDF exported.');
-    setTimeout(() => this.setState({ breakdownExporting: false }), 700);
+    this.setState({ breakdownEditing: false, breakdownExporting: true, breakdownExportOpen: false });
+    try {
+      const blob = await window.filmscriptPreproduction.exportPdf(scriptId);
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      const base = String(this.state.docTitle || 'FilmScript').replace(/[^a-z0-9 _-]+/gi, '').trim() || 'FilmScript';
+      link.href = url;
+      link.download = `${base} breakdown.pdf`;
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      setTimeout(() => URL.revokeObjectURL(url), 1000);
+      this._toast('Breakdown PDF downloaded.');
+    } catch (error) {
+      this._toast(error?.message || 'Could not export the Breakdown PDF.');
+    } finally {
+      this.setState({ breakdownExporting: false });
+    }
   }
 
   _breakdownDepartmentRows(department = 'Entire Breakdown') {
@@ -4492,7 +4706,7 @@ class Component extends DCLogic {
     this.setState({ stripboardExporting: true });
     const link = document.createElement('a');
     const base = String(this.state.docTitle || 'FilmScript').replace(/[^a-z0-9 _-]+/gi, '').trim() || 'FilmScript';
-    const stripboardPath = `/api/project-files/${encodeURIComponent(scriptId)}/preproduction/stripboard.pdf`;
+    const stripboardPath = `/api/scripts/${encodeURIComponent(scriptId)}/preproduction/stripboard.pdf`;
     link.href = window.filmscriptApiUrl ? window.filmscriptApiUrl(stripboardPath) : stripboardPath;
     link.download = `${base} stripboard.pdf`;
     document.body.appendChild(link);
@@ -4645,8 +4859,7 @@ class Component extends DCLogic {
     const scriptId = this.state.activeScriptId || this._activeScriptId; const entityKey = `shot_list:${sceneId}:${shotId}`; const baseVersion = this._collaborationVersions?.get(entityKey) || 0;
     try {
       if (window.filmscriptPlatform?.sendOperation) {
-        const shotScene = this._shotListScene(sceneId);
-        const result = await window.filmscriptPlatform.sendOperation({ module:'shot_list', documentId:`shot_list:${sceneId}`, entityType:'shot_list_item', entityId:shotId, baseVersion, current:{ id:shotId, version:baseVersion, [key]:previousValue }, previous:{ [key]:previousValue }, patch:{ [key]:value }, operationType:'field.set', metadata:{ sceneId, sceneLabel:shotScene?.title || shotScene?.heading || `Scene ${sceneId}` } });
+        const result = await window.filmscriptPlatform.sendOperation({ module:'shot_list', documentId:`shot_list:${sceneId}`, entityType:'shot_list_item', entityId:shotId, baseVersion, current:{ id:shotId, version:baseVersion, [key]:previousValue }, previous:{ [key]:previousValue }, patch:{ [key]:value }, operationType:'field.set' });
         if (!this._collaborationVersions) this._collaborationVersions = new Map(); this._collaborationVersions.set(entityKey, result.entity?.version || baseVersion);
       }
       this.setState({ shotListSaving:true, shotListSaveError:false });
@@ -5153,10 +5366,7 @@ class Component extends DCLogic {
     }
     const random = new Uint32Array(2);
     crypto.getRandomValues(random);
-    const shot = { id: `sh_${Date.now().toString(16)}${Array.from(random, (value) => value.toString(16).padStart(8, '0')).join('')}`, size: 'Medium', angle: 'Eye level', focalLength: '50mm', estimatedMinutes: remainingMinutes == null ? 15 : Math.min(15, remainingMinutes), movement: 'Static', description: '', sourceExcerpt: '', userEdited: true };
-    shots.push(shot);
-    const shotScene = this._shotListScene(sceneId);
-    window.filmscriptPlatform?.sendOperation?.({ module:'shot_list', documentId:`shot_list:${sceneId}`, entityType:'shot_list_item', entityId:shot.id, baseVersion:0, current:{ id:shot.id, version:0 }, previous:{}, patch:shot, operationType:'entity.add', metadata:{ sceneId, sceneLabel:shotScene?.title || shotScene?.heading || `Scene ${sceneId}` } }).catch(() => {});
+    shots.push({ id: `sh_${Date.now().toString(16)}${Array.from(random, (value) => value.toString(16).padStart(8, '0')).join('')}`, size: 'Medium', angle: 'Eye level', focalLength: '50mm', estimatedMinutes: remainingMinutes == null ? 15 : Math.min(15, remainingMinutes), movement: 'Static', description: '', sourceExcerpt: '', userEdited: true });
     this._replaceSceneShotsLocal(sceneId, shots);
     this.setState({ shotListEditing: true, shotListSaveError: false });
     this._persistShots(sceneId, shots);
@@ -5191,7 +5401,7 @@ class Component extends DCLogic {
     this.setState({ shotListExporting: true });
     const link = document.createElement('a');
     const base = String(this.state.docTitle || 'FilmScript').replace(/[^a-z0-9 _-]+/gi, '').trim() || 'FilmScript';
-    const shotListPath = `/api/project-files/${encodeURIComponent(scriptId)}/preproduction/shotlist.pdf`;
+    const shotListPath = `/api/scripts/${encodeURIComponent(scriptId)}/preproduction/shotlist.pdf`;
     link.href = window.filmscriptApiUrl ? window.filmscriptApiUrl(shotListPath) : shotListPath;
     link.download = `${base} shot list.pdf`;
     document.body.appendChild(link);
@@ -5201,43 +5411,23 @@ class Component extends DCLogic {
     setTimeout(() => this.setState({ shotListExporting: false }), 700);
   }
 
-  async _refreshShotListProject(notify = false) {
+  async generateShotListForScene(sceneId) {
     const scriptId = this.state.activeScriptId || this._activeScriptId;
-    if (!scriptId || !window.filmscriptPreproduction) return;
-    clearTimeout(this._shotListRefreshTimer);
-    this._shotListRefreshTimer = setTimeout(async () => {
-      try {
-        const result = await window.filmscriptPreproduction.get(scriptId);
-        if (this._unmounted || scriptId !== (this.state.activeScriptId || this._activeScriptId)) return;
-        this.setState({ productionProject: result.project || null, shotListJob: null });
-        if (notify) this._toast('Your Shot List is ready. Manual shots were kept.');
-      } catch (error) {}
-    }, 80);
-  }
-
-  async generateShotListForScene(sceneId = null, { regenerate = false } = {}) {
-    const scriptId = this.state.activeScriptId || this._activeScriptId;
-    if (!scriptId || !window.filmscriptPreproduction) return;
+    if (!scriptId || !sceneId || !window.filmscriptPreproduction) return;
     if (!this._canUseLumiereFeature('storyboard')) {
       this._requireLumierePlan('Your included storyboard has been used. Choose Creator or Full for more Lumiere shot lists.');
       return;
     }
     try {
-      const result = await window.filmscriptPreproduction.generateShotLists(scriptId, sceneId, { regenerate });
-      this.setState({ productionProject: result.project || null, shotListJob: result.job || null });
-      this._toast(regenerate ? 'Lumiere is updating the generated coverage. Your manual shots will stay in place.' : 'Lumiere is planning the Shot List in the background.');
+      const result = await window.filmscriptPreproduction.generateShotLists(scriptId, sceneId);
+      this.setState({ productionProject: result.project || null }, () => this._pollProduction());
     } catch (error) {
-      this._toast(error?.message || 'Lumiere could not start this shot list.');
+      this._toast('Lumiere could not start this shot list.');
     }
   }
 
   _pollProduction() {
     clearTimeout(this._productionTimer);
-    const shotListMode = this.state.workMode === 'shotlist' || (this.state.workMode === 'canvas' && this.state.canvasTool === 'shotlist');
-    // Shot List background work is driven by the collaboration event stream.
-    // It survives navigation without a client-side polling loop; reopening the
-    // module reads the durable progress snapshot from the project.
-    if (shotListMode) return;
     const status = this.state.workMode === 'canvas' && this.state.canvasTool === 'shotlist'
       ? this.state.productionProject?.shotAnalysis?.status
       : this.state.productionProject?.analysis?.status;
@@ -5537,8 +5727,7 @@ class Component extends DCLogic {
   _onEditorInput() {
     this._onWritingActivity();
     this._touch();
-    clearTimeout(this._realtimeInputTimer);
-    this._realtimeInputTimer = setTimeout(() => this._realtimeScript?.syncBlocks?.(this._scriptBlocksForSave()), 90);
+    this._queueRealtimeScriptSync();
     const block = this._currentBlock();
     if (block?.dataset?.type === 'scene') this._normalizeSceneHeading(block);
     if (block?.dataset?.type === 'character') {
@@ -5552,6 +5741,11 @@ class Component extends DCLogic {
     if (block?.dataset?.type === 'scene' || block?.dataset?.type === 'character' || sceneCount !== (this._scenes || []).length) this._scheduleSceneSync();
     this._scheduleTitleRoomSync();
     this._scheduleCharacterNameSync();
+  }
+
+  _queueRealtimeScriptSync(delay = 90) {
+    clearTimeout(this._realtimeInputTimer);
+    this._realtimeInputTimer = setTimeout(() => this._realtimeScript?.syncBlocks?.(this._scriptBlocksForSave()), delay);
   }
 
   _normalizeSceneHeading(block) {
@@ -5692,6 +5886,7 @@ class Component extends DCLogic {
   }
 
   _onEditorKey(e) {
+    if (e.isComposing || e.keyCode === 229) return;
     const order = ['scene', 'action', 'character', 'paren', 'dialogue', 'transition'];
     const currentBlock = this._currentBlock();
     if (currentBlock?.dataset?.type === 'character' && e.key === 'Tab' && !e.shiftKey && this._characterPredictionNames?.length) {
@@ -5775,8 +5970,11 @@ class Component extends DCLogic {
       this._commitEditorHistoryOperation(() => {
         this._hideCharacterPredictions();
         this._enter();
+        this._onWritingActivity();
         this._touch();
+        this._queueRealtimeScriptSync();
       });
+      return;
     }
   }
 
@@ -5822,22 +6020,46 @@ class Component extends DCLogic {
     const node = this._editorNode;
     if (!node) return;
     const cur = this._currentBlock();
-    if (cur?.dataset?.type === 'character') this._normalizeCharacterName(cur);
     const nextMap = { scene: 'action', action: 'action', character: 'dialogue', paren: 'dialogue', dialogue: 'action', transition: 'scene' };
-    const type = cur ? (nextMap[cur.dataset.type] || 'action') : 'action';
+    const currentType = cur?.dataset?.type || 'action';
+    const selection = window.getSelection();
+    const activeRange = selection?.rangeCount ? selection.getRangeAt(0).cloneRange() : null;
+    let trailingFragment = null;
+    if (cur && activeRange && cur.contains(activeRange.startContainer) && cur.contains(activeRange.endContainer)) {
+      if (!activeRange.collapsed) activeRange.deleteContents();
+      activeRange.collapse(true);
+      const marker = Array.from(cur.children).find((child) => child.matches?.('[data-marker],[data-dialogue-marker]')) || null;
+      const trailingRange = document.createRange();
+      trailingRange.setStart(activeRange.startContainer, activeRange.startOffset);
+      if (marker) trailingRange.setEndBefore(marker);
+      else trailingRange.setEnd(cur, cur.childNodes.length);
+      trailingFragment = trailingRange.extractContents();
+    }
+    const hasTrailingText = Boolean(String(trailingFragment?.textContent || '').replace(/\u00a0/g, ' ').trim());
+    const type = cur && hasTrailingText ? currentType : (nextMap[currentType] || 'action');
     const div = document.createElement('div');
     div.dataset.type = type;
+    div.dataset.blockId = `blk_${crypto.randomUUID().replaceAll('-', '')}`;
     div.setAttribute('style', this._styleFor(type));
-    div.appendChild(document.createElement('br'));
+    if (trailingFragment?.childNodes?.length) div.appendChild(trailingFragment);
+    else div.appendChild(document.createElement('br'));
+    if (cur) {
+      const marker = Array.from(cur.children).find((child) => child.matches?.('[data-marker],[data-dialogue-marker]')) || null;
+      const editableContent = Array.from(cur.childNodes).filter((child) => !child.matches?.('[data-marker],[data-dialogue-marker]'));
+      if (!editableContent.some((child) => child.nodeType === Node.ELEMENT_NODE || String(child.textContent || '').length)) {
+        cur.insertBefore(document.createElement('br'), marker);
+      }
+    }
     if (cur && cur.nextSibling) node.insertBefore(div, cur.nextSibling);
     else node.appendChild(div);
-    const sel = window.getSelection();
+    if (currentType === 'character') this._normalizeCharacterName(cur);
+    if (type === 'character') this._normalizeCharacterName(div);
     const range = document.createRange();
     range.setStart(div, 0);
     range.collapse(true);
-    sel.removeAllRanges();
-    sel.addRange(range);
-    if (type === 'scene') this.renumberAll(true);
+    selection?.removeAllRanges();
+    selection?.addRange(range);
+    if (currentType === 'scene' || currentType === 'character' || type === 'scene' || type === 'character' || type === 'dialogue') this.renumberAll(true);
     else this._syncActive();
   }
 
@@ -6346,7 +6568,7 @@ class Component extends DCLogic {
 
   async accountAction(key) {
     this.setState({ accountOpen: false });
-    if (key === 'a-account') this.setState({ accountDetailsOpen: true });
+    if (key === 'a-account') window.filmscriptPlatform?.openAccount?.();
     else if (key === 'a-lumiere') window.filmscriptLumierePreferences?.open();
     else if (key === 'a-scripts') window.filmscriptNavigate ? window.filmscriptNavigate('App.dc.html') : window.location.href = 'App.dc.html';
     else if (key === 'a-pricing') window.location.href = this._hasPaidTextAccess()
@@ -7649,8 +7871,7 @@ ${history}
 
 Write Lumiere's next reply only:`;
     try {
-      const chatModule = this.state.workMode === 'shotlist' || (this.state.workMode === 'canvas' && this.state.canvasTool === 'shotlist') ? 'shot_list' : 'script';
-      const reply = await window.lumiere.complete({ messages: [{ role: 'user', content: prompt }], surface: 'editor-chat', module: chatModule });
+      const reply = await window.lumiere.complete({ messages: [{ role: 'user', content: prompt }], surface: 'editor-chat' });
       this.setState(s => ({ chat: [...s.chat, { who: 'l', text: (reply || '').trim() || '…', cliche: clicheRequest }], loading: false }), () => {
         this._scrollChat();
         this._queueChatSave(this.state.chat);
@@ -7709,6 +7930,7 @@ Write Lumiere's next reply only:`;
     if (this._pageHideHandler) window.removeEventListener('pagehide', this._pageHideHandler);
     if (this._writingIdleVisibilityHandler) document.removeEventListener('visibilitychange', this._writingIdleVisibilityHandler);
     if (this._creditsVisibilityHandler) document.removeEventListener('visibilitychange', this._creditsVisibilityHandler);
+    if (this._themeHandler) window.removeEventListener('filmscript:theme-change', this._themeHandler);
     if (this._proRequiredHandler) window.removeEventListener('filmscript:pro-required', this._proRequiredHandler);
     if (this._analysisOpenEditorHandler) window.removeEventListener('filmscript:analysis-open-editor', this._analysisOpenEditorHandler);
     if (this._analysisOpenSceneHandler) window.removeEventListener('filmscript:analysis-open-scene', this._analysisOpenSceneHandler);
@@ -7716,9 +7938,6 @@ Write Lumiere's next reply only:`;
     if (this._analysisAskHandler) window.removeEventListener('filmscript:analysis-ask-lumiere', this._analysisAskHandler);
     if (this._analysisBackgroundHandler) window.removeEventListener('filmscript:analysis-background', this._analysisBackgroundHandler);
     if (this._canvasShotlistHandler) window.removeEventListener('filmscript:canvas-shotlist', this._canvasShotlistHandler);
-    if (this._breakdownOpenReferenceHandler) window.removeEventListener('filmscript:breakdown-open-reference', this._breakdownOpenReferenceHandler);
-    if (this._shotListJobUpdateHandler) window.removeEventListener('filmscript:ai.job.updated', this._shotListJobUpdateHandler);
-    if (this._shotListJobCompletedHandler) window.removeEventListener('filmscript:ai.job.completed', this._shotListJobCompletedHandler);
     clearTimeout(this._saveT);
     clearTimeout(this._chatSaveTimer);
     clearTimeout(this._writingIdleCopyTimer);
@@ -7727,7 +7946,6 @@ Write Lumiere's next reply only:`;
     clearTimeout(this._titleRoomSyncTimer);
     clearTimeout(this._nameRoomSyncTimer);
     clearTimeout(this._productionTimer);
-    clearTimeout(this._shotListRefreshTimer);
     clearTimeout(this._stripboardSavedTimer);
     clearTimeout(this._stripboardEntryTimer);
     clearTimeout(this._analysisFocusTimer);
@@ -8485,11 +8703,6 @@ Write Lumiere's next reply only:`;
           movement: shot.movement || shot.move || shot.cameraMovement || 'Not set',
           description: shot.description || '',
           descriptionDisplay: shot.description || 'No description',
-          camera: shot.camera || 'A camera',
-          characters: Array.isArray(shot.characters) ? shot.characters.join(', ') : String(shot.characters || ''),
-          notes: shot.notes || '',
-          status: shot.status || 'planned',
-          productionMeta: [shot.camera, Array.isArray(shot.characters) && shot.characters.length ? shot.characters.join(', ') : '', shot.status && shot.status !== 'planned' ? shot.status.replaceAll('_', ' ') : ''].filter(Boolean).join(' · '),
           editing: this.state.shotListEditing,
           viewing: !this.state.shotListEditing,
           sizeInput: (event) => this._updateShotField(scene.id, shotIndex, 'size', event.target.value),
@@ -8502,14 +8715,6 @@ Write Lumiere's next reply only:`;
           movementBlur: (event) => this._updateShotField(scene.id, shotIndex, 'movement', event.target.value, true),
           descriptionInput: (event) => this._updateShotField(scene.id, shotIndex, 'description', event.target.value),
           descriptionBlur: (event) => this._updateShotField(scene.id, shotIndex, 'description', event.target.value, true),
-          cameraInput: (event) => this._updateShotField(scene.id, shotIndex, 'camera', event.target.value),
-          cameraBlur: (event) => this._updateShotField(scene.id, shotIndex, 'camera', event.target.value, true),
-          charactersInput: (event) => this._updateShotField(scene.id, shotIndex, 'characters', event.target.value),
-          charactersBlur: (event) => this._updateShotField(scene.id, shotIndex, 'characters', event.target.value, true),
-          notesInput: (event) => this._updateShotField(scene.id, shotIndex, 'notes', event.target.value),
-          notesBlur: (event) => this._updateShotField(scene.id, shotIndex, 'notes', event.target.value, true),
-          statusInput: (event) => this._updateShotField(scene.id, shotIndex, 'status', event.target.value),
-          statusBlur: (event) => this._updateShotField(scene.id, shotIndex, 'status', event.target.value, true),
           moveUp: () => this.moveShot(scene.id, shotIndex, -1),
           moveDown: () => this.moveShot(scene.id, shotIndex, 1),
           moveUpDisabled: shotIndex === 0,
@@ -8569,11 +8774,9 @@ Write Lumiere's next reply only:`;
             : `${this._formatProductionMinutes(remainingMinutes)} remain in this scene.`,
         addTestId: `shotlist-add-shot-${sceneIndex + 1}`,
         generateAvailable: !manual,
-        generate: canGenerateShotLists ? () => this.generateShotListForScene(scene.id, { regenerate: rows.length > 0 }) : () => this._requireLumierePlan('Your included storyboard has been used. Choose Creator or Full for more Lumiere shot lists.'),
+        generate: canGenerateShotLists ? () => this.generateShotListForScene(scene.id) : () => this._requireLumierePlan('Your included storyboard has been used. Choose Creator or Full for more Lumiere shot lists.'),
         generateDisabled: productionProgress,
-        generateLabel: productionProgress ? 'Planning…' : canGenerateShotLists ? (rows.length ? 'Regenerate with Lumiere' : 'Generate with Lumiere') : 'Creator or Full required',
-        diffVisible: Boolean(scene.shotListDiff?.generatedAt),
-        diffSummary: (() => { const diff = scene.shotListDiff || {}; const chunks = []; if ((diff.newShots || []).length) chunks.push(`+${diff.newShots.length} new`); if ((diff.modifiedShots || []).length) chunks.push(`${diff.modifiedShots.length} updated`); if ((diff.removedShots || []).length) chunks.push(`${diff.removedShots.length} removed`); if ((diff.manualEditsPreserved || []).length) chunks.push(`${diff.manualEditsPreserved.length} manual kept`); return chunks.join(' · ') || 'Coverage reviewed'; })(),
+        generateLabel: productionProgress ? 'Planning…' : canGenerateShotLists ? 'Generate with Lumiere' : 'Creator or Full required',
         deleteAvailable: manual && this.state.shotListEditing,
         remove: () => this.deleteShotListScene(scene.id),
         testId: `shotlist-scene-${sceneIndex + 1}`,
@@ -8683,9 +8886,7 @@ Write Lumiere's next reply only:`;
     const cameraReviewCount = shotListSceneSource.filter(scene => !Array.isArray(scene.shots) || scene.shots.length === 0).length;
     const completedScenes = activeProductionAnalysis?.completed || 0;
     const totalScenes = activeProductionAnalysis?.total || productionScenesRaw.length;
-    const productionProgressText = shotListMode
-      ? activeProductionAnalysis?.message || `Generating Shot List · ${Math.min(completedScenes + 1, totalScenes)} of ${totalScenes} scenes`
-      : activeProductionAnalysis?.message || `Analyzing scene ${Math.min(completedScenes + 1, totalScenes)} of ${totalScenes}`;
+    const productionProgressText = activeProductionAnalysis?.message || `Analyzing scene ${Math.min(completedScenes + 1, totalScenes)} of ${totalScenes}`;
     const breakdownGenerationActive = workMode === 'breakdown' && this.state.breakdownManualGenerating;
     const breakdownGenerationTotal = Math.max(1, Number(totalScenes) || productionScenesRaw.length || 1);
     const breakdownGenerationCompleted = Math.max(0, Math.min(breakdownGenerationTotal, Number(completedScenes) || 0));
@@ -8880,6 +9081,7 @@ Write Lumiere's next reply only:`;
 
     return {
       accent, accentSoft,
+      shellClass: this._isBreakdownEmbed ? `is-breakdown-embed${this.state.breakdownEmbedReady ? '' : ' is-breakdown-embed-loading'}` : '',
       bg: theme.bg, chrome: theme.chrome, surface: theme.surface, ink: theme.ink, muted: theme.muted, hair: theme.hair, soft: theme.soft,
       sheetLine: dark ? '#5A5953' : '#B9B3A7',
       darkMode: dark, lightMode: !dark,
@@ -8925,17 +9127,14 @@ Write Lumiere's next reply only:`;
       })),
       editorDisplay: workMode === 'editor' ? 'flex' : 'none',
       analysisMode: workMode === 'analysis',
-      translationMode: workMode === 'translation',
-      translationJobId: this.state.translationJobId,
-      translationTargetLanguage: this.state.translationTargetLanguage,
-      productionMode: !['editor', 'analysis', 'translation'].includes(workMode),
-      productionAccessNotice: !['editor', 'analysis', 'translation'].includes(workMode) && !(['canvas', 'imagine'].includes(workMode) && !shotListMode) && !canUseProductionAi,
-      productionHeaderVisible: !['translation', 'budget', 'calendar'].includes(workMode) && !(['canvas', 'imagine'].includes(workMode) && !shotListMode),
+      productionMode: workMode !== 'editor' && workMode !== 'analysis',
+      productionAccessNotice: workMode !== 'editor' && workMode !== 'analysis' && !(['canvas', 'imagine'].includes(workMode) && !shotListMode) && !canUseProductionAi,
+      productionHeaderVisible: workMode !== 'budget' && workMode !== 'calendar' && !(['canvas', 'imagine'].includes(workMode) && !shotListMode),
       workModeEyebrow: workMode === 'budget' || workMode === 'calendar' ? 'Connected production' : ['canvas','imagine'].includes(workMode) ? 'Canvas' : 'Connected preproduction',
       workModeTitle: modeTitles[workMode] || 'Editor',
-      productionMaxWidth: workMode === 'calendar' || (['canvas','imagine'].includes(workMode) && !shotListMode) ? 'none' : workMode === 'breakdown' ? '1440px' : '1120px',
+      productionMaxWidth: workMode === 'calendar' || (['canvas','imagine'].includes(workMode) && !shotListMode) || (workMode === 'breakdown' && this.state.breakdownSplitView) ? 'none' : '1120px',
       productionShellClass: workMode === 'calendar' ? 'v5-production-shell-calendar' : (['canvas','imagine'].includes(workMode) && !shotListMode) ? 'v5-production-shell-canvas' : '',
-      productionShellPadding: workMode === 'calendar' ? '12px 14px 24px' : (['canvas','imagine'].includes(workMode) && !shotListMode) ? '0' : '38px 48px 64px',
+      productionShellPadding: workMode === 'calendar' ? '12px 14px 24px' : (['canvas','imagine'].includes(workMode) && !shotListMode) ? '0' : (workMode === 'breakdown' && this.state.breakdownSplitView) ? '32px 34px 64px' : '38px 48px 64px',
       productionInnerHeight: workMode === 'calendar' || (['canvas','imagine'].includes(workMode) && !shotListMode) ? '100%' : 'auto',
       productionSyncLabel,
       productionSyncState,
@@ -8946,16 +9145,17 @@ Write Lumiere's next reply only:`;
       productionRefreshDisabled,
       refreshCurrentMode: () => this.refreshCurrentMode(),
       productionLoading: this.state.productionLoading,
-      productionEmpty: productionEmpty && workMode !== 'breakdown',
+      breakdownLoading: this.state.productionLoading && workMode === 'breakdown',
+      productionGenericLoading: this.state.productionLoading && workMode !== 'breakdown',
+      productionEmpty,
       productionEmptyTitle: emptyByMode[productionEmptyMode]?.title || '',
       productionEmptyText: emptyByMode[productionEmptyMode]?.text || '',
       productionEmptyAction: canUseProductionAi ? (emptyByMode[productionEmptyMode]?.action || '') : 'View plans',
       productionEmptyActionHandler: canUseProductionAi ? () => this.analyzeProduction() : () => { window.location.href = 'Pricing.dc.html'; },
-      productionProgress: productionProgress && workMode !== 'breakdown',
+      productionProgress,
       productionProgressText,
       productionHasData,
-      breakdownMode: workMode === 'breakdown',
-      breakdownStartVisible: false,
+      breakdownStartVisible,
       breakdownManualStarting: this.state.breakdownManualStarting,
       breakdownManualLabel: this.state.breakdownManualStarting ? 'Creating sheets…' : 'Start manual breakdown',
       breakdownStartManual: () => this.startManualBreakdown(),
@@ -8965,7 +9165,7 @@ Write Lumiere's next reply only:`;
       canvasWorkspaceVisible: (workMode === 'canvas' && !shotListMode) || workMode === 'imagine',
       canvasInitialView: workMode === 'imagine' ? 'imagine' : 'home',
       canvasBack: () => this.openCanvasHome(),
-      breakdownHasData: false,
+      breakdownHasData: workMode === 'breakdown' && productionHasData,
       stripboardHasData: workMode === 'stripboard' && productionHasData,
       stripboardMotionClass: this.state.stripboardEntering ? 'v5-stripboard-entering' : '',
       shotListHasData: shotListMode && productionHasData,
@@ -9120,9 +9320,6 @@ Write Lumiere's next reply only:`;
       shotListHasScenes: shotListScenes.length > 0,
       shotListNoScenes: shotListScenes.length === 0,
       shotListSummary: `${shotListScenes.length} scene${shotListScenes.length === 1 ? '' : 's'} · ${shotListTotalShots} shot${shotListTotalShots === 1 ? '' : 's'}`,
-      shotListGenerate: () => this.generateShotListForScene(null, { regenerate: shotListTotalShots > 0 }),
-      shotListGenerateLabel: productionProgress ? 'Planning…' : shotListTotalShots > 0 ? 'Regenerate coverage' : 'Generate with Lumiere',
-      shotListGenerateDisabled: productionProgress || !canGenerateShotLists || productionScenesRaw.length === 0,
       shotListEditing: this.state.shotListEditing,
       shotListViewing: !this.state.shotListEditing,
       shotListEditLabel: this.state.shotListEditing ? 'Done' : 'Edit shots',
@@ -9200,6 +9397,20 @@ Write Lumiere's next reply only:`;
       breakdownExportPdf: () => this.exportBreakdownDepartment(this.state.breakdownExportDepartment, 'pdf'),
       breakdownExportExcel: () => this.exportBreakdownDepartment(this.state.breakdownExportDepartment, 'excel'),
       breakdownExportPrint: () => this.exportBreakdownDepartment(this.state.breakdownExportDepartment, 'print'),
+      breakdownSplitView: this.state.breakdownSplitView,
+      breakdownWorkspaceClass: this.state.breakdownSplitView ? 'is-split' : '',
+      breakdownSplitLabel: this.state.breakdownSplitView ? 'Close split view' : 'Split view',
+      breakdownSplitAriaLabel: this.state.breakdownSplitView ? 'Close screenplay and breakdown split view' : 'Open screenplay and breakdown split view',
+      breakdownSplitToggle: () => {
+        const next = !this.state.breakdownSplitView;
+        const scriptId = this.state.activeScriptId || this._activeScriptId || 'default';
+        try { localStorage.setItem(`filmscript_breakdown_split_${scriptId}`, next ? '1' : '0'); } catch (error) {}
+        this.setState({ breakdownSplitView: next, breakdownSplitLoaded: false });
+      },
+      breakdownScriptSrc: `Editor%20v5.dc.html?script=${encodeURIComponent(this.state.activeScriptId || this._activeScriptId || '')}&title=${encodeURIComponent(this.state.docTitle || '')}&view=editor&embed=breakdown`,
+      breakdownScriptLoaded: () => this.setState({ breakdownSplitLoaded: true }),
+      breakdownScriptReadyClass: this.state.breakdownSplitLoaded ? 'is-ready' : '',
+      breakdownEmbedLoading: this._isBreakdownEmbed && !this.state.breakdownEmbedReady,
       breakdownStatus,
       breakdownStatusColor: breakdownStatus === 'Synced' ? (dark ? '#61B58B' : '#2E7D5B') : breakdownStatus === 'Outdated' ? (dark ? '#E46A64' : '#C74440') : accent,
       breakdownOrigin: breakdownManualOrigin ? 'Manual' : 'Lumiere',
@@ -9251,10 +9462,10 @@ Write Lumiere's next reply only:`;
       characterPickerNames: this.state.characterPickerNames,
       characterPickerHasNames: this.state.characterPickerNames.length > 0,
       characterPickerEmpty: this.state.characterPickerNames.length === 0,
-      railVisible: this.state.railOpen || this.state.railClosing,
+      railVisible: !this._isBreakdownEmbed && (this.state.railOpen || this.state.railClosing),
       railAnimation: this.state.railClosing ? 'v5-slide-left-out .24s ease both' : 'v5-slide-left-in .24s ease both',
       lumiereOpen: this.state.lumiereOpen,
-      lumiereVisible: this.state.lumiereOpen || this.state.lumiereClosing,
+      lumiereVisible: !this._isBreakdownEmbed && (this.state.lumiereOpen || this.state.lumiereClosing),
       lumiereAnimation: this.state.lumiereClosing ? 'v5-slide-right-out .24s ease both' : 'v5-slide-right-in .24s ease both',
       lumiereClosed: !this.state.lumiereOpen,
       // Free users can use their remaining Lumiere prompts. Analysis keeps a

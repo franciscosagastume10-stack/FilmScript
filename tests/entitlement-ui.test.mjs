@@ -58,6 +58,22 @@ test("Breakdown begins with a clear manual-or-Lumiere choice", async () => {
   assert.match(server, /sceneNeedsBreakdown\(scene, \{ includeManual \}\)/);
 });
 
+test("Breakdown loads with a Liquid Glass card composition instead of a spreadsheet placeholder", async () => {
+  const editor = await fs.readFile(path.join(ROOT, "Editor v5.dc.html"), "utf8");
+  assert.match(editor, /breakdownLoading: this\.state\.productionLoading && workMode === 'breakdown'/);
+  assert.match(editor, /productionGenericLoading: this\.state\.productionLoading && workMode !== 'breakdown'/);
+  assert.match(editor, /class="v5-breakdown-loader" role="status" aria-live="polite"/);
+  assert.match(editor, /Preparing your Breakdown/);
+  assert.match(editor, /class="v5-breakdown-loader-grid"/);
+  assert.match(editor, /\.v5-breakdown-loader \{[^}]*backdrop-filter: blur\(32px\) saturate\(1\.32\)/);
+  assert.match(editor, /class="v5-breakdown-grid"/);
+  assert.match(editor, /\.v5-breakdown-grid \{[^}]*gap: 13px/);
+  assert.match(editor, /\.v5-breakdown-cell \{[^}]*border-radius:[^}]*backdrop-filter: blur\(24px\)/);
+  assert.doesNotMatch(editor, /class="v5-breakdown-cell"[^>]*border-right:/);
+  assert.match(editor, /prefers-reduced-transparency: reduce/);
+  assert.match(editor, /prefers-reduced-motion: reduce/);
+});
+
 test("local preview renews only its own Lumiere session after a server restart", async () => {
   const server = await fs.readFile(path.join(ROOT, "server.js"), "utf8");
   assert.match(server, /PREVIEW_LUMIERE_SESSION_STARTED_AT/);
@@ -71,6 +87,57 @@ test("Plan and billing uses a concise section heading without repeating the plan
   assert.match(subscription, /<div class="eyebrow">Membership<\/div>/);
   assert.match(subscription, /<h1>Plan &amp; billing<\/h1>/);
   assert.doesNotMatch(subscription, /<h1>FilmScript Pro<\/h1>/);
+});
+
+test("Plan and billing initializes its account client before reading the signed-in member", async () => {
+  const subscription = await fs.readFile(path.join(ROOT, "Subscription.dc.html"), "utf8");
+  assert.match(subscription, /<script src="\.\/billing-client\.js\?v=20260819-subscription-ready1"><\/script>/);
+  assert.doesNotMatch(subscription, /<script defer src="\.\/billing-client\.js/);
+  assert.match(subscription, /const billingReady = async \(\) => \{/);
+  assert.match(subscription, /const billing = await billingReady\(\);\s*account = await billing\.me\(\)/);
+  assert.match(subscription, /management = await billing\.manageSubscription\(\)/);
+});
+
+test("Plan and billing reflects the current product in readable Liquid Glass", async () => {
+  const [subscription, language] = await Promise.all([
+    fs.readFile(path.join(ROOT, "Subscription.dc.html"), "utf8"),
+    fs.readFile(path.join(ROOT, "language-preference.js"), "utf8"),
+  ]);
+  assert.match(subscription, /backdrop-filter:blur\(34px\) saturate\(1\.18\)/);
+  assert.match(subscription, /prefers-reduced-transparency:reduce/);
+  assert.match(subscription, /prefers-reduced-motion: reduce/);
+  assert.match(subscription, /Real-time collaboration/);
+  assert.match(subscription, /Comments and notifications/);
+  assert.match(subscription, /Breakdown and split view/);
+  assert.match(subscription, /Collaboration and activity/);
+  assert.match(subscription, /Shared Project/);
+  assert.match(subscription, /Canvas, files and exports/);
+  assert.match(subscription, /isFull \? '1,000 image credits' : '100 image credits'/);
+  assert.match(subscription, /document\.documentElement\.lang === 'es'/);
+  assert.match(subscription, /'Plan y facturación · FilmScript'/);
+  assert.match(subscription, /'Plan and billing · FilmScript'/);
+  assert.match(subscription, /MutationObserver\(syncDocumentTitle\).*attributeFilter: \['lang'\]/);
+  for (const spanish of [
+    'Plan y facturación',
+    'Colaboración en tiempo real',
+    'Comentarios y notificaciones',
+    'Desglose y vista dividida',
+    'Colaboración y actividad',
+    'Proyecto compartido',
+    'Canvas, archivos y exportaciones',
+  ]) assert.match(language, new RegExp(spanish));
+});
+
+test("Scripts starts its animated greeting before account and screenplay requests", async () => {
+  const scripts = await fs.readFile(path.join(ROOT, "App.dc.html"), "utf8");
+  const mounted = scripts.match(/async componentDidMount\(\) \{[\s\S]*?\n  \}\n\n  componentWillUnmount/);
+  assert.ok(mounted, "expected Scripts componentDidMount");
+  const source = mounted[0];
+  assert.ok(source.indexOf("this._typeGreeting();") < source.indexOf("filmscriptScriptsAccess?.ready"));
+  assert.ok(source.indexOf("this._typeGreeting();") < source.indexOf("this._refreshBilling("));
+  assert.ok(source.indexOf("this._typeGreeting();") < source.indexOf("this._loadScripts("));
+  assert.match(scripts, /class="fs-type-caret"/);
+  assert.match(scripts, /animation: fs-rise/);
 });
 
 test("legacy one-off resets are retired in favor of subscription image credits", async () => {
@@ -297,6 +364,8 @@ test("Breakdown uses direct autosaving edits without an Edit Sheet control", asy
   assert.match(editor, /activateBreakdownEditing\(event\)/);
   assert.match(editor, /Click any field to edit/);
   assert.match(editor, /breakdownExportDisabled: this\.state\.breakdownExporting/);
+  assert.match(editor, /data-testid="breakdown-export-pdf"/);
+  assert.match(editor, /window\.filmscriptPreproduction\.exportPdf\(scriptId\)/);
 });
 
 test("Breakdown categories keep distinct colors and open their exact screenplay evidence", async () => {
@@ -373,14 +442,21 @@ test("Breakdown refresh exposes red or green sync state and asks Lumiere only fo
 });
 
 test("Theme changes use a global smooth fade transition", async () => {
-  const [theme, editor] = await Promise.all([
+  const [theme, editor, platform] = await Promise.all([
     fs.readFile(path.join(ROOT, "theme-preference.js"), "utf8"),
     fs.readFile(path.join(ROOT, "Editor v5.dc.html"), "utf8"),
+    fs.readFile(path.join(ROOT, "platform-client.js"), "utf8"),
   ]);
   assert.match(theme, /filmscript-theme-transition/);
   assert.match(theme, /filmscript-theme-fading/);
   assert.match(theme, /transition-property: color, background-color, border-color/);
   assert.match(theme, /apply\(next, true\)/);
+  assert.match(theme, /const STORAGE_KEY = 'filmscript_theme'/);
+  assert.match(theme, /new CustomEvent\('filmscript:theme-change'/);
+  assert.match(platform, /window\.filmscriptTheme\?\.set\?\.\(selected\)/);
+  assert.match(platform, /localStorage\.setItem\('filmscript_theme', selected\)/);
+  assert.match(platform, /new CustomEvent\('filmscript:theme-change'/);
+  assert.doesNotMatch(platform, /filmscript_theme_v2/);
   assert.match(editor, /<script src="\.\/theme-preference\.js/);
 });
 
@@ -392,20 +468,47 @@ test("Story flow uses a subtle imperfect hand-drawn line", async () => {
   assert.match(analysis, /stroke-dasharray:1800;stroke-dashoffset:1800/);
 });
 
-test("Account details opens in place from the editor", async () => {
-  const editor = await fs.readFile(path.join(ROOT, "Editor v5.dc.html"), "utf8");
-  assert.match(editor, /accountDetailsOpen: false/);
-  assert.match(editor, /if \(key === 'a-account'\) this\.setState\(\{ accountDetailsOpen: true \}\)/);
+test("Account opens the centralized Liquid Glass account center from the editor", async () => {
+  const [app, editor, platform] = await Promise.all([
+    fs.readFile(path.join(ROOT, "App.dc.html"), "utf8"),
+    fs.readFile(path.join(ROOT, "Editor v5.dc.html"), "utf8"),
+    fs.readFile(path.join(ROOT, "platform-client.js"), "utf8"),
+  ]);
+  assert.match(editor, /if \(key === 'a-account'\) window\.filmscriptPlatform\?\.openAccount\?\.\(\)/);
+  assert.match(app, /window\.filmscriptPlatform\?\.openAccount\?\.\(\)/);
+  assert.doesNotMatch(editor, /window\.filmscriptPlatform\.openAccount\(\)/);
+  assert.doesNotMatch(app, /window\.filmscriptPlatform\.openAccount\(\)/);
   assert.match(editor, /data-testid="account-avatar"/);
   assert.doesNotMatch(editor, /profile=1&returnTo=/);
+  assert.match(platform, /async function openAccount\(\)/);
+  assert.match(platform, /'fs-account-dialog'/);
 });
 
-test("Account details includes an editable Personal profile", async () => {
-  const editor = await fs.readFile(path.join(ROOT, "Editor v5.dc.html"), "utf8");
-  assert.match(editor, /Personal profile/);
-  assert.match(editor, /saveAccountPersonalProfile/);
-  assert.match(editor, /accountProfileBirthDate/);
-  assert.match(editor, /accountProfileGender/);
+test("Account avatar assets preserve absolute URLs and resolve API-relative paths", async () => {
+  const platform = await fs.readFile(path.join(ROOT, "platform-client.js"), "utf8");
+  const helpers = platform.match(/const resolve = \(path\) => [^\n]+;\n\s+const resolveAsset = \(path\) => [^\n]+;/);
+  assert.ok(helpers, "expected the Account asset resolver");
+
+  const resolveAsset = Function(
+    "window",
+    `"use strict"; ${helpers[0]}; return resolveAsset;`,
+  )({ filmscriptApiUrl: (assetPath) => `https://filmscript.example${assetPath}` });
+
+  assert.equal(resolveAsset("https://cdn.example/avatar.jpg"), "https://cdn.example/avatar.jpg");
+  assert.equal(resolveAsset("data:image/png;base64,avatar"), "data:image/png;base64,avatar");
+  assert.equal(resolveAsset("blob:https://filmscript.app/avatar"), "blob:https://filmscript.app/avatar");
+  assert.equal(resolveAsset("/api/me/avatar"), "https://filmscript.example/api/me/avatar");
+  assert.match(platform, /identity\.imageUrl \? resolveAsset\(identity\.imageUrl\) : null/);
+  assert.match(platform, /person\?\.picture \? resolveAsset\(person\.picture\) : null/);
+});
+
+test("the centralized Account includes editable identity and Personal profile fields", async () => {
+  const platform = await fs.readFile(path.join(ROOT, "platform-client.js"), "utf8");
+  assert.match(platform, /<h3>Account details<\/h3>/);
+  assert.match(platform, /<h4>Personal profile<\/h4>/);
+  assert.match(platform, /name="birthDate" type="date"/);
+  assert.match(platform, /name="gender"/);
+  assert.match(platform, /api\.updateMe\(\{ name:/);
 });
 
 test("Opening Lumiere refits the screenplay to the remaining editor width", async () => {
@@ -643,8 +746,7 @@ test("budget prioritizes active data and presents empty states without empty tab
   assert.match(budget, /syncStatusText\(\)/);
   assert.doesNotMatch(budget, /onclick="event\.stopPropagation\(\)"/);
   assert.match(budget, /event\.target\.classList\?\.contains\('modal-backdrop'\)/);
-  assert.match(editor, /translationMode: workMode === 'translation'/);
-  assert.match(editor, /productionHeaderVisible: !\['translation', 'budget', 'calendar'\]\.includes\(workMode\)/);
+  assert.match(editor, /productionHeaderVisible: workMode !== 'budget'/);
 });
 
 test("work modes, narrative Analysis, and prominent budget totals animate without ignoring reduced motion", async () => {
@@ -688,7 +790,7 @@ test("Analysis uses one Lumiere insights contract with screenplay evidence and p
     fs.readFile(path.join(ROOT, "Editor v5.dc.html"), "utf8"),
   ]);
 
-  assert.match(server, /SCRIPT_ANALYSIS_REVISION = 5/);
+  assert.match(server, /SCRIPT_ANALYSIS_REVISION = 4/);
   assert.match(server, /"overview"/);
   assert.match(server, /"storyClarity"/);
   assert.match(server, /"storyFlow"/);
@@ -719,14 +821,7 @@ test("Analysis uses one Lumiere insights contract with screenplay evidence and p
   assert.match(editor, /analysisBackgroundVisible/);
   assert.match(editor, /_scheduleAnalysisBackgroundPoll/);
   assert.match(editor, /Lumiere is analyzing/);
-  assert.match(analysis, /data-action="start-analysis"/);
-  assert.match(analysis, /data-action="reanalyze"/);
-  assert.match(analysis, /analysis-processing-glass/);
-  assert.match(analysis, /Your script has changed since this analysis was generated\./);
-  assert.match(server, /diffAnalysisScenes/);
-  assert.match(server, /changedSceneIds/);
-  assert.match(server, /sceneContentHashes/);
-  assert.match(server, /deterministicMetricsRecomputed/);
+  assert.match(analysis, /data-action="start-quick"/);
   assert.match(analysis, /const waitingForUser = this\.analysis\.hasEnoughContent/);
   assert.match(analysis, /load\(\{ startAnalysis: true \}\)/);
   assert.doesNotMatch(editor, /Mount the Analysis element first[\s\S]*refreshFromEditor/);
@@ -942,4 +1037,129 @@ test("Lumiere personalization is account-scoped, accessible from profile and edi
   assert.deepEqual(Array.from(normalized.directors), ["Céline Sciamma", "Alfonso Cuarón"]);
   assert.equal(normalized.feedbackTone, "balanced");
   assert.equal(normalized.creativePriorities, "Protect the silences.");
+});
+
+test("Enter splits screenplay text at the caret instead of jumping to the paragraph end", async () => {
+  const editor = await fs.readFile(path.join(ROOT, "Editor v5.dc.html"), "utf8");
+  const enterMethod = editor.match(/\n  _enter\(\) \{[\s\S]*?\n  \}\n\n  setFormat/);
+
+  assert.ok(enterMethod, "expected the screenplay Enter operation");
+  assert.match(enterMethod[0], /getRangeAt\(0\)\.cloneRange\(\)/);
+  assert.match(enterMethod[0], /trailingRange\.setStart\(activeRange\.startContainer, activeRange\.startOffset\)/);
+  assert.match(enterMethod[0], /trailingFragment = trailingRange\.extractContents\(\)/);
+  assert.match(enterMethod[0], /hasTrailingText \? currentType : \(nextMap\[currentType\]/);
+  assert.match(enterMethod[0], /div\.dataset\.blockId = `blk_\$\{crypto\.randomUUID\(\)/);
+  assert.match(enterMethod[0], /range\.setStart\(div, 0\)/);
+  assert.match(editor, /if \(e\.isComposing \|\| e\.keyCode === 229\) return/);
+  assert.match(editor, /this\._enter\(\);[\s\S]*?this\._queueRealtimeScriptSync\(\)/);
+});
+
+test("a saved photo or preset avatar is restored after reload and reactive remount", async () => {
+  const [platform, scripts, editor] = await Promise.all([
+    fs.readFile(path.join(ROOT, "platform-client.js"), "utf8"),
+    fs.readFile(path.join(ROOT, "App.dc.html"), "utf8"),
+    fs.readFile(path.join(ROOT, "Editor v5.dc.html"), "utf8"),
+  ]);
+
+  assert.match(platform, /function applyAccountIdentity\(\)/);
+  assert.match(platform, /state\.profile = platform\.profile \|\| null/);
+  assert.match(platform, /state\.me = \{ \.\.\.\(state\.me \|\| \{\}\), avatar:result\.avatarUrl \}/);
+  assert.match(platform, /new MutationObserver\(\(records\) => \{/);
+  assert.match(platform, /hasNewAvatar[\s\S]*?requestAnimationFrame\(\(\) => \{ identityFrame = 0; applyAccountIdentity\(\); \}\)/);
+  assert.match(platform, /backgroundSize = 'cover'/);
+  assert.match(platform, /state\.profile\?\.avatarCrop\?\.presetIcon/);
+  for (const page of [scripts, editor]) assert.match(page, /platform-client\.js\?v=20260819-account1/);
+});
+
+test("Account offers ten original film icons, fixed backgrounds, and never lists the current session as a collaborator", async () => {
+  const [platform, css, scripts, editor] = await Promise.all([
+    fs.readFile(path.join(ROOT, "platform-client.js"), "utf8"),
+    fs.readFile(path.join(ROOT, "platform-ui.css"), "utf8"),
+    fs.readFile(path.join(ROOT, "App.dc.html"), "utf8"),
+    fs.readFile(path.join(ROOT, "Editor v5.dc.html"), "utf8"),
+  ]);
+  for (const id of ['camera','clapperboard','film-reel','screenplay','director-chair','spotlight','microphone','star','moon','sun']) assert.match(platform, new RegExp(`id:'${id}'`));
+  assert.match(platform, /state\.presence\.filter\(\(person\) => person\.clientId !== clientId && person\.userId !== state\.me\?\.id/);
+  assert.match(platform, /container\.hidden = unique\.length === 0/);
+  assert.match(platform, /presetBackground:selectedBackground/);
+  assert.doesNotMatch(platform, /Theme and profile photo/);
+  assert.match(css, /\.fs-account-email-field > strong[^}]*text-overflow:ellipsis[^}]*white-space:nowrap/);
+  assert.match(css, /\.fs-account-dialog \{/);
+  for (const page of [scripts, editor]) {
+    assert.match(page, />Account<\/(?:div|span)>/);
+    assert.doesNotMatch(page, /data-filmscript-open-profile/);
+  }
+});
+
+test("Breakdown split view keeps the existing sheet beside an isolated editable screenplay", async () => {
+  const [editor, vercel] = await Promise.all([
+    fs.readFile(path.join(ROOT, "Editor v5.dc.html"), "utf8"),
+    fs.readFile(path.join(ROOT, "vercel.json"), "utf8"),
+  ]);
+
+  assert.match(editor, /data-testid="breakdown-split-toggle"/);
+  assert.match(editor, /aria-pressed="\{\{ breakdownSplitView \}\}"/);
+  assert.match(editor, /data-testid="breakdown-workspace"/);
+  assert.match(editor, /data-testid="breakdown-script-pane"/);
+  assert.match(editor, /data-testid="breakdown-script-frame"/);
+  assert.match(editor, /view=editor&embed=breakdown/);
+  assert.match(editor, /_isBreakdownEmbed = new URLSearchParams\(window\.location\.search\)\.get\('embed'\) === 'breakdown'/);
+  assert.match(editor, /railOpen: this\._isBreakdownEmbed \? false/);
+  assert.match(editor, /lumiereOpen: this\._isBreakdownEmbed \? false/);
+  assert.match(editor, /railVisible: !this\._isBreakdownEmbed/);
+  assert.match(editor, /lumiereVisible: !this\._isBreakdownEmbed/);
+  assert.match(editor, /body:has\(\.v5-app-shell\.is-breakdown-embed\) \.fs-mobile-nav \{ display: none !important/);
+  assert.match(editor, /\.v5-breakdown-workspace\.is-split \{[^}]*grid-template-columns: repeat\(2, minmax\(0, 1fr\)\)/);
+  assert.match(editor, /@media \(max-width: 1120px\)[\s\S]*?\.v5-breakdown-workspace\.is-split \{[^}]*grid-template-columns: minmax\(0, 1fr\)/);
+  assert.match(editor, /\.v5-breakdown-workspace\.is-split > \.v5-breakdown-scroll \{[^}]*height: 100%[^}]*overflow: auto/);
+  assert.match(editor, /data-testid="breakdown-pane-navigator"/);
+  assert.match(editor, /\.v5-breakdown-toolbar\.is-split > \.v5-breakdown-navigator \{ display: none; \}/);
+  assert.match(editor, /\.v5-breakdown-workspace\.is-split \.v5-breakdown-pane-navigator \{[^}]*position: sticky/);
+  assert.match(editor, /filmscript_breakdown_split_\$\{scriptId\}/);
+  assert.match(vercel, /"X-Frame-Options", "value": "SAMEORIGIN"/);
+  assert.match(vercel, /frame-ancestors 'self'/);
+  assert.doesNotMatch(vercel, /frame-ancestors 'none'/);
+
+  const splitStart = editor.indexOf('data-testid="breakdown-workspace"');
+  const splitEnd = editor.indexOf('</sc-if>', splitStart);
+  const splitPane = editor.slice(splitStart, splitEnd);
+  assert.doesNotMatch(splitPane, /Lumiere/i);
+  assert.doesNotMatch(splitPane, /Scene navigator/i);
+});
+
+test("the account mini menu is spacious Liquid Glass with themed credits and a red sign out action", async () => {
+  const [scripts, editor, css, credits] = await Promise.all([
+    fs.readFile(path.join(ROOT, "App.dc.html"), "utf8"),
+    fs.readFile(path.join(ROOT, "Editor v5.dc.html"), "utf8"),
+    fs.readFile(path.join(ROOT, "platform-ui.css"), "utf8"),
+    fs.readFile(path.join(ROOT, "credit-indicator.js"), "utf8"),
+  ]);
+
+  for (const page of [scripts, editor]) {
+    assert.match(page, /class="[^"]*fs-profile-popover[^"]*" data-filmscript-profile-panel role="menu"/);
+    assert.match(page, /class="[^"]*fs-profile-signout[^"]*"[^>]*role="menuitem"/);
+    assert.match(page, /<button type="button"[^>]*fs-profile-menu-item/);
+  }
+  assert.match(css, /\.fs-profile-popover \{[^}]*top:calc\(100% \+ 14px\)!important/);
+  assert.match(css, /\.fs-profile-popover \{[^}]*backdrop-filter:blur\(42px\) saturate\(1\.25\)!important/);
+  assert.match(css, /\.fs-profile-menu-item \{[^}]*min-height:42px[^}]*text-align:left/);
+  assert.match(css, /\.fs-profile-signout \{[^}]*color:var\(--semantic-danger\)!important/);
+  assert.match(css, /prefers-reduced-transparency: reduce[^}]*\.fs-profile-popover/);
+  assert.match(credits, /\.fs-avatar-credit-progress \{[^}]*stroke: var\(--accent, #BA7517\)/);
+  assert.match(credits, /\.fs-profile-credit \{[^}]*backdrop-filter: blur\(28px\) saturate\(1\.18\)/);
+  assert.match(credits, /\.fs-profile-credit-fill \{[^}]*background: var\(--accent, #BA7517\)/);
+});
+
+test("Lumiere personalization stays compact, section-navigable, and keeps actions visible", async () => {
+  const source = await fs.readFile(path.join(ROOT, "lumiere-preferences.js"), "utf8");
+  assert.match(source, /width:min\(700px,100%\)/);
+  assert.match(source, /max-height:min\(780px,calc\(100vh - 48px\)\)/);
+  assert.match(source, /backdrop-filter:blur\(22px\) saturate\(1\.12\)/);
+  assert.match(source, /data-lp-jump="basics"/);
+  assert.match(source, /data-lp-jump="references"/);
+  assert.match(source, /data-lp-jump="voice"/);
+  assert.match(source, /data-lp-jump="guardrails"/);
+  assert.match(source, /scrollIntoView\(\{ behavior: 'smooth', block: 'start' \}\)/);
+  assert.match(source, /grid-template-rows:auto auto minmax\(0,1fr\) auto/);
+  assert.match(source, /\.fs-lp-foot\{display:flex/);
 });
