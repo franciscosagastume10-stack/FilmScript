@@ -9,6 +9,7 @@ const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const runtimeConfig = fs.readFileSync(path.join(root, 'runtime-config.js'), 'utf8');
 const billingClient = fs.readFileSync(path.join(root, 'billing-client.js'), 'utf8');
 const featuresPage = fs.readFileSync(path.join(root, 'Features.dc.html'), 'utf8');
+const vercelConfig = JSON.parse(fs.readFileSync(path.join(root, 'vercel.json'), 'utf8'));
 
 function runBillingClient(pathname, search = '') {
   const redirects = [];
@@ -86,4 +87,48 @@ test('the Features landing opens one clean Google authentication panel', () => {
   assert.equal(featuresPage.includes('<div class="fs-auth-brand">FilmScript</div>'), false);
   assert.equal(featuresPage.includes('<div class="fs-auth-eyebrow">Your writing workspace</div>'), false);
   assert.equal(featuresPage.includes('Create your account'), false);
+});
+
+test('Vercel completes the Google handoff through a same-origin cookie proxy', async (t) => {
+  assert.deepEqual(vercelConfig.rewrites[0], {
+    source: '/api/auth/complete',
+    destination: '/api/auth-complete',
+  });
+  assert.equal(vercelConfig.rewrites[1].source, '/api/:path*');
+
+  const originalFetch = globalThis.fetch;
+  const sid = 'filmscript_sid=authenticated; Path=/; HttpOnly; SameSite=Lax';
+  const shared = 'filmscript_shared_sid=authenticated; Domain=.filmscript.app; Path=/; HttpOnly; SameSite=Lax';
+  globalThis.fetch = async (url, options) => {
+    assert.equal(url, 'https://api.filmscript.app/api/auth/complete?handoff=abcdefghijklmnopqrstuvwx');
+    assert.equal(options.redirect, 'manual');
+    return {
+      status: 200,
+      headers: {
+        get: (name) => name === 'content-type' ? 'application/json; charset=utf-8' : null,
+        getSetCookie: () => [sid, shared],
+      },
+      arrayBuffer: async () => Buffer.from('{"ok":true}'),
+    };
+  };
+  t.after(() => { globalThis.fetch = originalFetch; });
+
+  const headers = new Map();
+  let body = null;
+  const req = {
+    method: 'GET',
+    url: '/api/auth/complete?handoff=abcdefghijklmnopqrstuvwx',
+    headers: { 'user-agent': 'FilmScript test' },
+  };
+  const res = {
+    statusCode: 0,
+    setHeader: (name, value) => headers.set(name.toLowerCase(), value),
+    end: (value) => { body = value; },
+  };
+  const { default: authComplete } = await import(`../api/auth-complete.js?test=${Date.now()}`);
+  await authComplete(req, res);
+
+  assert.equal(res.statusCode, 200);
+  assert.deepEqual(headers.get('set-cookie'), [sid, shared]);
+  assert.equal(Buffer.from(body).toString(), '{"ok":true}');
 });
