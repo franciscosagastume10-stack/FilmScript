@@ -91,7 +91,11 @@ test('the Features landing opens one clean Google authentication panel', () => {
 });
 
 test('Vercel completes the Google handoff through a same-origin cookie proxy', async (t) => {
-  assert.equal(vercelConfig.rewrites[0].source, '/api/:path((?!auth-complete).*)');
+  assert.deepEqual(vercelConfig.rewrites[0], {
+    source: '/workspace/:path*',
+    destination: 'https://api.filmscript.app/api/:path*',
+  });
+  assert.equal(vercelConfig.rewrites[1].source, '/api/:path((?!auth-complete).*)');
   assert.match(vercelIgnore, /^api\/\*$/m);
   assert.match(vercelIgnore, /^!api\/auth-complete\.js$/m);
   assert.doesNotMatch(vercelIgnore, /^api$/m);
