@@ -1,5 +1,6 @@
 (() => {
   const resolve = (path) => window.filmscriptApiUrl ? window.filmscriptApiUrl(path) : path;
+  const resolveAsset = (path) => /^(?:https?:|data:|blob:)/i.test(String(path || '')) ? String(path) : resolve(path);
   const request = async (path, options = {}) => {
     const response = await fetch(resolve(path), { credentials: 'include', cache: 'no-store', ...options, headers: { ...(options.body && typeof options.body === 'string' ? { 'Content-Type': 'application/json' } : {}), ...(options.headers || {}) } });
     const data = await response.json().catch(() => ({}));
@@ -13,15 +14,33 @@
     ['filmscript','FilmScript','#ffb703'],['dark','Dark','#191919'],['mint','Mint','#bce3ca'],['tangerine','Tangerine','#f6bd88'],
     ['lavender','Lavender','#d9c7ef'],['sky','Sky','#bcdff1'],['rose','Rose','#f0c4cf'],['sun','Sun','#f3dc8c'],
   ];
-  const state = { me: null, profile: null, notifications: [], presence: [], eventSource: null, commentContext: null, localContext: null };
+  const avatarBackgrounds = [
+    ['amber','Amber','#D99A32','#241707'],['tangerine','Tangerine','#D8784E','#281008'],['mint','Mint','#70A98A','#10241A'],['sky','Sky','#6C9DC1','#10232E'],
+    ['lavender','Lavender','#947EB8','#21152C'],['rose','Rose','#BD7586','#2D1019'],['sand','Sand','#B89A73','#261A0E'],['slate','Slate','#596875','#FFFEF9'],
+  ];
+  const profileIcons = [
+    { id:'camera', label:'Cinema camera', svg:'<svg viewBox="0 0 48 48" aria-hidden="true"><path d="M8.5 20.5c.2-2.8 1.8-4.3 4.7-4.4l17.1.4c2.5.1 3.8 1.7 3.7 4.2l-.3 12.1c-.1 2.4-1.8 3.8-4.2 3.8l-16.8-.4c-2.7-.1-4.1-1.6-4-4.3l-.2-11.4Z"/><path d="m34 23.2 7.2-4.1-.3 14.4-7-4.2M15 16l3.4-5.1 7.3.2 3 5.3M18.4 23.1c4-2.4 8.9.4 8.3 4.7-.5 3.5-4.6 5.2-7.4 3.1-2.5-1.8-2.8-5.9-.9-7.8Z"/></svg>' },
+    { id:'clapperboard', label:'Clapperboard', svg:'<svg viewBox="0 0 48 48" aria-hidden="true"><path d="m8.1 18.5 32.1-6.4 1.1 6-32 6.4-1.2-6Z"/><path d="m12.3 17.6 3.1 5m7.2-7 3.1 4.8m7.3-6.7 3.2 4.7M10.2 24.3l29.3-5.8.1 19.2-28.8.2-.6-13.6Z"/><path d="M11.2 29.2c8.8-.5 18.1-.4 27.7-.2"/></svg>' },
+    { id:'film-reel', label:'Film reel', svg:'<svg viewBox="0 0 48 48" aria-hidden="true"><path d="M23.8 7.4c9.4-.2 16.9 7.2 16.7 16.7-.2 9.1-7.7 16.6-16.8 16.4C14.4 40.4 7 32.9 7.3 23.6 7.5 14.8 14.7 7.6 23.8 7.4Z"/><path d="M21 12.1c3.1-1.8 6.2.8 5 4-.8 2.2-3.6 3-5.4 1.5-1.7-1.4-1.5-4.2.4-5.5ZM12.7 24c-.2-3.5 3.6-5.2 6-2.7 1.7 1.8.9 4.7-1.4 5.5-2.1.8-4.4-.6-4.6-2.8Zm9.1 11.2c-3.2-1.5-2.9-5.6.4-6.6 2.3-.7 4.5 1.4 4 3.8-.4 2.2-2.4 3.7-4.4 2.8Zm10.8-8.4c-3.4.8-5.7-2.6-3.7-5.4 1.4-2 4.4-1.7 5.5.5 1 2 .2 4.4-1.8 4.9ZM22 23.6c.1-2.5 3.7-2.7 4-.2.3 2.7-3.8 3-4 .2Z"/></svg>' },
+    { id:'screenplay', label:'Screenplay pages', svg:'<svg viewBox="0 0 48 48" aria-hidden="true"><path d="M13 7.8c7-.1 14.1.1 21.3.3l.7 31.1c-7.4.4-14.8.2-22.2-.2L13 7.8Z"/><path d="M18.4 15.3c3.5-.2 7.2-.1 11 .1m-11 6.3c2.9.1 6.1.1 9.5-.1m-9.6 6.5c4.5-.1 8.6 0 12 .3m-11.9 6c3.2.2 6.7.2 10.6 0"/><path d="m10.2 11.5.3 30.1c6.8.4 13.1.4 19-.1"/></svg>' },
+    { id:'director-chair', label:'Director chair', svg:'<svg viewBox="0 0 48 48" aria-hidden="true"><path d="M12 8.7c7.9-.4 15.7-.3 23.4.2l-.8 12.5c-7.1.4-14.2.3-21.5-.2L12 8.7Z"/><path d="M14.3 22.1 35 40.2M34.2 21.8 14 40.5M10.5 23.8c9.3.8 18.5.7 27.5-.2M12.8 40.4h6.5m9.5 0h7"/></svg>' },
+    { id:'spotlight', label:'Studio spotlight', svg:'<svg viewBox="0 0 48 48" aria-hidden="true"><path d="M10.1 13.6c8-2.5 16-4.2 24-4.9l3.5 17.6c-7.8 1.5-15.3 3-22.7 4.8l-4.8-17.5Z"/><path d="m35.4 11.1 5.8-2.5m-4.1 8.1 5.7-.2m-5 6.2 5.6 2.1M25.1 29.2l-.2 7.3m-8.5 4h17.1m-12.1-4 7.3.1"/><path d="M13.8 17c7.3-2 14.8-3.5 22.3-4.4"/></svg>' },
+    { id:'microphone', label:'Boom microphone', svg:'<svg viewBox="0 0 48 48" aria-hidden="true"><path d="M29.6 6.9c3.7-1.2 7.4 1.3 8 5.2.5 3.4-1.8 6.6-5.2 7.2-3.7.7-7.1-1.8-7.5-5.5-.3-3.1 1.5-5.9 4.7-6.9Z"/><path d="M28.2 19.1 16.8 40.8m-5.4-.2h11m6.8-34.2 8.9 5.4M23.6 16.7l3.7 2.2M14 26.7c2.8 2 5.4 3.5 8.1 4.2"/></svg>' },
+    { id:'star', label:'Practical star', svg:'<svg viewBox="0 0 48 48" aria-hidden="true"><path d="m24.1 7.2 4.5 11.1 12 .9-9.2 7.8 3 11.7-10.2-6.4-10.3 6.2 3.1-11.7-9-7.9 11.9-.6 4.2-11.1Z"/><path d="m24.2 13.1 2.6 7.9 8 .5-6.3 5.2 2 7.7"/></svg>' },
+    { id:'moon', label:'Night exterior', svg:'<svg viewBox="0 0 48 48" aria-hidden="true"><path d="M32.7 8.5c-7.3 2.1-11.4 9.5-9.2 16.7 2.1 7.1 9.5 11.1 16.5 9-3.5 5-9.7 7.6-15.6 6.2C15.2 38.2 9.5 29 11.7 19.8 13.9 10.7 23.2 5 32.7 8.5Z"/><path d="M12 13.2 8.8 10m7.8-.1.1-4.3M9 18.9l-4.2.2"/></svg>' },
+    { id:'sun', label:'Day exterior', svg:'<svg viewBox="0 0 48 48" aria-hidden="true"><path d="M24 14.2c5.7-.2 10.2 4.4 10 10-.2 5.4-4.6 9.7-10 9.7-5.5-.1-9.9-4.6-9.8-10 .1-5.2 4.4-9.5 9.8-9.7Z"/><path d="m24 5.5.2 5m-.3 27.6.1 4.5M5.5 24.2l4.7-.2m27.7.2 4.5-.1M10.7 10.8l3.4 3.4m19.6 19.5 3.2 3.2m.1-26.4-3.3 3.6M14 33.8l-3.3 3.3"/></svg>' },
+  ];
+  const state = { me: null, profile: null, notifications: [], presence: [], eventSource: null, chatPeer: null, chatMessages: [] };
   let lastUserActivityAt = Date.now();
-  const currentModule = () => ({ editor:'script', translation:'script', shotlist:'shot_list', 'shot-list':'shot_list' }[new URLSearchParams(location.search).get('view') || 'script'] || new URLSearchParams(location.search).get('view') || 'script');
+  let themeSave = Promise.resolve();
+  const currentModule = () => ({ editor:'script', shotlist:'shot_list' }[new URLSearchParams(location.search).get('view') || 'script'] || new URLSearchParams(location.search).get('view') || 'script');
 
   const escapeHtml = (value) => String(value ?? '').replace(/[&<>"']/g, (char) => ({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' })[char]);
   const api = {
     me: () => request('/api/me'), profile: () => request('/api/me/platform-profile'),
+    updateMe: (body) => request('/api/me', { method:'PATCH', body:JSON.stringify(body) }),
     updateProfile: (body) => request('/api/me/platform-profile', { method:'PATCH', body:JSON.stringify(body) }),
-    notifications: () => request('/api/notifications'), markRead: (id, read = true) => request(`/api/notifications${id ? `/${id}` : ''}`, { method:'PATCH', body:JSON.stringify({ read }) }),
+    notifications: () => request('/api/notifications'), markRead: (id) => request(`/api/notifications${id ? `/${id}` : ''}`, { method:'PATCH' }), deleteNotification: (id) => request(`/api/notifications${id ? `/${id}` : ''}`, { method:'DELETE' }),
     members: () => request(`/api/projects/${projectId}/members`), invite: (body) => request(`/api/projects/${projectId}/members`, { method:'POST', body:JSON.stringify(body) }),
     updateMember: (id, body) => request(`/api/projects/${projectId}/members/${id}`, { method:'PATCH', body:JSON.stringify(body) }),
     transferOwnership: (membershipId) => request(`/api/projects/${projectId}/ownership/transfer`, { method:'POST', body:JSON.stringify({ membershipId }) }),
@@ -29,67 +48,187 @@
     revokeInvitation: (id) => request(`/api/projects/${projectId}/invitations/${id}`, { method:'DELETE' }),
     invitationLink: (id, resend = false) => request(`/api/projects/${projectId}/invitations/${id}/${resend ? 'resend' : 'link'}`, { method:'POST' }),
     activity: (module) => request(`/api/projects/${projectId}/activity${module ? `?module=${encodeURIComponent(module)}` : ''}`),
-    comments: (module, entityId) => request(`/api/projects/${projectId}/comments?module=${encodeURIComponent(module)}${entityId ? `&entityId=${encodeURIComponent(entityId)}` : ''}`),
-    createComment: (body) => request(`/api/projects/${projectId}/comments`, { method:'POST', headers:{ 'X-FilmScript-Client-Id':clientId }, body:JSON.stringify(body) }),
-    updateComment: (id, resolved) => request(`/api/projects/${projectId}/comments/${id}`, { method:'PATCH', headers:{ 'X-FilmScript-Client-Id':clientId }, body:JSON.stringify({ resolved }) }),
-    translationPreview: (id, targetLanguage) => request(`/api/project-files/${id}/translation`, { method:'POST', body:JSON.stringify({ preview:true,targetLanguage }) }),
-    translate: (id, targetLanguage) => request(`/api/project-files/${id}/translation`, { method:'POST', body:JSON.stringify({ targetLanguage }) }),
-    aiJob: (id) => request(`/api/ai-jobs/${encodeURIComponent(id)}`),
-    aiJobAction: (id, action) => request(`/api/ai-jobs/${encodeURIComponent(id)}`, { method:'PATCH', body:JSON.stringify({ action }) }),
-    sharedProjects: () => request(`/api/projects/${projectId}/shared-projects`),
+    translationPreview: (id, targetLanguage) => request(`/api/scripts/${id}/translation`, { method:'POST', body:JSON.stringify({ preview:true,targetLanguage }) }),
+    translate: (id, targetLanguage) => request(`/api/scripts/${id}/translation`, { method:'POST', body:JSON.stringify({ targetLanguage }) }),
     createShared: (body) => request(`/api/projects/${projectId}/shared-projects`, { method:'POST', body:JSON.stringify(body) }),
-    updateShared: (id, body) => request(`/api/projects/${projectId}/shared-projects/${id}`, { method:'PATCH', body:JSON.stringify(body) }),
-    revokeShared: (id) => request(`/api/projects/${projectId}/shared-projects/${id}`, { method:'DELETE' }),
     locationPlans: () => request(`/api/projects/${projectId}/location-plans`),
     createLocationPlan: (body) => request(`/api/projects/${projectId}/location-plans`, { method:'POST', body:JSON.stringify(body) }),
     saveLocationPlan: (plan, expectedVersion) => request(`/api/projects/${projectId}/location-plans/${plan.id}`, { method:'PATCH', body:JSON.stringify({ plan, expectedVersion }) }),
     collaborate: (body) => request(`/api/projects/${projectId}/collaboration/operations`, { method:'POST', headers:{ 'X-FilmScript-Client-Id':clientId }, body:JSON.stringify(body) }),
+    chat: (peer) => request(`/api/projects/${projectId}/chat?with=${encodeURIComponent(peer)}`),
+    sendChat: (peer, body) => request(`/api/projects/${projectId}/chat`, { method:'POST', headers:{ 'X-FilmScript-Client-Id':clientId }, body:JSON.stringify({ recipientId:peer, body }) }),
   };
 
   function applyTheme(theme, persist = false) {
     const selected = themes.some(([id]) => id === theme) ? theme : 'filmscript';
-    document.documentElement.dataset.filmscriptTheme = selected;
+    if (window.filmscriptTheme?.get?.() !== selected) window.filmscriptTheme?.set?.(selected);
+    else document.documentElement.dataset.filmscriptTheme = selected;
+    if (!window.filmscriptTheme) {
+      try { localStorage.setItem('filmscript_theme', selected); } catch {}
+      window.dispatchEvent(new CustomEvent('filmscript:theme-change', { detail:{ theme:selected } }));
+    }
     if (selected === 'dark') document.documentElement.setAttribute('data-filmscript-dark', ''); else document.documentElement.removeAttribute('data-filmscript-dark');
-    try { localStorage.setItem('filmscript_theme_v2', selected); } catch {}
-    if (persist) api.updateProfile({ theme:selected }).catch(() => {});
+    if (persist) themeSave = themeSave.catch(() => {}).then(() => api.updateProfile({ theme:selected })).catch(() => {});
     window.dispatchEvent(new CustomEvent('filmscript:theme-changed', { detail:{ theme:selected, dark:selected === 'dark' } }));
   }
 
-  function closeDialog() { document.querySelector('.fs-platform-scrim')?.remove(); }
+  function profileIcon(id) { return profileIcons.find((item) => item.id === id) || null; }
+  function avatarBackground(id) { return avatarBackgrounds.find((item) => item[0] === id) || avatarBackgrounds[0]; }
+  function accountIdentity() {
+    const preset = profileIcon(state.profile?.avatarCrop?.presetIcon);
+    const background = avatarBackground(state.profile?.avatarCrop?.presetBackground);
+    const uploaded = state.profile?.avatarUrl || null;
+    const fallback = state.me?.picture || state.me?.avatar || null;
+    return { preset, background, imageUrl:preset ? null : uploaded || fallback, initial:String(state.me?.name || state.me?.email || 'F').trim().charAt(0).toUpperCase() || 'F' };
+  }
+
+  function renderIdentity(target, identity = accountIdentity()) {
+    if (!target) return;
+    const resolvedImage = identity.imageUrl ? resolveAsset(identity.imageUrl) : null;
+    const signature = resolvedImage ? `photo:${resolvedImage}` : identity.preset ? `preset:${identity.preset.id}:${identity.background?.[0] || 'amber'}` : `initial:${identity.initial}`;
+    const intact = resolvedImage ? !target.textContent && target.style.backgroundImage : identity.preset ? Boolean(target.querySelector('svg')) : target.textContent === identity.initial;
+    if (target.dataset.avatarSignature === signature && intact) return;
+    target.dataset.avatarSignature = signature;
+    target.style.removeProperty('background-image');
+    target.style.removeProperty('background-position');
+    target.style.removeProperty('background-repeat');
+    target.style.removeProperty('background-size');
+    target.style.removeProperty('background-color');
+    target.style.removeProperty('--profile-avatar-ink');
+    target.replaceChildren();
+    if (resolvedImage) {
+      const url = resolvedImage;
+      target.style.backgroundImage = `url("${String(url).replace(/["\\]/g, '\\$&')}")`;
+      target.style.backgroundPosition = 'center';
+      target.style.backgroundRepeat = 'no-repeat';
+      target.style.backgroundSize = 'cover';
+      target.dataset.avatarIdentity = 'photo';
+    } else if (identity.preset) {
+      target.style.backgroundColor = identity.background[2];
+      target.style.setProperty('--profile-avatar-ink', identity.background[3]);
+      target.innerHTML = identity.preset.svg;
+      target.dataset.avatarIdentity = identity.preset.id;
+    } else {
+      target.style.backgroundColor = 'var(--accent)';
+      target.textContent = identity.initial;
+      target.dataset.avatarIdentity = 'initial';
+    }
+  }
+
+  function applyAccountIdentity() {
+    const identity = accountIdentity();
+    document.querySelectorAll('[data-testid="account-avatar"]').forEach((avatarEl) => {
+      renderIdentity(avatarEl, identity);
+      avatarEl.dataset.avatarLoaded = 'true';
+    });
+  }
+
+  let dialogCleanup = null;
+  function closeDialog() {
+    const scrim = document.querySelector('.fs-platform-scrim');
+    const cleanup = dialogCleanup; dialogCleanup = null;
+    scrim?.remove(); cleanup?.();
+  }
   function dialog(title, subtitle, content, className = '') {
     closeDialog();
+    const returnFocus = document.activeElement instanceof HTMLElement ? document.activeElement : null;
     document.querySelectorAll('details[open]').forEach((details) => details.removeAttribute('open'));
     const scrim = document.createElement('div'); scrim.className = 'fs-platform-scrim';
     scrim.innerHTML = `<section class="fs-platform-dialog ${className}" role="dialog" aria-modal="true" aria-labelledby="fs-platform-title"><header class="fs-platform-head"><div><h2 id="fs-platform-title">${escapeHtml(title)}</h2><p>${escapeHtml(subtitle)}</p></div><button class="fs-platform-close" type="button" aria-label="Close">×</button></header><div class="fs-platform-body">${content}</div></section>`;
     scrim.addEventListener('click', (event) => { if (event.target === scrim || event.target.closest('.fs-platform-close')) closeDialog(); });
-    document.body.appendChild(scrim); scrim.querySelector('button,input,select')?.focus();
-    const onKey = (event) => { if (event.key === 'Escape') { closeDialog(); document.removeEventListener('keydown', onKey); } };
-    document.addEventListener('keydown', onKey); return scrim;
+    document.body.appendChild(scrim);
+    const inerted = [...document.body.children].filter((element) => element !== scrim && element instanceof HTMLElement && !element.inert);
+    inerted.forEach((element) => { element.inert = true; });
+    const focusable = () => [...scrim.querySelectorAll('button:not(:disabled),a[href],input:not(:disabled),select:not(:disabled),textarea:not(:disabled),[tabindex]:not([tabindex="-1"])')].filter((element) => element.getClientRects().length);
+    const onKey = (event) => {
+      if (event.key === 'Escape') { event.preventDefault(); closeDialog(); return; }
+      if (event.key !== 'Tab') return;
+      const items = focusable(); if (!items.length) return;
+      const first = items[0]; const last = items.at(-1);
+      if (event.shiftKey && document.activeElement === first) { event.preventDefault(); last.focus(); }
+      else if (!event.shiftKey && document.activeElement === last) { event.preventDefault(); first.focus(); }
+    };
+    dialogCleanup = () => {
+      document.removeEventListener('keydown', onKey);
+      inerted.forEach((element) => { element.inert = false; });
+      if (returnFocus?.isConnected) returnFocus.focus({ preventScroll:true });
+    };
+    document.addEventListener('keydown', onKey);
+    requestAnimationFrame(() => (scrim.querySelector('.fs-platform-close') || focusable()[0])?.focus());
+    return scrim;
   }
 
   function avatar(person, className = 'fs-member-avatar') {
     const name = person?.name || person?.email || 'Collaborator'; const initial = name.trim().charAt(0).toUpperCase() || 'C';
-    return `<span class="${className}"${person?.color ? ` style="--collaborator-color:${escapeHtml(person.color)}"` : ''}>${person?.picture ? `<img src="${escapeHtml(person.picture)}" alt="">` : escapeHtml(initial)}</span>`;
+    const preset = profileIcon(person?.avatarPreset); const background = avatarBackground(person?.avatarBackground)[2];
+    const picture = person?.picture ? resolveAsset(person.picture) : null;
+    const ink = avatarBackground(person?.avatarBackground)[3];
+    const style = `${person?.color ? `--collaborator-color:${escapeHtml(person.color)};` : ''}${preset ? `--profile-avatar-bg:${background};--profile-avatar-ink:${ink};` : ''}`;
+    return `<span class="${className}${preset ? ' fs-preset-avatar' : ''}"${style ? ` style="${style}"` : ''}>${preset ? preset.svg : picture ? `<img src="${escapeHtml(picture)}" alt="">` : escapeHtml(initial)}</span>`;
   }
 
-  const relativeTime = (value) => {
-    const seconds = Math.max(0, Math.round((Date.now() - Date.parse(value || 0)) / 1000));
-    if (seconds < 60) return 'Now'; if (seconds < 3600) return `${Math.floor(seconds / 60)}m ago`; if (seconds < 86400) return `${Math.floor(seconds / 3600)}h ago`; if (seconds < 604800) return `${Math.floor(seconds / 86400)}d ago`;
-    return new Date(value).toLocaleDateString(undefined, { month:'short', day:'numeric', year:new Date(value).getFullYear() === new Date().getFullYear() ? undefined : 'numeric' });
-  };
+  function notificationTime(value) {
+    const time = Date.parse(value || ''); if (!Number.isFinite(time)) return '';
+    const elapsed = Math.max(0, Date.now() - time);
+    if (elapsed < 60_000) return 'Now';
+    if (elapsed < 60 * 60_000) return `${Math.floor(elapsed / 60_000)}m`;
+    if (elapsed < 24 * 60 * 60_000) return `${Math.floor(elapsed / (60 * 60_000))}h`;
+    if (elapsed < 48 * 60 * 60_000) return 'Yesterday';
+    return new Intl.DateTimeFormat(undefined, { month:'short', day:'numeric' }).format(new Date(time));
+  }
 
-  const notificationTypeLabel = (type) => ({ project_invitation:'Invitation', mention:'Mention', comment_reply:'Reply', permission_changed:'Access', removed_from_project:'Access', ownership_transfer:'Ownership', analysis_completed:'Analysis', breakdown_completed:'Breakdown', translation_completed:'Translation', shot_list_generation_completed:'Shot List' }[type] || 'Project');
+  function notificationVisual(type) {
+    const value = String(type || '').toLowerCase();
+    if (value.includes('mention')) return { glyph:'@', tone:'mention' };
+    if (value.includes('comment') || value.includes('reply')) return { glyph:'↩', tone:'comment' };
+    if (value.includes('invitation') || value.includes('member')) return { glyph:'+', tone:'people' };
+    if (value.includes('permission') || value.includes('ownership')) return { glyph:'✓', tone:'access' };
+    if (value.includes('analysis') || value.includes('breakdown') || value.includes('shot') || value.includes('translation')) return { glyph:'✦', tone:'lumiere' };
+    return { glyph:'F', tone:'filmscript' };
+  }
+
+  function notificationCard(item) {
+    const visual = notificationVisual(item.type);
+    return `<article class="fs-notification-card${item.read ? '' : ' is-unread'}" data-notification-row data-id="${escapeHtml(item.id)}"><button type="button" class="fs-notification-open" data-notification-open data-link="${escapeHtml(item.deepLink || '')}" aria-label="${escapeHtml(`${item.title}. ${item.message}`)}"><span class="fs-notification-icon" data-tone="${visual.tone}" aria-hidden="true">${visual.glyph}</span><span class="fs-notification-copy"><span class="fs-notification-title"><strong>${escapeHtml(item.title)}</strong><time datetime="${escapeHtml(item.updatedAt || item.createdAt || '')}">${escapeHtml(notificationTime(item.updatedAt || item.createdAt))}</time></span><span class="fs-notification-message">${escapeHtml(item.message)}</span></span>${item.read ? '' : '<span class="fs-notification-unread" aria-label="Unread"></span>'}</button><button type="button" class="fs-notification-delete" data-notification-delete aria-label="Delete notification" title="Delete"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h16M9 7V4h6v3m-8 0 1 13h8l1-13M10 11v5m4-5v5"></path></svg></button></article>`;
+  }
 
   async function openNotifications() {
     const result = await api.notifications(); state.notifications = result.notifications;
-    const content = result.notifications.length ? `<div class="fs-platform-list fs-notification-list">${result.notifications.map((item) => `<article class="fs-notification-card${item.read ? '' : ' is-unread'}" data-notification-id="${item.id}"><button type="button" class="fs-notification-main" data-link="${escapeHtml(item.deepLink || '')}" data-id="${item.id}">${avatar(item.actor || { name:'FilmScript' })}<span class="fs-member-copy"><span class="fs-notification-meta">${escapeHtml(notificationTypeLabel(item.type))}${item.count > 1 ? ` · ${item.count} updates` : ''} · ${escapeHtml(relativeTime(item.updatedAt))}</span><strong>${escapeHtml(item.title)}</strong><small>${escapeHtml(item.message)}</small></span>${item.read ? '' : '<i aria-label="Unread">●</i>'}</button><button type="button" class="fs-notification-read" data-toggle-read="${item.id}" data-read="${item.read ? 'true' : 'false'}">Mark ${item.read ? 'unread' : 'read'}</button></article>`).join('')}</div><div class="fs-dialog-actions"><button class="fs-action" data-mark-all ${result.unreadCount ? '' : 'disabled'}>Mark all as read</button></div>` : '<div class="fs-member-card"><span class="fs-member-copy"><strong>You are all caught up</strong><small>Invitations, mentions, replies and important project changes will appear here.</small></span></div>';
-    const root = dialog('Notifications', result.unreadCount ? `${result.unreadCount} unread` : 'You are up to date', content, 'fs-notifications-dialog');
-    root.querySelectorAll('[data-id]').forEach((button) => button.addEventListener('click', async () => { await api.markRead(button.dataset.id, true); if (button.dataset.link) location.href = button.dataset.link; else openNotifications(); }));
-    root.querySelectorAll('[data-toggle-read]').forEach((button) => button.addEventListener('click', async () => { await api.markRead(button.dataset.toggleRead, button.dataset.read !== 'true'); await openNotifications(); refreshNotifications(); }));
-    root.querySelector('[data-mark-all]')?.addEventListener('click', async () => { await api.markRead(); openNotifications(); refreshNotifications(); });
+    const unread = result.notifications.filter((item) => !item.read); const earlier = result.notifications.filter((item) => item.read);
+    const groups = [[unread.length ? 'New' : '', unread], [earlier.length ? 'Earlier' : '', earlier]].filter(([,items]) => items.length);
+    const list = groups.map(([labelText,items]) => `<section class="fs-notification-group"><h3>${labelText}</h3><div class="fs-notification-stack">${items.map(notificationCard).join('')}</div></section>`).join('');
+    const empty = '<div class="fs-notification-empty"><span aria-hidden="true">✓</span><strong>You are all caught up</strong><p>Invitations, mentions and completed FilmScript work will appear here.</p></div>';
+    const toolbar = result.notifications.length ? `<div class="fs-notification-toolbar"><span><strong>${result.unreadCount}</strong> unread</span><div>${result.unreadCount ? '<button type="button" data-mark-all>Read all</button>' : ''}<button type="button" data-clear-all>Clear</button></div></div>` : '';
+    const root = dialog('Notifications', result.unreadCount ? `${result.unreadCount} new ${result.unreadCount === 1 ? 'update' : 'updates'}` : 'Everything important, without the noise.', `<div class="fs-notification-center">${toolbar}${list || empty}</div>`, 'fs-notifications-dialog');
+    root.querySelectorAll('[data-notification-open]').forEach((button) => button.addEventListener('click', async () => { const row = button.closest('[data-notification-row]'); if (row?.classList.contains('is-unread')) await api.markRead(row.dataset.id); if (button.dataset.link) location.href = button.dataset.link; else { openNotifications(); refreshNotifications(); } }));
+    root.querySelectorAll('[data-notification-delete]').forEach((button) => button.addEventListener('click', async () => { const row = button.closest('[data-notification-row]'); if (!row) return; button.disabled = true; try { await api.deleteNotification(row.dataset.id); row.classList.add('is-removing'); window.setTimeout(() => { openNotifications(); refreshNotifications(); }, 190); } catch { button.disabled = false; } }));
+    root.querySelector('[data-mark-all]')?.addEventListener('click', async (event) => { event.currentTarget.disabled = true; await api.markRead(); root.querySelectorAll('.is-unread').forEach((row) => row.classList.remove('is-unread')); openNotifications(); refreshNotifications(); });
+    root.querySelector('[data-clear-all]')?.addEventListener('click', async (event) => { if (!confirm('Delete all notifications?')) return; event.currentTarget.disabled = true; await api.deleteNotification(); root.querySelectorAll('[data-notification-row]').forEach((row) => row.classList.add('is-removing')); window.setTimeout(() => { openNotifications(); refreshNotifications(); }, 190); });
   }
 
-  const accessModules = ['script','analysis','breakdown','shot_list','stripboard','calendar','budget','canvas','location_plan','imagine','files','project_settings','members','shared_projects','exports','lumiere'];
+  async function openChatDirectory() {
+    if (!projectId) return;
+    let result; try { result = await api.members(); } catch (error) { dialog('Chat', 'Collaborator chat is unavailable right now.', `<p class="fs-guest-error">${escapeHtml(error.message)}</p>`); return; }
+    const people = (result.members || []).filter((member) => member.userId && member.userId !== state.me?.id && member.status === 'active');
+    const cards = people.map((member) => `<button class="fs-chat-person" type="button" data-chat-peer="${escapeHtml(member.userId)}"><span class="fs-chat-avatar">${escapeHtml(String(member.name || member.email || 'C').trim().charAt(0).toUpperCase())}</span><span><strong>${escapeHtml(member.name || member.email || 'Collaborator')}</strong><small>${escapeHtml(member.email || 'FilmScript collaborator')}</small></span><span class="fs-chat-arrow" aria-hidden="true">›</span></button>`).join('');
+    const root = dialog('Collaborator chat', 'Pick someone from this project to start a private conversation.', `<div class="fs-chat-directory">${cards || '<div class="fs-chat-empty">Invite a collaborator to start chatting.</div>'}</div>`, 'fs-chat-directory-dialog');
+    root.querySelectorAll('[data-chat-peer]').forEach((button) => button.addEventListener('click', () => { closeDialog(); openChat(button.dataset.chatPeer, button.querySelector('strong')?.textContent || 'Collaborator'); }));
+  }
+
+  async function openChat(peerId, peerName = 'Collaborator') {
+    if (!projectId || !peerId) return;
+    state.chatPeer = peerId;
+    let panel = document.querySelector('.fs-chat-panel');
+    if (!panel) { panel = document.createElement('section'); panel.className = 'fs-chat-panel'; panel.setAttribute('aria-label', 'Collaborator chat'); document.body.appendChild(panel); }
+    panel.innerHTML = `<header class="fs-chat-head"><span class="fs-chat-brand" aria-hidden="true">✦</span><div><strong>${escapeHtml(peerName)}</strong><small>FilmScript collaborator</small></div><button type="button" class="fs-chat-close" data-chat-close aria-label="Close chat">×</button></header><div class="fs-chat-messages" data-chat-messages><div class="fs-chat-loading">Opening conversation…</div></div><form class="fs-chat-compose" data-chat-form><textarea name="body" rows="1" maxlength="2000" placeholder="Write a message…" aria-label="Message"></textarea><button type="submit" aria-label="Send message">↗</button></form>`;
+    panel.querySelector('[data-chat-close]').onclick = () => panel.remove();
+    const messages = panel.querySelector('[data-chat-messages]');
+    const render = (items) => { messages.innerHTML = items.length ? items.map((item) => `<article class="fs-chat-bubble ${item.senderId === state.me?.id ? 'is-mine' : ''}"><p>${escapeHtml(item.body)}</p><time>${escapeHtml(notificationTime(item.createdAt))}</time></article>`).join('') : '<div class="fs-chat-empty">No messages yet. Say hello.</div>'; messages.scrollTop = messages.scrollHeight; };
+    try { const result = await api.chat(peerId); state.chatMessages = result.messages || []; render(state.chatMessages); } catch (error) { messages.innerHTML = `<div class="fs-chat-empty">${escapeHtml(error.message)}</div>`; }
+    panel.querySelector('[data-chat-form]').onsubmit = async (event) => { event.preventDefault(); const input = panel.querySelector('textarea'); const body = input.value.trim(); if (!body) return; input.disabled = true; try { const result = await api.sendChat(peerId, body); state.chatMessages = [...state.chatMessages.filter((item) => item.id !== result.message.id), result.message]; input.value = ''; render(state.chatMessages); } catch (error) { input.setCustomValidity(error.message); input.reportValidity(); } finally { input.disabled = false; input.focus(); } };
+  }
+
+  const accessModules = ['script','analysis','breakdown','shot_list','stripboard','calendar','budget','canvas','location_plan','imagine','files','project_settings','members','exports','lumiere'];
   const cinematicRoles = ['producer','director','writer','assistant_director','director_of_photography','camera_department','gaffer','grip','production_designer','art_department','sound','hair_and_makeup','wardrobe','production','client','talent'];
   const roleLabels = { owner:'Owner', co_owner:'Co owner', admin:'Admin', editor:'Editor', department_editor:'Department Editor', commenter:'Commenter', viewer:'Viewer', temporary_guest:'Temporary Guest' };
   const label = (value) => String(value || '').replaceAll('_',' ').replace(/\b\w/g, (character) => character.toUpperCase());
@@ -111,9 +250,9 @@
     if (['owner','co_owner','admin'].includes(projectRole)) accessModules.forEach((module) => { result[module] = 'manage'; });
     if (projectRole === 'co_owner') result.project_settings = 'edit';
     if (projectRole === 'admin') result.budget = 'no_access';
-    if (projectRole === 'editor') accessModules.forEach((module) => { result[module] = ['project_settings','members','shared_projects','budget'].includes(module) ? 'no_access' : 'edit'; });
-    if (projectRole === 'commenter') accessModules.forEach((module) => { result[module] = ['project_settings','members','shared_projects','budget'].includes(module) ? 'no_access' : 'comment'; });
-    if (projectRole === 'viewer') accessModules.forEach((module) => { result[module] = ['project_settings','members','shared_projects','budget','lumiere'].includes(module) ? 'no_access' : 'view'; });
+    if (projectRole === 'editor') accessModules.forEach((module) => { result[module] = ['project_settings','members','budget'].includes(module) ? 'no_access' : 'edit'; });
+    if (projectRole === 'commenter') accessModules.forEach((module) => { result[module] = ['project_settings','members','budget'].includes(module) ? 'no_access' : 'comment'; });
+    if (projectRole === 'viewer') accessModules.forEach((module) => { result[module] = ['project_settings','members','budget','lumiere'].includes(module) ? 'no_access' : 'view'; });
     for (const [module,level] of Object.entries(cinematicSuggestions[cinematicRole] || {})) if (permissionRank[level] > permissionRank[result[module]]) result[module] = level;
     if (projectRole !== 'owner') result.budget = 'no_access';
     if (projectRole === 'temporary_guest') for (const module of ['members','project_settings','exports','lumiere','budget']) result[module] = 'no_access';
@@ -187,142 +326,211 @@
     if (!canManageFinancial) root.querySelectorAll('[name="financial"]').forEach((select) => select.disabled = true);
   }
 
-  const moduleLabel = (module) => ({ script:'Script Editor', breakdown:'Breakdown', shot_list:'Shot List', canvas:'Canvas', budget:'Budget', analysis:'Analysis', stripboard:'Stripboard', calendar:'Calendar', imagine:'Imagine' }[module] || label(module));
-
-  function currentCommentAnchor(module = currentModule()) {
-    const queryEntity = new URLSearchParams(location.search).get('entity');
-    let node = document.activeElement?.closest?.('[data-shot-id],[data-scene-id],[data-block-id]');
-    if (!node) node = window.getSelection?.()?.anchorNode?.parentElement?.closest?.('[data-shot-id],[data-scene-id],[data-block-id]');
-    const entityId = queryEntity || node?.dataset?.shotId || node?.dataset?.sceneId || node?.dataset?.blockId || (state.localContext?.module === module ? state.localContext.selectedObjectId || state.localContext.sceneId || state.localContext.selection?.blockId : null) || null;
-    const entityType = module === 'script' ? 'script_block' : module === 'breakdown' ? 'breakdown_card' : module === 'shot_list' ? 'shot_list_item' : module === 'canvas' ? 'canvas_object' : 'project';
-    return { module, entityId, entityType };
+  async function openActivity() {
+    const result = await api.activity();
+    dialog('Project activity', 'Meaningful changes, without cursor noise or every keystroke.', result.events.length ? `<div class="fs-platform-list">${result.events.map((item) => `<article class="fs-activity-card">${avatar(item.actor)}<span class="fs-member-copy"><strong>${escapeHtml(item.summary)}</strong><small>${escapeHtml(new Date(item.createdAt).toLocaleString())}</small></span></article>`).join('')}</div>` : '<div class="fs-member-card"><span class="fs-member-copy"><strong>No activity yet</strong><small>Important project changes will appear here.</small></span></div>');
   }
 
-  async function openActivity(module = null) {
-    const selectedModule = module || null; const result = await api.activity(selectedModule);
-    const title = selectedModule && ['script','canvas'].includes(selectedModule) ? 'Version History' : selectedModule ? `${moduleLabel(selectedModule)} Activity` : 'Project Activity';
-    const cards = result.events.map((item) => `<article class="fs-activity-card" data-activity-id="${item.id}">${avatar(item.actor)}<span class="fs-member-copy"><span class="fs-activity-meta">${escapeHtml(item.actor?.name || 'FilmScript')} · ${escapeHtml(moduleLabel(item.module))} · ${escapeHtml(relativeTime(item.updatedAt || item.createdAt))}</span><strong>${escapeHtml(item.summary)}</strong>${item.count > 1 ? `<small>Grouped from ${item.count} related changes</small>` : ''}</span></article>`).join('');
-    dialog(title, 'Meaningful project changes—never cursor movement or individual keystrokes.', cards ? `<div class="fs-platform-list fs-activity-list">${cards}</div>` : '<div class="fs-member-card"><span class="fs-member-copy"><strong>No activity yet</strong><small>Important changes in this area will appear here.</small></span></div>', 'fs-activity-dialog');
+  function creditsLabel() {
+    if (state.me?.credits?.unlimited) return 'Unlimited AI credits';
+    const remaining = state.me?.credits?.remaining ?? state.me?.credits?.text?.remaining;
+    if (Number.isFinite(Number(remaining))) return `${Number(remaining).toLocaleString()} AI credits`;
+    const imageRemaining = state.me?.credits?.image?.remaining;
+    if (Number.isFinite(Number(imageRemaining))) return `${Number(imageRemaining).toLocaleString()} image credits`;
+    return 'Credits available';
   }
 
-  async function openComments(context = currentCommentAnchor()) {
-    if (!projectId) return;
-    state.commentContext = { ...context };
-    const [result, peopleResult] = await Promise.all([api.comments(context.module, context.entityId), api.members().catch(() => ({ members:[] }))]);
-    const comments = result.comments || []; const replies = new Map();
-    comments.filter((item) => item.parentCommentId).forEach((item) => { if (!replies.has(item.parentCommentId)) replies.set(item.parentCommentId, []); replies.get(item.parentCommentId).push(item); });
-    const highlighted = new URLSearchParams(location.search).get('comment');
-    const commentCard = (item, reply = false) => `<article class="fs-comment-card${reply ? ' is-reply' : ''}${item.resolved ? ' is-resolved' : ''}${highlighted === item.id ? ' is-highlighted' : ''}" data-comment-id="${item.id}">${avatar(item.author)}<div class="fs-comment-content"><div class="fs-comment-meta"><strong>${escapeHtml(item.author?.name || 'Collaborator')}</strong><span>${escapeHtml(relativeTime(item.updatedAt || item.createdAt))}</span>${item.resolved ? '<span class="fs-comment-state">Resolved</span>' : ''}</div><p>${escapeHtml(item.body)}</p><div class="fs-comment-actions">${reply ? '' : `<button type="button" data-reply-to="${item.id}">Reply</button>`}<button type="button" data-comment-state="${item.id}" data-resolved="${item.resolved ? 'true' : 'false'}">${item.resolved ? 'Reopen' : 'Resolve'}</button></div>${reply ? '' : `<div class="fs-comment-replies">${(replies.get(item.id) || []).map((entry) => commentCard(entry, true)).join('')}</div><form class="fs-comment-reply-form" data-reply-form="${item.id}" hidden><textarea name="body" maxlength="5000" placeholder="Write a reply…" required></textarea><button class="fs-action fs-action-primary">Reply</button></form>`}</div></article>`;
-    const roots = comments.filter((item) => !item.parentCommentId);
-    const members = (peopleResult.members || []).filter((member) => member.username && member.userId !== state.me?.id);
-    const mentionHints = members.length ? `<div class="fs-mention-hints"><span>Mention:</span>${members.slice(0,8).map((member) => `<button type="button" data-mention="${escapeHtml(member.username)}">@${escapeHtml(member.username)}</button>`).join('')}</div>` : '';
-    const anchorCopy = context.entityId ? `Anchored to ${context.entityType.replaceAll('_',' ')}` : `Project-level ${moduleLabel(context.module)} discussion`;
-    const root = dialog('Comments', anchorCopy, `<div class="fs-comment-thread">${roots.map((item) => commentCard(item)).join('') || '<div class="fs-member-card"><span class="fs-member-copy"><strong>No comments yet</strong><small>Start a focused discussion here.</small></span></div>'}</div><form class="fs-comment-compose" data-comment-form><textarea name="body" maxlength="5000" placeholder="Add a comment or @mention…" required></textarea>${mentionHints}<div class="fs-dialog-actions"><button class="fs-action fs-action-primary">Comment</button></div></form>`, 'fs-comments-dialog');
-    root.querySelectorAll('[data-reply-to]').forEach((button) => button.onclick = () => { const form = root.querySelector(`[data-reply-form="${CSS.escape(button.dataset.replyTo)}"]`); form.hidden = !form.hidden; if (!form.hidden) form.querySelector('textarea').focus(); });
-    root.querySelectorAll('[data-comment-state]').forEach((button) => button.onclick = async () => { await api.updateComment(button.dataset.commentState, button.dataset.resolved !== 'true'); openComments(context); });
-    root.querySelectorAll('[data-reply-form]').forEach((form) => form.onsubmit = async (event) => { event.preventDefault(); const body = new FormData(form).get('body'); await api.createComment({ ...context, parentCommentId:form.dataset.replyForm, body }); openComments(context); });
-    const compose = root.querySelector('[data-comment-form]'); compose.onsubmit = async (event) => { event.preventDefault(); const body = new FormData(compose).get('body'); await api.createComment({ ...context, body }); openComments(context); };
-    root.querySelectorAll('[data-mention]').forEach((button) => button.onclick = () => { const input = compose.querySelector('textarea'); const token = `@${button.dataset.mention} `; input.setRangeText(token, input.selectionStart, input.selectionEnd, 'end'); input.focus(); });
+  async function refreshAccountState() {
+    const account = await api.me(); state.me = account;
+    try { const platform = await api.profile(); state.profile = platform.profile || null; } catch {}
+    applyAccountIdentity();
+    return account;
+  }
+
+  async function openAccount() {
+    try { await refreshAccountState(); } catch (error) {
+      if (!state.me) return dialog('Account', 'Your account could not be loaded.', `<p class="fs-form-message">${escapeHtml(error.message)}</p>`);
+    }
+    const selectedTheme = document.documentElement.dataset.filmscriptTheme || state.profile?.theme || 'filmscript';
+    let selectedIcon = profileIcon(state.profile?.avatarCrop?.presetIcon)?.id || null;
+    let selectedBackground = avatarBackground(state.profile?.avatarCrop?.presetBackground)[0];
+    const maxBirthDate = new Date().toISOString().slice(0,10);
+    const root = dialog('Account', 'Your identity, preferences and private details in one place.', `
+      <div class="fs-account-layout">
+        <section class="fs-account-hero">
+          <div class="fs-account-avatar-preview" data-account-preview aria-label="Current profile image"></div>
+          <div class="fs-account-hero-copy">
+            <span class="fs-account-kicker">FilmScript account</span>
+            <strong>${escapeHtml(state.me?.name || 'FilmScript member')}</strong>
+            <span class="fs-account-email" title="${escapeHtml(state.me?.email || '')}">${escapeHtml(state.me?.email || 'No email available')}</span>
+            <div class="fs-account-badges"><span>${escapeHtml(state.me?.planName || 'Free')}</span><span>${escapeHtml(creditsLabel())}</span></div>
+          </div>
+          <button type="button" class="fs-action" data-upload-photo>Upload photo</button>
+        </section>
+
+        <section class="fs-account-section" aria-labelledby="fs-account-avatar-title">
+          <div class="fs-account-section-head"><div><h3 id="fs-account-avatar-title">Choose an icon</h3><p>Ten original, hand-drawn film symbols. Pick a background or upload your own photo.</p></div><button type="button" class="fs-action fs-action-primary" data-save-avatar${selectedIcon ? '' : ' disabled'}>Use icon</button></div>
+          <div class="fs-avatar-preset-grid" role="radiogroup" aria-label="Profile icons">
+            ${profileIcons.map((icon) => `<button type="button" class="fs-avatar-preset" data-avatar-icon="${icon.id}" role="radio" aria-checked="${selectedIcon === icon.id}" title="${escapeHtml(icon.label)}"><span>${icon.svg}</span><small>${escapeHtml(icon.label)}</small></button>`).join('')}
+          </div>
+          <div class="fs-avatar-color-row"><span>Background</span><div class="fs-avatar-color-grid" role="radiogroup" aria-label="Icon background color">${avatarBackgrounds.map(([id,label,color]) => `<button type="button" data-avatar-background="${id}" style="--avatar-color:${color}" role="radio" aria-label="${label}" aria-checked="${selectedBackground === id}"></button>`).join('')}</div></div>
+          <p class="fs-account-status" data-avatar-status role="status" aria-live="polite"></p>
+        </section>
+
+        <form class="fs-account-section" data-account-form>
+          <div class="fs-account-section-head"><div><h3>Account details</h3><p>Your email stays on one clean line and is never cropped into a broken address.</p></div></div>
+          <div class="fs-account-form-grid">
+            <label class="fs-form-field"><span>Name</span><input name="name" value="${escapeHtml(state.me?.name || '')}" minlength="2" maxlength="80" autocomplete="name" required></label>
+            <label class="fs-form-field"><span>FilmScript username</span><input name="username" value="${escapeHtml(state.profile?.username || '')}" maxlength="30" pattern="[A-Za-z0-9_]{2,30}" placeholder="your_username" autocomplete="username"></label>
+            <div class="fs-account-email-field"><span>Email</span><strong title="${escapeHtml(state.me?.email || '')}">${escapeHtml(state.me?.email || 'No email available')}</strong><em>${state.me?.authenticated ? 'Verified' : 'Not signed in'}</em></div>
+          </div>
+          <div class="fs-account-subsection">
+            <div><h4>Personal profile</h4><p>Private account information used only for your FilmScript experience.</p></div>
+            <div class="fs-account-form-grid">
+              <label class="fs-form-field"><span>How should we refer to you?</span><select name="gender"><option value="">Not set</option><option value="man"${state.me?.profile?.gender === 'man' ? ' selected' : ''}>Man</option><option value="woman"${state.me?.profile?.gender === 'woman' ? ' selected' : ''}>Woman</option><option value="unspecified"${state.me?.profile?.gender === 'unspecified' ? ' selected' : ''}>Prefer not to say</option></select></label>
+              <label class="fs-form-field"><span>Birthday</span><input name="birthDate" type="date" min="1900-01-01" max="${maxBirthDate}" value="${escapeHtml(state.me?.profile?.birthDate || '')}"></label>
+            </div>
+          </div>
+          <div class="fs-account-save-row"><p class="fs-account-status" data-account-status role="status" aria-live="polite"></p><button type="submit" class="fs-action fs-action-primary">Save details</button></div>
+        </form>
+
+        <section class="fs-account-section" aria-labelledby="fs-account-theme-title">
+          <div class="fs-account-section-head"><div><h3 id="fs-account-theme-title">Interface</h3><p>Your personal theme follows you across FilmScript.</p></div></div>
+          <div class="fs-theme-grid">${themes.map(([id,label,color]) => `<button type="button" class="fs-theme-swatch" style="--swatch:${color}" data-theme="${id}" aria-pressed="${selectedTheme === id}">${label}</button>`).join('')}</div>
+        </section>
+      </div>`, 'fs-account-dialog');
+
+    const preview = root.querySelector('[data-account-preview]');
+    const renderPreview = (forcePreset = false) => {
+      if (forcePreset && selectedIcon) renderIdentity(preview, { preset:profileIcon(selectedIcon), background:avatarBackground(selectedBackground), imageUrl:null, initial:accountIdentity().initial });
+      else renderIdentity(preview);
+    };
+    renderPreview();
+    root.querySelector('[data-upload-photo]').addEventListener('click', openAvatarEditor);
+    root.querySelectorAll('[data-avatar-icon]').forEach((button) => button.addEventListener('click', () => {
+      selectedIcon = button.dataset.avatarIcon;
+      root.querySelectorAll('[data-avatar-icon]').forEach((item) => item.setAttribute('aria-checked', String(item === button)));
+      root.querySelector('[data-save-avatar]').disabled = false;
+      renderPreview(true);
+    }));
+    root.querySelectorAll('[data-avatar-background]').forEach((button) => button.addEventListener('click', () => {
+      selectedBackground = button.dataset.avatarBackground;
+      if (!selectedIcon) selectedIcon = profileIcons[0].id;
+      root.querySelectorAll('[data-avatar-background]').forEach((item) => item.setAttribute('aria-checked', String(item === button)));
+      root.querySelectorAll('[data-avatar-icon]').forEach((item) => item.setAttribute('aria-checked', String(item.dataset.avatarIcon === selectedIcon)));
+      root.querySelector('[data-save-avatar]').disabled = false;
+      renderPreview(true);
+    }));
+    root.querySelectorAll('.fs-account-section [role="radiogroup"]').forEach((group) => {
+      const radios = [...group.querySelectorAll('[role="radio"]')];
+      const syncTabs = () => { const checked = radios.find((radio) => radio.getAttribute('aria-checked') === 'true') || radios[0]; radios.forEach((radio) => { radio.tabIndex = radio === checked ? 0 : -1; }); };
+      group.addEventListener('click', () => requestAnimationFrame(syncTabs));
+      group.addEventListener('keydown', (event) => {
+        if (!['ArrowLeft','ArrowRight','ArrowUp','ArrowDown','Home','End'].includes(event.key)) return;
+        event.preventDefault(); const current = Math.max(0, radios.indexOf(document.activeElement));
+        const next = event.key === 'Home' ? 0 : event.key === 'End' ? radios.length - 1 : (current + (['ArrowRight','ArrowDown'].includes(event.key) ? 1 : -1) + radios.length) % radios.length;
+        radios[next]?.click(); radios[next]?.focus(); syncTabs();
+      });
+      syncTabs();
+    });
+    root.querySelector('[data-save-avatar]').addEventListener('click', async (event) => {
+      if (!selectedIcon) return;
+      const button = event.currentTarget; const status = root.querySelector('[data-avatar-status]');
+      button.disabled = true; button.textContent = 'Saving'; status.textContent = '';
+      try {
+        const result = await api.updateProfile({ avatarCrop:{ presetIcon:selectedIcon, presetBackground:selectedBackground } });
+        state.profile = result.profile;
+        applyAccountIdentity(); renderPreview();
+        window.dispatchEvent(new CustomEvent('filmscript:avatar-changed', { detail:{ presetIcon:selectedIcon, presetBackground:selectedBackground } }));
+        status.textContent = 'Icon saved everywhere in FilmScript.'; button.textContent = 'Saved';
+      } catch (error) { status.textContent = error.message; button.disabled = false; button.textContent = 'Use icon'; }
+    });
+    root.querySelector('[data-account-form]').addEventListener('submit', async (event) => {
+      event.preventDefault();
+      const form = event.currentTarget; const button = form.querySelector('[type="submit"]'); const status = root.querySelector('[data-account-status]');
+      button.disabled = true; button.textContent = 'Saving'; status.textContent = '';
+      const data = new FormData(form);
+      let platform = null;
+      try {
+        // Validate the unique username first. A username conflict must not save
+        // a different name or private profile fields as an accidental partial edit.
+        platform = await api.updateProfile({ username:String(data.get('username') || '').trim() || null });
+        const account = await api.updateMe({ name:String(data.get('name') || '').trim(), gender:data.get('gender') || null, birthDate:data.get('birthDate') || null });
+        state.me = account; state.profile = platform.profile; applyAccountIdentity();
+        window.dispatchEvent(new CustomEvent('filmscript:profile-updated', { detail:account }));
+        status.textContent = 'Account details saved.'; button.textContent = 'Saved';
+      } catch (error) {
+        if (platform?.profile) {
+          state.profile = platform.profile;
+          status.textContent = `Your username was saved, but the other details could not be saved. ${error.message}`;
+        } else status.textContent = error.message;
+        button.disabled = false; button.textContent = 'Save details';
+      }
+    });
+    root.querySelectorAll('[data-theme]').forEach((button) => button.addEventListener('click', () => {
+      applyTheme(button.dataset.theme, true);
+      state.profile = { ...(state.profile || {}), theme:button.dataset.theme };
+      root.querySelectorAll('[data-theme]').forEach((item) => item.setAttribute('aria-pressed', String(item === button)));
+    }));
   }
 
   function openThemes() {
-    const selected = document.documentElement.dataset.filmscriptTheme || 'filmscript';
-    const root = dialog('Interface theme', 'Your theme follows your FilmScript account on every device.', `<div class="fs-theme-grid">${themes.map(([id,label,color]) => `<button class="fs-theme-swatch" style="--swatch:${color}" data-theme="${id}" aria-pressed="${selected === id}">${label}</button>`).join('')}</div><div class="fs-dialog-actions"><button class="fs-action" data-photo>Change profile photo</button></div>`);
-    root.querySelectorAll('[data-theme]').forEach((button) => button.addEventListener('click', () => { applyTheme(button.dataset.theme, true); root.querySelectorAll('[data-theme]').forEach((item) => item.setAttribute('aria-pressed', String(item === button))); }));
-    root.querySelector('[data-photo]').onclick = openAvatarEditor;
+    return openAccount();
   }
 
   function openAvatarEditor() {
-    const input = document.createElement('input'); input.type = 'file'; input.accept = 'image/png,image/jpeg,image/webp'; input.click();
+    const input = document.createElement('input'); input.type = 'file'; input.accept = 'image/png,image/jpeg,image/webp';
     input.onchange = () => {
-      const file = input.files?.[0]; if (!file || file.size > 8 * 1024 * 1024) return;
-      const image = new Image(); image.onload = () => {
+      const file = input.files?.[0]; if (!file) return;
+      if (!/^image\/(?:png|jpeg|webp)$/i.test(file.type) || file.size > 8 * 1024 * 1024) {
+        dialog('Photo unavailable', 'Choose a PNG, JPEG or WebP image smaller than 8 MB.', '<p class="fs-form-message">That file cannot be used as a FilmScript profile photo.</p>');
+        return;
+      }
+      const objectUrl = URL.createObjectURL(file); const image = new Image();
+      image.onerror = () => { URL.revokeObjectURL(objectUrl); dialog('Photo unavailable', 'FilmScript could not read that image.', '<p class="fs-form-message">Try exporting the image as PNG or JPEG, then upload it again.</p>'); };
+      image.onload = () => {
+        URL.revokeObjectURL(objectUrl);
         let zoom = 1; let offsetX = 0; let offsetY = 0;
-        const root = dialog('Profile photo', 'Zoom and reposition the circular crop before saving.', `<div class="fs-avatar-editor"><div class="fs-avatar-preview"><canvas width="512" height="512"></canvas></div><div><label class="fs-form-field"><span>Zoom</span><input type="range" min="1" max="3" step=".01" value="1" data-zoom></label><p style="color:var(--text-secondary)">Drag the preview to reposition your image.</p><div class="fs-dialog-actions"><button class="fs-action fs-action-primary" data-save>Save photo</button></div></div></div>`);
+        const root = dialog('Profile photo', 'Zoom and reposition the circular crop before saving.', `<div class="fs-avatar-editor"><div class="fs-avatar-preview"><canvas width="512" height="512" tabindex="0" role="img" aria-label="Profile crop preview. Drag or use arrow keys to reposition."></canvas></div><div><label class="fs-form-field"><span>Zoom</span><input type="range" min="1" max="3" step=".01" value="1" data-zoom></label><p class="fs-avatar-help">Drag the preview or use the arrow keys to reposition your image.</p><p class="fs-form-message" data-photo-status role="status" aria-live="polite"></p><div class="fs-dialog-actions"><button class="fs-action fs-action-primary" data-save>Save photo</button></div></div></div>`);
         const canvas = root.querySelector('canvas'); const context = canvas.getContext('2d'); let dragging = false; let previous = null;
-        const draw = () => { const base = Math.max(512 / image.width, 512 / image.height) * zoom; const width = image.width * base; const height = image.height * base; context.clearRect(0,0,512,512); context.drawImage(image, (512-width)/2+offsetX, (512-height)/2+offsetY, width, height); };
+        const geometry = () => { const base = Math.max(512 / image.width, 512 / image.height) * zoom; return { width:image.width * base, height:image.height * base }; };
+        const clampOffsets = () => { const { width,height } = geometry(); offsetX = Math.max(-(width - 512) / 2, Math.min((width - 512) / 2, offsetX)); offsetY = Math.max(-(height - 512) / 2, Math.min((height - 512) / 2, offsetY)); };
+        const draw = () => { clampOffsets(); const { width,height } = geometry(); context.clearRect(0,0,512,512); context.drawImage(image, (512-width)/2+offsetX, (512-height)/2+offsetY, width, height); };
         draw(); root.querySelector('[data-zoom]').oninput = (event) => { zoom = Number(event.target.value); draw(); };
-        canvas.onpointerdown = (event) => { dragging = true; previous = event; canvas.setPointerCapture(event.pointerId); };
-        canvas.onpointermove = (event) => { if (!dragging) return; offsetX += event.clientX - previous.clientX; offsetY += event.clientY - previous.clientY; previous = event; draw(); };
-        canvas.onpointerup = () => { dragging = false; };
-        root.querySelector('[data-save]').onclick = () => canvas.toBlob(async (blob) => { if (!blob) return; const result = await request('/api/me/avatar', { method:'POST', body:blob, headers:{ 'Content-Type':'image/webp' } }); document.querySelectorAll('[data-testid="account-avatar"]').forEach((avatarEl) => { avatarEl.style.backgroundImage = `url(${resolve(result.avatarUrl)})`; avatarEl.style.backgroundSize = 'cover'; avatarEl.textContent = ''; }); closeDialog(); }, 'image/webp', .86);
-      }; image.src = URL.createObjectURL(file);
+        canvas.onpointerdown = (event) => { dragging = true; previous = event; canvas.setPointerCapture(event.pointerId); canvas.focus({ preventScroll:true }); };
+        canvas.onpointermove = (event) => { if (!dragging || !previous) return; const scale = 512 / Math.max(1, canvas.getBoundingClientRect().width); offsetX += (event.clientX - previous.clientX) * scale; offsetY += (event.clientY - previous.clientY) * scale; previous = event; draw(); };
+        const finishDrag = (event) => { dragging = false; previous = null; if (event?.pointerId != null && canvas.hasPointerCapture?.(event.pointerId)) canvas.releasePointerCapture(event.pointerId); };
+        canvas.onpointerup = finishDrag; canvas.onpointercancel = finishDrag;
+        canvas.onkeydown = (event) => { if (!['ArrowLeft','ArrowRight','ArrowUp','ArrowDown'].includes(event.key)) return; event.preventDefault(); const amount = event.shiftKey ? 16 : 5; if (event.key === 'ArrowLeft') offsetX -= amount; if (event.key === 'ArrowRight') offsetX += amount; if (event.key === 'ArrowUp') offsetY -= amount; if (event.key === 'ArrowDown') offsetY += amount; draw(); };
+        root.querySelector('[data-save]').onclick = () => canvas.toBlob(async (blob) => {
+          const button = root.querySelector('[data-save]'); const status = root.querySelector('[data-photo-status]');
+          if (!blob) { status.textContent = 'FilmScript could not prepare this crop. Try another image.'; return; }
+          button.disabled = true; button.textContent = 'Saving'; status.textContent = '';
+          try {
+            const result = await request('/api/me/avatar', { method:'POST', body:blob, headers:{ 'Content-Type':'image/webp' } });
+            state.me = { ...(state.me || {}), avatar:result.avatarUrl };
+            state.profile = { ...(state.profile || {}), avatarUrl:result.avatarUrl, avatarCrop:{ outputWidth:512, outputHeight:512 } };
+            applyAccountIdentity();
+            window.dispatchEvent(new CustomEvent('filmscript:avatar-changed', { detail:{ avatarUrl:result.avatarUrl } }));
+            openAccount();
+          } catch (error) { button.disabled = false; button.textContent = 'Save photo'; status.textContent = error.message; }
+        }, 'image/webp', .86);
+      }; image.src = objectUrl;
     };
+    input.click();
   }
 
   async function openTranslation(script) {
-    const root = dialog('Translate Script', 'Choose a language, review the exact credit cost, then confirm.', `<div class="fs-form-grid"><label class="fs-form-field" style="grid-column:1/-1"><span>Source script</span><input value="${escapeHtml(script.title)}" readonly></label><label class="fs-form-field" style="grid-column:1/-1"><span>Target language</span><select data-language><option>English</option><option>Spanish</option><option>French</option><option>Portuguese</option><option>German</option></select></label></div><div data-translation-summary class="fs-member-card" style="margin-top:14px"><span class="fs-member-copy"><strong>Calculating translation</strong><small>FilmScript will show the page count and exact credit cost before it begins.</small></span></div><div class="fs-dialog-actions"><button class="fs-action fs-action-primary" data-continue disabled>Continue</button></div>`);
-    const select = root.querySelector('[data-language]'); const continueButton = root.querySelector('[data-continue]'); let preview; let previewRequest = 0;
-    const creditLabel = (value) => value == null ? 'Unlimited' : `${value} credits`;
-    const previewMarkup = (details) => `<span class="fs-member-copy"><strong>${escapeHtml(details.newProjectName)}</strong><small>${details.pageCount} pages</small><small>Required credits: ${details.requiredCredits} · Available: ${creditLabel(details.availableCredits)} · Remaining after translation: ${creditLabel(details.remainingCredits)}</small><small>Your original stays unchanged. This creates an independent FilmScript project.</small></span>`;
-    const refresh = async () => {
-      const requestId = ++previewRequest;
-      continueButton.disabled = true;
-      root.querySelector('[data-translation-summary]').innerHTML = '<span class="fs-member-copy"><strong>Calculating translation</strong><small>Checking pages and available credits.</small></span>';
-      try {
-        const next = await api.translationPreview(script.id, select.value);
-        if (requestId !== previewRequest) return;
-        preview = next;
-        root.querySelector('[data-translation-summary]').innerHTML = previewMarkup(preview);
-        continueButton.disabled = false;
-      } catch (error) {
-        if (requestId !== previewRequest) return;
-        root.querySelector('[data-translation-summary]').textContent = error.message;
-      }
-    };
-    const begin = async (button) => {
-      button.disabled = true;
-      button.textContent = 'Starting translation';
-      try {
-        const result = await api.translate(script.id, select.value);
-        const url = new URL('Editor%20v5.dc.html', location.href);
-        url.searchParams.set('script', script.id);
-        url.searchParams.set('view', 'translation');
-        url.searchParams.set('translationJob', result.job.id);
-        url.searchParams.set('targetLanguage', select.value);
-        location.assign(`${url.pathname}${url.search}${url.hash}`);
-      } catch (error) {
-        button.disabled = false;
-        button.textContent = `Confirm translation — ${preview?.requiredCredits || ''} credits`;
-        root.querySelector('[data-translation-confirmation]').textContent = error.message;
-      }
-    };
-    continueButton.onclick = () => {
-      if (!preview) return;
-      const body = root.querySelector('.fs-platform-body');
-      body.innerHTML = `<div data-translation-confirmation class="fs-member-card"><span class="fs-member-copy"><strong>Confirm ${escapeHtml(preview.newProjectName)}</strong><small>${preview.pageCount} pages · Required credits: ${preview.requiredCredits}</small><small>Available: ${creditLabel(preview.availableCredits)} · Remaining after translation: ${creditLabel(preview.remainingCredits)}</small><small>The original screenplay will not change. Future edits will not sync between the two projects.</small></span></div><div class="fs-dialog-actions"><button class="fs-action" data-back>Back</button><button class="fs-action fs-action-primary" data-confirm>Confirm translation — ${preview.requiredCredits} credits</button></div>`;
-      body.querySelector('[data-back]').onclick = () => openTranslation(script);
-      body.querySelector('[data-confirm]').onclick = (event) => begin(event.currentTarget);
-    };
-    select.onchange = refresh;
-    refresh();
+    const root = dialog('Translate Script', 'This will create a new independent project.', `<div class="fs-form-grid"><label class="fs-form-field" style="grid-column:1/-1"><span>Source script</span><input value="${escapeHtml(script.title)}" readonly></label><label class="fs-form-field" style="grid-column:1/-1"><span>Target language</span><select data-language><option>English</option><option>Spanish</option><option>French</option><option>Portuguese</option><option>German</option></select></label></div><div data-translation-summary class="fs-member-card" style="margin-top:14px"><span class="fs-member-copy"><strong>Choose a target language</strong><small>The exact credit cost will appear before processing.</small></span></div><div class="fs-dialog-actions"><button class="fs-action fs-action-primary" data-start disabled>Translate and create project</button></div>`);
+    const select = root.querySelector('[data-language]'); const start = root.querySelector('[data-start]'); let preview;
+    const refresh = async () => { try { preview = await api.translationPreview(script.id, select.value); root.querySelector('[data-translation-summary]').innerHTML = `<span class="fs-member-copy"><strong>${escapeHtml(preview.newProjectName)}</strong><small>${preview.pageCount} pages · Translation cost ${preview.requiredCredits} credits · Available ${preview.availableCredits ?? 'Unlimited'}</small></span>`; start.disabled = false; } catch (error) { root.querySelector('[data-translation-summary]').textContent = error.message; } };
+    select.onchange = refresh; refresh(); start.onclick = async () => { start.disabled = true; start.textContent = 'Starting translation'; try { const result = await api.translate(script.id, select.value); root.querySelector('.fs-platform-body').innerHTML = `<div class="fs-member-card"><span class="fs-member-copy"><strong>Translation started</strong><small>You can leave this screen. FilmScript will notify you when the new project is ready.</small><div class="fs-progress" style="margin-top:12px"><span style="--progress:${result.job.progress}%"></span></div></span></div>`; refreshNotifications(); } catch (error) { start.disabled = false; start.textContent = 'Translate and create project'; root.querySelector('[data-translation-summary]').textContent = error.message; } };
   }
 
   async function openShare() {
     const modules = ['script','analysis','breakdown','stripboard','shot_list','calendar','budget','canvas','location_plan','imagine','files'];
-    const moduleLabel = (module) => ({ shot_list:'Shot List', location_plan:'Location Plans', files:'Selected Files' }[module] || label(module));
-    const formMarkup = (shared = null) => {
-      const enabled = new Map((shared?.sections || []).map((section) => [section.module, section]));
-      const value = (key) => escapeHtml(shared?.cover?.[key] || '');
-      return `<form data-share data-shared-id="${shared?.id || ''}"><div class="fs-form-grid"><label class="fs-form-field" style="grid-column:1/-1"><span>Access</span><select name="accessMode"><option value="public" ${shared?.accessMode === 'public' ? 'selected' : ''}>Anyone with the link</option><option value="password" ${shared?.accessMode === 'password' ? 'selected' : ''}>Password protected</option><option value="email_restricted" ${shared?.accessMode === 'email_restricted' ? 'selected' : ''}>Invited emails only</option></select></label><label class="fs-form-field"><span>Password</span><input name="password" type="password" autocomplete="new-password" placeholder="${shared?.accessMode === 'password' ? 'Leave blank to keep current password' : 'Required for password access'}"></label><label class="fs-form-field"><span>Invited emails</span><input name="allowedEmails" value="${escapeHtml((shared?.allowedEmails || []).join(', '))}" placeholder="name@company.com, team@studio.com"></label><label class="fs-form-field" style="grid-column:1/-1"><span>Project subtitle (optional)</span><input name="subtitle" value="${value('subtitle')}" maxlength="240" placeholder="A read-only FilmScript project view"></label><label class="fs-form-field"><span>Cover image URL (optional)</span><input name="coverUrl" value="${value('coverUrl')}" placeholder="https://…"></label><label class="fs-form-field"><span>Project logo URL (optional)</span><input name="logoUrl" value="${value('logoUrl')}" placeholder="https://…"></label></div><p class="fs-share-hint">Choose only the sections external viewers can open. They cannot edit, comment, duplicate, open Lumière, or enter hidden project areas.</p><div class="fs-platform-list fs-share-sections">${modules.map((module) => { const section = enabled.get(module); return `<label class="fs-member-card" data-share-module="${module}"><input type="checkbox" name="section" value="${module}" ${section ? 'checked' : ''}><span class="fs-member-copy"><strong>${moduleLabel(module)}</strong><small>Read-only ${module === 'budget' ? '· Financial access remains protected' : ''}</small>${module === 'files' ? `<input name="files_${module}" value="${escapeHtml((section?.fileIds || []).join(', '))}" placeholder="Selected Canvas asset IDs" style="width:100%;margin-top:7px">` : ''}</span><input type="checkbox" name="export_${module}" aria-label="Allow export for ${module}" ${section?.canExport ? 'checked' : ''}><span>Export</span></label>`; }).join('')}</div><div class="fs-dialog-actions"><button class="fs-action fs-action-primary">${shared ? 'Save Shared Project' : 'Create Shared Project'}</button></div><p class="fs-form-message" data-share-error></p></form>`;
-    };
-    const root = dialog('Shared Projects', 'A live, read-only Project View. It never duplicates project content.', '<div data-share-body>Loading Shared Projects…</div>', 'fs-share-dialog');
-    const render = async (editing = null) => {
-      let result;
-      try { result = await api.sharedProjects(); } catch (error) { root.querySelector('[data-share-body]').textContent = error.message; return; }
-      const projects = result.sharedProjects || [];
-      const existing = projects.map((shared) => `<article class="fs-member-card"><span class="fs-member-copy"><strong>${escapeHtml(shared.status === 'active' ? 'Active Project View' : 'Revoked Project View')}</strong><small>${escapeHtml(moduleLabel(shared.accessMode))} · ${(shared.sections || []).map((section) => moduleLabel(section.module)).join(', ') || 'No sections'}</small><input value="${escapeHtml(shared.url)}" readonly style="width:100%;margin-top:7px"></span><button class="fs-action" type="button" data-copy="${shared.id}">Copy</button>${shared.status === 'active' ? `<button class="fs-action" type="button" data-edit="${shared.id}">Edit</button><button class="fs-action fs-action-danger" type="button" data-revoke="${shared.id}">Revoke</button>` : ''}</article>`).join('');
-      root.querySelector('[data-share-body]').innerHTML = `${editing ? '<button class="fs-action" type="button" data-cancel-share>Back to Shared Projects</button>' : ''}${editing ? formMarkup(editing) : `<div class="fs-platform-list">${existing || '<div class="fs-empty-access"><strong>No Project Views yet</strong><p>Create one when you are ready to share selected material.</p></div>'}</div><div class="fs-dialog-actions"><button class="fs-action fs-action-primary" data-new-share>Create Project View</button></div>`}`;
-      root.querySelector('[data-new-share]')?.addEventListener('click', () => render({ accessMode:'public', sections:[] }));
-      root.querySelector('[data-cancel-share]')?.addEventListener('click', () => render());
-      root.querySelectorAll('[data-copy]').forEach((button) => button.addEventListener('click', () => { const shared = projects.find((item) => item.id === button.dataset.copy); if (shared?.url) navigator.clipboard.writeText(shared.url); button.textContent = 'Copied'; }));
-      root.querySelectorAll('[data-edit]').forEach((button) => button.addEventListener('click', () => render(projects.find((item) => item.id === button.dataset.edit))));
-      root.querySelectorAll('[data-revoke]').forEach((button) => button.addEventListener('click', async () => { if (!confirm('Revoke this Project View? Anyone with its link will lose access.')) return; try { await api.revokeShared(button.dataset.revoke); render(); } catch (error) { alert(error.message); } }));
-      const form = root.querySelector('[data-share]');
-      form?.addEventListener('change', (event) => { if (event.target.name === 'section') { const row = event.target.closest('[data-share-module]'); row?.querySelector(`[name="export_${event.target.value}"]`)?.toggleAttribute('disabled', !event.target.checked); } });
-      form?.addEventListener('submit', async (event) => { event.preventDefault(); const formData = new FormData(form); const accessMode = String(formData.get('accessMode')); const sections = formData.getAll('section').map((module) => ({ module, canView:true, canExport:formData.get(`export_${module}`) === 'on', ...(module === 'files' ? { fileIds:String(formData.get(`files_${module}`) || '').split(',').map((item) => item.trim()).filter(Boolean) } : {}) })); const payload = { accessMode, allowedEmails:String(formData.get('allowedEmails') || '').split(',').map((item) => item.trim()).filter(Boolean), sections, cover:{ subtitle:formData.get('subtitle'), coverUrl:formData.get('coverUrl'), logoUrl:formData.get('logoUrl') } }; const password = String(formData.get('password') || ''); if (password) payload.password = password; const error = form.querySelector('[data-share-error]'); error.textContent = ''; try { const existingId = form.dataset.sharedId; const saved = existingId ? await api.updateShared(existingId, payload) : await api.createShared(payload); root.querySelector('[data-share-body]').innerHTML = `<div class="fs-member-card"><span class="fs-member-copy"><strong>Project View is ready</strong><small>It always reads the latest selected project content.</small><input value="${escapeHtml(saved.sharedProject.url)}" readonly style="width:100%;margin-top:8px"></span><button class="fs-action" data-copy-final>Copy</button></div><div class="fs-dialog-actions"><button class="fs-action" data-manage-share>Manage Project Views</button></div>`; root.querySelector('[data-copy-final]').onclick = () => navigator.clipboard.writeText(saved.sharedProject.url); root.querySelector('[data-manage-share]').onclick = () => render(); } catch (failure) { error.textContent = failure.message; } });
-    };
-    render();
+    const root = dialog('Create Shared Project', 'Choose exactly what an external viewer can see. This Shared Project is read only.', `<form data-share><div class="fs-form-grid"><label class="fs-form-field" style="grid-column:1/-1"><span>Access</span><select name="accessMode"><option value="public">Anyone with the link</option><option value="password">Password protected</option><option value="email_restricted">Invited emails only</option></select></label><label class="fs-form-field" style="grid-column:1/-1"><span>Password or invited emails</span><input name="accessValue" placeholder="Add when required"></label></div><div class="fs-platform-list" style="margin-top:15px">${modules.map((module) => `<label class="fs-member-card"><input type="checkbox" name="section" value="${module}"><span class="fs-member-copy"><strong>${module.replaceAll('_',' ')}</strong><small>View access only</small></span><input type="checkbox" name="export_${module}" aria-label="Allow export for ${module}"><span>Allow export</span></label>`).join('')}</div><div class="fs-dialog-actions"><button class="fs-action fs-action-primary">Create Shared Project</button></div></form><div data-share-result></div>`);
+    root.querySelector('[data-share]').onsubmit = async (event) => { event.preventDefault(); const form = new FormData(event.currentTarget); const mode = form.get('accessMode'); const value = String(form.get('accessValue') || ''); const sections = form.getAll('section').map((module) => ({ module, canView:true, canExport:form.get(`export_${module}`) === 'on' })); try { const result = await api.createShared({ accessMode:mode, ...(mode === 'password' ? { password:value } : {}), ...(mode === 'email_restricted' ? { allowedEmails:value.split(',').map((item) => item.trim()) } : {}), sections }); root.querySelector('[data-share-result]').innerHTML = `<div class="fs-member-card"><span class="fs-member-copy"><strong>Shared Project is ready</strong><input value="${escapeHtml(result.sharedProject.url)}" readonly style="width:100%;margin-top:8px"></span><button class="fs-action" data-copy>Copy</button></div>`; root.querySelector('[data-copy]').onclick = () => navigator.clipboard.writeText(result.sharedProject.url); } catch (error) { root.querySelector('[data-share-result]').textContent = error.message; } };
   }
 
   async function openLocationPlan() {
@@ -354,17 +562,18 @@
 
   function renderPresence() {
     const container = document.querySelector('.fs-live-avatars'); if (!container) return;
-    const unique = [...new Map(state.presence.map((person) => [person.userId, person])).values()].slice(0,5);
-    container.innerHTML = unique.map((person) => `<button class="fs-live-avatar" style="--collaborator-color:${escapeHtml(person.color)}" title="${escapeHtml(person.name)} · ${escapeHtml(person.module || 'Project')} · ${escapeHtml(person.state || 'active')}">${person.picture ? `<img src="${escapeHtml(person.picture)}" alt="${escapeHtml(person.name)}">` : escapeHtml(person.name?.charAt(0) || 'C')}</button>`).join('');
+    const unique = [...new Map(state.presence.filter((person) => person.clientId !== clientId && person.userId !== state.me?.id && person.state !== 'disconnected').map((person) => [person.userId, person])).values()].slice(0,5);
+    container.innerHTML = unique.map((person) => { const preset = profileIcon(person.avatarPreset); const palette = avatarBackground(person.avatarBackground); const picture = person.picture ? resolveAsset(person.picture) : null; return `<button class="fs-live-avatar${preset ? ' fs-preset-avatar' : ''}" style="--collaborator-color:${escapeHtml(person.color)};${preset ? `--profile-avatar-bg:${palette[2]};--profile-avatar-ink:${palette[3]}` : ''}" title="${escapeHtml(person.name)} · ${escapeHtml(person.module || 'Project')} · ${escapeHtml(person.state || 'active')}">${preset ? preset.svg : picture ? `<img src="${escapeHtml(picture)}" alt="${escapeHtml(person.name)}">` : escapeHtml(person.name?.charAt(0) || 'C')}</button>`; }).join('');
+    container.hidden = unique.length === 0;
     document.querySelectorAll('[data-collaborator-active]').forEach((node) => { node.removeAttribute('data-collaborator-active'); node.style.removeProperty('--collaborator-color'); });
-    for (const person of state.presence) { if (person.clientId === clientId || person.state === 'disconnected') continue; const selector = person.module === 'breakdown' && person.sceneId ? `[data-scene-id="${CSS.escape(person.sceneId)}"]` : person.module === 'shot_list' && person.selectedObjectId ? `[data-shot-id="${CSS.escape(person.selectedObjectId)}"]` : ''; if (selector) document.querySelectorAll(selector).forEach((node) => { node.dataset.collaboratorActive = person.name; node.style.setProperty('--collaborator-color',person.color); }); }
+    for (const person of state.presence) { if (person.clientId === clientId || person.userId === state.me?.id || person.state === 'disconnected') continue; const selector = person.module === 'breakdown' && person.sceneId ? `[data-scene-id="${CSS.escape(person.sceneId)}"]` : person.module === 'shot_list' && person.selectedObjectId ? `[data-shot-id="${CSS.escape(person.selectedObjectId)}"]` : ''; if (selector) document.querySelectorAll(selector).forEach((node) => { node.dataset.collaboratorActive = person.name; node.style.setProperty('--collaborator-color',person.color); }); }
     renderRemoteCursors();
   }
 
   function renderRemoteCursors() {
     document.querySelectorAll('.fs-remote-caret,.fs-remote-selection').forEach((node) => node.remove());
     for (const person of state.presence) {
-      if (person.clientId === clientId || person.module !== 'script' || person.state === 'disconnected' || !person.selection?.blockId) continue;
+      if (person.clientId === clientId || person.userId === state.me?.id || person.module !== 'script' || person.state === 'disconnected' || !person.selection?.blockId) continue;
       const block = document.querySelector(`[data-block-id="${CSS.escape(person.selection.blockId)}"]`); if (!block) continue;
       const walker = document.createTreeWalker(block, NodeFilter.SHOW_TEXT, { acceptNode:(node) => node.parentElement?.matches?.('[data-marker],[data-dialogue-marker]') ? NodeFilter.FILTER_REJECT : NodeFilter.FILTER_ACCEPT });
       let remaining = Math.max(0, Number(person.selection.anchorOffset) || 0); let target = null; let text;
@@ -392,7 +601,7 @@
     state.eventSource.addEventListener('presence.joined', (event) => { const person = JSON.parse(event.data); state.presence = [...state.presence.filter((item) => item.clientId !== person.clientId), person]; renderPresence(); });
     state.eventSource.addEventListener('presence.updated', (event) => { const person = JSON.parse(event.data); state.presence = [...state.presence.filter((item) => item.clientId !== person.clientId), person]; renderPresence(); });
     state.eventSource.addEventListener('presence.left', (event) => { const person = JSON.parse(event.data); state.presence = state.presence.filter((item) => item.clientId !== person.clientId); renderPresence(); });
-    ['ai.job.updated','ai.job.completed','breakdown.progress','content.operation','content.conflict','comment.created','comment.updated','activity.updated','notification.updated','script.crdt','canvas.drag'].forEach((type) => state.eventSource.addEventListener(type, (event) => { let detail={};try{detail=JSON.parse(event.data)}catch{}window.dispatchEvent(new CustomEvent(`filmscript:${type}`,{detail})); if (type === 'notification.updated') refreshNotifications(); if ((type === 'comment.created' || type === 'comment.updated') && state.commentContext && document.querySelector('.fs-comments-dialog')) { clearTimeout(state.commentRefreshTimer); state.commentRefreshTimer = setTimeout(() => openComments(state.commentContext), 180); } }));
+    ['ai.job.completed','content.operation','content.conflict','comment.created','message.created','script.crdt','canvas.drag'].forEach((type) => state.eventSource.addEventListener(type, async (event) => { let detail={};try{detail=JSON.parse(event.data)}catch{}window.dispatchEvent(new CustomEvent(`filmscript:${type}`,{detail})); if (type === 'message.created' && state.chatPeer && detail && (detail.senderId === state.chatPeer || detail.recipientId === state.chatPeer)) { try { state.chatMessages = (await api.chat(state.chatPeer)).messages || []; const panel = document.querySelector('.fs-chat-panel'); panel?.querySelector('[data-chat-messages]')?.replaceChildren(...state.chatMessages.map((item) => { const article=document.createElement('article'); article.className=`fs-chat-bubble ${item.senderId === state.me?.id ? 'is-mine' : ''}`; article.innerHTML=`<p>${escapeHtml(item.body)}</p><time>${escapeHtml(notificationTime(item.createdAt))}</time>`; return article; })); } catch {} } }));
     document.addEventListener('visibilitychange', () => { if (!document.hidden) sendPresence({ type:'presence.updated' }); });
     const activity = () => { const wasIdle = Date.now() - lastUserActivityAt > 90_000; lastUserActivityAt = Date.now(); if (wasIdle) sendPresence({ type:'presence.updated' }); };
     ['pointerdown','keydown','wheel'].forEach((type) => document.addEventListener(type, activity, { passive:true }));
@@ -403,25 +612,21 @@
   let presenceTimer = 0;
   function sendPresence(detail = {}) {
     if (!projectId || document.hidden) return;
-    state.localContext = { ...(state.localContext || {}), ...detail, module:detail.module || currentModule() };
     clearTimeout(presenceTimer); presenceTimer = setTimeout(() => request(`/api/projects/${projectId}/collaboration/presence`, { method:'POST', headers:{ 'X-FilmScript-Client-Id':clientId }, body:JSON.stringify({ type:detail.type || 'presence.updated', module:currentModule(), ...detail }) }).catch(() => {}), detail.type === 'cursor.updated' ? 80 : 120);
   }
 
   function mountHub() {
     const host = document.querySelector('.v5-top-actions') || document.querySelector('.fs-app-topbar > div:last-child'); if (!host || document.querySelector('.fs-platform-hub')) return;
     const hub = document.createElement('div'); hub.className = 'fs-platform-hub';
-    hub.innerHTML = `${projectId ? '<span class="fs-live-avatars" aria-label="Active collaborators"></span><button class="fs-platform-button fs-manage-people" data-people title="People and access" aria-label="People and access"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M16 19v-1.5a4 4 0 0 0-4-4H7a4 4 0 0 0-4 4V19"></path><circle cx="9.5" cy="7" r="3"></circle><path d="M17 5.2a3 3 0 0 1 0 5.6M21 19v-1.5a4 4 0 0 0-3-3.87"></path></svg></button><details class="fs-module-menu"><summary class="fs-platform-button" title="Module actions" aria-label="Module actions">•••</summary><div class="fs-module-menu-pop"><button type="button" data-module-history></button><button type="button" data-module-comments>Comments</button></div></details>' : ''}<button class="fs-platform-button" data-bell title="Notifications" aria-label="Notifications"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9"></path><path d="M10 21h4"></path></svg><span class="fs-notification-badge" hidden></span></button>`;
-    host.prepend(hub); hub.querySelector('[data-bell]').onclick = openNotifications; hub.querySelector('[data-people]')?.addEventListener('click', openMembers);
-    const menu = hub.querySelector('.fs-module-menu'); menu?.addEventListener('toggle', () => { if (!menu.open) return; const module = currentModule(); menu.querySelector('[data-module-history]').textContent = ['script','canvas'].includes(module) ? 'Version History' : 'Activity'; });
-    hub.querySelector('[data-module-history]')?.addEventListener('click', () => { menu.removeAttribute('open'); openActivity(currentModule()); });
-    hub.querySelector('[data-module-comments]')?.addEventListener('click', () => { menu.removeAttribute('open'); openComments(currentCommentAnchor()); });
+    hub.innerHTML = `${projectId ? '<span class="fs-live-avatars" aria-label="Active collaborators"></span><button class="fs-platform-button fs-manage-people" data-people title="People and access" aria-label="People and access"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M16 19v-1.5a4 4 0 0 0-4-4H7a4 4 0 0 0-4 4V19"></path><circle cx="9.5" cy="7" r="3"></circle><path d="M17 5.2a3 3 0 0 1 0 5.6M21 19v-1.5a4 4 0 0 0-3-3.87"></path></svg></button><button class="fs-platform-button" data-chat title="Collaborator chat" aria-label="Collaborator chat"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 5.5h16v11H9l-5 3v-14Z"></path><path d="M8 10h8M8 13h5"></path></svg></button>' : ''}<button class="fs-platform-button" data-bell title="Notifications" aria-label="Notifications"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9"></path><path d="M10 21h4"></path></svg><span class="fs-notification-badge" hidden></span></button>`;
+    host.prepend(hub); hub.querySelector('[data-bell]').onclick = openNotifications; hub.querySelector('[data-chat]')?.addEventListener('click', openChatDirectory); hub.querySelector('[data-people]')?.addEventListener('click', openMembers);
   }
 
   function mountMobileNav() {
     if (document.querySelector('.fs-mobile-global')) return;
     const globalNav = document.createElement('nav'); globalNav.className = 'fs-mobile-nav fs-mobile-global'; globalNav.setAttribute('aria-label', 'FilmScript navigation');
-    globalNav.innerHTML = `<a href="App.dc.html"${projectId ? '' : ' aria-current="page"'}>Home</a><a href="App.dc.html">Projects</a><a href="App.dc.html?lumiere=1">Lumiere</a><button data-activity>Activity</button><button data-profile>Profile</button>`;
-    document.body.appendChild(globalNav); globalNav.querySelector('[data-activity]').onclick = openNotifications; globalNav.querySelector('[data-profile]').onclick = openThemes;
+    globalNav.innerHTML = `<a href="App.dc.html"${projectId ? '' : ' aria-current="page"'}>Home</a><a href="App.dc.html">Projects</a><a href="App.dc.html?lumiere=1">Lumiere</a><button data-activity>Activity</button><button data-profile>Account</button>`;
+    document.body.appendChild(globalNav); globalNav.querySelector('[data-activity]').onclick = openNotifications; globalNav.querySelector('[data-profile]').onclick = openAccount;
     if (!projectId) return;
     const view = params.get('view') || 'script'; const projectNav = document.createElement('nav'); projectNav.className = 'fs-mobile-nav fs-mobile-project'; projectNav.setAttribute('aria-label', 'Project navigation');
     projectNav.innerHTML = `<a href="App.dc.html">Overview</a><a href="Editor%20v5.dc.html?script=${projectId}"${view === 'script' ? ' aria-current="page"' : ''}>Script</a><a href="Editor%20v5.dc.html?script=${projectId}&view=breakdown"${['breakdown','stripboard','shot-list','budget','calendar'].includes(view) ? ' aria-current="page"' : ''}>Production</a><a href="Editor%20v5.dc.html?script=${projectId}&view=canvas"${view === 'canvas' ? ' aria-current="page"' : ''}>Canvas</a><button data-more>More</button>`;
@@ -435,19 +640,26 @@
   }
 
   function injectProfileControls() {
-    const observer = new MutationObserver(() => document.querySelectorAll('[data-filmscript-profile-panel],[data-testid="account-details-panel"]').forEach((panel) => { if (panel.querySelector('[data-platform-theme]')) return; const button = document.createElement('button'); button.type = 'button'; button.className = 'fs-action'; button.dataset.platformTheme = '1'; button.style.cssText = 'width:100%;margin-top:8px'; button.textContent = 'Theme and profile photo'; button.onclick = openThemes; panel.appendChild(button); }));
-    observer.observe(document.documentElement, { childList:true, subtree:true });
+    let identityFrame = 0;
+    const observer = new MutationObserver((records) => {
+      const hasNewAvatar = records.some((record) => [...record.addedNodes].some((node) => node.nodeType === Node.ELEMENT_NODE && (node.matches?.('[data-testid="account-avatar"]') || node.querySelector?.('[data-testid="account-avatar"]'))));
+      if (!hasNewAvatar || identityFrame) return;
+      identityFrame = requestAnimationFrame(() => { identityFrame = 0; applyAccountIdentity(); });
+    });
+    observer.observe(document.body, { childList:true, subtree:true });
   }
 
   async function init() {
-    try { state.me = await api.me(); const local = localStorage.getItem('filmscript_theme_v2'); applyTheme(state.me.theme || local || 'filmscript'); } catch { applyTheme(localStorage.getItem('filmscript_theme_v2') || 'filmscript'); }
+    try {
+      state.me = await api.me();
+      try { const platform = await api.profile(); state.profile = platform.profile || null; } catch {}
+      const local = window.filmscriptTheme?.get?.() || localStorage.getItem('filmscript_theme');
+      applyTheme(state.profile?.theme || state.me.theme || local || 'filmscript'); applyAccountIdentity();
+    } catch { applyTheme(window.filmscriptTheme?.get?.() || localStorage.getItem('filmscript_theme') || 'filmscript'); }
     mountHub(); mountMobileNav(); syncResponsiveChrome(); addEventListener('resize', syncResponsiveChrome, { passive:true }); injectProfileControls(); refreshNotifications(); connectCollaboration();
-    document.addEventListener('pointerdown', (event) => { const entity = event.target?.closest?.('[data-shot-id],[data-scene-id],[data-block-id]'); if (!entity) return; state.localContext = { module:currentModule(), selectedObjectId:entity.dataset.shotId || entity.dataset.sceneId || entity.dataset.blockId || null, sceneId:entity.dataset.sceneId || null, selection:{ blockId:entity.dataset.blockId || null } }; }, { passive:true, capture:true });
     const invitation = params.get('invitation'); if (invitation) request('/api/invitations/accept', { method:'POST', body:JSON.stringify({ token:invitation }) }).then((result) => location.replace(`Editor%20v5.dc.html?script=${encodeURIComponent(result.membership.projectId)}`)).catch((error) => dialog('Invitation unavailable', error.message, '<div class="fs-dialog-actions"><button class="fs-action" onclick="location.href=\'App.dc.html\'">Back to projects</button></div>'));
-    if (params.get('comment') && projectId) openComments(currentCommentAnchor()).catch(() => {});
   }
 
-  window.addEventListener('filmscript:open-comments', (event) => openComments(event.detail || currentCommentAnchor()).catch(() => {}));
-  window.filmscriptPlatform = { api, clientId, openTranslation, openMembers, openActivity, openComments, openNotifications, openThemes, openShare, openLocationPlan, sendPresence, sendOperation:(body) => api.collaborate(body), applyTheme };
+  window.filmscriptPlatform = { api, clientId, openTranslation, openMembers, openActivity, openAccount, openThemes, openShare, openLocationPlan, openChatDirectory, openChat, sendPresence, sendOperation:(body) => api.collaborate(body), applyTheme };
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', init); else init();
 })();

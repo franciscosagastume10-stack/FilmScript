@@ -7,11 +7,14 @@ import { fileURLToPath } from "node:url";
 import { gzipSync } from "node:zlib";
 import {
   connectGoogleIdentity,
+  consumeAuthHandoff,
   consumeOauthState,
+  createAuthHandoff,
   createOauthState,
   createSession,
   databaseHealth,
   deleteSessionByToken,
+  getSessionById,
   getSessionByToken,
   getBudgetReceipt,
   getCanvasLibrary,
@@ -39,7 +42,7 @@ import {
 import { computeBudget, createBudgetTemplate, normalizeBudget } from "./budget-model.js";
 import { applyBudgetImport, buildBudgetImportCatalog, normalizeBudgetImportProposal } from "./budget-import-model.js";
 import { computeCalendar, createCalendarTemplate, normalizeCalendar } from "./calendar-model.js";
-import { buildAnalysisSnapshot, diffAnalysisScenes, hashText, normalizeEmotionalArc } from "./analysis-model.js";
+import { buildAnalysisSnapshot, hashText, normalizeEmotionalArc } from "./analysis-model.js";
 import { referenceStorage } from "./reference-storage.js";
 import {
   createCanvasWorkspace,
@@ -54,31 +57,29 @@ import {
 import { canvasStorage } from "./canvas-storage.js";
 import {
   acceptInvitation,
-  activeAIJobForProject,
   backfillOwners,
   authorizeSharedProject,
+  canReadUserAvatar,
   collaborationDelta,
   getCollaborationDocument,
   getCollaborationEntity,
   createAIJob,
-  createAICompletionNotification,
   createComment,
+  createProjectMessage,
   createInvitation,
   createGuestSession,
   createNotification,
   createSharedProject,
+  deleteNotifications,
   financialAccess,
-  findAIJobByIdempotency,
   guestProjectAccess,
   getAIJob,
-  getAIJobInternal,
   getSharedProject,
-  listRecoverableAIJobs,
   listAccessibleProjectIds,
   listActivity,
   listComments,
+  listProjectMessages,
   listLocationPlans,
-  listSharedProjects,
   listMembers,
   listInvitations,
   listNotifications,
@@ -87,38 +88,32 @@ import {
   projectBillingOwnerId,
   projectState,
   recordActivity,
-  recordAIJobAttempt,
   requireProjectPermission,
-  requestSharedProjectAccess,
   resolveComment,
   revokeSharedProject,
-  retryAIJob,
   revokeInvitation,
   rotateInvitationToken,
   saveCollaborationOperation,
   saveCollaborationDocument,
   saveCollaborationEntity,
   saveLocationPlan,
-  setPlatformEventSink,
   setProjectArchived,
   transferProjectOwnership,
   updateAIJob,
-  updateAIJobInput,
   updateMembership,
   updateInvitation,
-  updateSharedProject,
+  userAvatarPresentation,
   updateUserPlatformProfile,
   userPlatformProfile,
 } from "./platform-database.js";
-import { filterDepartmentFinancialData, filterFinancialData, canAccessModule, canUseLumiereAction, canViewFinancialData } from "./permissions-model.js";
+import { filterDepartmentFinancialData, filterFinancialData, canAccessModule, canUseLumiereAction } from "./permissions-model.js";
 import { invitationEmail, invitationMailer } from "./invitation-mailer.js";
-import { AI_MODELS, isAIJobType, modelForTask, moduleForAIJob, publicAIJob, routeAIRequest } from "./ai-router.js";
+import { AI_MODELS, modelForTask, publicAIJob, routeAIRequest } from "./ai-router.js";
 import { CollaborationRooms, applyVersionedPatch, throttleIntervalForEvent } from "./collaboration-engine.js";
 import { ScriptDocumentRegistry, decodeUpdate, encodeUpdate } from "./realtime-collaboration.js";
 import { createLocationPlan, updatePinnedMeasurements } from "./location-plan-model.js";
 import {
   TRANSLATION_LANGUAGES,
-  screenplayPageCount,
   screenplayTranslationPacket,
   translatedProjectName,
   translationCreditCost,
@@ -313,31 +308,23 @@ async function requestLumiere({ system = "", messages = [], maxTokens = 1024, js
     if (lastUserMessage) lastUserMessage.content = `${lastUserMessage.content}\n\n${jsonInstruction}`;
     else input.push({ role: "user", content: jsonInstruction });
   }
-  let response;
-  try {
-    response = await fetch(OPENAI_RESPONSES_API_URL, {
-      method: "POST",
-      signal: AbortSignal.timeout(OPENAI_TEXT_TIMEOUT_MS),
-      headers: {
-        Authorization: `Bearer ${apiKey}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        model: String(model || OPENAI_TEXT_MODEL).trim() || OPENAI_TEXT_MODEL,
-        instructions: `${String(system || '').trim()}${jsonMode ? "\n\nRespond with one valid JSON object only." : ""}`.trim() || undefined,
-        input,
-        max_output_tokens: Math.max(64, Math.round(Number(maxTokens) || 1024)),
-        store: false,
-        reasoning: { effort: jsonMode ? 'medium' : 'low' },
-        ...(jsonMode ? { text: { format: { type: "json_object" } } } : {}),
-      }),
-    });
-  } catch (error) {
-    if (error?.name === "AbortError" || error?.name === "TimeoutError") {
-      throw Object.assign(new Error("Lumiere request timed out."), { status: 504, code: "provider_timeout" });
-    }
-    throw error;
-  }
+  const response = await fetch(OPENAI_RESPONSES_API_URL, {
+    method: "POST",
+    signal: AbortSignal.timeout(OPENAI_TEXT_TIMEOUT_MS),
+    headers: {
+      Authorization: `Bearer ${apiKey}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      model: String(model || OPENAI_TEXT_MODEL).trim() || OPENAI_TEXT_MODEL,
+      instructions: `${String(system || '').trim()}${jsonMode ? "\n\nRespond with one valid JSON object only." : ""}`.trim() || undefined,
+      input,
+      max_output_tokens: Math.max(64, Math.round(Number(maxTokens) || 1024)),
+      store: false,
+      reasoning: { effort: jsonMode ? 'medium' : 'low' },
+      ...(jsonMode ? { text: { format: { type: "json_object" } } } : {}),
+    }),
+  });
   const payload = await response.json().catch(() => ({}));
   if (!response.ok) {
     throw Object.assign(new Error(String(payload?.error?.message || payload?.message || `OpenAI request failed (${response.status}).`)), {
@@ -348,7 +335,6 @@ async function requestLumiere({ system = "", messages = [], maxTokens = 1024, js
   const text = openAIResponseText(payload);
   if (!text.trim()) throw Object.assign(new Error("OpenAI returned an empty response."), { status: 502 });
   return {
-    provider: "openai",
     model: String(payload?.model || model || OPENAI_TEXT_MODEL),
     content: [{ type: "text", text }],
     usage: {
@@ -359,107 +345,12 @@ async function requestLumiere({ system = "", messages = [], maxTokens = 1024, js
   };
 }
 
-async function requestLumiereForTask(task, request, { jobId = null } = {}) {
-  const attempts = [];
-  const routed = await routeAIRequest({
-    task,
-    request,
-    invoke: requestLumiere,
-    onAttempt: (attempt) => attempts.push(attempt),
-  });
-  if (jobId) {
-    attempts.forEach((attempt, index) => recordAIJobAttempt({
-      jobId,
-      attemptNumber: index + 1,
-      modelId: attempt.model,
-      isFallback: attempt.fallback,
-      outcome: index === attempts.length - 1 ? "completed" : "retryable_failure",
-      errorCode: attempt.error ? String(attempt.error.code || "provider_retryable") : null,
-    }));
-  }
+async function requestLumiereForTask(task, request) {
+  const routed = await routeAIRequest({ task, request, invoke: requestLumiere });
   return Object.assign(routed.result, {
     internalCompletedModel: routed.completedModel,
     usedFallback: routed.usedFallback,
   });
-}
-
-const LUMIERE_CONTEXT_LIMIT = 60_000;
-const LUMIERE_PROJECT_ID = /^scr_[a-f0-9]+$/;
-
-function lumiereContextText(value, limit = 4_000) {
-  return String(value ?? "").replace(/\u0000/g, "").slice(0, limit);
-}
-
-// Project facts must be selected on the server. The browser may contribute a
-// question, but it never decides which project records Lumiere receives.
-// Budget data is intentionally excluded even for project owners: the current
-// AI surfaces do not need it, and a prompt is not a security boundary.
-function buildAuthorizedLumiereContext(userId, projectId, focus = {}) {
-  if (!LUMIERE_PROJECT_ID.test(String(projectId || ""))) return null;
-  const access = projectAccess(userId, projectId);
-  if (!access || !canUseLumiereAction(access, "chat")) {
-    throw Object.assign(new Error("You do not have permission to use Lumiere in this project."), { status: 403, code: "permission_denied" });
-  }
-  const script = loadScripts().scripts[projectId];
-  if (!script) throw Object.assign(new Error("Project was not found."), { status: 404, code: "project_not_found" });
-  const requestedModule = String(focus?.module || "").trim();
-  if (requestedModule && !canAccessModule(access, requestedModule, "view")) {
-    throw Object.assign(new Error("You do not have permission to use Lumiere in this project area."), { status: 403, code: "permission_denied" });
-  }
-  // A focused Shot List conversation needs the screenplay evidence as well as
-  // the saved coverage. Both permissions are required before either is sent.
-  if (requestedModule === "shot_list" && !canAccessModule(access, "script", "view")) {
-    throw Object.assign(new Error("You do not have permission to read the screenplay for this Shot List discussion."), { status: 403, code: "permission_denied" });
-  }
-  const include = (module) => (!requestedModule || requestedModule === module || (requestedModule === "shot_list" && module === "script")) && canAccessModule(access, module, "view");
-  const context = { project: { id: script.id, title: lumiereContextText(script.title, 180) }, authorizedModules: [] };
-
-  if (include("script")) {
-    context.authorizedModules.push("script");
-    const sceneId = String(focus?.sceneId || "");
-    const blocks = Array.isArray(script.blocks) ? script.blocks : [];
-    const selected = sceneId ? blocks.filter((block) => String(block.id || "") === sceneId || String(block.sceneId || "") === sceneId) : blocks;
-    context.script = selected.slice(0, 260).map((block) => ({
-      id: String(block.id || "").slice(0, 120) || undefined,
-      type: lumiereContextText(block.type, 40),
-      text: lumiereContextText(block.text, 1_600),
-    }));
-  }
-
-  const preproduction = loadPreproduction().projects?.[projectId];
-  if (preproduction && include("analysis")) {
-    context.authorizedModules.push("analysis");
-    const analysis = publicScriptAnalysis(syncScriptAnalysis(preproduction, script).analysis);
-    // Do not expose router/provider diagnostics in any Lumiere context.
-    if (analysis.deep?.model) delete analysis.deep.model;
-    context.analysis = filterFinancialData({ metrics: analysis.metrics, status: analysis.status, deep: analysis.deep }, null);
-  }
-  if (preproduction && include("breakdown")) {
-    context.authorizedModules.push("breakdown");
-    context.breakdown = filterDepartmentFinancialData(Object.values(preproduction.scenes || {}).slice(0, 80).map((scene) => ({
-      id: scene.id, title: lumiereContextText(scene.title, 220), status: scene.status,
-      breakdown: scene.breakdown || null,
-    })), null);
-  }
-  if (preproduction && include("shot_list")) {
-    context.authorizedModules.push("shot_list");
-    context.shotList = filterDepartmentFinancialData(Object.values(preproduction.scenes || {}).slice(0, 80).map((scene) => ({
-      id: scene.id, title: lumiereContextText(scene.title, 220), shots: scene.shots || [],
-    })), null);
-  }
-  if (include("canvas")) {
-    context.authorizedModules.push("canvas");
-    const canvas = getCanvasWorkspace(projectId, script.userId);
-    if (canvas) context.canvas = filterFinancialData({
-      boards: (canvas.boards || []).slice(0, 20).map((board) => ({ id: board.id, name: lumiereContextText(board.name, 180) })),
-      objects: (canvas.objects || []).slice(0, 100).map((item) => ({ id: item.id, type: item.type, name: lumiereContextText(item.name || item.title, 180) })),
-    }, null);
-  }
-  // No Budget, receipts, rates, quotes, invoices, or financial metadata are
-  // ever added here. Keep the serialized packet bounded before it reaches the
-  // provider, preserving room for the actual question.
-  const serialized = JSON.stringify(context);
-  return serialized.length > LUMIERE_CONTEXT_LIMIT ? `${serialized.slice(0, LUMIERE_CONTEXT_LIMIT)}…` : serialized;
 }
 
 // OpenAI exposes token usage but not an exact request cost in this response
@@ -473,9 +364,6 @@ const ANALYSIS_PDF_RENDERER = path.join(ROOT, "analysis_pdf.py");
 const CANVAS_QUOTE_PDF_RENDERER = path.join(ROOT, "canvas_quote_pdf.py");
 const RECURRENTE_API = (process.env.RECURRENTE_API_URL || "https://app.recurrente.com/api").replace(/\/$/, "");
 const SESSION_COOKIE = "filmscript_sid";
-const SHARED_SESSION_COOKIE = "filmscript_shared_sid";
-const SHARED_PROJECT_ACCESS_COOKIE = "filmscript_shared_project_access";
-const sharedProjectAccessSecret = process.env.FILMSCRIPT_SHARED_PROJECT_ACCESS_SECRET || crypto.randomBytes(32).toString("hex");
 // Preview mode is intentionally local-only. The fixed ids make the preview
 // URL stable, which is useful for opening the same workspace from Codex while
 // keeping the preview database completely separate from AWS/local accounts.
@@ -513,137 +401,20 @@ const LEGACY_PLAN_ALIASES = Object.freeze({ basic: "creator", lumiere: "creator"
 const activePreproductionJobs = new Set();
 const activeShotListJobs = new Set();
 const activeScriptAnalysisJobs = new Set();
-const activeDurableAIJobs = new Set();
 const activeLumiereChats = new Set();
 const activeBudgetImports = new Set();
 const budgetImportProposals = new Map();
 const billingVerificationCache = new Map();
 const activeBillingVerifications = new Map();
 const requestRateBuckets = new Map();
-
-const AI_JOB_COMPLETION_KIND = Object.freeze({
-  analysis: "analysis",
-  breakdown: "breakdown",
-  breakdown_scene: "breakdown",
-  shot_list: "shot_list",
-  translation: "translation",
-});
-
-const AI_JOB_ACTIVITY_MODULE = Object.freeze({
-  analysis: "analysis",
-  breakdown: "breakdown",
-  breakdown_scene: "breakdown",
-  shot_list: "shot_list",
-  translation: "script",
-});
-
-function aiJobReservationId(jobId) {
-  return `ai:${String(jobId || "")}`;
-}
-
-function publicAIJobLink(job) {
-  const view = job.type === "analysis" ? "analysis" : job.type === "shot_list" ? "shotlist" : job.type === "breakdown" || job.type === "breakdown_scene" ? "breakdown" : "editor";
-  return `/Editor%20v5.dc.html?script=${encodeURIComponent(job.projectId)}&view=${encodeURIComponent(view)}`;
-}
-
-function updateAndBroadcastAIJob(jobId, patch = {}) {
-  const job = updateAIJob(jobId, patch);
-  if (job) broadcastCollaboration(job.projectId, "ai.job.updated", { module: moduleForAIJob(job.type) || "script", job: publicAIJob(job) });
-  return job;
-}
-
-function finalizeDurableAIJob(job, { succeeded, output = null, error = null, settledCredits = null } = {}) {
-  const current = getAIJobInternal(job.id) || job;
-  const next = updateAndBroadcastAIJob(job.id, succeeded
-    ? { status: "completed", stage: "completed", progress: 100, output: output ?? current.output, settledCredits: settledCredits ?? current.settledCredits }
-    : { status: "failed", stage: "failed", errorCode: error?.code || "ai_job_failed" });
-  if (!next) return null;
-  if (succeeded) {
-    const kind = AI_JOB_COMPLETION_KIND[job.type];
-    recordActivity({
-      projectId: job.projectId,
-      module: AI_JOB_ACTIVITY_MODULE[job.type] || "script",
-      actorUserId: job.requestedByUserId,
-      actorType: "lumiere",
-      entityType: "ai_job",
-      entityId: job.id,
-      action: "ai.job.completed",
-      summary: `${kind === "shot_list" ? "Shot List" : kind === "breakdown" ? "Breakdown" : kind === "translation" ? "Translation" : "Analysis"} completed.`,
-      aggregationKey: `ai-job:${job.type}:${job.id}`,
-    });
-    createAICompletionNotification({ userId: job.requestedByUserId, projectId: job.projectId, kind, deepLink: publicAIJobLink(job) });
-    broadcastCollaboration(job.projectId, "ai.job.completed", { job: publicAIJob(next) });
-  } else {
-    createNotification({
-      userId: job.requestedByUserId,
-      projectId: job.projectId,
-      type: "ai_job_failed",
-      title: "Lumiere could not complete this request",
-      message: "Your reserved credits were released. You can retry when ready.",
-      deepLink: publicAIJobLink(job),
-      aggregationKey: `ai-job-failed:${job.id}`,
-    });
-  }
-  return next;
-}
-
-function createDurableAIJob({ type, projectId, requesterId, sourceScriptVersionId, sourceContentHash, reservedCredits = 0, input = {} }) {
-  const idempotencyKey = hashText(JSON.stringify({ type, projectId, requesterId, sourceScriptVersionId, sourceContentHash, input: {
-    language: input.language || null, targetLanguage: input.targetLanguage || null, sceneId: input.sceneId || null, includeManual: !!input.includeManual, regenerate: !!input.regenerate,
-  } }));
-  const idempotent = findAIJobByIdempotency(idempotencyKey);
-  if (idempotent) return { job: idempotent, created: false, allowed: true };
-  const billingUserId = String(input.billingUserId || requesterId);
-  const provisionalReservationId = `ai:pending:${idempotencyKey}`;
-  if (reservedCredits > 0) {
-    const provisional = reserveTextCredits(billingUserId, reservedCredits, provisionalReservationId);
-    if (!provisional.allowed) return { job: null, created: false, allowed: false, available: provisional.available };
-  }
-  let job;
-  try {
-    job = createAIJob({
-      projectId,
-      requestedByUserId: requesterId,
-      type,
-      sourceScriptId: projectId,
-      sourceScriptVersionId,
-      sourceContentHash,
-      internalPrimaryModel: modelForTask(type),
-      reservedCredits,
-      idempotencyKey,
-      input: { ...input, creditReservationId: reservedCredits > 0 ? aiJobReservationId("pending") : null },
-      outputSchemaVersion: 1,
-    });
-  } finally {
-    if (reservedCredits > 0) releaseTextCredits(billingUserId, provisionalReservationId);
-  }
-  if (!job.created) return { job, created: false, allowed: true };
-  if (reservedCredits > 0) {
-    const durableReservationId = aiJobReservationId(job.id);
-    const durable = reserveTextCredits(billingUserId, reservedCredits, durableReservationId);
-    if (!durable.allowed) {
-      updateAIJob(job.id, { status: "failed", stage: "failed", errorCode: "insufficient_credits" });
-      return { job: getAIJobInternal(job.id), created: true, allowed: false, available: durable.available };
-    }
-    updateAIJob(job.id, { output: null, stage: "queued", progress: 0 });
-    job = { ...getAIJobInternal(job.id), input: { ...(getAIJobInternal(job.id)?.input || {}), creditReservationId: durableReservationId } };
-    // Persist the durable reservation reference; it stays server-only because
-    // publicAIJob deliberately removes input.
-    const current = getAIJobInternal(job.id);
-    updateAIJobInput(job.id, { ...(current?.input || {}), creditReservationId: durableReservationId });
-    job = getAIJobInternal(job.id);
-  }
-  return { job, created: true, allowed: true };
-}
 // Webhooks invalidate this cache immediately. Between webhook events, avoid a
 // full provider reconciliation every time the account UI refreshes.
 const BILLING_VERIFICATION_TTL_MS = 5 * 60_000;
-// Version 6 also gives every production element a durable identity.  The
-// identity belongs to the shared Breakdown record (not to its current view),
-// so editing a card in By Scene is reflected immediately in By Department.
-const BREAKDOWN_EXTRACTION_VERSION = 6;
+// Version 5 backfills cast found directly in screenplay scenes.  This keeps
+// Cast ID reliable even when a prior AI pass missed a character cue.
+const BREAKDOWN_EXTRACTION_VERSION = 5;
 const CAST_NUMBERING_VERSION = 1;
-const SCRIPT_ANALYSIS_REVISION = 5;
+const SCRIPT_ANALYSIS_REVISION = 4;
 const BREAKDOWN_CATEGORIES = new Set([
   "cast",
   "extras",
@@ -656,9 +427,6 @@ const BREAKDOWN_CATEGORIES = new Set([
   "special_effects",
   "visual_effects",
   "sound",
-  "camera",
-  "lighting",
-  "grip",
   "stunts",
   "equipment",
   "greenery",
@@ -821,8 +589,6 @@ Create a practical camera plan for only the supplied screenplay scene. Cover the
 
 Keep the plan producible and concise. Prefer intentional coverage over unnecessary shots. Every shot must contain a short verbatim sourceExcerpt copied from the supplied scene.
 
-For every shot, include the practical camera and production details below. Characters must only name people who appear in the supplied scene. Notes should flag a useful practical consideration, or be an empty string. Use status "planned" unless the scene itself makes another status necessary. Do not invent equipment, locations, story events, or production requirements.
-
 Return only valid JSON with this exact shape:
 {
   "sceneId": "string",
@@ -832,11 +598,7 @@ Return only valid JSON with this exact shape:
       "angle": "Eye level",
       "focalLength": "50mm",
       "movement": "Static",
-      "camera": "A camera",
-      "characters": ["Character name"],
       "description": "What the shot captures",
-      "notes": "Practical note, if needed",
-      "status": "planned",
       "sourceExcerpt": "Exact words from the scene"
     }
   ]
@@ -867,7 +629,6 @@ function plannedShotMinutes(shots) {
 const SCRIPT_ANALYSIS_SYSTEM_PROMPT = `You are Lumiere, the central screenplay insights system inside FilmScript.
 
 Read only the structured screenplay scenes supplied by FilmScript. Behave like a concise creative collaborator who has read the screenplay, not an analytics dashboard. Never invent scenes, characters, events, page numbers, dialogue, production requirements, or story beats. Do not rewrite the screenplay and do not impose one writing formula.
-Be constructively critical: identify specific strengths only when the screenplay evidence earns them, and prioritize concrete weaknesses, structural gaps, character issues, inconsistencies, and production concerns over generic praise.
 
 Return only valid JSON with this exact top-level shape:
 {
@@ -2048,43 +1809,10 @@ function publicReferenceAsset(value) {
 function publicShotListScene(scene) {
   return {
     ...scene,
-    breakdown: publicBreakdown(scene?.breakdown),
     referenceAsset: publicReferenceAsset(scene?.referenceAsset),
     shots: (Array.isArray(scene?.shots) ? scene.shots : []).map((shot) => ({
       ...shot,
       referenceAsset: publicReferenceAsset(shot?.referenceAsset),
-    })),
-  };
-}
-
-function breakdownElementId(sceneId, element, index = 0) {
-  const identity = [sceneId, breakdownComparisonCategory(element?.category), breakdownElementNameKey(element?.name), index].join("|");
-  return `brk_${crypto.createHash("sha256").update(identity).digest("hex").slice(0, 20)}`;
-}
-
-function ensureBreakdownElementIds(breakdown, scene) {
-  if (!breakdown || !Array.isArray(breakdown.elements)) return breakdown;
-  const used = new Set();
-  return {
-    ...breakdown,
-    elements: breakdown.elements.map((element, index) => {
-      const existingId = String(element?.id || "");
-      const id = /^brk_[a-f0-9]{20}$/.test(existingId) && !used.has(existingId)
-        ? existingId
-        : breakdownElementId(scene?.id || breakdown.sceneId || "scene", element, index);
-      used.add(id);
-      return { ...element, id, imageAsset: cleanReferenceAsset(element?.imageAsset) };
-    }),
-  };
-}
-
-function publicBreakdown(breakdown) {
-  if (!breakdown || typeof breakdown !== "object") return breakdown || null;
-  return {
-    ...breakdown,
-    elements: (Array.isArray(breakdown.elements) ? breakdown.elements : []).map((element) => ({
-      ...element,
-      imageAsset: publicReferenceAsset(element?.imageAsset),
     })),
   };
 }
@@ -2133,16 +1861,16 @@ function syncProject(script, project) {
   // all share one source of truth.
   Object.values(syncedProject.scenes).forEach((scene) => {
     if (!scene.breakdown || scene.breakdown.generated === false) return;
-    scene.breakdown = ensureBreakdownElementIds(ensureExplicitCast({
+    scene.breakdown = ensureExplicitCast({
       ...scene.breakdown,
       elements: dedupeBreakdownElements(scene.breakdown.elements),
       productionNotes: cleanBreakdownNotes(scene.breakdown.productionNotes),
       safetyNotes: cleanBreakdownNotes(scene.breakdown.safetyNotes),
-    }, scene), scene);
+    }, scene);
   });
   if (Number(syncedProject.breakdownExtractionVersion || 0) < BREAKDOWN_EXTRACTION_VERSION) {
     Object.values(syncedProject.scenes).forEach((scene) => {
-      if (scene.breakdown && scene.breakdown.generated !== false) scene.breakdown = ensureBreakdownElementIds(ensureExplicitCast(scene.breakdown, scene), scene);
+      if (scene.breakdown && scene.breakdown.generated !== false) scene.breakdown = ensureExplicitCast(scene.breakdown, scene);
     });
     syncedProject.breakdownExtractionVersion = BREAKDOWN_EXTRACTION_VERSION;
   }
@@ -2703,68 +2431,6 @@ function applyBreakdownPatch(scene, payload) {
 
 const BREAKDOWN_METADATA_FIELDS = new Set(["scriptPage", "pageCount", "estimatedTime", "sceneDescription", "set", "location", "sequence", "scriptDay", "intExt", "dayNight"]);
 const BREAKDOWN_CELL_FIELDS = new Set(["cast", "extras", "props", "stunts", "vehicles_animals", "special_fx", "wardrobe", "makeup_hair", "set_dressing", "greenery", "equipment", "notes", "music", "sound"]);
-const BREAKDOWN_ELEMENT_FIELDS = new Set(["category", "name", "description", "quantity", "notes", "assignee", "status", "budgetLink", "calendarLink", "canvasLink"]);
-
-function cleanBreakdownElementField(field, value) {
-  if (field === "quantity") return Math.max(1, Math.min(9999, Math.round(Number(value) || 1)));
-  if (field === "category") {
-    const category = normalizeBreakdownCategory(value);
-    return BREAKDOWN_CATEGORIES.has(category) ? category : "production_notes";
-  }
-  if (field === "status") return ["open", "in_progress", "ready", "blocked"].includes(String(value)) ? String(value) : "open";
-  const limit = ["description", "notes"].includes(field) ? 4000 : 500;
-  return String(value ?? "").replace(/\s+/g, " ").trim().slice(0, limit);
-}
-
-function applyBreakdownElementOperations(scene, operations) {
-  const breakdown = scene.breakdown ||= { sceneId: scene.id, sceneHeading: scene.title, synopsis: "", elements: [], productionNotes: [], safetyNotes: [], generated: "manual", source: "manual" };
-  const elements = Array.isArray(breakdown.elements) ? breakdown.elements : [];
-  const byId = new Map(elements.map((element) => [String(element?.id || ""), element]));
-  const applied = [];
-  for (const operation of (Array.isArray(operations) ? operations : []).slice(0, 100)) {
-    const action = String(operation?.action || "patch");
-    const id = String(operation?.id || operation?.element?.id || "");
-    if (action === "add") {
-      const candidate = operation?.element && typeof operation.element === "object" ? operation.element : {};
-      const name = cleanBreakdownElementField("name", candidate.name);
-      if (!name) continue;
-      const nextId = /^brk_[a-f0-9]{20}$/.test(id) && !byId.has(id) ? id : breakdownElementId(scene.id, candidate, elements.length);
-      const element = {
-        id: nextId,
-        category: cleanBreakdownElementField("category", candidate.category),
-        name,
-        description: cleanBreakdownElementField("description", candidate.description),
-        quantity: cleanBreakdownElementField("quantity", candidate.quantity),
-        notes: cleanBreakdownElementField("notes", candidate.notes),
-        assignee: cleanBreakdownElementField("assignee", candidate.assignee),
-        status: cleanBreakdownElementField("status", candidate.status),
-        budgetLink: cleanBreakdownElementField("budgetLink", candidate.budgetLink),
-        calendarLink: cleanBreakdownElementField("calendarLink", candidate.calendarLink),
-        canvasLink: cleanBreakdownElementField("canvasLink", candidate.canvasLink),
-        sourceExcerpt: "",
-        confidence: 1,
-        userEdited: true,
-      };
-      elements.push(element); byId.set(nextId, element); applied.push({ action, id: nextId });
-      continue;
-    }
-    const current = byId.get(id);
-    if (!current) continue;
-    if (action === "remove") {
-      const index = elements.indexOf(current);
-      if (index >= 0) elements.splice(index, 1);
-      byId.delete(id); applied.push({ action, id });
-      continue;
-    }
-    const patch = operation?.patch && typeof operation.patch === "object" ? operation.patch : {};
-    for (const [field, value] of Object.entries(patch)) if (BREAKDOWN_ELEMENT_FIELDS.has(field)) current[field] = cleanBreakdownElementField(field, value);
-    current.userEdited = true;
-    current.updatedAt = new Date().toISOString();
-    applied.push({ action: "patch", id });
-  }
-  breakdown.elements = ensureBreakdownElementIds({ ...breakdown, elements: dedupeBreakdownElements(elements) }, scene).elements;
-  return applied;
-}
 
 function headingBreakdownMetadata(title) {
   const heading = String(title || "").replace(/\s+\d+\s*$/, "").trim();
@@ -2862,11 +2528,10 @@ async function handlePreproductionScenePatch(req, res, scriptId, sceneId) {
   form.cells ||= {};
   for (const [key, value] of Object.entries(body.metadata || {})) if (BREAKDOWN_METADATA_FIELDS.has(key)) form.metadata[key] = String(value ?? "").slice(0, 12000);
   for (const [key, value] of Object.entries(body.cells || {})) if (BREAKDOWN_CELL_FIELDS.has(key)) form.cells[key] = String(value ?? "").slice(0, 12000);
-  const elementOperations = applyBreakdownElementOperations(scene, body.elementOperations);
   form.userEdited = true;
   form.updatedAt = new Date().toISOString();
   savePreproduction(db);
-  json(res, 200, { ok: true, breakdownForm: form, elementOperations, elements: publicBreakdown(scene.breakdown)?.elements || [] });
+  json(res, 200, { ok: true, breakdownForm: form });
 }
 
 async function handleBreakdownPdf(req, res, scriptId) {
@@ -3639,7 +3304,6 @@ function validateShotList(payload, scene) {
     if (!sourceExcerpt || !description || !sceneEvidence.includes(normalizeEvidence(sourceExcerpt))) return [];
     return [{
       id: `sh_${sceneHash(`${scene.id}:${index}:${sourceExcerpt}:${description}`)}`,
-      shotNumber: index + 1,
       size: String(shot.size || "Not set").trim().slice(0, 80),
       angle: String(shot.angle || "Not set").trim().slice(0, 80),
       focalLength: String(shot.focalLength || shot.lens || "50mm").trim().slice(0, 40),
@@ -3647,102 +3311,11 @@ function validateShotList(payload, scene) {
       referenceImage: String(shot.referenceImage || "").trim().slice(0, 2500000),
       referenceAsset: null,
       movement: String(shot.movement || "Static").trim().slice(0, 80),
-      camera: String(shot.camera || "A camera").trim().slice(0, 120),
-      characters: Array.from(new Set((Array.isArray(shot.characters) ? shot.characters : String(shot.characters || "").split(","))
-        .map((entry) => String(entry || "").trim().slice(0, 120)).filter(Boolean))).slice(0, 20),
       description: description.slice(0, 600),
-      notes: String(shot.notes || "").trim().slice(0, 600),
-      status: ["planned", "draft", "ready", "needs_review"].includes(String(shot.status || "").trim().toLowerCase())
-        ? String(shot.status).trim().toLowerCase()
-        : "planned",
       sourceExcerpt: sourceExcerpt.slice(0, 400),
-      source: "lumiere",
       userEdited: false,
     }];
   }).slice(0, 20);
-}
-
-function shotMergeKey(shot, seen = new Map()) {
-  const source = normalizeEvidence(shot?.sourceExcerpt || shot?.description || "");
-  const base = source || `shot:${normalizeEvidence(shot?.description || "")}`;
-  const ordinal = (seen.get(base) || 0) + 1;
-  seen.set(base, ordinal);
-  return `${base}:${ordinal}`;
-}
-
-function shotConnections(scene, shot, previous = null) {
-  const evidence = normalizeEvidence(`${shot?.sourceExcerpt || ""} ${shot?.description || ""}`);
-  const breakdownElementIds = (Array.isArray(scene?.breakdown?.elements) ? scene.breakdown.elements : []).flatMap((element) => {
-    const name = normalizeEvidence(element?.name || "");
-    const excerpt = normalizeEvidence(element?.sourceExcerpt || "");
-    return element?.id && ((name.length > 2 && evidence.includes(name)) || (excerpt.length > 8 && evidence.includes(excerpt))) ? [element.id] : [];
-  }).slice(0, 20);
-  const inherited = previous?.connections && typeof previous.connections === "object" ? previous.connections : {};
-  return {
-    scriptSceneId: scene?.id || null,
-    breakdownElementIds: Array.from(new Set([...breakdownElementIds, ...(Array.isArray(inherited.breakdownElementIds) ? inherited.breakdownElementIds : [])])),
-    canvasObjectIds: Array.isArray(inherited.canvasObjectIds) ? inherited.canvasObjectIds.slice(0, 20) : [],
-    locationPlanIds: Array.isArray(inherited.locationPlanIds) ? inherited.locationPlanIds.slice(0, 20) : [],
-    location: String(scene?.strip?.location || inherited.location || "").slice(0, 160),
-    cameraPlanning: {
-      camera: String(shot?.camera || "").slice(0, 120),
-      lens: String(shot?.focalLength || shot?.lens || "").slice(0, 40),
-      movement: String(shot?.movement || "").slice(0, 80),
-    },
-  };
-}
-
-function shotDiffEntry(shot) {
-  return { id: shot?.id || "", shotNumber: Number(shot?.shotNumber || 0) || null, description: String(shot?.description || "Shot").slice(0, 160) };
-}
-
-function mergeGeneratedShotList(previousShots, generatedShots, scene) {
-  const before = Array.isArray(previousShots) ? previousShots : [];
-  const oldSeen = new Map();
-  const generatedByKey = new Map(before
-    .filter((shot) => shot?.userEdited !== true && shot?.manual !== true)
-    .map((shot) => [shotMergeKey(shot, oldSeen), shot]));
-  const nextSeen = new Map();
-  const matched = new Set();
-  const newShots = [];
-  const modifiedShots = [];
-  const fields = ["size", "angle", "focalLength", "movement", "camera", "characters", "description", "notes", "status", "sourceExcerpt"];
-  const equivalent = (left, right) => fields.every((field) => JSON.stringify(left?.[field] ?? "") === JSON.stringify(right?.[field] ?? ""));
-  const generated = (Array.isArray(generatedShots) ? generatedShots : []).map((shot, index) => {
-    const prior = generatedByKey.get(shotMergeKey(shot, nextSeen));
-    if (!prior) {
-      const fresh = { ...shot, shotNumber: index + 1, connections: shotConnections(scene, shot) };
-      newShots.push(shotDiffEntry(fresh));
-      return fresh;
-    }
-    matched.add(prior.id);
-    const merged = {
-      ...shot,
-      id: prior.id,
-      shotNumber: index + 1,
-      referenceImage: prior.referenceImage || shot.referenceImage || "",
-      referenceAsset: cleanReferenceAsset(prior.referenceAsset),
-      connections: shotConnections(scene, shot, prior),
-      source: "lumiere",
-      userEdited: false,
-    };
-    if (!equivalent(prior, merged)) modifiedShots.push(shotDiffEntry(merged));
-    return merged;
-  });
-  const protectedShots = before.filter((shot) => shot?.userEdited === true || shot?.manual === true);
-  const removedShots = before
-    .filter((shot) => shot?.userEdited !== true && shot?.manual !== true && !matched.has(shot.id))
-    .map(shotDiffEntry);
-  return {
-    shots: [...generated, ...protectedShots],
-    diff: {
-      newShots,
-      modifiedShots,
-      removedShots,
-      manualEditsPreserved: protectedShots.map(shotDiffEntry),
-      generatedAt: new Date().toISOString(),
-    },
-  };
 }
 
 function cleanManualShots(value, sceneId) {
@@ -3752,7 +3325,6 @@ function cleanManualShots(value, sceneId) {
     const description = String(shot.description || "No description").trim() || "No description";
     return [{
       id: /^sh_[a-f0-9]+$/.test(String(shot.id || "")) ? shot.id : `sh_${sceneHash(`${sceneId}:manual:${index}:${description}`)}`,
-      shotNumber: Math.max(1, Math.round(Number(shot.shotNumber) || index + 1)),
       size: String(shot.size || "Not set").trim().slice(0, 80),
       angle: String(shot.angle || "Not set").trim().slice(0, 80),
       focalLength: String(shot.focalLength || shot.lens || "50mm").trim().slice(0, 40),
@@ -3760,17 +3332,8 @@ function cleanManualShots(value, sceneId) {
       referenceImage: String(shot.referenceImage || "").trim().slice(0, 2500000),
       referenceAsset: cleanReferenceAsset(shot.referenceAsset),
       movement: String(shot.movement || "Static").trim().slice(0, 80),
-      camera: String(shot.camera || "A camera").trim().slice(0, 120),
-      characters: Array.from(new Set((Array.isArray(shot.characters) ? shot.characters : String(shot.characters || "").split(","))
-        .map((entry) => String(entry || "").trim().slice(0, 120)).filter(Boolean))).slice(0, 20),
       description: description.slice(0, 600),
-      notes: String(shot.notes || "").trim().slice(0, 600),
-      status: ["planned", "draft", "ready", "needs_review"].includes(String(shot.status || "").trim().toLowerCase())
-        ? String(shot.status).trim().toLowerCase()
-        : "planned",
       sourceExcerpt: String(shot.sourceExcerpt || "").trim().slice(0, 400),
-      connections: shot?.connections && typeof shot.connections === "object" ? shot.connections : { scriptSceneId: sceneId, breakdownElementIds: [], canvasObjectIds: [], locationPlanIds: [], location: "", cameraPlanning: {} },
-      source: "manual",
       userEdited: true,
     }];
   });
@@ -3803,19 +3366,6 @@ function referenceAssetsForScene(scene) {
     cleanReferenceAsset(scene?.referenceAsset),
     ...(Array.isArray(scene?.shots) ? scene.shots.map((shot) => cleanReferenceAsset(shot?.referenceAsset)) : []),
   ].filter(Boolean);
-}
-
-function breakdownImageAssetsForScene(scene) {
-  return (Array.isArray(scene?.breakdown?.elements) ? scene.breakdown.elements : [])
-    .map((element) => cleanReferenceAsset(element?.imageAsset)).filter(Boolean);
-}
-
-function findBreakdownImageAsset(project, assetId) {
-  for (const scene of Object.values(project?.scenes || {})) {
-    const asset = breakdownImageAssetsForScene(scene).find((candidate) => candidate.id === assetId);
-    if (asset) return asset;
-  }
-  return null;
 }
 
 function findReferenceAsset(project, assetId) {
@@ -3887,60 +3437,6 @@ async function handleShotReferenceUpload(req, res, scriptId) {
   return json(res, 201, { ok: true, asset: publicReferenceAsset(asset), target: shotId ? "shot" : "scene", project: authorizedProjectPayload(project, sid, scriptId) });
 }
 
-async function handleBreakdownElementImageUpload(req, res, scriptId) {
-  const sid = sessionId(req, res);
-  if (!sid) return googleRequired(res);
-  const script = loadScripts().scripts[scriptId];
-  if (!script || !projectPermission(sid, scriptId, 'breakdown', 'edit')) return json(res, 404, { error: 'script not found' });
-  const sceneId = decodedHeader(req.headers['x-scene-id']);
-  const elementId = decodedHeader(req.headers['x-element-id']);
-  if (!/^sc_[a-f0-9]+$/.test(sceneId) || !/^brk_[a-f0-9]{20}$/.test(elementId)) return json(res, 400, { error: 'valid scene and Breakdown element are required' });
-  const mimeType = String(req.headers['content-type'] || '').split(';')[0].trim().toLowerCase();
-  if (!['image/webp', 'image/jpeg', 'image/png'].includes(mimeType)) return json(res, 415, { error: 'image must be a PNG, JPEG, or WebP file' });
-  let data;
-  try { data = await readBodyBuffer(req, 6 * 1024 * 1024); }
-  catch (error) { return json(res, error.status || 400, { error: error.status === 413 ? 'image must be under 6 MB' : error.message }); }
-  if (!data.length || !validateImagePayload(data, mimeType)) return json(res, 415, { error: 'image content does not match its type' });
-  const db = loadPreproduction();
-  const project = db.projects[scriptId] = syncProject(script, db.projects[scriptId]);
-  const scene = project.scenes?.[sceneId];
-  const element = scene?.breakdown?.elements?.find((candidate) => candidate.id === elementId);
-  if (!element) return json(res, 404, { error: 'Breakdown element not found' });
-  const id = `ref_${crypto.randomBytes(12).toString('hex')}`;
-  const filename = safeFilename(decodedHeader(req.headers['x-filename'], 'breakdown image')).slice(0, 140) || 'breakdown image';
-  const stored = await referenceStorage.put({ scriptId, assetId: id, mimeType, data });
-  const asset = { id, provider: stored.provider, key: stored.key, mimeType, filename, size: data.length, createdAt: new Date().toISOString() };
-  const previous = cleanReferenceAsset(element.imageAsset);
-  element.imageAsset = asset; element.userEdited = true; element.updatedAt = asset.createdAt;
-  project.updatedAt = asset.createdAt;
-  try { savePreproduction(db); }
-  catch (error) { await referenceStorage.remove(asset).catch(() => {}); throw error; }
-  if (previous) referenceStorage.remove(previous).catch((error) => console.error('Could not remove replaced Breakdown image:', error.message));
-  const imageAsset = publicReferenceAsset(asset);
-  broadcastCollaboration(scriptId, 'content.operation', {
-    module: 'breakdown', documentId: `breakdown:${sceneId}:elements`, entityType: 'breakdown_element', entityId: elementId,
-    entity: { id: elementId, imageAsset }, changedFields: ['imageAsset'], metadata: { sceneId, sceneLabel: scene.title || '' },
-  }, String(req.headers['x-filmscript-client-id'] || ''));
-  return json(res, 201, { ok: true, asset: imageAsset, project: authorizedProjectPayload(project, sid, scriptId) });
-}
-
-async function handleBreakdownElementImageAsset(req, res, scriptId, assetId) {
-  const sid = sessionId(req, res);
-  if (!sid) return googleRequired(res);
-  const script = loadScripts().scripts[scriptId];
-  if (!script || !projectPermission(sid, scriptId, 'breakdown', 'view')) return json(res, 404, { error: 'script not found' });
-  const asset = findBreakdownImageAsset(loadPreproduction().projects[scriptId], assetId);
-  if (!asset) return json(res, 404, { error: 'Breakdown image not found' });
-  try {
-    const data = await referenceStorage.get(asset);
-    res.writeHead(200, { 'Content-Type': asset.mimeType, 'Content-Length': data.length, 'Cache-Control': 'private, max-age=3600', ETag: `"${asset.id}"` });
-    res.end(data);
-  } catch (error) {
-    if (error?.code === 'ENOENT') return json(res, 404, { error: 'Breakdown image not found' });
-    throw error;
-  }
-}
-
 // Canvas is a per-account visual library. An image can be created in Imagine,
 // uploaded to Vault, or added from a different project, then reused as a
 // Shot List reference without leaking assets between accounts. `canvasContext`
@@ -3978,18 +3474,7 @@ async function handleShotReferenceFromCanvas(req, res, scriptId) {
   const asset = { id, provider: stored.provider, key: stored.key, mimeType: source.mimeType, filename: source.filename || 'Imagine reference.jpg', size: data.length, createdAt: new Date().toISOString() };
   const previousAsset = cleanReferenceAsset(target.referenceAsset);
   target.referenceAsset = asset;
-  if (shotId) {
-    target.referenceImage = '';
-    const connections = target.connections && typeof target.connections === "object" ? target.connections : {};
-    target.connections = {
-      ...connections,
-      scriptSceneId: scene.id,
-      canvasObjectIds: Array.from(new Set([
-        ...(Array.isArray(connections.canvasObjectIds) ? connections.canvasObjectIds : []),
-        assetId,
-      ])).slice(0, 20),
-    };
-  }
+  if (shotId) target.referenceImage = '';
   project.updatedAt = asset.createdAt;
   try { savePreproduction(db); } catch (error) { await referenceStorage.remove(asset).catch(() => {}); throw error; }
   if (previousAsset) referenceStorage.remove(previousAsset).catch(() => {});
@@ -4241,21 +3726,8 @@ async function handleSceneShotsPatch(req, res, scriptId, sceneId) {
   if (!scene) return json(res, 404, { error: "scene not found" });
   const previousShots = Array.isArray(scene.shots) ? scene.shots : [];
   if (Array.isArray(body.operations)) {
-    const allowed = new Set(["shotNumber","size","angle","focalLength","estimatedMinutes","movement","camera","characters","description","notes","status","sourceExcerpt"]); const shotsById = new Map(previousShots.map((shot) => [shot.id, shot]));
-    for (const operation of body.operations.slice(0, 500)) {
-      const shot = shotsById.get(String(operation?.id || "")); if (!shot) continue;
-      let changed = false;
-      for (const [field,value] of Object.entries(operation.patch || {})) {
-        if (!allowed.has(field)) continue;
-        shot[field] = field === "characters"
-          ? Array.from(new Set((Array.isArray(value) ? value : String(value || "").split(",")).map((entry) => String(entry || "").trim().slice(0, 120)).filter(Boolean))).slice(0, 20)
-          : value;
-        changed = true;
-      }
-      // Any direct edit is a deliberate production decision. A later AI pass
-      // keeps this whole shot rather than silently replacing a single field.
-      if (changed) shot.userEdited = true;
-    }
+    const allowed = new Set(["size","angle","focalLength","estimatedMinutes","movement","description","sourceExcerpt","userEdited"]); const shotsById = new Map(previousShots.map((shot) => [shot.id, shot]));
+    for (const operation of body.operations.slice(0, 500)) { const shot = shotsById.get(String(operation?.id || "")); if (!shot) continue; for (const [field,value] of Object.entries(operation.patch || {})) if (allowed.has(field)) shot[field] = value; }
     scene.shots = previousShots; scene.shotsUpdatedAt = new Date().toISOString(); savePreproduction(db); return json(res, 200, { ok:true, shots:filterDepartmentFinancialData(publicShotListScene({shots:scene.shots}).shots,projectAccess(sid,scriptId)) });
   }
   const previousAssets = new Map(previousShots.flatMap((shot) => {
@@ -4287,9 +3759,8 @@ async function handleSceneShotsPatch(req, res, scriptId, sceneId) {
   json(res, 200, { ok: true, shots: filterDepartmentFinancialData(publicShotListScene({ shots: scene.shots }).shots, projectAccess(sid, scriptId)) });
 }
 
-async function generateShotLists(scriptId, sid, onlySceneId = null, language = 'en', { regenerate = false, freeAllowance = false, freeAllowanceReservationId = null, billingUserId = sid, textReservationId = null, aiJobId = null } = {}) {
+async function generateShotLists(scriptId, sid, onlySceneId = null, language = 'en', { freeAllowance = false, freeAllowanceReservationId = null, billingUserId = sid } = {}) {
   let freeAllowanceSettled = false;
-  let textReservationSettled = false;
   let successfulOutputs = 0;
   const settleFreeAllowance = () => {
     if (!freeAllowance || !freeAllowanceReservationId || freeAllowanceSettled) return false;
@@ -4298,21 +3769,20 @@ async function generateShotLists(scriptId, sid, onlySceneId = null, language = '
   };
   try {
   const script = loadScripts().scripts[scriptId];
-  if (!script || !projectPermission(sid, scriptId, "script", "view") || !projectPermission(sid, scriptId, "shot_list", "edit")) return { ok: false, errorCode: "permission_denied" };
+  if (!script || !projectPermission(sid, scriptId, "shot_list", "edit")) return;
   const db = loadPreproduction();
   const project = db.projects[scriptId] = syncProject(script, db.projects[scriptId]);
   const all = Object.values(project.scenes || {});
   const pending = all
     .map((scene, sceneIndex) => ({ scene: JSON.parse(JSON.stringify(scene)), sceneIndex }))
-    .filter(({ scene }) => (!onlySceneId || scene.id === onlySceneId) && (regenerate || !Array.isArray(scene.shots) || scene.shots.length === 0));
+    .filter(({ scene }) => (!onlySceneId || scene.id === onlySceneId) && (!Array.isArray(scene.shots) || scene.shots.length === 0));
   if (!pending.length) {
-    project.shotAnalysis = { status: "complete", total: 0, completed: 0, message: "Shot lists already up to date", jobId: aiJobId || null };
+    project.shotAnalysis = { status: "complete", total: 0, completed: 0, message: "Shot lists already up to date" };
     savePreproduction(db);
-    return { ok: true, noop: true, successfulOutputs: 0, settledCredits: 0 };
+    return;
   }
-  project.shotAnalysis = { status: "running", total: pending.length, completed: 0, message: "Preparing camera coverage", jobId: aiJobId || null, regenerate: !!regenerate };
+  project.shotAnalysis = { status: "running", total: pending.length, completed: 0, message: "Preparing camera coverage" };
   savePreproduction(db);
-  if (aiJobId) updateAndBroadcastAIJob(aiJobId, { status: "processing", stage: "preparing", progress: 8 });
   let generationFailure = "";
   for (let index = 0; index < pending.length; index++) {
     const { scene, sceneIndex } = pending[index];
@@ -4325,7 +3795,7 @@ async function generateShotLists(scriptId, sid, onlySceneId = null, language = '
           message: "FilmScript Creator or Full is required to continue generating shot lists. Existing work was preserved.",
         };
       });
-      return { ok: false, errorCode: "insufficient_credits" };
+      return;
     }
     if (!freeAllowance && !hasLumiereCredits(billingUserId)) {
       mutatePreproductionProject(scriptId, sid, (freshProject) => {
@@ -4336,12 +3806,11 @@ async function generateShotLists(scriptId, sid, onlySceneId = null, language = '
           message: "Your Lumiere prompt allowance is currently empty. It refreshes automatically with your plan.",
         };
       });
-      return { ok: false, errorCode: "insufficient_credits" };
+      return;
     }
     mutatePreproductionProject(scriptId, sid, (freshProject) => {
-      freshProject.shotAnalysis = { ...freshProject.shotAnalysis, status: "running", total: pending.length, completed: index, message: `Planning shots for scene ${sceneIndex + 1} of ${all.length}`, currentSceneId: scene.id, jobId: aiJobId || null, regenerate: !!regenerate };
+      freshProject.shotAnalysis = { status: "running", total: pending.length, completed: index, message: `Planning shots for scene ${sceneIndex + 1} of ${all.length}` };
     });
-    if (aiJobId) updateAndBroadcastAIJob(aiJobId, { status: "processing", stage: "generating", progress: 10 + Math.round((index / Math.max(1, pending.length)) * 75) });
     try {
       const sceneBudgetMinutes = shotTimeBudget(scene);
       const response = await requestLumiereForTask("shot_list", {
@@ -4349,7 +3818,7 @@ async function generateShotLists(scriptId, sid, onlySceneId = null, language = '
         jsonMode: true,
         system: `${SHOTLIST_SYSTEM_PROMPT}\n\n${lumiereLanguageInstruction(language)}`,
         messages: [{ role: "user", content: `Scene ID: ${scene.id}\nScene heading: ${scene.title}\nProduction time available from Stripboard: ${sceneBudgetMinutes == null ? "Not set" : `${sceneBudgetMinutes} minutes`}\n\nSCENE:\n${scene.text}` }],
-      }, { jobId: aiJobId });
+      });
       recordUsage(response.usage);
       const raw = response.content.filter((block) => block.type === "text").map((block) => block.text).join("");
       let generatedShots = validateShotList(parseBreakdownJson(raw), scene);
@@ -4364,32 +3833,24 @@ async function generateShotLists(scriptId, sid, onlySceneId = null, language = '
       mutatePreproductionProject(scriptId, sid, (freshProject) => {
         const current = freshProject.scenes?.[scene.id];
         // Keep manual work and never apply a result generated from stale text.
-        // Regeneration replaces only earlier, untouched Lumiere shots. Every
-        // manual or user-edited shot is carried forward and reported in the
-        // diff so no production choice disappears without a visible trace.
-        // An empty or malformed model response must not erase an existing
-        // usable plan.  A valid response can still remove individual
-        // generated shots and surface that decision in the saved diff.
-        if (generatedShots.length && current && current.contentHash === scene.contentHash && (regenerate || !Array.isArray(current.shots) || current.shots.length === 0)) {
-          const merged = mergeGeneratedShotList(current.shots, generatedShots, current);
-          current.shots = merged.shots;
+        if (current && current.contentHash === scene.contentHash && (!Array.isArray(current.shots) || current.shots.length === 0)) {
+          current.shots = generatedShots;
           current.shotsUpdatedAt = new Date().toISOString();
-          current.shotListDiff = merged.diff;
           if (generatedShots.length) {
             successfulOutputs += 1;
             savedOutput = true;
           }
         }
-        freshProject.shotAnalysis = { ...freshProject.shotAnalysis, status: "running", total: pending.length, completed: index + 1, currentSceneId: null, jobId: aiJobId || null };
+        freshProject.shotAnalysis = { ...freshProject.shotAnalysis, status: "running", total: pending.length, completed: index + 1 };
       });
       // Do not charge for malformed, stale, or empty work. A prompt is only
       // consumed once FilmScript has actually saved usable shot coverage.
-      if (savedOutput && !freeAllowance && !textReservationId) consumeLumiereCredit(billingUserId);
+      if (savedOutput && !freeAllowance) consumeLumiereCredit(billingUserId);
     } catch (error) {
       console.error(`Shot list generation failed for ${scene.id}:`, error.message);
       generationFailure ||= lumiereFailureMessage(error);
       mutatePreproductionProject(scriptId, sid, (freshProject) => {
-        freshProject.shotAnalysis = { ...freshProject.shotAnalysis, status: "running", total: pending.length, completed: index + 1, currentSceneId: null, message: generationFailure, jobId: aiJobId || null };
+        freshProject.shotAnalysis = { ...freshProject.shotAnalysis, status: "running", total: pending.length, completed: index + 1, message: generationFailure };
       });
     }
   }
@@ -4400,21 +3861,13 @@ async function generateShotLists(scriptId, sid, onlySceneId = null, language = '
       total: pending.length,
       completed,
       message: completed === pending.length ? "Shot lists complete" : generationFailure || `${pending.length - completed} scenes need camera review`,
-      currentSceneId: null,
-      jobId: aiJobId || null,
-      regenerate: !!regenerate,
     };
   });
   if (successfulOutputs > 0) settleFreeAllowance();
-  if (!freeAllowance && textReservationId && successfulOutputs > 0) {
-    textReservationSettled = settleTextCredits(billingUserId, textReservationId, successfulOutputs);
-  }
-  return { ok: successfulOutputs > 0, successfulOutputs, settledCredits: textReservationSettled ? successfulOutputs : 0, message: generationFailure };
   } finally {
     if (freeAllowance && freeAllowanceReservationId && !freeAllowanceSettled) {
       releaseFreeAllowanceReservation(billingUserId, "storyboard", freeAllowanceReservationId);
     }
-    if (textReservationId && !textReservationSettled) releaseTextCredits(billingUserId, textReservationId);
   }
 }
 
@@ -4422,60 +3875,41 @@ async function handleShotLists(req, res, scriptId) {
   const sid = sessionId(req, res);
   if (!sid) return googleRequired(res);
   const script = loadScripts().scripts[scriptId];
-  if (!script || !projectPermission(sid, scriptId, "script", "view") || !projectPermission(sid, scriptId, "shot_list", "edit") || !canUseLumiereAction(projectAccess(sid, scriptId), "shot_list")) return permissionRequired(res);
+  if (!script || !projectPermission(sid, scriptId, "shot_list", "edit") || !canUseLumiereAction(projectAccess(sid, scriptId), "shot_list")) return json(res, 404, { error: "script not found" });
   if (enforceRateLimit(req, res, "shotlist-generation", 10, 10 * 60 * 1000, sid)) return;
   let body = {};
   try { const raw = await readBody(req, 32 * 1024); body = raw ? JSON.parse(raw) : {}; } catch { return json(res, 400, { error: "invalid request body" }); }
   const db = loadPreproduction();
   const project = db.projects[scriptId] = syncProject(script, db.projects[scriptId]);
   const sceneId = body.sceneId ? String(body.sceneId) : null;
-  const regenerate = body.regenerate === true;
   if (sceneId && !project.scenes?.[sceneId]) return json(res, 404, { error: "scene not found" });
-  const activeJob = activeAIJobForProject(scriptId, ["shot_list"]);
-  if (["queued", "running"].includes(project.shotAnalysis?.status) && !activeShotListJobs.has(scriptId) && !activeJob) {
+  if (["queued", "running"].includes(project.shotAnalysis?.status) && !activeShotListJobs.has(scriptId)) {
     project.shotAnalysis = { ...project.shotAnalysis, status: "interrupted", message: "Shot list generation interrupted" };
     releaseActiveFreeAllowanceReservation(projectBillingOwnerId(scriptId) || sid, "storyboard");
     savePreproduction(db);
   }
-  if (!activeShotListJobs.has(scriptId) && !activeJob) {
+  if (!activeShotListJobs.has(scriptId)) {
     const billingUserId = projectBillingOwnerId(scriptId) || sid;
-    const pending = Object.values(project.scenes || {}).filter((scene) => (!sceneId || scene.id === sceneId) && (regenerate || !Array.isArray(scene.shots) || scene.shots.length === 0));
+    const pending = Object.values(project.scenes || {}).filter((scene) => (!sceneId || scene.id === sceneId) && (!Array.isArray(scene.shots) || scene.shots.length === 0));
     const access = featureAccess(billingUserId, "storyboard");
     if (!access.allowed) return lumierePlanRequired(res, { feature: "AI Storyboard generation" });
     const freeReservation = access.free && pending.length ? reserveFreeAllowance(billingUserId, "storyboard") : null;
     if (freeReservation && !freeReservation.allowed) return lumierePlanRequired(res, { feature: "your one Free AI Storyboard" });
-    project.shotAnalysis = { status: "queued", total: pending.length, completed: 0, message: regenerate ? "Preparing updated shot list" : "Starting shot list", regenerate };
+    project.shotAnalysis = { status: "queued", total: pending.length, completed: 0, message: "Starting shot list" };
     try {
       savePreproduction(db);
-      const scheduled = createDurableAIJob({
-        type: "shot_list",
-        projectId: scriptId,
-        requesterId: sid,
-        sourceScriptVersionId: script.updatedAt,
-        sourceContentHash: hashText(JSON.stringify(script.blocks || [])),
-        reservedCredits: access.free ? 0 : Math.max(1, pending.length),
-        input: {
-          language: normalizeLumiereLanguage(body.language), sceneId, regenerate, billingUserId,
-          freeAllowance: access.free, freeAllowanceReservationId: freeReservation?.reservationId || null,
-        },
-      });
-      if (!scheduled.allowed) {
-        if (freeReservation?.reservationId) releaseFreeAllowanceReservation(billingUserId, "storyboard", freeReservation.reservationId);
-        project.shotAnalysis = { ...project.shotAnalysis, status: "interrupted", message: "Your Lumiere credits are currently unavailable." };
-        savePreproduction(db);
-        return json(res, 402, { error: "insufficient_credits", message: "Your Lumiere prompt allowance is currently empty." });
-      }
-      project.shotAnalysis = { ...project.shotAnalysis, jobId: scheduled.job?.id || null };
-      savePreproduction(db);
-      if (scheduled.created) scheduleDurableAIJob(scheduled.job.id);
-      return json(res, 202, { project: authorizedProjectPayload(project, sid, scriptId), job: publicAIJob(scheduled.job) });
+      activeShotListJobs.add(scriptId);
+      generateShotLists(scriptId, sid, sceneId, normalizeLumiereLanguage(body.language), {
+        freeAllowance: access.free,
+        freeAllowanceReservationId: freeReservation?.reservationId || null,
+        billingUserId,
+      }).catch((error) => console.error("Shot list job failed:", error.message)).finally(() => activeShotListJobs.delete(scriptId));
     } catch (error) {
       if (freeReservation?.reservationId) releaseFreeAllowanceReservation(billingUserId, "storyboard", freeReservation.reservationId);
       throw error;
     }
   }
-  const currentJob = activeAIJobForProject(scriptId, ["shot_list"]);
-  json(res, 202, { project: authorizedProjectPayload(project, sid, scriptId), job: publicAIJob(currentJob) });
+  json(res, 202, { project: authorizedProjectPayload(project, sid, scriptId) });
 }
 
 function sceneNeedsBreakdown(scene, { includeManual = false } = {}) {
@@ -4490,50 +3924,9 @@ function preserveManualBreakdownForm(form) {
   return { metadata, cells, ...(Object.keys(metadata).length || Object.keys(cells).length ? { userEdited: true } : {}) };
 }
 
-function breakdownDiff(previous, next, patch = null) {
-  const before = Array.isArray(previous?.elements) ? previous.elements : [];
-  const after = Array.isArray(next?.elements) ? next.elements : [];
-  const byKey = (elements) => new Map(elements.map((element) => [breakdownElementKey(element), element]).filter(([key]) => key));
-  const beforeByKey = byKey(before); const afterByKey = byKey(after);
-  const changed = (a, b) => ["category", "name", "description", "quantity", "sourceExcerpt"].some((field) => String(a?.[field] ?? "") !== String(b?.[field] ?? ""));
-  const newElements = after.filter((element) => !beforeByKey.has(breakdownElementKey(element))).map((element) => ({ id: element.id, name: element.name, category: element.category }));
-  const removedElements = before.filter((element) => !afterByKey.has(breakdownElementKey(element)) && element.userEdited !== true).map((element) => ({ id: element.id, name: element.name, category: element.category }));
-  const modifiedElements = after.filter((element) => {
-    const prior = beforeByKey.get(breakdownElementKey(element));
-    return prior && changed(prior, element);
-  }).map((element) => ({ id: element.id, name: element.name, category: element.category }));
-  const manualEditsPreserved = before.filter((element) => element.userEdited === true).filter((element) => {
-    const current = afterByKey.get(breakdownElementKey(element));
-    return current && current.userEdited === true;
-  }).map((element) => ({ id: element.id, name: element.name, category: element.category }));
-  return {
-    newElements: patch?.add?.length ? patch.add.map((element) => ({ id: element.id, name: element.name, category: element.category })) : newElements,
-    modifiedElements: patch?.update?.length ? patch.update.map((entry) => ({ name: entry.changes?.name || entry.target?.name || "Element", category: entry.changes?.category || entry.target?.category || "" })) : modifiedElements,
-    removedElements: patch?.remove?.length ? patch.remove.map((element) => ({ name: element.name || "Element", category: element.category || "" })) : removedElements,
-    manualEditsPreserved,
-    generatedAt: new Date().toISOString(),
-  };
-}
-
-function mergeGeneratedBreakdown(previous, generated, scene) {
-  const previousElements = Array.isArray(previous?.elements) ? previous.elements : [];
-  const generatedElements = Array.isArray(generated?.elements) ? generated.elements : [];
-  const generatedByKey = new Map(generatedElements.map((element) => [breakdownElementKey(element), element]));
-  for (const manual of previousElements.filter((element) => element?.userEdited === true)) {
-    const key = breakdownElementKey(manual);
-    if (!key) continue;
-    // A user-edited element is a deliberate production decision. It wins over
-    // a fresh model pass, including when the model no longer finds it.
-    generatedByKey.set(key, { ...manual, id: manual.id || breakdownElementId(scene.id, manual) });
-  }
-  return ensureBreakdownElementIds({ ...generated, elements: dedupeBreakdownElements([...generatedByKey.values()]) }, scene);
-}
-
-async function analyzeProject(scriptId, sid, language = 'en', { includeManual = false, onlySceneId = null, freeAllowance = false, freeAllowanceReservationId = null, billingUserId = sid, textReservationId = null, aiJobId = null } = {}) {
+async function analyzeProject(scriptId, sid, language = 'en', { includeManual = false, freeAllowance = false, freeAllowanceReservationId = null, billingUserId = sid } = {}) {
   let freeAllowanceSettled = false;
-  let textReservationSettled = false;
   let successfulOutputs = 0;
-  let finalBreakdownAnalysis = null;
   const settleFreeAllowance = () => {
     if (!freeAllowance || !freeAllowanceReservationId || freeAllowanceSettled) return false;
     freeAllowanceSettled = settleFreeAllowanceReservation(billingUserId, "breakdown", freeAllowanceReservationId);
@@ -4541,121 +3934,87 @@ async function analyzeProject(scriptId, sid, language = 'en', { includeManual = 
   };
   try {
   const script = loadScripts().scripts[scriptId];
-  if (!script || !projectPermission(sid, scriptId, "breakdown", "edit")) return { ok: false, errorCode: "permission_denied" };
+  if (!script || !projectPermission(sid, scriptId, "breakdown", "edit")) return;
   const db = loadPreproduction();
   const project = db.projects[scriptId] = syncProject(script, db.projects[scriptId]);
   const all = Object.values(project.scenes);
   const pending = all
     .map((scene, index) => ({ scene: JSON.parse(JSON.stringify(scene)), index }))
-    .filter(({ scene }) => (!onlySceneId || scene.id === onlySceneId) && sceneNeedsBreakdown(scene, { includeManual }));
+    .filter(({ scene }) => sceneNeedsBreakdown(scene, { includeManual }));
   if (!pending.length) {
     project.analysis = { status: "complete", total: all.length, completed: all.length, message: "Breakdown already up to date" };
     savePreproduction(db);
-    return { ok: true, noop: true, successfulOutputs: 0, settledCredits: 0 };
+    return;
   }
-  project.analysis = {
-    status: "running",
-    total: all.length,
-    completed: Math.max(0, all.length - pending.length),
-    pendingTotal: pending.length,
-    currentSceneId: null,
-    message: "Preparing scenes",
-  };
+  project.analysis = { status: "running", total: pending.length, completed: 0, message: "Preparing scenes" };
   savePreproduction(db);
-  if (aiJobId) updateAIJob(aiJobId, { status: "processing", stage: "preparing", progress: 8 });
   for (let i = 0; i < pending.length; i++) {
     const { scene, index } = pending[i];
     if (!freeAllowance && !hasActiveLumierePlan(billingUserId)) {
       mutatePreproductionProject(scriptId, sid, (freshProject) => {
         freshProject.analysis = {
           status: "interrupted",
-          total: all.length,
-          completed: Math.max(0, all.length - pending.length + i),
+          total: pending.length,
+          completed: i,
           message: "FilmScript Creator or Full is required to continue the breakdown. Existing work was preserved.",
         };
       });
-      return { ok: false, errorCode: "insufficient_credits" };
+      return;
     }
     if (!freeAllowance && !hasLumiereCredits(billingUserId)) {
       mutatePreproductionProject(scriptId, sid, (freshProject) => {
         freshProject.analysis = {
           status: "interrupted",
-          total: all.length,
-          completed: Math.max(0, all.length - pending.length + i),
+          total: pending.length,
+          completed: i,
           message: "Your Lumiere prompt allowance is currently empty. It refreshes automatically with your plan.",
         };
       });
-      return { ok: false, errorCode: "insufficient_credits" };
+      return;
     }
     mutatePreproductionProject(scriptId, sid, (freshProject) => {
-      const current = freshProject.scenes?.[scene.id];
-      if (current && current.contentHash === scene.contentHash) current.status = "generating";
-      freshProject.analysis = {
-        status: "running",
-        total: all.length,
-        completed: Math.max(0, all.length - pending.length + i),
-        pendingTotal: pending.length,
-        currentSceneId: scene.id,
-        message: `Generating Breakdown · ${Math.max(0, all.length - pending.length + i)} of ${all.length} scenes`,
-      };
+      freshProject.analysis = { status: "running", total: pending.length, completed: i, message: `Analyzing scene ${index + 1} of ${all.length}` };
     });
-    broadcastCollaboration(scriptId, "breakdown.progress", {
-      module: "breakdown", scriptId, sceneId: scene.id,
-      analysis: { status: "running", total: all.length, completed: Math.max(0, all.length - pending.length + i), pendingTotal: pending.length, currentSceneId: scene.id },
-    });
-    if (aiJobId) updateAIJob(aiJobId, { status: "processing", stage: "generating", progress: 10 + Math.round((i / Math.max(1, pending.length)) * 75) });
       const canPatch = !!scene.previousText && !!scene.breakdown;
     try {
-      const breakdownTask = canPatch ? "breakdown_scene" : "breakdown";
-      const breakdownSystem = canPatch ? BREAKDOWN_UPDATE_SYSTEM_PROMPT : BREAKDOWN_SYSTEM_PROMPT;
-      const breakdownInput = canPatch
-        ? { previousScene: scene.previousText, updatedScene: scene.text, existingBreakdown: scene.breakdown, metadata: { sceneId: scene.id, sceneNumber: index + 1, sceneHeading: scene.title } }
-        : { scene: scene.text, metadata: { sceneId: scene.id, sceneNumber: index + 1, sceneHeading: scene.title } };
-      const requestBreakdown = (retry = false) => requestLumiereForTask(breakdownTask, {
-        maxTokens: retry ? 2400 : 1800,
-        jsonMode: true,
-        system: `${breakdownSystem}\n\n${lumiereLanguageInstruction(language)}${retry ? "\n\nThe previous response was incomplete. Return the complete required JSON object only, with concise values." : ""}`,
-        messages: [{ role: "user", content: JSON.stringify(breakdownInput) }],
-      }, { jobId: aiJobId });
-      let result = await requestBreakdown();
+      const result = canPatch
+        ? await requestLumiereForTask("breakdown_scene", {
+            maxTokens: 1800,
+            jsonMode: true,
+            system: `${BREAKDOWN_UPDATE_SYSTEM_PROMPT}\n\n${lumiereLanguageInstruction(language)}`,
+            messages: [{ role: "user", content: JSON.stringify({ previousScene: scene.previousText, updatedScene: scene.text, existingBreakdown: scene.breakdown, metadata: { sceneId: scene.id, sceneNumber: index + 1, sceneHeading: scene.title } }) }],
+          })
+        : await requestLumiereForTask("breakdown", {
+            maxTokens: 1800,
+            jsonMode: true,
+            system: `${BREAKDOWN_SYSTEM_PROMPT}\n\n${lumiereLanguageInstruction(language)}`,
+            messages: [{ role: "user", content: JSON.stringify({ scene: scene.text, metadata: { sceneId: scene.id, sceneNumber: index + 1, sceneHeading: scene.title } }) }],
+          });
       recordUsage(result.usage);
-      let raw = result.content.filter((block) => block.type === "text").map((block) => block.text).join("");
-      let payload;
-      try {
-        payload = parseBreakdownJson(raw);
-      } catch (error) {
-        if (error?.code !== "lumiere_invalid_json") throw error;
-        // A compact retry turns a transient truncated object into a usable
-        // scene result without charging or overwriting manual work twice.
-        result = await requestBreakdown(true);
-        recordUsage(result.usage);
-        raw = result.content.filter((block) => block.type === "text").map((block) => block.text).join("");
-        payload = parseBreakdownJson(raw);
-      }
+      const raw = result.content.filter((block) => block.type === "text").map((block) => block.text).join("");
+      const payload = parseBreakdownJson(raw);
       let savedOutput = false;
       mutatePreproductionProject(scriptId, sid, (freshProject) => {
         const current = freshProject.scenes?.[scene.id];
         if (current && current.contentHash === scene.contentHash) {
-          // Manual fields and element edits are deliberate production choices.
-          // Keep them when a scene is regenerated; Lumiere fills only the gaps.
-          const previousBreakdown = current.breakdown ? JSON.parse(JSON.stringify(current.breakdown)) : null;
-          const manualForm = preserveManualBreakdownForm(current.breakdownForm);
+          // Manual fields are an intentional override. Retain only the values
+          // the user entered so Lumiere can populate the untouched cells.
+          const manualForm = current.breakdown?.source === 'manual' || current.breakdown?.generated === 'manual'
+            ? preserveManualBreakdownForm(current.breakdownForm)
+            : null;
           if (canPatch) {
             const applied = applyBreakdownPatch(current, payload);
-            current.breakdown = ensureBreakdownElementIds(ensureExplicitCast(applied.breakdown, current), current);
+            current.breakdown = ensureExplicitCast(applied.breakdown, current);
             current.lastPatch = applied.patch;
-            current.breakdownDiff = breakdownDiff(previousBreakdown, current.breakdown, applied.patch);
             current.reviewRequired = applied.patch.warnings.length > 0;
             current.status = current.reviewRequired ? "needs_review" : "synced";
           } else {
-            const generated = ensureExplicitCast(validateBreakdown(payload, current), current);
-            current.breakdown = mergeGeneratedBreakdown(previousBreakdown, generated, current);
+            current.breakdown = ensureExplicitCast(validateBreakdown(payload, current), current);
             current.lastPatch = null;
-            current.breakdownDiff = breakdownDiff(previousBreakdown, current.breakdown);
             current.reviewRequired = false;
             current.status = "synced";
           }
-          if (manualForm.userEdited) current.breakdownForm = manualForm;
+          if (manualForm) current.breakdownForm = manualForm;
           current.previousText = null;
           current.strip = current.strip || { day: null, location: current.breakdown?.elements?.find((element) => element.category === "locations")?.name || "Unassigned", status: "unscheduled" };
           current.shots = Array.isArray(current.shots) ? current.shots : [];
@@ -4663,23 +4022,11 @@ async function analyzeProject(scriptId, sid, language = 'en', { includeManual = 
           successfulOutputs += 1;
           savedOutput = true;
         }
-        freshProject.analysis = {
-          ...freshProject.analysis,
-          status: "running",
-          total: all.length,
-          completed: Math.max(0, all.length - pending.length + i + 1),
-          pendingTotal: pending.length,
-          currentSceneId: null,
-          message: `Generating Breakdown · ${Math.max(0, all.length - pending.length + i + 1)} of ${all.length} scenes`,
-        };
-      });
-      broadcastCollaboration(scriptId, "breakdown.progress", {
-        module: "breakdown", scriptId, sceneId: scene.id,
-        analysis: { status: "running", total: all.length, completed: Math.max(0, all.length - pending.length + i + 1), pendingTotal: pending.length, currentSceneId: null },
+        freshProject.analysis = { ...freshProject.analysis, status: "running", total: pending.length, completed: i + 1 };
       });
       // Parsing and persistence are both part of a completed generation. If
       // either fails, the catch path leaves the allowance untouched.
-      if (savedOutput && !freeAllowance && !textReservationId) consumeLumiereCredit(billingUserId);
+      if (savedOutput && !freeAllowance) consumeLumiereCredit(billingUserId);
     } catch (error) {
       console.error(`Breakdown analysis failed for ${scene.id}:`, error.message);
       mutatePreproductionProject(scriptId, sid, (freshProject) => {
@@ -4689,19 +4036,7 @@ async function analyzeProject(scriptId, sid, language = 'en', { includeManual = 
           current.status = "needs_review";
           current.reviewRequired = false;
         }
-        freshProject.analysis = {
-          ...freshProject.analysis,
-          status: "running",
-          total: all.length,
-          completed: Math.max(0, all.length - pending.length + i + 1),
-          pendingTotal: pending.length,
-          currentSceneId: null,
-          message: `Generating Breakdown · ${Math.max(0, all.length - pending.length + i + 1)} of ${all.length} scenes`,
-        };
-      });
-      broadcastCollaboration(scriptId, "breakdown.progress", {
-        module: "breakdown", scriptId, sceneId: scene.id,
-        analysis: { status: "running", total: all.length, completed: Math.max(0, all.length - pending.length + i + 1), pendingTotal: pending.length, currentSceneId: null },
+        freshProject.analysis = { ...freshProject.analysis, status: "running", total: pending.length, completed: i + 1 };
       });
     }
   }
@@ -4709,19 +4044,12 @@ async function analyzeProject(scriptId, sid, language = 'en', { includeManual = 
     const currentScenes = Object.values(freshProject.scenes || {});
     const needsReview = currentScenes.filter((scene) => scene.status === "needs_review" || scene.status === "outdated").length;
     freshProject.analysis = { status: needsReview ? "needs_review" : "complete", total: currentScenes.length, completed: currentScenes.length - needsReview, message: needsReview ? `${needsReview} scenes need review` : "Breakdown complete" };
-    finalBreakdownAnalysis = freshProject.analysis;
   });
-  broadcastCollaboration(scriptId, "breakdown.progress", { module: "breakdown", scriptId, analysis: finalBreakdownAnalysis || { status: "complete", total: all.length, completed: all.length, pendingTotal: 0, currentSceneId: null } });
   if (successfulOutputs > 0) settleFreeAllowance();
-  if (!freeAllowance && textReservationId && successfulOutputs > 0) {
-    textReservationSettled = settleTextCredits(billingUserId, textReservationId, successfulOutputs);
-  }
-  return { ok: successfulOutputs > 0, successfulOutputs, settledCredits: textReservationSettled ? successfulOutputs : 0 };
   } finally {
     if (freeAllowance && freeAllowanceReservationId && !freeAllowanceSettled) {
       releaseFreeAllowanceReservation(billingUserId, "breakdown", freeAllowanceReservationId);
     }
-    if (textReservationId && !textReservationSettled) releaseTextCredits(billingUserId, textReservationId);
   }
 }
 
@@ -4781,14 +4109,12 @@ async function handlePreproduction(req, res, scriptId) {
   const script = loadScripts().scripts[scriptId]; if (!script || !projectPermission(sid, scriptId, "breakdown", req.method === "POST" ? "edit" : "view")) return json(res, 404, { error: "script not found" });
   const db = loadPreproduction(); let project = db.projects[scriptId] = syncProject(script, db.projects[scriptId]);
   let repairedInterruptedJob = false;
-  const activeBreakdownJob = activeAIJobForProject(scriptId, ["breakdown", "breakdown_scene"]);
-  const activeShotJob = activeAIJobForProject(scriptId, ["shot_list"]);
-  if ((project.analysis?.status === "queued" || project.analysis?.status === "running") && !activePreproductionJobs.has(scriptId) && !activeBreakdownJob) {
+  if ((project.analysis?.status === "queued" || project.analysis?.status === "running") && !activePreproductionJobs.has(scriptId)) {
     project.analysis = { ...project.analysis, status: "interrupted", message: "Analysis interrupted" };
     releaseActiveFreeAllowanceReservation(projectBillingOwnerId(scriptId) || sid, "breakdown");
     repairedInterruptedJob = true;
   }
-  if ((project.shotAnalysis?.status === "queued" || project.shotAnalysis?.status === "running") && !activeShotListJobs.has(scriptId) && !activeShotJob) {
+  if ((project.shotAnalysis?.status === "queued" || project.shotAnalysis?.status === "running") && !activeShotListJobs.has(scriptId)) {
     project.shotAnalysis = { ...project.shotAnalysis, status: "interrupted", message: "Shot list generation interrupted" };
     releaseActiveFreeAllowanceReservation(projectBillingOwnerId(scriptId) || sid, "storyboard");
     repairedInterruptedJob = true;
@@ -4803,53 +4129,34 @@ async function handlePreproduction(req, res, scriptId) {
     try { body = JSON.parse(await readBody(req, 32 * 1024) || "{}"); } catch { return json(res, 400, { error: "invalid request body" }); }
     const language = normalizeLumiereLanguage(body.language);
     const includeManual = body?.includeManual === true;
-    const sceneId = body?.sceneId ? String(body.sceneId) : null;
-    if (sceneId && !project.scenes?.[sceneId]) return json(res, 404, { error: "scene not found" });
-    if (!activePreproductionJobs.has(scriptId) && !activeBreakdownJob) {
+    if (!activePreproductionJobs.has(scriptId)) {
       const billingUserId = projectBillingOwnerId(scriptId) || sid;
-      const pendingTotal = Object.values(project.scenes).filter((scene) => (!sceneId || scene.id === sceneId) && sceneNeedsBreakdown(scene, { includeManual })).length;
+      const pendingTotal = Object.values(project.scenes).filter((scene) => sceneNeedsBreakdown(scene, { includeManual })).length;
       const access = featureAccess(billingUserId, "breakdown");
       if (!access.allowed) return lumierePlanRequired(res, { feature: "AI Breakdown generation" });
       const freeReservation = access.free && pendingTotal ? reserveFreeAllowance(billingUserId, "breakdown") : null;
       if (freeReservation && !freeReservation.allowed) return lumierePlanRequired(res, { feature: "your one Free AI Breakdown" });
       project.analysis = {
         status: "queued",
-        total: Object.values(project.scenes).length,
-        completed: Math.max(0, Object.values(project.scenes).length - pendingTotal),
-        pendingTotal,
-        currentSceneId: sceneId,
+        total: pendingTotal,
+        completed: 0,
         message: includeManual ? "Lumiere is preparing your manual breakdown" : "Starting analysis",
       };
       try {
         savePreproduction(db);
-        const scheduled = createDurableAIJob({
-          type: sceneId ? "breakdown_scene" : "breakdown",
-          projectId: scriptId,
-          requesterId: sid,
-          sourceScriptVersionId: script.updatedAt,
-          sourceContentHash: hashText(JSON.stringify(script.blocks || [])),
-          reservedCredits: access.free ? 0 : Math.max(1, pendingTotal),
-          input: {
-            language, includeManual, sceneId, billingUserId,
-            freeAllowance: access.free,
-            freeAllowanceReservationId: freeReservation?.reservationId || null,
-          },
-        });
-        if (!scheduled.allowed) {
-          if (freeReservation?.reservationId) releaseFreeAllowanceReservation(billingUserId, "breakdown", freeReservation.reservationId);
-          project.analysis = { ...project.analysis, status: "interrupted", message: "Your Lumiere credits are currently unavailable." };
-          savePreproduction(db);
-          return json(res, 402, { error: "insufficient_credits", message: "Your Lumiere prompt allowance is currently empty." });
-        }
-        if (scheduled.created) scheduleDurableAIJob(scheduled.job.id);
-        return json(res, 202, { project: authorizedProjectPayload(project, sid, scriptId), job: publicAIJob(scheduled.job) });
+        activePreproductionJobs.add(scriptId);
+        analyzeProject(scriptId, sid, language, {
+          includeManual,
+          freeAllowance: access.free,
+          freeAllowanceReservationId: freeReservation?.reservationId || null,
+          billingUserId,
+        }).catch((error) => console.error("Preproduction job failed:", error.message)).finally(() => activePreproductionJobs.delete(scriptId));
       } catch (error) {
         if (freeReservation?.reservationId) releaseFreeAllowanceReservation(billingUserId, "breakdown", freeReservation.reservationId);
         throw error;
       }
     }
-    const currentJob = activeAIJobForProject(scriptId, ["breakdown", "breakdown_scene"]);
-    return json(res, 202, { project: authorizedProjectPayload(project, sid, scriptId), job: publicAIJob(currentJob) });
+    return json(res, 202, { project: authorizedProjectPayload(project, sid, scriptId) });
   }
   json(res, 405, { error: "method not allowed" });
 }
@@ -5035,8 +4342,7 @@ function syncScriptAnalysis(project, script) {
   const snapshot = buildAnalysisSnapshot(script, previous);
   const { sourceScenes, ...persistedSnapshot } = snapshot;
   const deepCurrent = isCurrentScriptAnalysisDeep(previous.deep, snapshot.contentHash);
-  const jobActive = activeScriptAnalysisJobs.has(script.id)
-    || !!activeAIJobForProject(script.id, ["analysis"]);
+  const jobActive = activeScriptAnalysisJobs.has(script.id);
   let status = previous.status || "idle";
   if (!snapshot.hasEnoughContent) status = "insufficient";
   else if (deepCurrent) status = "complete";
@@ -5058,7 +4364,6 @@ function syncScriptAnalysis(project, script) {
 
 function sanitizeScriptAnalysisDeepForDisplay(deep, sceneIndex) {
   if (!deep) return null;
-  const { model: _internalModel, sceneContentHashes: _sceneContentHashes, sceneResults: _sceneResults, ...displayDeep } = deep;
   const sceneById = new Map((sceneIndex || []).map((scene) => [scene.id, scene]));
   const display = (value, limit) => analysisDisplayText(value, sceneById, limit);
   const evidence = (item) => ({
@@ -5069,7 +4374,7 @@ function sanitizeScriptAnalysisDeepForDisplay(deep, sceneIndex) {
   });
   const questions = (items) => (items || []).map((item) => ({ ...item, label: display(item.label, 70), prompt: display(item.prompt, 300) }));
   return {
-    ...displayDeep,
+    ...deep,
     statusSummary: deep.statusSummary ? { ...deep.statusSummary, label: display(deep.statusSummary.label, 40), reason: display(deep.statusSummary.reason, 500) } : null,
     overview: {
       working: (deep.overview?.working || []).map(evidence),
@@ -5228,22 +4533,14 @@ function publicScriptAnalysis(analysis) {
     statusMessage: analysis.statusMessage || "",
     targetHash: analysis.targetHash || "",
     updatedAt: analysis.updatedAt,
-    failure: analysis.lastFailure || null,
-    metadata: {
-      scriptVersion: analysis.scriptVersion,
-      generatedAt: analysis.deep?.generatedAt || null,
-      lastModifiedRelevantScene: analysis.deep?.lastModifiedRelevantScene || null,
-      state: current ? "updated" : analysis.deep ? "outdated" : "not_generated",
-    },
     deep: current ? deepWithFeedback : null,
     previousDeep: !current && deepWithFeedback ? { ...deepWithFeedback, current: false } : null,
     feedback: analysis.feedback,
   };
 }
 
-function analysisScenePackets(snapshot, sceneIds = null) {
-  const wanted = sceneIds instanceof Set ? sceneIds : Array.isArray(sceneIds) ? new Set(sceneIds) : null;
-  const scenes = (snapshot.sourceScenes || []).filter((scene) => !wanted || wanted.has(scene.id));
+function analysisScenePackets(snapshot) {
+  const scenes = snapshot.sourceScenes || [];
   const perSceneBudget = Math.max(1, Math.min(12000, Math.floor(180000 / Math.max(1, scenes.length))));
   return scenes.map((scene) => {
     const blocks = [];
@@ -5269,152 +4566,8 @@ function analysisScenePackets(snapshot, sceneIds = null) {
   });
 }
 
-const ANALYSIS_JOB_STAGES = Object.freeze({
-  reading_screenplay: { progress: 8, message: "Reading screenplay" },
-  identifying_scenes: { progress: 20, message: "Identifying scenes" },
-  mapping_characters: { progress: 32, message: "Mapping characters" },
-  reviewing_locations: { progress: 44, message: "Reviewing locations" },
-  evaluating_production_requirements: { progress: 58, message: "Evaluating production requirements" },
-  building_analysis: { progress: 72, message: "Building analysis" },
-  finalizing_results: { progress: 92, message: "Finalizing results" },
-});
-
-function analysisOutputTokenBudget(sceneCount) {
-  // The previous 16k ceiling made a full-script request more likely to exceed
-  // the provider deadline while it was visibly parked at “Building analysis”.
-  // The rendered analysis has bounded lists, so a compact response is enough
-  // for the scene-level merge and is substantially faster and less expensive.
-  return Math.min(8_000, Math.max(2_400, Math.round(Number(sceneCount || 0) * 900)));
-}
-
-function analysisEntryTouchesScenes(entry, sceneIds) {
-  if (!entry || !sceneIds?.size) return false;
-  if (sceneIds.has(entry.sceneId)) return true;
-  return Array.isArray(entry.sceneIds) && entry.sceneIds.some((sceneId) => sceneIds.has(sceneId));
-}
-
-function uniqueAnalysisEntries(items, limit = 20) {
-  const seen = new Set();
-  return (items || []).filter(Boolean).filter((item) => {
-    const key = String(item.id || `${item.sceneId || ""}:${item.title || item.label || ""}:${item.referenceText || ""}`);
-    if (seen.has(key)) return false;
-    seen.add(key);
-    return true;
-  }).slice(0, limit);
-}
-
-function analysisPriorityWeight(item) {
-  return item?.priority === "high" ? 0 : item?.priority === "medium" ? 1 : 2;
-}
-
-function deterministicAnalysisStatus(issues = [], production = []) {
-  if (issues.some((item) => item?.priority === "high") || production.some((item) => item?.priority === "high")) {
-    return { label: "Needs Attention", reason: "The updated scenes contain production or story decisions that need attention." };
-  }
-  if (issues.length || production.length) {
-    return { label: "Developing", reason: "The current draft has focused opportunities to strengthen before production." };
-  }
-  return { label: "Production Ready", reason: "No material issue was found in the currently analyzed scenes." };
-}
-
-function mergeIncrementalScriptAnalysis(snapshot, previousDeep, partialDeep, changes) {
-  const replaceScenes = new Set([...(changes?.changedSceneIds || []), ...(changes?.deletedSceneIds || [])]);
-  const previous = previousDeep && typeof previousDeep === "object" ? previousDeep : {};
-  const partial = partialDeep && typeof partialDeep === "object" ? partialDeep : {};
-  const withoutReplaced = (items) => (Array.isArray(items) ? items : []).filter((item) => !analysisEntryTouchesScenes(item, replaceScenes));
-  const mergedList = (path, limit, { rankPriority = false } = {}) => {
-    const from = (source) => path.reduce((value, key) => value?.[key], source) || [];
-    const values = uniqueAnalysisEntries([...withoutReplaced(from(previous)), ...(from(partial) || [])], limit * 3);
-    if (rankPriority) values.sort((a, b) => analysisPriorityWeight(a) - analysisPriorityWeight(b));
-    return values.slice(0, limit);
-  };
-  const scenesById = new Map((snapshot.sceneIndex || []).map((scene) => [scene.id, scene]));
-  const normaliseFlow = uniqueAnalysisEntries([
-    ...withoutReplaced(previous.storyFlow?.points),
-    ...(partial.storyFlow?.points || []),
-  ], Math.max(1, snapshot.sceneIndex?.length || 1)).filter((point) => scenesById.has(point.sceneId));
-  const flowByScene = new Map(normaliseFlow.map((point) => [point.sceneId, point]));
-  const flow = normalizeEmotionalArc((snapshot.sceneIndex || []).map((scene) => flowByScene.get(scene.id) || {
-    sceneId: scene.id,
-    sceneNumber: scene.sceneNumber,
-    heading: scene.heading,
-    page: scene.page,
-    value: 50,
-    label: "Awaiting scene reading",
-    explanation: "This scene is retained from the current screenplay structure.",
-    marker: "",
-    confidence: 0,
-  }));
-  const working = mergedList(["overview", "working"], 3);
-  const needsAttention = mergedList(["overview", "needsAttention"], 3, { rankPriority: true });
-  const productionImpact = mergedList(["overview", "productionImpact"], 3, { rankPriority: true });
-  const clarity = mergedList(["storyClarity", "points"], 4).map((item) => ({
-    ...item,
-    stage: item.stage || (item.sceneNumber <= Math.ceil((snapshot.sceneIndex?.length || 1) / 4) ? "Start" : "Development"),
-  }));
-  const sceneIssues = mergedList(["sceneIssues"], 10, { rankPriority: true });
-  const keyMoments = mergedList(["keyMoments"], 8);
-  const complexScenes = mergedList(["productionOverview", "complexScenes"], 8, { rankPriority: true });
-  const contextual = partial.contextualQuestions && Object.values(partial.contextualQuestions).some((items) => Array.isArray(items) && items.length)
-    ? partial.contextualQuestions
-    : previous.contextualQuestions || { story: [], characters: [], production: [] };
-  const hashes = changes?.sceneContentHashes || {};
-  const lastChangedId = [...(changes?.changedSceneIds || []), ...(changes?.deletedSceneIds || [])].at(-1) || null;
-  const lastScene = scenesById.get(lastChangedId) || null;
-  const confidenceValues = [...flow, ...keyMoments].map((item) => Number(item?.confidence || 0)).filter((value) => value > 0);
-  const confidence = confidenceValues.length
-    ? Number((confidenceValues.reduce((total, value) => total + value, 0) / confidenceValues.length).toFixed(3))
-    : 0;
-  const statusSummary = deterministicAnalysisStatus(needsAttention, productionImpact);
-  const generatedAt = new Date().toISOString();
-  const primary = needsAttention[0] || working[0] || null;
-  return {
-    ...previous,
-    ...partial,
-    analysisId: partial.analysisId || previous.analysisId || `ana_${crypto.randomBytes(10).toString("hex")}`,
-    revision: SCRIPT_ANALYSIS_REVISION,
-    projectId: snapshot.projectId,
-    scriptId: snapshot.scriptId,
-    scriptVersion: snapshot.scriptVersion,
-    contentHash: snapshot.contentHash,
-    sceneIds: [...snapshot.sceneIds],
-    sceneContentHashes: hashes,
-    lastModifiedRelevantScene: lastScene ? {
-      id: lastScene.id,
-      sceneNumber: lastScene.sceneNumber,
-      heading: lastScene.heading,
-      contentHash: lastScene.contentHash,
-      updatedAt: generatedAt,
-    } : previous.lastModifiedRelevantScene || null,
-    statusSummary,
-    overview: { working, needsAttention, productionImpact },
-    storyClarity: {
-      summary: partial.storyClarity?.summary || previous.storyClarity?.summary || "Scene-level results were recomputed for the current screenplay.",
-      points: clarity,
-    },
-    storyFlow: { points: flow, takeaway: partial.storyFlow?.takeaway || previous.storyFlow?.takeaway || null },
-    sceneIssues,
-    keyMoments,
-    productionOverview: {
-      locations: { count: snapshot.metrics?.locations?.length || 0, sceneIds: (snapshot.sceneIndex || []).filter((scene) => scene.location).map((scene) => scene.id) },
-      characters: { count: snapshot.metrics?.characters?.length || 0, sceneIds: (snapshot.sceneIndex || []).map((scene) => scene.id) },
-      nightScenes: { count: Number(snapshot.metrics?.nightScenes || 0), sceneIds: (snapshot.sceneIndex || []).filter((scene) => scene.dayNight === "NIGHT").map((scene) => scene.id) },
-      complexScenes,
-    },
-    contextualQuestions: contextual,
-    confidence,
-    pacing: flow,
-    moments: keyMoments.map((moment) => ({ ...moment, key: analysisMomentKey(moment.title), label: moment.title, reason: moment.explanation })),
-    emotionalArc: flow,
-    suggestions: needsAttention.map((item) => ({ id: item.id, text: item.explanation, sceneIds: item.sceneIds })),
-    insight: primary ? { id: `ins_${primary.id}`, text: primary.explanation, sceneIds: primary.sceneIds } : null,
-    generatedAt,
-  };
-}
-
-async function runScriptAnalysis(scriptId, sid, targetHash, requestedLanguage = 'en', { freeAllowance = false, freeAllowanceReservationId = null, billingUserId = sid, textReservationId = null, aiJobId = null } = {}) {
+async function runScriptAnalysis(scriptId, sid, targetHash, requestedLanguage = 'en', { freeAllowance = false, freeAllowanceReservationId = null, billingUserId = sid } = {}) {
   let freeAllowanceSettled = false;
-  let textReservationSettled = false;
   const settleFreeAllowance = () => {
     if (!freeAllowance || !freeAllowanceReservationId || freeAllowanceSettled) return false;
     freeAllowanceSettled = settleFreeAllowanceReservation(billingUserId, "analysis", freeAllowanceReservationId);
@@ -5422,101 +4575,67 @@ async function runScriptAnalysis(scriptId, sid, targetHash, requestedLanguage = 
   };
   try {
   const script = loadScripts().scripts[scriptId];
-  if (!script || !projectPermission(sid, scriptId, "analysis", "edit")) return { ok: false, errorCode: "permission_denied" };
+  if (!script || !projectPermission(sid, scriptId, "analysis", "edit")) return;
   let db = loadPreproduction();
   let project = db.projects[scriptId] = syncProject(script, db.projects[scriptId]);
   let { analysis, snapshot } = syncScriptAnalysis(project, script);
-  if (snapshot.contentHash !== targetHash || !snapshot.hasEnoughContent) { savePreproduction(db); return { ok: false, errorCode: "corrupt_script" }; }
-  const progress = (stage) => {
-    const detail = ANALYSIS_JOB_STAGES[stage];
-    if (!detail) return;
-    analysis.statusMessage = detail.message;
-    if (aiJobId) updateAIJob(aiJobId, { status: "processing", stage, progress: detail.progress });
-    savePreproduction(db);
-  };
+  if (snapshot.contentHash !== targetHash || !snapshot.hasEnoughContent) { savePreproduction(db); return; }
   analysis.status = "running";
+  analysis.statusMessage = "Lumiere is finding the story priorities and production impact";
   analysis.targetHash = targetHash;
-  progress("reading_screenplay");
+  savePreproduction(db);
 
   try {
-    // The scene snapshot is the durable source of truth. The model receives
-    // only added or changed scenes; deleted scenes are removed locally and
-    // global counts are recomputed from the current screenplay below.
-    const changes = diffAnalysisScenes(snapshot, analysis.deep);
-    const changedSceneIds = changes.changedSceneIds.length
-      ? changes.changedSceneIds
-      : (!changes.deletedSceneIds.length ? snapshot.sceneIds : []);
-    progress("identifying_scenes");
-    const packets = analysisScenePackets(snapshot, new Set(changedSceneIds));
-    progress("mapping_characters");
-    const characterIndex = snapshot.characterIndex || [];
-    progress("reviewing_locations");
-    const locationIndex = snapshot.locationIndex || [];
-    progress("evaluating_production_requirements");
-    let deep;
-    let modelWasCalled = false;
-    if (packets.length) {
-      if (!process.env.OPENAI_API_KEY) throw Object.assign(new Error('OpenAI API key is not configured.'), { status: 503 });
+    if (!process.env.OPENAI_API_KEY) throw Object.assign(new Error('OpenAI API key is not configured.'), { status: 503 });
+    const requestContent = JSON.stringify({
+      projectId: snapshot.projectId,
+      scriptId: snapshot.scriptId,
+      scriptVersion: snapshot.scriptVersion,
+      contentHash: snapshot.contentHash,
+      metrics: snapshot.metrics,
+      scenes: analysisScenePackets(snapshot),
+      userCorrections: analysis.feedback || {},
+      writerMemory: analysis.feedback?.artisticDecisions || [],
+      requestedLanguage: normalizeLumiereLanguage(requestedLanguage),
+    });
+    if (!freeAllowance && !hasLumiereCredits(billingUserId)) {
+      analysis.status = "interrupted";
+      analysis.statusMessage = "Your Lumiere prompt allowance is currently empty. It refreshes automatically with your plan.";
+      savePreproduction(db);
+      return;
+    }
+    let response = await requestLumiereForTask("analysis", {
+      maxTokens: 12000,
+      jsonMode: true,
+      system: `${SCRIPT_ANALYSIS_SYSTEM_PROMPT}\n\n${lumiereLanguageInstruction(requestedLanguage)}`,
+      messages: [{ role: "user", content: requestContent }],
+    });
+    recordUsage(response.usage);
+    let raw = response.content.filter((block) => block.type === "text").map((block) => block.text).join("");
+    let payload;
+    try {
+      payload = parseBreakdownJson(raw);
+    } catch (firstError) {
       if (!freeAllowance && !hasLumiereCredits(billingUserId)) {
         analysis.status = "interrupted";
         analysis.statusMessage = "Your Lumiere prompt allowance is currently empty. It refreshes automatically with your plan.";
         savePreproduction(db);
-        return { ok: false, errorCode: "insufficient_credits" };
+        return;
       }
-      const requestContent = JSON.stringify({
-        projectId: snapshot.projectId,
-        scriptId: snapshot.scriptId,
-        scriptVersion: snapshot.scriptVersion,
-        contentHash: snapshot.contentHash,
-        metrics: snapshot.metrics,
-        changeSet: {
-          changedSceneIds,
-          addedSceneIds: changes.addedSceneIds,
-          deletedSceneIds: changes.deletedSceneIds,
-          fullRefresh: changes.fullRefresh,
-        },
-        characters: characterIndex,
-        locations: locationIndex,
-        scenes: packets,
-        userCorrections: analysis.feedback || {},
-        writerMemory: analysis.feedback?.artisticDecisions || [],
-        requestedLanguage: normalizeLumiereLanguage(requestedLanguage),
-      });
-      progress("building_analysis");
-      let response = await requestLumiereForTask("analysis", {
-        maxTokens: analysisOutputTokenBudget(packets.length),
+      response = await requestLumiereForTask("analysis", {
+        maxTokens: 16000,
         jsonMode: true,
-        system: `${SCRIPT_ANALYSIS_SYSTEM_PROMPT}\n\n${lumiereLanguageInstruction(requestedLanguage)}\nOnly evaluate the supplied changed or added scenes. Do not speculate about unsupplied scenes; FilmScript will safely merge these scene results with unchanged analysis.`,
+        system: `${SCRIPT_ANALYSIS_SYSTEM_PROMPT}\n\n${lumiereLanguageInstruction(requestedLanguage)}\nThe previous pass did not produce complete JSON. Make this retry especially compact and complete.`,
         messages: [{ role: "user", content: requestContent }],
-      }, { jobId: aiJobId });
+      });
       recordUsage(response.usage);
-      let raw = response.content.filter((block) => block.type === "text").map((block) => block.text).join("");
-      let payload;
-      try {
-        payload = parseBreakdownJson(raw);
-      } catch {
-        response = await requestLumiereForTask("analysis", {
-          maxTokens: analysisOutputTokenBudget(packets.length),
-          jsonMode: true,
-          system: `${SCRIPT_ANALYSIS_SYSTEM_PROMPT}\n\n${lumiereLanguageInstruction(requestedLanguage)}\nOnly evaluate the supplied changed or added scenes. The previous pass did not produce complete JSON. Make this retry especially compact and complete.`,
-          messages: [{ role: "user", content: requestContent }],
-        }, { jobId: aiJobId });
-        recordUsage(response.usage);
-        raw = response.content.filter((block) => block.type === "text").map((block) => block.text).join("");
-        payload = parseBreakdownJson(raw);
-      }
-      const partialDeep = validateScriptAnalysisDeep(payload, snapshot, response);
-      deep = mergeIncrementalScriptAnalysis(snapshot, analysis.deep, partialDeep, changes);
-      modelWasCalled = true;
-    } else {
-      // Deleting a scene needs no model call: remove the old scene output and
-      // deterministically recompute the global screenplay metrics instead.
-      deep = mergeIncrementalScriptAnalysis(snapshot, analysis.deep, null, changes);
+      raw = response.content.filter((block) => block.type === "text").map((block) => block.text).join("");
+      payload = parseBreakdownJson(raw);
     }
-    progress("finalizing_results");
+    const deep = validateScriptAnalysisDeep(payload, snapshot, response);
 
     const currentScript = loadScripts().scripts[scriptId];
-    if (!currentScript || !projectPermission(sid, scriptId, "analysis", "edit")) return { ok: false, errorCode: "permission_denied" };
+    if (!currentScript || !projectPermission(sid, scriptId, "analysis", "edit")) return;
     db = loadPreproduction();
     project = db.projects[scriptId] = syncProject(currentScript, db.projects[scriptId]);
     const current = syncScriptAnalysis(project, currentScript);
@@ -5529,7 +4648,6 @@ async function runScriptAnalysis(scriptId, sid, targetHash, requestedLanguage = 
       current.analysis.statusMessage = "Analysis updated";
       current.analysis.targetHash = "";
       current.analysis.deepUpdatedAt = deep.generatedAt;
-      delete current.analysis.lastFailure;
     } else {
       current.analysis.status = "stale";
       current.analysis.statusMessage = "The screenplay changed while Lumiere was reading it";
@@ -5537,35 +4655,24 @@ async function runScriptAnalysis(scriptId, sid, targetHash, requestedLanguage = 
     savePreproduction(db);
     // Retries, malformed JSON, stale source text, and failed persistence must
     // never cost the writer. Charge the single analysis only after it lands.
-    if (didApply && modelWasCalled && !freeAllowance && !textReservationId) consumeLumiereCredit(billingUserId);
-    if (didApply && modelWasCalled) settleFreeAllowance();
-    if (didApply && modelWasCalled && !freeAllowance && textReservationId) textReservationSettled = settleTextCredits(billingUserId, textReservationId, 1);
-    return {
-      ok: didApply,
-      applied: didApply,
-      successfulOutputs: didApply && modelWasCalled ? 1 : 0,
-      settledCredits: textReservationSettled ? 1 : 0,
-      output: { changedSceneIds, removedSceneIds: changes.deletedSceneIds, deterministicMetricsRecomputed: true },
-    };
+    if (didApply && !freeAllowance) consumeLumiereCredit(billingUserId);
+    if (didApply) settleFreeAllowance();
   } catch (error) {
     console.error(`Script analysis failed for ${scriptId}:`, error.message);
     const currentScript = loadScripts().scripts[scriptId];
-    if (!currentScript || !projectPermission(sid, scriptId, "analysis", "edit")) return { ok: false, errorCode: "permission_denied" };
+    if (!currentScript || !projectPermission(sid, scriptId, "analysis", "edit")) return;
     db = loadPreproduction();
     project = db.projects[scriptId] = syncProject(currentScript, db.projects[scriptId]);
     const current = syncScriptAnalysis(project, currentScript);
     current.analysis.status = current.analysis.deep ? "stale" : "error";
     current.analysis.statusMessage = lumiereFailureMessage(error);
     current.analysis.targetHash = "";
-    current.analysis.lastFailure = { code: error.code || "analysis_failed", message: current.analysis.statusMessage, at: new Date().toISOString() };
     savePreproduction(db);
-    return { ok: false, errorCode: error.code || "analysis_failed", message: error.message };
   }
   } finally {
     if (freeAllowance && freeAllowanceReservationId && !freeAllowanceSettled) {
       releaseFreeAllowanceReservation(billingUserId, "analysis", freeAllowanceReservationId);
     }
-    if (textReservationId && !textReservationSettled) releaseTextCredits(billingUserId, textReservationId);
   }
 }
 
@@ -5576,11 +4683,10 @@ async function handleScriptAnalysis(req, res, scriptId) {
   if (!script || !projectPermission(sid, scriptId, "analysis", req.method === "GET" ? "view" : "edit") || (req.method === "POST" && !canUseLumiereAction(projectAccess(sid, scriptId), "analysis"))) return json(res, 404, { error: "script not found" });
   const db = loadPreproduction();
   const project = db.projects[scriptId] = syncProject(script, db.projects[scriptId]);
-  const { analysis, snapshot } = syncScriptAnalysis(project, script);
+  const { analysis } = syncScriptAnalysis(project, script);
 
   let repairedInterruptedAnalysis = false;
-  const activeAnalysisJob = activeAIJobForProject(scriptId, ["analysis"]);
-  if (["queued", "running"].includes(analysis.status) && !activeScriptAnalysisJobs.has(scriptId) && !activeAnalysisJob) {
+  if (["queued", "running"].includes(analysis.status) && !activeScriptAnalysisJobs.has(scriptId)) {
     analysis.status = analysis.deep ? "stale" : "interrupted";
     analysis.statusMessage = "The previous analysis was interrupted. Start it again when ready.";
     releaseActiveFreeAllowanceReservation(projectBillingOwnerId(scriptId) || sid, "analysis");
@@ -5589,7 +4695,7 @@ async function handleScriptAnalysis(req, res, scriptId) {
 
   if (req.method === "GET") {
     if (repairedInterruptedAnalysis) savePreproduction(db);
-    return json(res, 200, { analysis: publicScriptAnalysis(analysis), job: activeAnalysisJob ? publicAIJob(activeAnalysisJob) : null });
+    return json(res, 200, { analysis: publicScriptAnalysis(analysis) });
   }
 
   if (req.method === "POST") {
@@ -5600,7 +4706,6 @@ async function handleScriptAnalysis(req, res, scriptId) {
     if (!process.env.OPENAI_API_KEY) {
       analysis.status = analysis.deep ? "stale" : "error";
       analysis.statusMessage = "Lumiere is not configured on this server. Add OPENAI_API_KEY and restart FilmScript.";
-      analysis.lastFailure = { code: "openai_not_configured", message: analysis.statusMessage, at: new Date().toISOString() };
       savePreproduction(db);
       return json(res, 503, { error: "openai_not_configured", message: analysis.statusMessage, analysis: publicScriptAnalysis(analysis) });
     }
@@ -5618,7 +4723,7 @@ async function handleScriptAnalysis(req, res, scriptId) {
     const billingUserId = projectBillingOwnerId(scriptId) || sid;
     const access = featureAccess(billingUserId, "analysis");
     if (!access.allowed) return lumierePlanRequired(res, { feature: "AI Script Analysis" });
-    if (!activeScriptAnalysisJobs.has(scriptId) && !activeAnalysisJob) {
+    if (!activeScriptAnalysisJobs.has(scriptId)) {
       const freeReservation = access.free ? reserveFreeAllowance(billingUserId, "analysis") : null;
       if (freeReservation && !freeReservation.allowed) return lumierePlanRequired(res, { feature: "your one Free AI Script Analysis" });
       analysis.feedback ||= { moments: {}, savedNotes: [] };
@@ -5626,42 +4731,18 @@ async function handleScriptAnalysis(req, res, scriptId) {
       analysis.feedback.deepDirection = analysisOptions.answers && typeof analysisOptions.answers === "object" ? analysisOptions.answers : {};
       analysis.feedback.requestedLanguage = requestedLanguage;
       analysis.status = "queued";
-      analysis.statusMessage = "Reading screenplay";
+    analysis.statusMessage = "Preparing the current screenplay for Lumiere";
       analysis.targetHash = analysis.contentHash;
-      const changes = diffAnalysisScenes(snapshot, analysis.deep);
       try {
         savePreproduction(db);
-        const scheduled = createDurableAIJob({
-          type: "analysis",
-          projectId: scriptId,
-          requesterId: sid,
-          sourceScriptVersionId: script.updatedAt,
-          sourceContentHash: analysis.contentHash,
-          reservedCredits: access.free ? 0 : 1,
-          input: {
-            language: requestedLanguage, billingUserId,
-            freeAllowance: access.free,
-            freeAllowanceReservationId: freeReservation?.reservationId || null,
-            changedSceneIds: changes.changedSceneIds,
-            addedSceneIds: changes.addedSceneIds,
-            deletedSceneIds: changes.deletedSceneIds,
-          },
-        });
-        if (!scheduled.allowed) {
-          if (freeReservation?.reservationId) releaseFreeAllowanceReservation(billingUserId, "analysis", freeReservation.reservationId);
-          analysis.status = analysis.deep ? "stale" : "interrupted";
-          analysis.statusMessage = "Your Lumiere credits are currently unavailable.";
-          savePreproduction(db);
-          return json(res, 402, { error: "insufficient_credits", message: "Your Lumiere prompt allowance is currently empty.", analysis: publicScriptAnalysis(analysis) });
-        }
-        if (scheduled.created) scheduleDurableAIJob(scheduled.job.id);
-        return json(res, 202, {
-          accepted: true,
-          background: true,
-          pollAfterMs: 1200,
-          analysis: publicScriptAnalysis(analysis),
-          job: publicAIJob(scheduled.job),
-        });
+        activeScriptAnalysisJobs.add(scriptId);
+        runScriptAnalysis(scriptId, sid, analysis.contentHash, requestedLanguage, {
+          freeAllowance: access.free,
+          freeAllowanceReservationId: freeReservation?.reservationId || null,
+          billingUserId,
+        })
+          .catch((error) => console.error("Script Analysis job failed:", error.message))
+          .finally(() => activeScriptAnalysisJobs.delete(scriptId));
       } catch (error) {
         if (freeReservation?.reservationId) releaseFreeAllowanceReservation(billingUserId, "analysis", freeReservation.reservationId);
         throw error;
@@ -5669,13 +4750,11 @@ async function handleScriptAnalysis(req, res, scriptId) {
     }
     // The reading deliberately continues after this response. Clients can
     // leave Analysis, keep working elsewhere, and poll the saved job state.
-    const currentJob = activeAIJobForProject(scriptId, ["analysis"]);
     return json(res, 202, {
       accepted: true,
       background: true,
       pollAfterMs: 1200,
       analysis: publicScriptAnalysis(analysis),
-      job: publicAIJob(currentJob),
     });
   }
 
@@ -5777,11 +4856,18 @@ async function handleAnalysisPdf(req, res, scriptId) {
   res.end(pdf);
 }
 
-function parseCookies(req) {
-  return Object.fromEntries((req.headers.cookie || "").split(";").filter(Boolean).map((part) => {
+function cookiePairs(req) {
+  return (req.headers.cookie || "").split(";").filter(Boolean).map((part) => {
     const at = part.indexOf("=");
-    return [part.slice(0, at).trim(), decodeURIComponent(part.slice(at + 1).trim())];
-  }));
+    if (at < 0) return [part.trim(), ""];
+    let value = part.slice(at + 1).trim();
+    try { value = decodeURIComponent(value); } catch {}
+    return [part.slice(0, at).trim(), value];
+  });
+}
+
+function parseCookies(req) {
+  return Object.fromEntries(cookiePairs(req));
 }
 
 function sessionCookie(value, maxAge = 30 * 24 * 60 * 60) {
@@ -5797,33 +4883,33 @@ function sessionCookie(value, maxAge = 30 * 24 * 60 * 60) {
   } catch {}
   if (!["Lax", "Strict", "None"].includes(sameSite)) sameSite = "Lax";
   const secure = process.env.SESSION_COOKIE_SECURE === "true" || backendUrl().startsWith("https://");
-  return `${SESSION_COOKIE}=${encodeURIComponent(value)}; Path=/; HttpOnly; SameSite=${sameSite}; Max-Age=${maxAge}${secure ? "; Secure" : ""}`;
+  // OAuth finishes on the API host and the workspace runs on the app host.
+  // Scope the cookie to the shared product domain so the first /api/me call
+  // after Google sign-in sees the authenticated session immediately.
+  let domain = process.env.SESSION_COOKIE_DOMAIN ? `; Domain=.${String(process.env.SESSION_COOKIE_DOMAIN).replace(/^\.+/, '')}` : '';
+  try {
+    const appHost = new URL(publicAppUrl()).hostname;
+    const apiHost = new URL(backendUrl()).hostname;
+    const appBase = appHost.split('.').slice(-2).join('.');
+    const apiBase = apiHost.split('.').slice(-2).join('.');
+    if (!domain && apiHost === 'api.filmscript.app') domain = '; Domain=.filmscript.app';
+    else if (appHost !== apiHost && appBase === apiBase) domain = `; Domain=.${appBase}`;
+  } catch {}
+  return `${SESSION_COOKIE}=${encodeURIComponent(value)}; Path=/; HttpOnly${domain}; SameSite=${sameSite}; Max-Age=${maxAge}${secure ? "; Secure" : ""}`;
 }
 
+// OAuth finishes on api.filmscript.app while the workspace runs on
+// filmscript.app. Keep the shared-domain cookie in sync with the API cookie
+// so the first request from the workspace cannot fall back to an anonymous
+// session left over from before sign-in.
 function sharedSessionCookie(value, maxAge = 30 * 24 * 60 * 60) {
-  const configuredDomain = String(process.env.SESSION_COOKIE_DOMAIN || "").trim().replace(/^\.+/, "");
-  // This cookie is intentionally opt-in. Production uses the FilmScript parent
-  // domain so its first-party Vercel proxy can carry an authenticated request
-  // to the API; local and preview environments keep host-only cookies.
-  if (!configuredDomain || !/^[a-z0-9.-]+$/i.test(configuredDomain)) return null;
-  let sameSite = String(process.env.SESSION_COOKIE_SAMESITE || "Lax").trim();
-  if (!["Lax", "Strict", "None"].includes(sameSite)) sameSite = "Lax";
   const secure = process.env.SESSION_COOKIE_SECURE === "true" || backendUrl().startsWith("https://");
-  return `${SHARED_SESSION_COOKIE}=${encodeURIComponent(value)}; Domain=.${configuredDomain}; Path=/; HttpOnly; SameSite=${sameSite}; Max-Age=${maxAge}${secure ? "; Secure" : ""}`;
+  return `filmscript_shared_sid=${encodeURIComponent(value)}; Domain=.filmscript.app; Path=/; HttpOnly; SameSite=Lax; Max-Age=${maxAge}${secure ? "; Secure" : ""}`;
 }
 
-function setSessionCookies(res, value, maxAge = 30 * 24 * 60 * 60) {
-  const cookies = [sessionCookie(value, maxAge), sharedSessionCookie(value, maxAge)].filter(Boolean);
-  res.setHeader("Set-Cookie", cookies);
-}
-
-function setSharedSessionCookie(res, value, maxAge = 30 * 24 * 60 * 60) {
-  if (res.__filmscriptSharedSessionCookieSet) return;
-  const cookie = sharedSessionCookie(value, maxAge);
-  if (!cookie) return;
-  const current = res.getHeader("Set-Cookie");
-  res.setHeader("Set-Cookie", current ? [...(Array.isArray(current) ? current : [current]), cookie] : [cookie]);
-  res.__filmscriptSharedSessionCookieSet = true;
+function firstPartySessionCookie(value, maxAge = 30 * 24 * 60 * 60) {
+  const secure = process.env.SESSION_COOKIE_SECURE === "true" || backendUrl().startsWith("https://");
+  return `${SESSION_COOKIE}=${encodeURIComponent(value)}; Path=/; HttpOnly; SameSite=Lax; Max-Age=${maxAge}${secure ? "; Secure" : ""}`;
 }
 
 function guestSessionCookie(value, maxAge = 24 * 60 * 60) {
@@ -5831,60 +4917,33 @@ function guestSessionCookie(value, maxAge = 24 * 60 * 60) {
   return `filmscript_guest=${encodeURIComponent(value)}; Path=/; HttpOnly; SameSite=Lax; Max-Age=${maxAge}${secure ? "; Secure" : ""}`;
 }
 
-function sharedProjectAccessCookie(slug, maxAge = 8 * 60 * 60) {
-  const expiresAt = Date.now() + maxAge * 1000;
-  const payload = Buffer.from(JSON.stringify({ slug, expiresAt })).toString("base64url");
-  const signature = crypto.createHmac("sha256", sharedProjectAccessSecret).update(payload).digest("base64url");
-  const secure = process.env.SESSION_COOKIE_SECURE === "true" || backendUrl().startsWith("https://");
-  return `${SHARED_PROJECT_ACCESS_COOKIE}=${encodeURIComponent(`${payload}.${signature}`)}; Path=/; HttpOnly; SameSite=Lax; Max-Age=${maxAge}${secure ? "; Secure" : ""}`;
-}
-
-function hasSharedProjectAccessCookie(req, slug) {
-  const token = parseCookies(req)[SHARED_PROJECT_ACCESS_COOKIE];
-  if (!token) return false;
-  const [payload, signature] = String(token).split(".");
-  if (!payload || !signature) return false;
-  const expected = crypto.createHmac("sha256", sharedProjectAccessSecret).update(payload).digest("base64url");
-  const supplied = Buffer.from(signature); const expectedBuffer = Buffer.from(expected);
-  if (supplied.length !== expectedBuffer.length || !crypto.timingSafeEqual(supplied, expectedBuffer)) return false;
-  try {
-    const parsed = JSON.parse(Buffer.from(payload, "base64url").toString("utf8"));
-    return parsed?.slug === slug && Number(parsed.expiresAt) > Date.now();
-  } catch { return false; }
-}
-
-function setSharedProjectAccessCookie(res, slug) {
-  const cookie = sharedProjectAccessCookie(slug);
-  const current = res.getHeader("Set-Cookie");
-  res.setHeader("Set-Cookie", current ? [...(Array.isArray(current) ? current : [current]), cookie] : [cookie]);
-}
-
 function sessionContext(req, res, create = true) {
   const preview = previewModeEnabled(req);
   if (preview) ensureLocalPreviewWorkspace();
-  const cookies = parseCookies(req);
-  const hostToken = cookies[SESSION_COOKIE] || null;
-  const sharedToken = cookies[SHARED_SESSION_COOKIE] || null;
-  const hostSession = hostToken ? getSessionByToken(hostToken) : null;
-  const sharedSession = sharedToken && sharedToken !== hostToken ? getSessionByToken(sharedToken) : null;
-  // A prior host-only anonymous cookie can coexist with the authenticated
-  // parent-domain cookie after the first login through the Vercel proxy. Never
-  // let that stale anonymous cookie hide a valid authenticated shared session.
-  const useShared = !!sharedSession && (!hostSession || (!hostSession.userId && !!sharedSession.userId));
-  const token = useShared ? sharedToken : hostToken || sharedToken;
-  const existing = useShared ? sharedSession : hostSession || sharedSession;
+  // Older deployments created a host-only API cookie with the same name as
+  // the current shared-domain cookie. Browsers can send both values, so never
+  // let a stale duplicate hide a valid authenticated session. Validate every
+  // candidate and prefer an authenticated Google session over anonymous ones.
+  const pairs = cookiePairs(req);
+  const candidates = [
+    ...pairs.filter(([name]) => name === "filmscript_shared_sid").map(([, value]) => value),
+    ...pairs.filter(([name]) => name === SESSION_COOKIE).map(([, value]) => value),
+  ].filter((value, index, values) => value && values.indexOf(value) === index);
+  const resolved = candidates.map((token) => ({ token, session: getSessionByToken(token) })).filter((item) => item.session);
+  const selected = resolved.find((item) => item.session.googleSub && item.session.userId) || resolved[0] || null;
+  const token = selected?.token || null;
+  const existing = selected?.session || null;
   if (existing && (!preview || (existing.userId === PREVIEW_USER_ID && existing.authMethod === "preview"))) {
-    if (existing.userId && existing.googleSub) setSharedSessionCookie(res, token);
     return { token, ...existing };
   }
   if (!preview && !create) return null;
   if (preview) {
     const created = createSession({ userId: PREVIEW_USER_ID, authMethod: "preview" });
-    setSessionCookies(res, created.token);
+    res.setHeader("Set-Cookie", sessionCookie(created.token));
     return { token: created.token, ...created.session };
   }
   const created = createSession();
-  setSessionCookies(res, created.token);
+  res.setHeader("Set-Cookie", sessionCookie(created.token));
   return { token: created.token, ...created.session };
 }
 
@@ -5927,14 +4986,13 @@ function reserveTextCredits(userId, amount, reservationId) {
   return { allowed: true, reservationId, amount: required, available };
 }
 
-function settleTextCredits(userId, reservationId, amount = null) {
+function settleTextCredits(userId, reservationId) {
   const snapshot = loadLumiereCreditsSnapshot(); const entry = snapshot[userId] || {};
   const reservations = entry.textReservations && typeof entry.textReservations === "object" ? entry.textReservations : {};
   const reservation = reservations[reservationId];
   if (!reservation) return false;
-  const settledAmount = Math.max(0, Math.min(Number(reservation.amount) || 0, amount == null ? Number(reservation.amount) || 0 : Math.round(Number(amount) || 0)));
   delete reservations[reservationId]; snapshot[userId] = { ...entry, textReservations: reservations }; saveLumiereCreditsSnapshot(snapshot);
-  if (settledAmount > 0) consumeLumiereCredit(userId, settledAmount);
+  consumeLumiereCredit(userId, reservation.amount);
   return true;
 }
 
@@ -7310,7 +6368,7 @@ function accountPayload(userId, verification = null) {
     picture: user?.picture || null,
     username: platformProfile?.username || null,
     theme: platformProfile?.theme || "filmscript",
-    avatar: platformProfile?.avatarKey ? "/api/me/avatar" : user?.picture || null,
+    avatar: ownAvatarUrl(platformProfile) || user?.picture || null,
     profile: user ? {
       gender: user.gender || null,
       birthDate: user.birthDate || null,
@@ -7350,6 +6408,10 @@ function accountPayload(userId, verification = null) {
       checkedAt: verification?.checkedAt || null,
     } : null,
   };
+}
+
+function ownAvatarUrl(profile) {
+  return profile?.avatarKey ? `/api/me/avatar?v=${hashText(profile.avatarKey).slice(0, 16)}` : null;
 }
 
 async function handleMe(req, res) {
@@ -7457,23 +6519,39 @@ async function handleGoogleCallback(req, res, requestUrl) {
     if (!profileResponse.ok || !profile.email || profile.email_verified === false) throw new Error("Google did not return a verified email address");
     connectGoogleIdentity(pending.sessionId, profile);
     const rotatedToken = rotateSessionToken(pending.sessionId);
-    if (rotatedToken) setSessionCookies(res, rotatedToken);
-    // A successful OAuth flow must always land in the authenticated workspace.
-    // Never leave the user on the public Features/Pricing landing page.
-    const allowedReturn = /^\/App\.dc\.html\?invitation=[A-Za-z0-9_-]+$/.test(pending.returnTo)
-      || /^\/SharedProject\.html\?s=[A-Za-z0-9_-]{24,}$/.test(pending.returnTo);
-    redirect(res, withQuery(allowedReturn ? pending.returnTo : "/App.dc.html", "signin", "success"));
+    if (!rotatedToken) throw new Error("login session expired");
+    if (rotatedToken) res.setHeader("Set-Cookie", [sessionCookie(rotatedToken), sharedSessionCookie(rotatedToken)]);
+    // Complete the final cookie write on filmscript.app itself. This is a
+    // one-time, two-minute exchange rather than a bearer session in the URL.
+    // It makes sign-in reliable in embedded browsers that isolate subdomains.
+    const invitationReturn = /^\/App\.dc\.html\?invitation=[A-Za-z0-9_-]+$/.test(pending.returnTo) ? pending.returnTo : "/App.dc.html";
+    const handoff = createAuthHandoff(pending.sessionId, invitationReturn);
+    const complete = new URL("/auth-complete.html", publicAppUrl());
+    complete.searchParams.set("handoff", handoff);
+    redirect(res, complete.toString());
   } catch (error) {
     console.error("Google OAuth error:", error.message);
     redirect(res, withQuery(pending.returnTo, "signin", "error"));
   }
 }
 
+function handleAuthCompletion(req, res, requestUrl) {
+  const handoff = consumeAuthHandoff(requestUrl.searchParams.get("handoff"));
+  if (!handoff) return json(res, 401, { error: "auth_handoff_expired", message: "Your sign-in link expired. Please continue with Google again." });
+  const session = getSessionById(handoff.sessionId);
+  if (!session?.googleSub || !session.userId) return json(res, 401, { error: "auth_handoff_invalid", message: "Your sign-in could not be completed. Please continue with Google again." });
+  const token = rotateSessionToken(handoff.sessionId);
+  if (!token) return json(res, 401, { error: "auth_handoff_invalid", message: "Your sign-in could not be completed. Please continue with Google again." });
+  json(res, 200, { ok: true, returnTo: safeReturnTo(handoff.returnTo) }, {
+    "Set-Cookie": [firstPartySessionCookie(token), sharedSessionCookie(token)],
+  });
+}
+
 function handleLogout(req, res) {
   const cookies = parseCookies(req);
-  deleteSessionByToken(cookies[SESSION_COOKIE]);
-  if (cookies[SHARED_SESSION_COOKIE] !== cookies[SESSION_COOKIE]) deleteSessionByToken(cookies[SHARED_SESSION_COOKIE]);
-  json(res, 200, { ok: true }, { "Set-Cookie": [sessionCookie("", 0), sharedSessionCookie("", 0)].filter(Boolean) });
+  const token = cookies[SESSION_COOKIE] || cookies.filmscript_shared_sid;
+  deleteSessionByToken(token);
+  json(res, 200, { ok: true }, { "Set-Cookie": [sessionCookie("", 0), sharedSessionCookie("", 0)] });
 }
 
 async function handleScriptImport(req, res) {
@@ -7543,7 +6621,7 @@ function handleScriptsList(req, res) {
   const accessible = new Set(listAccessibleProjectIds(sid));
   const scripts = Object.values(loadScripts().scripts).filter((script) => accessible.has(script.id)).sort((a, b) => b.updatedAt.localeCompare(a.updatedAt)).map((script) => {
     const access = projectAccess(sid, script.id);
-    return { id: script.id, title: script.title, source: script.source, createdAt: script.createdAt, updatedAt: script.updatedAt, pages: screenplayPageCount(script.blocks, script.text), state: projectState(script.id), access: access ? { projectRole: access.projectRole, cinematicRole: access.cinematicRole, modulePermissions: access.modulePermissions } : null };
+    return { id: script.id, title: script.title, source: script.source, createdAt: script.createdAt, updatedAt: script.updatedAt, pages: script.blocks?.length ? script.blocks.filter((block) => block.type === "pagebreak").length + 1 : null, state: projectState(script.id), access: access ? { projectRole: access.projectRole, cinematicRole: access.cinematicRole, modulePermissions: access.modulePermissions } : null };
   });
   json(res, 200, { scripts });
 }
@@ -7589,7 +6667,7 @@ async function handleScript(req, res, id) {
   if (hasBlocks) {
     const documentId = `script:${id}`; const result = scriptDocuments.replace(id, documentId, body.blocks);
     broadcastCollaboration(id, "script.crdt", { module:"script", documentId, update:encodeUpdate(result.update), version:result.version, actorUserId:sid }, String(req.headers["x-filmscript-client-id"] || ""));
-    recordActivity({ projectId:id, module:"script", actorUserId:sid, entityType:"scene", entityId:"screenplay", action:"scene.edited", summary:"Scene edited.", aggregationKey:"scene:screenplay", aggregationWindowMinutes:30 });
+    recordActivity({ projectId:id, module:"script", actorUserId:sid, entityType:"script", entityId:id, action:"content.committed", summary:"Screenplay content was edited." });
     return json(res, 200, { ok:true, collaboration:"crdt", version:result.version });
   }
   if (hasTitle) {
@@ -7610,7 +6688,7 @@ async function handleScript(req, res, id) {
   }
   script.updatedAt = new Date().toISOString();
   saveScripts(db);
-  recordActivity({ projectId: id, module: "script", actorUserId: sid, entityType: "script", entityId: id, action: hasTitle ? "script.title.changed" : "script.details.changed", summary: hasTitle ? "Screenplay title was edited." : "Screenplay details were updated.", aggregationKey: hasTitle ? `script-title:${id}` : `script-details:${id}` });
+  recordActivity({ projectId: id, module: "script", actorUserId: sid, entityType: "script", entityId: id, action: "content.committed", summary: hasBlocks ? "Screenplay content was edited." : hasTitle ? "Screenplay title was edited." : "Screenplay details were updated." });
   if (hasBlocks) {
     const operation = { module: "script", entityType: "script", entityId: id, actorUserId: sid, patch: { blocks: script.blocks }, updatedAt: script.updatedAt };
     broadcastCollaboration(id, "content.operation", operation, String(req.headers["x-filmscript-client-id"] || ""));
@@ -8238,7 +7316,6 @@ const PUBLIC_STATIC_FILES = new Set([
   "analysis-model.js",
   "analysis-client.js",
   "analysis-workspace.js",
-  "breakdown-workspace.js",
   "budget-model.js",
   "budget-client.js",
   "budget-workspace.js",
@@ -8280,7 +7357,6 @@ async function handleLumiere(req, res) {
   let messages;
   let maxTokens = 1024;
   let requestedLanguage = 'en';
-  let projectContext = null;
   try {
     const payload = JSON.parse(await readBody(req, 512 * 1024));
     if (!Array.isArray(payload.messages) || payload.messages.length === 0 || payload.messages.length > 50) {
@@ -8293,16 +7369,9 @@ async function handleLumiere(req, res) {
     const totalCharacters = messages.reduce((total, message) => total + message.content.length, 0);
     if (!messages.length || totalCharacters > 200_000) throw new Error("bad payload");
     requestedLanguage = normalizeLumiereLanguage(payload.language);
-    if (payload.projectId != null && payload.projectId !== '') {
-      projectContext = buildAuthorizedLumiereContext(sid, String(payload.projectId), {
-        module: payload.module,
-        sceneId: payload.sceneId,
-      });
-    }
     const requestedMaxTokens = Number(payload.maxTokens);
     if (Number.isFinite(requestedMaxTokens)) maxTokens = Math.max(256, Math.min(4096, Math.round(requestedMaxTokens)));
   } catch (error) {
-    if (error?.code === "permission_denied" || error?.code === "project_not_found") return permissionRequired(res, error);
     return json(res, error?.status === 413 ? 413 : 400, {
       error: error?.status === 413 ? "request_too_large" : "invalid request body",
     });
@@ -8317,13 +7386,13 @@ async function handleLumiere(req, res) {
   activeLumiereChats.add(sid);
   try {
     const personalization = buildLumierePersonalizationSystem(sid);
-    const response = await requestLumiereForTask("chat", {
+    const response = await requestLumiere({
       maxTokens,
+      model: OPENAI_TEXT_MODEL,
       system: [
         'You are Lumiere, the AI assistant inside FilmScript.',
         lumiereLanguageInstruction(requestedLanguage),
         personalization,
-        projectContext ? `Authorized project context (never mention hidden sections):\n${projectContext}` : '',
       ].filter(Boolean).join("\n\n"),
       messages,
     });
@@ -8335,6 +7404,8 @@ async function handleLumiere(req, res) {
     consumeLumiereCredit(sid);
     json(res, 200, {
       reply,
+      provider: "openai",
+      model: response.model || OPENAI_TEXT_MODEL,
       credits: creditsSummary(sid),
     });
   } catch (err) {
@@ -8349,7 +7420,6 @@ async function handleLumiere(req, res) {
 const collaborationRooms = new CollaborationRooms();
 const collaborationSubscribers = new Map();
 const collaborationThrottle = new Map();
-const semanticActivityThrottle = new Map();
 
 function roomSubscribers(projectId) {
   if (!collaborationSubscribers.has(projectId)) collaborationSubscribers.set(projectId, new Map());
@@ -8361,25 +7431,19 @@ function broadcastCollaboration(projectId, type, payload, exceptClientId = null)
   const module = String(payload?.module || payload?.entity?.module || (type === "script.crdt" ? "script" : ""));
   for (const [clientId, subscriber] of subscribers) {
     if (clientId === exceptClientId) continue;
-    if (payload?.recipientUserId && payload.recipientUserId !== subscriber.userId) continue;
     if (module && !canAccessModule(subscriber.access, module, "view")) continue;
-    if (payload?.containsFinancialData && !canViewFinancialData(subscriber.access, payload.financialDepartmentId || null)) continue;
     const safePayload = filterFinancialData(payload, subscriber.access);
     const event = `event: ${type}\ndata: ${JSON.stringify(safePayload)}\n\n`;
     try { subscriber.response.write(event); } catch { subscribers.delete(clientId); }
   }
 }
 
-setPlatformEventSink((event) => {
-  if (!event?.projectId) return;
-  broadcastCollaboration(event.projectId, event.type, event.userId ? { ...event.payload, recipientUserId: event.userId } : event.payload);
-});
-
 function collaborationIdentity(req, userId) {
   const queryClientId = new URL(req.url, "http://localhost").searchParams.get("clientId");
   const clientId = String(req.headers["x-filmscript-client-id"] || queryClientId || "").replace(/[^a-zA-Z0-9_-]/g, "").slice(0, 80) || `client_${crypto.randomBytes(8).toString("hex")}`;
   const user = getUser(userId);
-  return { clientId, userId, name: user?.name || "Collaborator", picture: user?.picture || null };
+  const avatar = userAvatarPresentation(userId) || { picture: user?.picture || null, avatarPreset: null, avatarBackground: null };
+  return { clientId, userId, name: user?.name || "Collaborator", ...avatar };
 }
 
 async function handleProjectMembers(req, res, projectId, membershipId = null) {
@@ -8486,15 +7550,24 @@ async function handleProjectComments(req, res, projectId, commentId = null) {
   const url = new URL(req.url, "http://localhost");
   try {
     if (req.method === "GET") return json(res, 200, { comments: listComments(projectId, sid, url.searchParams.get("module"), url.searchParams.get("entityId")) });
+    if (req.method === "PATCH" && commentId) return json(res, 200, resolveComment(projectId, sid, commentId));
     const body = JSON.parse(await readBody(req, 64 * 1024) || "{}");
-    if (req.method === "PATCH" && commentId) {
-      const result = resolveComment(projectId, sid, commentId, body.resolved !== false);
-      broadcastCollaboration(projectId, "comment.updated", { ...result.comment, containsFinancialData: result.comment?.module === "budget" }, String(req.headers["x-filmscript-client-id"] || ""));
-      return json(res, 200, result);
-    }
     const comment = createComment(projectId, sid, body);
-    broadcastCollaboration(projectId, "comment.created", { ...comment, containsFinancialData: comment.module === "budget" }, String(req.headers["x-filmscript-client-id"] || ""));
+    broadcastCollaboration(projectId, "comment.created", comment, String(req.headers["x-filmscript-client-id"] || ""));
     return json(res, 201, { comment });
+  } catch (error) { return permissionRequired(res, error); }
+}
+
+async function handleProjectMessages(req, res, projectId) {
+  const sid = sessionId(req, res); if (!sid) return googleRequired(res);
+  const url = new URL(req.url, "http://localhost");
+  try {
+    const peer = url.searchParams.get("with");
+    if (req.method === "GET") return json(res, 200, { messages: listProjectMessages(projectId, sid, peer) });
+    const body = JSON.parse(await readBody(req, 32 * 1024) || "{}");
+    const message = createProjectMessage(projectId, sid, { ...body, recipientId: body.recipientId || peer });
+    broadcastCollaboration(projectId, "message.created", message, String(req.headers["x-filmscript-client-id"] || ""));
+    return json(res, 201, { message });
   } catch (error) { return permissionRequired(res, error); }
 }
 
@@ -8504,136 +7577,57 @@ async function handleNotifications(req, res, notificationId = null) {
     const notifications = listNotifications(sid);
     return json(res, 200, { notifications, unreadCount: notifications.filter((item) => !item.read).length });
   }
-  let body = {}; try { body = JSON.parse(await readBody(req, 32 * 1024) || "{}"); } catch {}
-  return json(res, 200, { unreadCount: markNotificationsRead(sid, notificationId, body.read !== false) });
+  if (req.method === "DELETE") return json(res, 200, deleteNotifications(sid, notificationId));
+  return json(res, 200, { unreadCount: markNotificationsRead(sid, notificationId) });
 }
 
 async function handleSharedProjects(req, res, projectId, sharedId = null) {
   const sid = sessionId(req, res); if (!sid) return googleRequired(res);
   try {
-    if (req.method === "GET") {
-      const sharedProjects = listSharedProjects(projectId, sid).map((shared) => ({ ...shared, url: `${publicAppUrl()}/SharedProject.html?s=${encodeURIComponent(shared.slug)}` }));
-      return json(res, 200, { sharedProjects });
-    }
     if (req.method === "POST") {
       const body = JSON.parse(await readBody(req, 128 * 1024) || "{}");
       const shared = createSharedProject(projectId, sid, body);
       return json(res, 201, { sharedProject: { ...shared, url: `${publicAppUrl()}/SharedProject.html?s=${encodeURIComponent(shared.slug)}` } });
-    }
-    if (req.method === "PATCH" && sharedId) {
-      const body = JSON.parse(await readBody(req, 128 * 1024) || "{}");
-      const shared = updateSharedProject(sharedId, sid, body);
-      if (shared.projectId !== projectId) return json(res, 404, { error: "shared_project_not_found" });
-      return json(res, 200, { sharedProject: { ...shared, url: `${publicAppUrl()}/SharedProject.html?s=${encodeURIComponent(shared.slug)}` } });
     }
     if (req.method === "DELETE" && sharedId) { revokeSharedProject(sharedId, sid); return json(res, 200, { ok: true }); }
     return json(res, 405, { error: "method_not_allowed" });
   } catch (error) { return permissionRequired(res, error); }
 }
 
-const sharedContentKey = (module) => ({ shot_list: "shotList", location_plan: "locationPlans" }[module] || module);
-
-function publicSharedAsset(slug, asset) {
-  return {
-    id: asset.id, filename: asset.filename, mimeType: asset.mimeType, size: asset.size,
-    width: asset.width, height: asset.height, source: asset.source, createdAt: asset.createdAt,
-    path: `/api/shared/${encodeURIComponent(slug)}/assets/${encodeURIComponent(asset.id)}`,
-  };
-}
-
-function sourceSharedAccess(shared) {
-  return projectAccess(shared.createdByUserId, shared.projectId);
-}
-
-function currentSharedSections(shared, access) {
-  return shared.sections.filter((section) => section?.canView && canAccessModule(access, section.module, "view")
-    && (section.module !== "budget" || canViewFinancialData(access)));
-}
-
 function sharedProjectContent(shared) {
   const scripts = loadScripts(); const script = scripts.scripts[shared.projectId];
   const preproduction = loadPreproduction().projects?.[shared.projectId] || {};
-  const ownerAccess = sourceSharedAccess(shared);
+  const ownerAccess = projectAccess(script?.userId, shared.projectId);
   const anonymousAccess = { status: "active", financialPermissions: ["financial.no_access"], financialDepartmentIds: [] };
   const content = {};
-  const sections = currentSharedSections(shared, ownerAccess);
-  const canvas = getCanvasWorkspace(shared.projectId, script?.userId || shared.createdByUserId) || null;
-  const canvasAssets = Array.isArray(canvas?.assets) ? canvas.assets : [];
-  for (const section of sections) {
+  for (const section of shared.sections.filter((item) => item.canView)) {
     if (section.module === "script") content.script = { title: script?.title || shared.projectTitle, blocks: script?.blocks || [], updatedAt: script?.updatedAt || null };
-    else if (section.module === "analysis") content.analysis = filterFinancialData(preproduction.scriptAnalysis || preproduction.analysis || null, anonymousAccess);
+    else if (section.module === "analysis") content.analysis = filterFinancialData(preproduction.analysis || null, anonymousAccess);
     else if (section.module === "breakdown") content.breakdown = filterFinancialData({ scenes: preproduction.scenes || {}, updatedAt: preproduction.updatedAt }, anonymousAccess);
     else if (section.module === "shot_list") content.shotList = filterFinancialData({ scenes: Object.fromEntries(Object.entries(preproduction.scenes || {}).map(([sceneId, scene]) => [sceneId, { id: scene.id, title: scene.title, shots: scene.shots || [] }])) }, anonymousAccess);
     else if (section.module === "stripboard") content.stripboard = filterFinancialData({ scenes: preproduction.scenes || {}, order: preproduction.stripboardOrder || [] }, anonymousAccess);
     else if (section.module === "calendar") content.calendar = filterFinancialData(preproduction.calendar || null, anonymousAccess);
-    else if (section.module === "budget") content.budget = filterDepartmentFinancialData(preproduction.budget || null, ownerAccess);
-    else if (section.module === "canvas") {
-      const publicWorkspace = canvas ? publicCanvasWorkspace(canvas, { scriptId: shared.projectId, userId: script?.userId || shared.createdByUserId }) : null;
-      content.canvas = filterFinancialData({ ...publicWorkspace, assets: canvasAssets.map((asset) => publicSharedAsset(shared.slug, asset)) }, anonymousAccess);
-    } else if (section.module === "location_plan") content.locationPlans = listLocationPlans(shared.projectId, shared.createdByUserId).map((plan) => filterFinancialData(plan, anonymousAccess));
-    else if (section.module === "imagine") content.imagine = canvasAssets.map((asset) => publicSharedAsset(shared.slug, asset));
-    else if (section.module === "files") content.files = canvasAssets.filter((asset) => section.fileIds?.includes(asset.id)).map((asset) => publicSharedAsset(shared.slug, asset));
+    else if (section.module === "budget") content.budget = ownerAccess && canUseLumiereAction ? preproduction.budget || null : null;
+    else if (section.module === "canvas") content.canvas = getCanvasWorkspace(shared.projectId, script.userId) || null;
+    else if (section.module === "location_plan") content.locationPlans = listLocationPlans(shared.projectId, script.userId);
+    else if (section.module === "imagine") content.imagine = filterFinancialData((getCanvasWorkspace(shared.projectId, script.userId) || {}).assets || [], anonymousAccess);
+    else if (section.module === "files") content.files = [];
   }
-  const sourceUpdatedAt = [script?.updatedAt, preproduction.updatedAt, canvas?.updatedAt, ...(content.locationPlans?.map((plan) => plan.updatedAt) || [])].filter(Boolean).sort().at(-1) || shared.updatedAt;
-  return { content, sections, sourceUpdatedAt };
-}
-
-function sharedProjectRequestContext(req, res, slug, password = null) {
-  const session = sessionContext(req, res, false);
-  const user = session?.userId ? getUser(session.userId) : null;
-  const passwordAuthorized = hasSharedProjectAccessCookie(req, slug);
-  const shared = authorizeSharedProject(slug, { email: user?.email, emailVerified: user?.emailVerified === true, password, passwordAuthorized });
-  if (shared.accessMode === "password" && !passwordAuthorized && password) setSharedProjectAccessCookie(res, slug);
-  return { shared, user, session };
+  return content;
 }
 
 async function handlePublicSharedProject(req, res, slug) {
-  let password = null;
+  const session = sessionContext(req, res, false);
+  const user = session?.userId ? getUser(session.userId) : null;
+  const url = new URL(req.url, "http://localhost");
+  let password = url.searchParams.get("password");
   if (req.method === "POST") {
-    try { password = JSON.parse(await readBody(req, 16 * 1024) || "{}").password || null; } catch { return json(res, 400, { error: "invalid_request_body" }); }
+    try { password = JSON.parse(await readBody(req, 16 * 1024) || "{}").password || password; } catch {}
   }
   try {
-    const { shared, session } = sharedProjectRequestContext(req, res, slug, password);
-    const source = sharedProjectContent(shared);
-    return json(res, 200, { sharedProject: { slug: shared.slug, status: shared.status, accessMode: shared.accessMode, sections: source.sections, cover: shared.cover, projectName: shared.projectTitle, readOnly: true, canOpenInFilmScript: !!(session?.userId && projectAccess(session.userId, shared.projectId)), sourceUpdatedAt: source.sourceUpdatedAt, content: source.content } });
+    const shared = authorizeSharedProject(slug, { email: user?.email, password });
+    return json(res, 200, { sharedProject: { slug: shared.slug, status: shared.status, accessMode: shared.accessMode, sections: shared.sections, cover: shared.cover, projectName: shared.projectTitle, readOnly: true, canOpenInFilmScript: !!(session?.userId && projectAccess(session.userId, shared.projectId)), content: sharedProjectContent(shared) } });
   } catch (error) { return json(res, error.status || 403, { error: error.code || "shared_access_denied", message: error.message }); }
-}
-
-async function handleSharedProjectExport(req, res, slug) {
-  let body = {}; try { body = JSON.parse(await readBody(req, 16 * 1024) || "{}"); } catch { return json(res, 400, { error: "invalid_request_body" }); }
-  try {
-    const { shared } = sharedProjectRequestContext(req, res, slug, body.password || null);
-    const section = String(body.section || ""); const selected = shared.sections.find((item) => item.module === section && item.canView);
-    if (!selected?.canExport) return json(res, 403, { error: "shared_export_disabled", message: "The project owner has not enabled export for this section." });
-    const source = sharedProjectContent(shared); const key = sharedContentKey(section);
-    if (!Object.prototype.hasOwnProperty.call(source.content, key)) return json(res, 403, { error: "shared_section_unavailable" });
-    return json(res, 200, { section, filename: `${String(shared.projectTitle || "FilmScript Project").replace(/[^a-z0-9_-]+/gi, "-").slice(0, 80) || "FilmScript-Project"}-${section}.json`, content: source.content[key] });
-  } catch (error) { return json(res, error.status || 403, { error: error.code || "shared_export_denied", message: error.message }); }
-}
-
-async function handleSharedProjectAccessRequest(req, res, slug) {
-  let body = {}; try { body = JSON.parse(await readBody(req, 16 * 1024) || "{}"); } catch { return json(res, 400, { error: "invalid_request_body" }); }
-  try { return json(res, 202, requestSharedProjectAccess(slug, body)); }
-  catch (error) { return json(res, error.status || 403, { error: error.code || "shared_access_request_denied", message: error.message }); }
-}
-
-async function handleSharedProjectAsset(req, res, slug, assetId) {
-  try {
-    const { shared } = sharedProjectRequestContext(req, res, slug);
-    const script = loadScripts().scripts[shared.projectId];
-    const workspace = getCanvasWorkspace(shared.projectId, script?.userId || shared.createdByUserId);
-    const sourceAccess = sourceSharedAccess(shared);
-    const sections = currentSharedSections(shared, sourceAccess);
-    const fileSection = sections.find((section) => section.module === "files");
-    const coverAssetAllowed = canAccessModule(sourceAccess, "canvas", "view") && [shared.cover?.logoAssetId, shared.cover?.coverAssetId].includes(assetId);
-    const allowed = sections.some((section) => section.module === "canvas" || section.module === "imagine") || fileSection?.fileIds?.includes(assetId)
-      || coverAssetAllowed;
-    const asset = allowed ? workspace?.assets?.find((entry) => entry.id === assetId) : null;
-    if (!asset) return json(res, 404, { error: "shared_asset_not_found" });
-    const data = await canvasStorage.get(asset);
-    res.writeHead(200, { "Content-Type": asset.mimeType, "Content-Length": data.length, "Cache-Control": "private, max-age=3600", "X-Content-Type-Options": "nosniff" });
-    res.end(data);
-  } catch (error) { return json(res, error.status || 403, { error: error.code || "shared_asset_denied", message: error.message }); }
 }
 
 async function handleLocationPlans(req, res, projectId, planId = null) {
@@ -8654,7 +7648,7 @@ async function handleCollaborationEvents(req, res, projectId) {
   const identity = collaborationIdentity(req, sid);
   res.writeHead(200, { "Content-Type": "text/event-stream", "Cache-Control": "no-cache, no-transform", Connection: "keep-alive", "X-Accel-Buffering": "no" });
   const access = projectAccess(sid, projectId);
-  const subscribers = roomSubscribers(projectId); subscribers.set(identity.clientId, { response: res, access, userId: sid });
+  const subscribers = roomSubscribers(projectId); subscribers.set(identity.clientId, { response: res, access });
   const presence = collaborationRooms.join(projectId, { ...identity, module: String(new URL(req.url, "http://localhost").searchParams.get("module") || "script"), selection: null });
   res.write(`retry: 2000\nevent: connected\ndata: ${JSON.stringify({ clientId: identity.clientId, presence: collaborationRooms.presence(projectId) })}\n\n`);
   broadcastCollaboration(projectId, "presence.joined", presence, identity.clientId);
@@ -8678,20 +7672,6 @@ async function handleCollaborationPresence(req, res, projectId) {
   return json(res, 200, { presence: client });
 }
 
-function semanticOperationActivity(projectId, actorUserId, body, result) {
-  if (!result.changedFields.length) return null;
-  const metadata = body.metadata && typeof body.metadata === "object" ? body.metadata : {};
-  const sceneLabel = String(metadata.sceneLabel || metadata.sceneTitle || "").slice(0, 120) || null;
-  const base = { projectId, actorUserId, module: body.module, entityType: body.entityType, entityId: body.entityId, before: body.previous || null, after: result.entity, containsFinancialData: body.module === "budget" || body.containsFinancialData === true, financialDepartmentId: body.financialDepartmentId || null, metadata: { ...metadata, sceneLabel } };
-  if (body.module === "breakdown") return recordActivity({ ...base, action: "breakdown.changed", summary: "Breakdown item changed.", aggregationKey: `breakdown:${metadata.sceneId || body.entityId}` });
-  if (body.module === "shot_list") {
-    const added = body.operationType === "entity.add";
-    return recordActivity({ ...base, action: added ? "shot.added" : "shot.modified", summary: added ? "Shot added." : "Shot modified.", aggregationKey: `shot:${metadata.sceneId || body.documentId}:${added ? "added" : "modified"}` });
-  }
-  if (body.module === "canvas") return recordActivity({ ...base, action: "canvas.modified", summary: "Canvas object modified.", aggregationKey: `canvas:${metadata.boardId || body.documentId}` });
-  return recordActivity({ ...base, action: "content.committed", summary: `${body.entityType || "Project content"} was updated.`, aggregationKey: `${body.module}:${body.entityType}:${body.entityId}` });
-}
-
 async function handleCollaborationOperations(req, res, projectId) {
   const sid = sessionId(req, res); if (!sid) return googleRequired(res);
   const url = new URL(req.url, "http://localhost");
@@ -8708,7 +7688,7 @@ async function handleCollaborationOperations(req, res, projectId) {
   const operationId = saveCollaborationOperation({ ...body, projectId, actorUserId: sid, committedVersion: result.entity.version, conflicts: result.conflicts });
   const payload = { id: operationId, module: body.module, documentId: body.documentId || projectId, entityType: body.entityType, entityId: body.entityId, entity: result.entity, changedFields: result.changedFields, conflicts: result.conflicts, stale: result.stale };
   broadcastCollaboration(projectId, result.conflicts.length ? "content.conflict" : "content.operation", payload, String(req.headers["x-filmscript-client-id"] || ""));
-  semanticOperationActivity(projectId, sid, body, result);
+  if (result.changedFields.length) recordActivity({ projectId, module: body.module, actorUserId: sid, entityType: body.entityType, entityId: body.entityId, action: "content.committed", summary: `${body.entityType || "Project content"} was updated.` });
   return json(res, result.conflicts.length ? 409 : 200, payload);
 }
 
@@ -8734,12 +7714,6 @@ async function handleScriptCollaboration(req, res, projectId) {
     const update = decodeUpdate(body.update); const result = scriptDocuments.apply(projectId, documentId, update);
     const payload = { module: "script", documentId, update: encodeUpdate(update), version: result.version, actorUserId: sid };
     broadcastCollaboration(projectId, "script.crdt", payload, String(req.headers["x-filmscript-client-id"] || ""));
-    const sceneId = String(body.sceneId || body.blockId || "screenplay").slice(0, 120);
-    const activityKey = `${projectId}:${sid}:script:${sceneId}`; const lastRecordedAt = semanticActivityThrottle.get(activityKey) || 0;
-    if (Date.now() - lastRecordedAt > 60_000) {
-      semanticActivityThrottle.set(activityKey, Date.now());
-      recordActivity({ projectId, module: "script", actorUserId: sid, entityType: "scene", entityId: sceneId, action: "scene.edited", summary: "Scene edited.", aggregationKey: `scene:${sceneId}`, aggregationWindowMinutes: 30, metadata: { sceneLabel: String(body.sceneLabel || "").slice(0, 120) || null } });
-    }
     return json(res, 200, { ok: true, version: result.version });
   } catch (error) { return json(res, error.status || 422, { error: error.message }); }
 }
@@ -8747,189 +7721,59 @@ async function handleScriptCollaboration(req, res, projectId) {
 const roomSweepTimer = setInterval(() => {
   const result = collaborationRooms.sweep();
   for (const transition of collaborationRooms.lastTransitions || []) broadcastCollaboration(transition.projectId, "presence.updated", transition.client);
-  for (const projectId of result) { collaborationSubscribers.delete(projectId); scriptDocuments.closeProject(projectId); for (const key of collaborationThrottle.keys()) if (key.startsWith(`${projectId}:`)) collaborationThrottle.delete(key); for (const key of semanticActivityThrottle.keys()) if (key.startsWith(`${projectId}:`)) semanticActivityThrottle.delete(key); }
+  for (const projectId of result) { collaborationSubscribers.delete(projectId); scriptDocuments.closeProject(projectId); for (const key of collaborationThrottle.keys()) if (key.startsWith(`${projectId}:`)) collaborationThrottle.delete(key); }
 }, 30_000);
 roomSweepTimer.unref?.();
 
-const TRANSLATION_HEADING_WORDS = new Set([
-  "int", "ext", "day", "night", "morning", "afternoon", "evening", "dawn", "dusk", "continuous", "later", "same", "time",
-  "house", "home", "apartment", "office", "room", "street", "road", "car", "truck", "van", "station", "school", "hospital",
-  "casa", "hogar", "apartamento", "oficina", "habitación", "habitacion", "calle", "carretera", "coche", "camioneta", "estación", "estacion", "escuela", "hospital",
-  "maison", "appartement", "bureau", "chambre", "rue", "route", "voiture", "gare", "école", "ecole",
-  "casa", "apartamento", "escritório", "escritorio", "quarto", "rua", "estrada", "carro", "estação", "estacao",
-  "haus", "wohnung", "büro", "buro", "zimmer", "straße", "strasse", "auto", "bahnhof", "schule",
-  "the", "and", "with", "from", "into", "de", "del", "la", "el", "los", "las", "y", "e", "of", "a", "an", "to", "in", "on", "at", "und",
-  "fade", "cut", "dissolve", "back", "angle", "close", "wide", "over", "end",
-]);
-
-const escapeTranslationRegExp = (value) => String(value || "").replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-const normalizedTranslationEntity = (value) => String(value || "").replace(/\s+/g, " ").trim();
-
-// A preservation map is deliberately built before the model request. It
-// includes screenplay character cues plus likely uppercase/title-case proper
-// nouns, while filtering ordinary heading language so "CASA DE NILA" can
-// naturally become "NILA'S HOUSE" rather than freezing the whole slugline.
 function translationEntityMap(script) {
-  const definitions = new Map();
-  const add = (raw, kind) => {
-    const name = normalizedTranslationEntity(raw);
-    const key = name.toLocaleLowerCase("en-US");
-    if (name.length < 2 || name.length > 120 || TRANSLATION_HEADING_WORDS.has(key)) return;
-    const prior = definitions.get(key);
-    if (!prior || kind === "character") definitions.set(key, { name, kind: prior?.kind === "character" ? "character" : kind });
-  };
-  const blocks = Array.isArray(script?.blocks) ? script.blocks : [];
-  for (const block of blocks) {
-    const text = String(block?.text || "");
-    if (block?.type === "character") add(text.replace(/\s*\([^)]*\)\s*$/, ""), "character");
-    // Imported screenplays commonly use all caps for people, cities, brands,
-    // companies, and fictional places. Preserve the meaningful tokens rather
-    // than whole scene headings, whose descriptive words must be translated.
-    for (const match of text.matchAll(/\b[\p{Lu}][\p{Lu}\p{M}'’.-]{2,}\b/gu)) add(match[0], "proper_noun");
-    // Title case proper nouns in action lines are often not all caps. Ignore
-    // the sentence-opening word, where ordinary prose is ambiguous.
-    for (const match of text.matchAll(/\b[\p{Lu}][\p{Ll}\p{M}'’-]{2,}\b/gu)) if (match.index > 0) add(match[0], "proper_noun");
-  }
   const map = {}; let counter = 0;
-  for (const definition of [...definitions.values()].slice(0, 240)) {
-    const occurrences = [];
-    const matcher = new RegExp(`(^|[^\\p{L}\\p{N}])${escapeTranslationRegExp(definition.name)}(?=$|[^\\p{L}\\p{N}])`, "iu");
-    blocks.forEach((block, index) => { if (matcher.test(String(block?.text || ""))) occurrences.push(index); });
-    if (!occurrences.length) continue;
-    map[`entity_${++counter}`] = { ...definition, occurrences };
-  }
+  (script.blocks || []).forEach((block, index) => {
+    if (block.type !== "character") return;
+    const name = String(block.text || "").replace(/\s*\([^)]*\)\s*$/, "").trim();
+    if (!name) return;
+    let entry = Object.entries(map).find(([, value]) => value.name.toLowerCase() === name.toLowerCase());
+    if (!entry) { const entityId = `entity_${++counter}`; map[entityId] = { name, occurrences: [] }; entry = [entityId, map[entityId]]; }
+    entry[1].occurrences.push(index);
+  });
   return map;
 }
 
-function scheduleDurableAIJob(jobId) {
-  if (!jobId || activeDurableAIJobs.has(jobId)) return;
-  setImmediate(() => {
-    runDurableAIJob(jobId).catch((error) => console.error("Durable AI job failed:", error.message));
-  });
-}
-
-async function runDurableAIJob(jobId) {
-  const job = getAIJobInternal(jobId);
-  if (!job || !isAIJobType(job.type) || !["queued", "processing", "saving", "interrupted"].includes(job.status) || activeDurableAIJobs.has(jobId)) return;
-  activeDurableAIJobs.add(jobId);
-  const input = job.input || {};
-  const billingUserId = String(input.billingUserId || job.requestedByUserId);
-  const creditReservationId = input.creditReservationId || aiJobReservationId(job.id);
+async function runTranslationJob(jobId, requesterId, billingOwnerId) {
+  const job = getAIJob(jobId, requesterId, true); if (!job) return;
+  const script = loadScripts().scripts[job.sourceScriptId]; const reservationId = `translation:${job.id}`;
   try {
-    const script = loadScripts().scripts[job.sourceScriptId];
-    if (!script) throw Object.assign(new Error("The source screenplay is no longer available."), { status: 409, code: "corrupt_script" });
-    if (["breakdown", "breakdown_scene", "shot_list", "translation"].includes(job.type)
-      && hashText(JSON.stringify(script.blocks || [])) !== job.sourceContentHash) {
-      throw Object.assign(new Error("The source screenplay changed before this AI job started."), { status: 409, code: "corrupt_script" });
-    }
-    if (!projectPermission(job.requestedByUserId, job.projectId, AI_JOB_ACTIVITY_MODULE[job.type] || "script", "edit")
-      || (job.type === "shot_list" && !projectPermission(job.requestedByUserId, job.projectId, "script", "view"))) {
-      throw Object.assign(new Error("Project access was revoked."), { status: 403, code: "permission_denied" });
-    }
-    updateAndBroadcastAIJob(job.id, { status: "processing", stage: "validating", progress: Math.max(3, Number(job.progress || 0)) });
-    let result;
-    if (job.type === "analysis") {
-      activeScriptAnalysisJobs.add(job.projectId);
-      result = await runScriptAnalysis(job.projectId, job.requestedByUserId, job.sourceContentHash, input.language || "en", {
-        freeAllowance: !!input.freeAllowance,
-        freeAllowanceReservationId: input.freeAllowanceReservationId || null,
-        billingUserId,
-        textReservationId: job.reservedCredits > 0 ? creditReservationId : null,
-        aiJobId: job.id,
-      });
-    } else if (job.type === "breakdown" || job.type === "breakdown_scene") {
-      activePreproductionJobs.add(job.projectId);
-      result = await analyzeProject(job.projectId, job.requestedByUserId, input.language || "en", {
-        includeManual: !!input.includeManual,
-        onlySceneId: job.type === "breakdown_scene" ? String(input.sceneId || "") : null,
-        freeAllowance: !!input.freeAllowance,
-        freeAllowanceReservationId: input.freeAllowanceReservationId || null,
-        billingUserId,
-        textReservationId: job.reservedCredits > 0 ? creditReservationId : null,
-        aiJobId: job.id,
-      });
-    } else if (job.type === "shot_list") {
-      activeShotListJobs.add(job.projectId);
-      result = await generateShotLists(job.projectId, job.requestedByUserId, input.sceneId || null, input.language || "en", {
-        regenerate: !!input.regenerate,
-        freeAllowance: !!input.freeAllowance,
-        freeAllowanceReservationId: input.freeAllowanceReservationId || null,
-        billingUserId,
-        textReservationId: job.reservedCredits > 0 ? creditReservationId : null,
-        aiJobId: job.id,
-      });
-    } else if (job.type === "translation") {
-      result = await runTranslationJob(job.id, job.requestedByUserId, billingUserId, { managed: true });
-      // Translation owns its result and completion record because it creates a
-      // new project. Do not create a duplicate notification here.
-      return result;
-    } else {
-      throw Object.assign(new Error("Unsupported AI job."), { status: 422, code: "invalid_ai_job_type" });
-    }
-    const saved = Number(result?.successfulOutputs ?? (result?.applied ? 1 : 0));
-    if (!result?.ok && saved <= 0 && !result?.noop) {
-      throw Object.assign(new Error(result?.message || "No usable AI output was saved."), { status: 502, code: result?.errorCode || "ai_output_not_saved" });
-    }
-    finalizeDurableAIJob(job, { succeeded: true, output: { completedItems: saved, ...(result?.output || {}) }, settledCredits: Number(result?.settledCredits || 0) });
-  } catch (error) {
-    if (job.reservedCredits > 0) releaseTextCredits(billingUserId, creditReservationId);
-    finalizeDurableAIJob(job, { succeeded: false, error });
-  } finally {
-    activeDurableAIJobs.delete(jobId);
-    activeScriptAnalysisJobs.delete(job.projectId);
-    activePreproductionJobs.delete(job.projectId);
-    activeShotListJobs.delete(job.projectId);
-  }
-}
-
-function recoverDurableAIJobs() {
-  for (const job of listRecoverableAIJobs(40)) scheduleDurableAIJob(job.id);
-}
-
-// Recovery is event-driven: startup requeues unfinished durable records, and
-// every new/retried request schedules exactly one worker. There is no polling
-// loop or permanent per-project worker.
-if (!process.env.VERCEL) setImmediate(recoverDurableAIJobs);
-
-async function runTranslationJob(jobId, requesterId, billingOwnerId, { managed = false } = {}) {
-  const job = getAIJobInternal(jobId) || getAIJob(jobId, requesterId, true); if (!job) return { ok: false, errorCode: "job_not_found" };
-  const script = loadScripts().scripts[job.sourceScriptId]; const reservationId = job.input?.creditReservationId || `translation:${job.id}`;
-  try {
-    updateAndBroadcastAIJob(job.id, { status: "processing", stage: "validating", progress: 5 });
+    updateAIJob(job.id, { status: "processing", stage: "validating", progress: 5 });
     if (!script || hashText(JSON.stringify(script.blocks || [])) !== job.sourceContentHash) throw Object.assign(new Error("The source screenplay changed before translation started."), { code: "corrupt_script", status: 409 });
-    const language = job.input.targetLanguage; const entityMap = translationEntityMap(script); const packet = screenplayTranslationPacket(script.blocks, entityMap);
+    const language = job.input.targetLanguage; const entityMap = translationEntityMap(script); const packet = screenplayTranslationPacket(script.blocks, Object.fromEntries(Object.entries(entityMap).map(([key, value]) => [key, value.occurrences])));
     const translated = []; let usedFallback = false; let completedModel = modelForTask("translation");
     const chunkSize = 80; const chunks = Math.max(1, Math.ceil(packet.length / chunkSize));
     for (let index = 0; index < packet.length; index += chunkSize) {
       if (!projectPermission(requesterId, script.id, "script", "edit")) throw Object.assign(new Error("Project access was revoked."), { code: "permission_denied", status: 403 });
       const chunk = packet.slice(index, index + chunkSize);
-      updateAndBroadcastAIJob(job.id, { status: "processing", stage: "translating", progress: 10 + Math.round((index / Math.max(1, packet.length)) * 70) });
+      updateAIJob(job.id, { status: "processing", stage: "translating", progress: 10 + Math.round((index / Math.max(1, packet.length)) * 70) });
       const response = await requestLumiereForTask("translation", {
         maxTokens: 8000, jsonMode: true,
-        system: `You are Lumiere translating a professional screenplay into ${language}. Preserve every block id, type, order, scene number, revision detail, note relationship, and screenplay convention. Translate descriptive scene heading terms, including technical screenplay terms such as INT., EXT., DAY, and NIGHT, into their natural screenplay equivalent in ${language}. Preserve character voice, tone, slang, humor, insults, subtext, formality, period language, and meaning; be natural, never mechanically literal. Every entity in the glossary is an exact protected proper noun: preserve its spelling wherever it occurs. Do not freeze a whole heading just because it contains an entity. For example, when translating CASA DE NILA into English, keep NILA but translate the descriptive language as NILA'S HOUSE. Return JSON with one blocks array and no prose. Entity glossary: ${JSON.stringify(entityMap)}`,
+        system: `You are Lumiere translating a professional screenplay into ${language}. Preserve every block id, type, order, scene number, note relationship, and screenplay convention. Translate descriptive scene heading terms while preserving proper names. Preserve character voice, tone, slang, humor, insults, subtext, and period language. Return JSON with one blocks array. Entity glossary: ${JSON.stringify(entityMap)}`,
         messages: [{ role: "user", content: JSON.stringify({ blocks: chunk }) }],
-      }, { jobId: job.id });
+      });
       const raw = response.content.map((item) => item.text || "").join(""); const parsed = parseBreakdownJson(raw);
       translated.push(...validateTranslatedBlocks(parsed.blocks, chunk));
       usedFallback ||= response.usedFallback; completedModel = response.internalCompletedModel || completedModel;
     }
-    updateAndBroadcastAIJob(job.id, { status: "saving", stage: "saving", progress: 90, internalCompletedModel: completedModel, usedFallback });
+    updateAIJob(job.id, { status: "saving", stage: "saving", progress: 90, internalCompletedModel: completedModel, usedFallback });
     const scripts = loadScripts(); const timestamp = new Date().toISOString(); const translatedId = `scr_${crypto.randomBytes(10).toString("hex")}`;
     const title = translatedProjectName(script.title, language);
-    scripts.scripts[translatedId] = { ...script, id: translatedId, userId: billingOwnerId, title, filename: null, source: "translation", text: translated.map((block) => block.text).join("\n"), blocks: translated, chat: [], titleRoom: {}, characterNames: script.characterNames || {}, translatedFromProjectId: script.id, translatedFromScriptId: script.id, translationRelationship: { mode: "independent", synchronization: "none" }, sourceLanguage: job.input.sourceLanguage || null, targetLanguage: language, sourceScriptVersionId: job.sourceScriptVersionId, sourceContentHash: job.sourceContentHash, translatedAt: timestamp, createdAt: timestamp, updatedAt: timestamp };
+    scripts.scripts[translatedId] = { ...script, id: translatedId, userId: billingOwnerId, title, filename: null, source: "translation", text: translated.map((block) => block.text).join("\n"), blocks: translated, chat: [], titleRoom: {}, characterNames: script.characterNames || {}, translatedFromProjectId: script.id, translatedFromScriptId: script.id, sourceLanguage: job.input.sourceLanguage || null, targetLanguage: language, sourceScriptVersionId: job.sourceScriptVersionId, sourceContentHash: job.sourceContentHash, translatedAt: timestamp, createdAt: timestamp, updatedAt: timestamp };
     saveScripts(scripts);
-    backfillOwners();
     settleTextCredits(billingOwnerId, reservationId);
-    updateAndBroadcastAIJob(job.id, { status: "completed", stage: "completed", progress: 100, settledCredits: job.reservedCredits, output: { projectId: translatedId, scriptId: translatedId, title, targetLanguage: language }, internalCompletedModel: completedModel, usedFallback });
+    updateAIJob(job.id, { status: "completed", stage: "completed", progress: 100, settledCredits: job.reservedCredits, output: { projectId: translatedId, scriptId: translatedId, title, targetLanguage: language }, internalCompletedModel: completedModel, usedFallback });
     recordActivity({ projectId: script.id, module: "script", actorUserId: requesterId, actorType: "lumiere", entityType: "translation", entityId: job.id, action: "ai.job.completed", summary: `Translation to ${language} completed.` });
-    createAICompletionNotification({ userId: requesterId, projectId: script.id, kind: "translation", message: `${title} was created as an independent project.`, deepLink: `/Editor%20v5.dc.html?script=${encodeURIComponent(translatedId)}&view=editor` });
+    createNotification({ userId: requesterId, projectId: script.id, type: "translation_completed", title: "Translation is ready", message: `${title} was created as an independent project.`, deepLink: `/Editor%20v5.dc.html?id=${encodeURIComponent(translatedId)}` });
     broadcastCollaboration(script.id, "ai.job.completed", { job: publicAIJob(getAIJob(job.id, requesterId, true)) });
-    return { ok: true, successfulOutputs: 1, settledCredits: job.reservedCredits, output: { projectId: translatedId, scriptId: translatedId, title, targetLanguage: language } };
   } catch (error) {
     releaseTextCredits(billingOwnerId, reservationId);
-    updateAndBroadcastAIJob(job.id, { status: "failed", stage: "failed", errorCode: error.code || "translation_failed" });
+    updateAIJob(job.id, { status: "failed", stage: "failed", errorCode: error.code || "translation_failed" });
     createNotification({ userId: requesterId, projectId: job.projectId, type: "translation_failed", title: "Translation could not be completed", message: "Your credits were returned. You can retry when ready.", deepLink: `/App.dc.html` });
-    return { ok: false, errorCode: error.code || "translation_failed" };
   }
 }
 
@@ -8940,81 +7784,46 @@ async function handleTranslation(req, res, scriptId) {
   let body; try { body = JSON.parse(await readBody(req, 64 * 1024)); } catch { return json(res, 400, { error: "invalid_request_body" }); }
   const targetLanguage = TRANSLATION_LANGUAGES.find((language) => language.toLowerCase() === String(body.targetLanguage || "").toLowerCase());
   if (!targetLanguage) return json(res, 422, { error: "unsupported_language", message: "Choose English, Spanish, French, Portuguese, or German." });
-  const pageCount = screenplayPageCount(script.blocks, script.text);
+  const pageCount = script.blocks?.length ? script.blocks.filter((block) => block.type === "pagebreak").length + 1 : Math.max(1, Math.ceil(String(script.text || "").length / 3000));
   const requiredCredits = translationCreditCost(pageCount); const available = creditsSummary(script.userId);
   if (req.method === "GET" || body.preview === true) return json(res, 200, { sourceScriptName: script.title, pageCount, targetLanguage, newProjectName: translatedProjectName(script.title, targetLanguage), requiredCredits, availableCredits: available.unlimited ? null : available.remaining, remainingCredits: available.unlimited ? null : Math.max(0, Number(available.remaining || 0) - requiredCredits), createsIndependentProject: true });
-  const sourceContentHash = hashText(JSON.stringify(script.blocks || []));
-  const scheduled = createDurableAIJob({
-    type: "translation",
-    projectId: scriptId,
-    requesterId: sid,
-    sourceScriptVersionId: script.updatedAt,
-    sourceContentHash,
-    reservedCredits: requiredCredits,
-    input: { targetLanguage, sourceLanguage: body.sourceLanguage || null, pageCount, billingUserId: script.userId },
-  });
-  if (!scheduled.allowed) return json(res, 402, { error: "insufficient_credits", message: "There are not enough FilmScript AI credits for this translation.", requiredCredits, availableCredits: scheduled.available });
-  if (scheduled.created) scheduleDurableAIJob(scheduled.job.id);
-  return json(res, 202, { job: publicAIJob(scheduled.job), sourceScriptName: script.title, pageCount, requiredCredits, availableCredits: available.unlimited ? null : available.remaining, remainingCredits: available.unlimited ? null : Math.max(0, Number(available.remaining || 0) - requiredCredits), newProjectName: translatedProjectName(script.title, targetLanguage), createsIndependentProject: true });
+  const sourceContentHash = hashText(JSON.stringify(script.blocks || [])); const idempotencyKey = hashText(`${scriptId}:${script.updatedAt}:${targetLanguage}:${sid}`);
+  const reservationId = `translation:${idempotencyKey}`; const reservation = reserveTextCredits(script.userId, requiredCredits, reservationId);
+  if (!reservation.allowed) return json(res, 402, { error: "insufficient_credits", message: "There are not enough FilmScript AI credits for this translation.", requiredCredits, availableCredits: reservation.available });
+  const job = createAIJob({ projectId: scriptId, requestedByUserId: sid, type: "translation", sourceScriptId: scriptId, sourceScriptVersionId: script.updatedAt, sourceContentHash, internalPrimaryModel: modelForTask("translation"), reservedCredits: requiredCredits, idempotencyKey, input: { targetLanguage, sourceLanguage: body.sourceLanguage || null, pageCount }, outputSchemaVersion: 1 });
+  // Rebind a first reservation to the durable job id. A duplicate request keeps the existing reservation and job.
+  if (!reservation.duplicate) releaseTextCredits(script.userId, reservationId);
+  if (job.status === "queued") {
+    const durableReservation = reserveTextCredits(script.userId, requiredCredits, `translation:${job.id}`);
+    if (!durableReservation.allowed) return json(res, 402, { error: "insufficient_credits" });
+    setImmediate(() => runTranslationJob(job.id, sid, script.userId));
+  }
+  return json(res, 202, { job: publicAIJob(job), sourceScriptName: script.title, pageCount, requiredCredits, availableCredits: available.unlimited ? null : available.remaining, newProjectName: translatedProjectName(script.title, targetLanguage) });
 }
 
 async function handleAIJob(req, res, jobId) {
   const sid = sessionId(req, res); if (!sid) return googleRequired(res);
-  const job = getAIJob(jobId, sid, false);
-  if (req.method === "GET") return job ? json(res, 200, { job: publicAIJob(job) }) : json(res, 404, { error: "job_not_found" });
-  if (!job) return json(res, 404, { error: "job_not_found" });
-  const module = moduleForAIJob(job.type);
-  if (!projectPermission(sid, job.projectId, module, "edit")) return permissionRequired(res);
-  let body = {};
-  try { body = JSON.parse(await readBody(req, 16 * 1024) || "{}"); } catch { return json(res, 400, { error: "invalid_request_body" }); }
-  if (body.action === "cancel") {
-    if (["completed", "failed", "cancelled"].includes(job.status)) return json(res, 409, { error: "ai_job_not_cancellable" });
-    const internal = getAIJobInternal(job.id);
-    const reservationId = internal?.input?.creditReservationId || aiJobReservationId(job.id);
-    if (Number(internal?.reservedCredits || 0) > 0) releaseTextCredits(String(internal?.input?.billingUserId || sid), reservationId);
-    updateAIJob(job.id, { status: "cancelled", stage: "cancelled", errorCode: "user_cancelled" });
-    return json(res, 200, { job: publicAIJob(getAIJob(job.id, sid, false)) });
-  }
-  if (body.action !== "retry") return json(res, 422, { error: "invalid_ai_job_action" });
-  let next;
-  try { next = retryAIJob(job.id, sid); } catch (error) { return json(res, error.status || 422, { error: error.code || "ai_job_retry_failed", message: error.message }); }
-  const internal = getAIJobInternal(next.id);
-  const input = { ...(internal?.input || {}) };
-  const billingUserId = String(input.billingUserId || sid);
-  if (Number(next.reservedCredits || 0) > 0) {
-    const reservationId = aiJobReservationId(next.id);
-    const reservation = reserveTextCredits(billingUserId, next.reservedCredits, reservationId);
-    if (!reservation.allowed) {
-      updateAIJob(next.id, { status: "failed", stage: "failed", errorCode: "insufficient_credits" });
-      return json(res, 402, { error: "insufficient_credits", message: "There are not enough Lumiere credits to retry this request." });
-    }
-    input.creditReservationId = reservationId;
-  } else if (input.freeAllowance) {
-    const feature = next.type === "analysis" ? "analysis" : next.type === "shot_list" ? "storyboard" : "breakdown";
-    const reservation = reserveFreeAllowance(billingUserId, feature);
-    if (!reservation.allowed) {
-      updateAIJob(next.id, { status: "failed", stage: "failed", errorCode: "insufficient_credits" });
-      return json(res, 402, { error: "insufficient_credits", message: "Your included Lumiere request is no longer available." });
-    }
-    input.freeAllowanceReservationId = reservation.reservationId;
-  }
-  updateAIJobInput(next.id, input);
-  scheduleDurableAIJob(next.id);
-  return json(res, 202, { job: publicAIJob(getAIJob(next.id, sid, false)) });
+  const job = getAIJob(jobId, sid, false); return job ? json(res, 200, { job }) : json(res, 404, { error: "job_not_found" });
 }
 
 async function handlePlatformProfile(req, res) {
   const sid = sessionId(req, res); if (!sid) return googleRequired(res);
   if (req.method === "GET") {
     const profile = userPlatformProfile(sid);
-    return json(res, 200, { profile: { ...profile, avatarKey: undefined, avatarUrl: profile?.avatarKey ? "/api/me/avatar" : null } });
+    return json(res, 200, { profile: { ...profile, avatarKey: undefined, avatarUrl: ownAvatarUrl(profile) } });
   }
   let body; try { body = JSON.parse(await readBody(req, 64 * 1024)); } catch { return json(res, 400, { error: "invalid_request_body" }); }
   try {
     const profile = updateUserPlatformProfile(sid, { username: body.username, theme: body.theme, avatarCrop: body.avatarCrop });
-    return json(res, 200, { profile: { ...profile, avatarKey: undefined, avatarUrl: profile?.avatarKey ? "/api/me/avatar" : null } });
+    return json(res, 200, { profile: { ...profile, avatarKey: undefined, avatarUrl: ownAvatarUrl(profile) } });
   }
-  catch (error) { return json(res, error.code === "SQLITE_CONSTRAINT_UNIQUE" ? 409 : 422, { error: error.code === "SQLITE_CONSTRAINT_UNIQUE" ? "username_unavailable" : "profile_invalid", message: error.code === "SQLITE_CONSTRAINT_UNIQUE" ? "That username is already in use." : error.message }); }
+  catch (error) {
+    const usernameConflict = error.code === "SQLITE_CONSTRAINT_UNIQUE";
+    return json(res, usernameConflict ? 409 : error.status || 422, {
+      error: usernameConflict ? "username_unavailable" : error.code || "profile_invalid",
+      message: usernameConflict ? "That username is already in use." : error.message,
+    });
+  }
 }
 
 async function handleProfileAvatar(req, res) {
@@ -9041,8 +7850,32 @@ async function handleProfileAvatar(req, res) {
   const assetId = `avatar_${crypto.randomBytes(8).toString("hex")}`;
   const stored = await canvasStorage.put({ scriptId: "profiles", assetId, mimeType, data });
   if (current) await canvasStorage.remove(current).catch(() => {});
-  updateUserPlatformProfile(sid, { avatarKey: JSON.stringify({ ...stored, mimeType }), avatarCrop: { outputWidth: 512, outputHeight: 512 } });
+  updateUserPlatformProfile(sid, {
+    avatarKey: JSON.stringify({ ...stored, mimeType }),
+    avatarCrop: { outputWidth: 512, outputHeight: 512, presetIcon: null, presetBackground: null },
+  });
   return json(res, 200, { ok: true, avatarUrl: `/api/me/avatar?v=${encodeURIComponent(assetId)}` });
+}
+
+async function handleUserAvatar(req, res, targetUserId) {
+  const sid = sessionId(req, res); if (!sid) return googleRequired(res);
+  // Return the same response for a missing avatar and a user outside the
+  // requester's projects so this endpoint cannot enumerate private accounts.
+  if (!canReadUserAvatar(sid, targetUserId)) return json(res, 404, { error: "avatar_not_found" });
+  const profile = userPlatformProfile(targetUserId);
+  const current = profile?.avatarKey ? (() => { try { return JSON.parse(profile.avatarKey); } catch { return null; } })() : null;
+  if (!current) return json(res, 404, { error: "avatar_not_found" });
+  try {
+    const data = await canvasStorage.get(current);
+    res.writeHead(200, {
+      "Content-Type": current.mimeType || "image/webp",
+      "Content-Length": data.length,
+      "Cache-Control": "private, max-age=3600",
+      Vary: "Cookie",
+    });
+    if (req.method === "HEAD") return res.end();
+    return res.end(data);
+  } catch { return json(res, 404, { error: "avatar_not_found" }); }
 }
 
 function serveStatic(req, res) {
@@ -9098,11 +7931,7 @@ export function requestHandler(req, res) {
   } catch {
     return json(res, 400, { error: "invalid_request_url" });
   }
-  // Some privacy/content blockers classify the literal `/api/scripts` path as
-  // a third-party script resource and cancel the browser request before it
-  // reaches us. Keep the established endpoint for integrations, while serving
-  // the first-party app through an equivalent project-content route.
-  const pathname = requestUrl.pathname.replace(/^\/api\/project-files(?=\/|$)/, "/api/scripts");
+  const pathname = requestUrl.pathname;
   if (applyCors(req, res)) return;
   if (rejectCrossSiteMutation(req, res, pathname)) return;
   if (req.method === "GET" && pathname === "/auth/google") {
@@ -9110,19 +7939,12 @@ export function requestHandler(req, res) {
       handleGoogleSignIn(req, res, requestUrl).catch((err) => json(res, err.status || 500, { error: err.message }));
     } else if (req.method === "GET" && pathname === "/auth/google/callback") {
       handleGoogleCallback(req, res, requestUrl).catch((err) => json(res, err.status || 500, { error: err.message }));
+    } else if (req.method === "GET" && pathname === "/api/auth/complete") {
+      handleAuthCompletion(req, res, requestUrl);
     } else if (req.method === "POST" && pathname === "/auth/logout") {
       handleLogout(req, res);
-    } else if (req.method === "GET" && /^\/api\/shared\/[A-Za-z0-9_-]+\/assets\/cas_[a-f0-9]+$/.test(pathname)) {
-      if (enforceRateLimit(req, res, "shared-project-asset", 180, 10 * 60 * 1000)) return;
-      const parts = pathname.split("/"); handleSharedProjectAsset(req, res, parts[3], parts[5]).catch((err) => json(res, err.status || 500, { error: err.code || err.message }));
-    } else if (req.method === "POST" && /^\/api\/shared\/[A-Za-z0-9_-]+\/export$/.test(pathname)) {
-      if (enforceRateLimit(req, res, "shared-project-export", 20, 10 * 60 * 1000)) return;
-      handleSharedProjectExport(req, res, pathname.split("/")[3]).catch((err) => json(res, err.status || 500, { error: err.code || err.message }));
-    } else if (req.method === "POST" && /^\/api\/shared\/[A-Za-z0-9_-]+\/access-requests$/.test(pathname)) {
-      if (enforceRateLimit(req, res, "shared-project-access-request", 5, 60 * 60 * 1000)) return;
-      handleSharedProjectAccessRequest(req, res, pathname.split("/")[3]).catch((err) => json(res, err.status || 500, { error: err.code || err.message }));
     } else if ((req.method === "GET" || req.method === "POST") && /^\/api\/shared\/[A-Za-z0-9_-]+$/.test(pathname)) {
-      if (enforceRateLimit(req, res, "shared-project-access", req.method === "POST" ? 8 : 90, 10 * 60 * 1000)) return;
+      if (enforceRateLimit(req, res, "shared-project-access", req.method === "POST" ? 10 : 120, 10 * 60 * 1000)) return;
       handlePublicSharedProject(req, res, pathname.split("/").pop()).catch((err) => json(res, err.status || 500, { error: err.code || err.message }));
     } else if (req.method === "POST" && pathname === "/api/invitations/accept") {
       if (enforceRateLimit(req, res, "invitation-accept", 20, 10 * 60 * 1000)) return;
@@ -9136,7 +7958,9 @@ export function requestHandler(req, res) {
       handlePlatformProfile(req, res).catch((err) => json(res, err.status || 500, { error: err.code || err.message }));
     } else if ((req.method === "GET" || req.method === "POST" || req.method === "DELETE") && pathname === "/api/me/avatar") {
       handleProfileAvatar(req, res).catch((err) => json(res, err.status || 500, { error: err.code || err.message }));
-    } else if ((req.method === "GET" || req.method === "PATCH") && /^\/api\/notifications(?:\/not_[a-f0-9]+)?$/.test(pathname)) {
+    } else if ((req.method === "GET" || req.method === "HEAD") && /^\/api\/users\/usr_[A-Za-z0-9_-]{1,80}\/avatar$/.test(pathname)) {
+      handleUserAvatar(req, res, pathname.split("/")[3]).catch((err) => json(res, err.status || 500, { error: err.code || err.message }));
+    } else if ((req.method === "GET" || req.method === "PATCH" || req.method === "DELETE") && /^\/api\/notifications(?:\/not_[a-f0-9]+)?$/.test(pathname)) {
       handleNotifications(req, res, pathname.split("/")[3] || null).catch((err) => json(res, err.status || 500, { error: err.code || err.message }));
     } else if ((req.method === "GET" || req.method === "POST") && /^\/api\/projects\/scr_[a-f0-9]+\/members$/.test(pathname)) {
       if (req.method === "POST" && enforceRateLimit(req, res, "project-invitation", 30, 10 * 60 * 1000, sessionId(req, res))) return;
@@ -9153,11 +7977,13 @@ export function requestHandler(req, res) {
       handleProjectActivity(req, res, pathname.split("/")[3]).catch((err) => json(res, err.status || 500, { error: err.code || err.message }));
     } else if ((req.method === "GET" || req.method === "POST") && /^\/api\/projects\/scr_[a-f0-9]+\/comments$/.test(pathname)) {
       handleProjectComments(req, res, pathname.split("/")[3]).catch((err) => json(res, err.status || 500, { error: err.code || err.message }));
+    } else if ((req.method === "GET" || req.method === "POST") && /^\/api\/projects\/scr_[a-f0-9]+\/chat$/.test(pathname)) {
+      handleProjectMessages(req, res, pathname.split("/")[3]).catch((err) => json(res, err.status || 500, { error: err.code || err.message }));
     } else if (req.method === "PATCH" && /^\/api\/projects\/scr_[a-f0-9]+\/comments\/cmt_[a-f0-9]+$/.test(pathname)) {
       const parts = pathname.split("/"); handleProjectComments(req, res, parts[3], parts[5]).catch((err) => json(res, err.status || 500, { error: err.code || err.message }));
-    } else if ((req.method === "GET" || req.method === "POST") && /^\/api\/projects\/scr_[a-f0-9]+\/shared-projects$/.test(pathname)) {
+    } else if (req.method === "POST" && /^\/api\/projects\/scr_[a-f0-9]+\/shared-projects$/.test(pathname)) {
       handleSharedProjects(req, res, pathname.split("/")[3]).catch((err) => json(res, err.status || 500, { error: err.code || err.message }));
-    } else if ((req.method === "PATCH" || req.method === "DELETE") && /^\/api\/projects\/scr_[a-f0-9]+\/shared-projects\/shr_[a-f0-9]+$/.test(pathname)) {
+    } else if (req.method === "DELETE" && /^\/api\/projects\/scr_[a-f0-9]+\/shared-projects\/shr_[a-f0-9]+$/.test(pathname)) {
       const parts = pathname.split("/"); handleSharedProjects(req, res, parts[3], parts[5]).catch((err) => json(res, err.status || 500, { error: err.code || err.message }));
     } else if ((req.method === "GET" || req.method === "POST") && /^\/api\/projects\/scr_[a-f0-9]+\/location-plans$/.test(pathname)) {
       handleLocationPlans(req, res, pathname.split("/")[3]).catch((err) => json(res, err.status || 500, { error: err.code || err.message }));
@@ -9171,7 +7997,7 @@ export function requestHandler(req, res) {
       handleCollaborationOperations(req, res, pathname.split("/")[3]).catch((err) => json(res, err.status || 500, { error: err.code || err.message }));
     } else if ((req.method === "GET" || req.method === "POST") && /^\/api\/scripts\/scr_[a-f0-9]+\/translation$/.test(pathname)) {
       handleTranslation(req, res, pathname.split("/")[3]).catch((err) => json(res, err.status || 500, { error: err.code || err.message }));
-    } else if ((req.method === "GET" || req.method === "POST") && /^\/api\/ai-jobs\/job_[a-f0-9]+$/.test(pathname)) {
+    } else if (req.method === "GET" && /^\/api\/ai-jobs\/job_[a-f0-9]+$/.test(pathname)) {
       handleAIJob(req, res, pathname.split("/").pop()).catch((err) => json(res, err.status || 500, { error: err.code || err.message }));
     } else if (req.method === "POST" && pathname === "/api/scripts/import") {
       if (enforceRateLimit(req, res, "script-import", 12, 10 * 60 * 1000)) return;
@@ -9217,11 +8043,6 @@ export function requestHandler(req, res) {
       handleAnalysisPdf(req, res, pathname.split("/")[3]).catch((err) => json(res, err.status || 500, { error: err.message }));
     } else if ((req.method === "GET" || req.method === "POST" || req.method === "PATCH") && /^\/api\/scripts\/scr_[a-f0-9]+\/analysis$/.test(pathname)) {
       handleScriptAnalysis(req, res, pathname.split("/")[3]).catch((err) => json(res, err.status || 500, { error: err.message }));
-    } else if (req.method === "POST" && /^\/api\/scripts\/scr_[a-f0-9]+\/preproduction\/breakdown\/images$/.test(pathname)) {
-      handleBreakdownElementImageUpload(req, res, pathname.split("/")[3]).catch((err) => json(res, err.status || 500, { error: err.message }));
-    } else if (req.method === "GET" && /^\/api\/scripts\/scr_[a-f0-9]+\/preproduction\/breakdown\/images\/ref_[a-f0-9]+$/.test(pathname)) {
-      const parts = pathname.split("/");
-      handleBreakdownElementImageAsset(req, res, parts[3], parts[7]).catch((err) => json(res, err.status || 500, { error: err.message }));
     } else if (req.method === "PATCH" && /^\/api\/scripts\/scr_[a-f0-9]+\/preproduction\/scenes\/sc_[a-f0-9]+$/.test(pathname)) {
       const parts = pathname.split("/");
       handlePreproductionScenePatch(req, res, parts[3], parts[6]).catch((err) => json(res, err.status || 500, { error: err.message }));
@@ -9330,33 +8151,6 @@ export const __entitlementTesting = Object.freeze({
   reserveImageCredits,
   settleImageCreditReservation,
   refundImageCreditReservation,
-});
-
-// Server-only seam for the AI infrastructure suite. None of these helpers is
-// mounted as a route; they make authorization and reservation boundaries
-// independently testable without contacting a model provider.
-export const __aiInfrastructureTesting = Object.freeze({
-  buildAuthorizedLumiereContext,
-  createDurableAIJob,
-  recoverDurableAIJobs,
-  reserveTextCredits,
-  settleTextCredits,
-  releaseTextCredits,
-});
-
-// Translation preparation stays server-side. This small pure seam verifies
-// that named entities are established before any provider request is made.
-export const __translationTesting = Object.freeze({
-  translationEntityMap,
-});
-
-// Pure Shot List seams: generation itself remains server-only, while these
-// deterministic boundaries make manual-preservation and structured output
-// safe to exercise without spending a provider credit in tests.
-export const __shotListTesting = Object.freeze({
-  validateShotList,
-  mergeGeneratedShotList,
-  shotConnections,
 });
 
 // Server-only test seam for image persistence. It is intentionally not an

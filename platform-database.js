@@ -9,7 +9,6 @@ import {
   canAccessModule, canEditFinancialData, canViewFinancialData, financialSummary,
   normalizeFinancialPermissions, normalizeProjectRole, permissionsForRole,
 } from "./permissions-model.js";
-import { isAIJobType, moduleForAIJob } from "./ai-router.js";
 
 const ROOT = path.dirname(fileURLToPath(import.meta.url));
 const db = new Database(DATABASE_PATH);
@@ -20,26 +19,99 @@ const id = (prefix, bytes = 12) => `${prefix}_${crypto.randomBytes(bytes).toStri
 const hash = (value) => crypto.createHash("sha256").update(String(value || "")).digest("hex");
 const jsonParse = (value, fallback) => { try { return JSON.parse(value); } catch { return fallback; } };
 const normalizedEmail = (value) => String(value || "").trim().toLowerCase();
+export const AVATAR_PRESET_ICON_IDS = Object.freeze([
+  "camera",
+  "clapperboard",
+  "film-reel",
+  "screenplay",
+  "director-chair",
+  "spotlight",
+  "microphone",
+  "star",
+  "moon",
+  "sun",
+]);
+export const AVATAR_PRESET_BACKGROUNDS = Object.freeze({
+  amber: "#d99a32",
+  tangerine: "#d8784e",
+  mint: "#70a98a",
+  sky: "#6c9dc1",
+  lavender: "#947eb8",
+  rose: "#bd7586",
+  sand: "#b89a73",
+  slate: "#596875",
+});
+const avatarPresetIcons = new Set(AVATAR_PRESET_ICON_IDS);
+const avatarPresetBackgrounds = new Set(Object.keys(AVATAR_PRESET_BACKGROUNDS));
+const unsafeAvatarCropKeys = new Set(["__proto__", "constructor", "prototype"]);
+const avatarPresentationCache = new Map();
+
+function cleanStoredAvatarCrop(value) {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return {};
+  const clean = {};
+  for (const [key, entry] of Object.entries(value)) {
+    if (unsafeAvatarCropKeys.has(key)) continue;
+    if (key === "presetIcon") {
+      if (avatarPresetIcons.has(entry)) clean.presetIcon = entry;
+      continue;
+    }
+    if (key === "presetBackground") {
+      if (avatarPresetBackgrounds.has(entry)) clean.presetBackground = entry;
+      continue;
+    }
+    clean[key] = entry;
+  }
+  return clean;
+}
+
+function avatarCropPatch(current, input) {
+  if (input === undefined) return cleanStoredAvatarCrop(current);
+  if (input === null) return {};
+  if (typeof input !== "object" || Array.isArray(input)) {
+    throw Object.assign(new Error("Avatar settings must be an object."), { status: 422, code: "invalid_avatar_crop" });
+  }
+  if (!Object.keys(input).length) return {};
+  const next = cleanStoredAvatarCrop(current);
+  for (const [key, entry] of Object.entries(input)) {
+    if (unsafeAvatarCropKeys.has(key)) continue;
+    if (key === "presetIcon") {
+      if (entry === null || entry === "") delete next.presetIcon;
+      else if (typeof entry !== "string" || !avatarPresetIcons.has(entry)) {
+        throw Object.assign(new Error("Choose a valid FilmScript avatar icon."), { status: 422, code: "invalid_avatar_preset_icon" });
+      } else next.presetIcon = entry;
+      continue;
+    }
+    if (key === "presetBackground") {
+      if (entry === null || entry === "") delete next.presetBackground;
+      else if (typeof entry !== "string" || !avatarPresetBackgrounds.has(entry)) {
+        throw Object.assign(new Error("Choose a valid FilmScript avatar background."), { status: 422, code: "invalid_avatar_preset_background" });
+      } else next.presetBackground = entry;
+      continue;
+    }
+    next[key] = entry;
+  }
+  return next;
+}
+
+function avatarPresentationFromRow(row, { userIdKey = "id", pictureKey = "picture_url" } = {}) {
+  const userId = row?.[userIdKey] || null;
+  const crop = cleanStoredAvatarCrop(jsonParse(row?.avatar_crop_json, {}));
+  const uploaded = userId && row?.avatar_key
+    ? `/api/users/${encodeURIComponent(userId)}/avatar?v=${hash(row.avatar_key).slice(0, 16)}`
+    : null;
+  return {
+    picture: uploaded || row?.[pictureKey] || null,
+    avatarPreset: crop.presetIcon || null,
+    avatarBackground: crop.presetBackground || null,
+  };
+}
+
 const invitationExpiry = (value) => {
   if (!value) return new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString();
   const timestamp = Date.parse(value);
   if (!Number.isFinite(timestamp) || timestamp <= Date.now()) throw Object.assign(new Error("Choose a future invitation expiration."), { status: 422, code: "invalid_expiration" });
   return new Date(timestamp).toISOString();
 };
-
-let platformEventSink = null;
-export function setPlatformEventSink(sink) { platformEventSink = typeof sink === "function" ? sink : null; }
-function emitPlatformEvent(event) { try { platformEventSink?.(event); } catch {} }
-
-// These are deliberately narrower than PROJECT_MODULES. A Shared Project is
-// a read-only projection of specific source modules, never a way to share
-// settings, memberships, exports, or Lumiere itself.
-export const SHARED_PROJECT_SECTION_MODULES = Object.freeze([
-  "script", "analysis", "breakdown", "stripboard", "shot_list", "calendar", "budget",
-  "canvas", "location_plan", "imagine", "files",
-]);
-const SHARED_ACCESS_MODES = new Set(["public", "password", "email_restricted"]);
-const SHARED_EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 function validateCinematicRole(value) {
   if (value == null || value === "") return null;
@@ -77,8 +149,7 @@ export function runPlatformMigrations() {
     [10, "010_collaboration_platform.sql"],
     [11, "011_collaboration_access_foundation.sql"],
     [12, "012_realtime_collaboration.sql"],
-    [13, "013_activity_comments_notifications.sql"],
-    [14, "014_lumiere_ai_infrastructure.sql"],
+    [13, "013_project_messages.sql"],
   ];
   for (const [version, filename] of migrations) {
     if (current >= version && (version !== 10 || hasColumn("users", "theme")) && (version !== 11 || hasColumn("project_memberships", "department_ids_json"))) continue;
@@ -97,14 +168,10 @@ export function runPlatformMigrations() {
 
 function rowToAccess(row) {
   if (!row) return null;
-  // New modules must inherit the role default for existing memberships. This
-  // avoids silently locking every long-lived owner out when a capability such
-  // as Shared Projects is introduced after their membership was created.
-  const storedPermissions = jsonParse(row.module_permissions_json, {});
   return {
     id: row.id, projectId: row.project_id, userId: row.user_id || null, guestId: row.guest_id || null,
     projectRole: row.project_role, cinematicRole: row.cinematic_role || null,
-    modulePermissions: { ...permissionsForRole(row.project_role, row.cinematic_role || null), ...storedPermissions },
+    modulePermissions: jsonParse(row.module_permissions_json, {}),
     financialPermissions: jsonParse(row.financial_permissions_json, ["financial.no_access"]),
     financialDepartmentIds: jsonParse(row.financial_department_ids_json, []),
     departmentIds: jsonParse(row.department_ids_json, []), status: row.status,
@@ -142,6 +209,18 @@ export function listAccessibleProjectIds(userId) {
   return db.prepare(`SELECT id FROM scripts WHERE user_id = ? UNION SELECT project_id AS id FROM project_memberships WHERE user_id = ? AND status = 'active'`).all(userId, userId).map((row) => row.id);
 }
 
+export function canReadUserAvatar(requesterUserId, targetUserId) {
+  if (!requesterUserId || !targetUserId) return false;
+  if (requesterUserId === targetUserId) return true;
+  return Boolean(db.prepare(`SELECT 1 FROM
+    (SELECT id AS project_id FROM scripts WHERE user_id=?
+      UNION SELECT project_id FROM project_memberships WHERE user_id=? AND status='active') requester
+    JOIN
+    (SELECT id AS project_id FROM scripts WHERE user_id=?
+      UNION SELECT project_id FROM project_memberships WHERE user_id=? AND status='active') target
+    USING (project_id) LIMIT 1`).get(requesterUserId, requesterUserId, targetUserId, targetUserId));
+}
+
 export function requireProjectPermission(userId, projectId, module, level = "view") {
   const access = projectAccess(userId, projectId);
   if (!access) throw Object.assign(new Error("Project access was not found."), { status: 404, code: "project_not_found" });
@@ -156,9 +235,9 @@ export function financialAccess(userId, projectId, { edit = false, departmentId 
 
 export function listMembers(projectId, actorUserId) {
   requireProjectPermission(actorUserId, projectId, "members", "view");
-  return db.prepare(`SELECT project_memberships.*, users.name, users.email, users.picture_url, users.username
+  return db.prepare(`SELECT project_memberships.*, users.name, users.email, users.picture_url, users.username, users.avatar_key, users.avatar_crop_json
     FROM project_memberships LEFT JOIN users ON users.id = project_memberships.user_id
-    WHERE project_id = ? AND status != 'removed' ORDER BY CASE project_role WHEN 'owner' THEN 0 WHEN 'co_owner' THEN 1 WHEN 'admin' THEN 2 ELSE 3 END, updated_at DESC`).all(projectId).map((row) => ({ ...rowToAccess(row), name: row.name || "Guest", email: row.email || null, picture: row.picture_url || null, username: row.username || null }));
+    WHERE project_id = ? AND status != 'removed' ORDER BY CASE project_role WHEN 'owner' THEN 0 WHEN 'co_owner' THEN 1 WHEN 'admin' THEN 2 ELSE 3 END, updated_at DESC`).all(projectId).map((row) => ({ ...rowToAccess(row), name: row.name || "Guest", email: row.email || null, username: row.username || null, ...avatarPresentationFromRow(row, { userIdKey: "user_id" }) }));
 }
 
 function rowToInvitation(row) {
@@ -267,9 +346,6 @@ export function acceptInvitation(token, userId) {
     db.prepare("UPDATE project_invitations SET status='accepted', updated_at=? WHERE id=?").run(timestamp, row.id);
   })();
   recordActivity({ projectId: row.project_id, module: "members", actorUserId: userId, entityType: "membership", action: "project.member.joined", summary: `${user.username || user.email || "A collaborator"} joined the project.` });
-  for (const manager of db.prepare("SELECT user_id FROM project_memberships WHERE project_id=? AND status='active' AND project_role IN ('owner','co_owner','admin') AND user_id IS NOT NULL AND user_id<>?").all(row.project_id, userId)) {
-    createNotification({ userId: manager.user_id, projectId: row.project_id, type: "member_added", title: "Member joined the project", message: `${user.username || user.email || "A collaborator"} accepted an invitation.`, actorUserId: userId, deepLink: `/Editor%20v5.dc.html?script=${encodeURIComponent(row.project_id)}`, aggregationKey: `member-added:${row.project_id}` });
-  }
   return projectAccess(userId, row.project_id);
 }
 
@@ -328,16 +404,14 @@ export function updateMembership(projectId, membershipId, actorUserId, input = {
   const permissions = permissionsForRole(role, cinematicRole, validatePermissionInput(input.modulePermissions || (role === current.project_role ? currentPermissions : {})));
   const previousFinancial = jsonParse(current.financial_permissions_json, []);
   const financial = normalizeFinancialPermissions(validateFinancialInput(input.financialPermissions ?? previousFinancial), role);
-  const financialChanged = JSON.stringify(financial) !== JSON.stringify(previousFinancial);
-  if (financialChanged && !(actor.financialPermissions || []).includes("financial.manage_access")) throw Object.assign(new Error("You cannot change financial access."), { status: 403, code: "financial_permission_denied" });
+  if (JSON.stringify(financial) !== JSON.stringify(previousFinancial) && !(actor.financialPermissions || []).includes("financial.manage_access")) throw Object.assign(new Error("You cannot change financial access."), { status: 403, code: "financial_permission_denied" });
   const departments = Array.isArray(input.financialDepartmentIds) ? input.financialDepartmentIds.map(String) : jsonParse(current.financial_department_ids_json, []);
   const departmentIds = Array.isArray(input.departmentIds) ? input.departmentIds.map(String) : jsonParse(current.department_ids_json, []);
   const status = ["active", "suspended", "removed"].includes(input.status) ? input.status : current.status;
   db.prepare(`UPDATE project_memberships SET project_role=?, cinematic_role=?, module_permissions_json=?, financial_permissions_json=?, financial_department_ids_json=?, department_ids_json=?, status=?, version=version+1, updated_at=? WHERE id=?`)
     .run(role, cinematicRole, JSON.stringify(permissions), JSON.stringify(financial), JSON.stringify(departments), JSON.stringify(departmentIds), status, nowIso(), membershipId);
-  const action = status === "removed" ? "project.member.removed" : financialChanged ? "project.financial_access.changed" : "project.permission.changed";
-  recordActivity({ projectId, module: "members", actorUserId, entityType: "membership", entityId: membershipId, action, summary: status === "removed" ? "Project access was revoked." : financialChanged ? "Financial access was changed." : "Project permissions were updated.", containsFinancialData: financialChanged });
-  if (current.user_id) createNotification({ userId: current.user_id, projectId, type: status === "removed" ? "member_removed" : "permission_changed", title: status === "removed" ? "Project access removed" : financialChanged ? "Financial access updated" : "Permissions updated", message: status === "removed" ? "Your project access was removed." : financialChanged ? "Your financial access settings changed." : "Your project permissions changed.", actorUserId, deepLink: `/App.dc.html?project=${encodeURIComponent(projectId)}`, containsFinancialData: financialChanged, aggregationKey: `access:${projectId}:${current.user_id}` });
+  recordActivity({ projectId, module: "members", actorUserId, entityType: "membership", entityId: membershipId, action: status === "removed" ? "project.member.removed" : "project.permission.changed", summary: status === "removed" ? "Project access was revoked." : "Project permissions were updated.", containsFinancialData: JSON.stringify(financial) !== current.financial_permissions_json });
+  if (current.user_id) createNotification({ userId: current.user_id, projectId, type: status === "removed" ? "removed_from_project" : "permission_changed", title: status === "removed" ? "Project access removed" : "Permissions updated", message: status === "removed" ? "Your project access was removed." : "Your project permissions changed.", actorUserId, deepLink: `/App.dc.html?project=${encodeURIComponent(projectId)}` });
   return { ...rowToAccess(db.prepare("SELECT * FROM project_memberships WHERE id=?").get(membershipId)), name: db.prepare("SELECT name FROM users WHERE id=?").get(current.user_id)?.name || null };
 }
 
@@ -359,100 +433,57 @@ export function transferProjectOwnership(projectId, actorUserId, targetMembershi
   return projectAccess(target.user_id, projectId);
 }
 
-function activitySummary(event, count = 1) {
-  const metadata = event.metadata || {};
-  const scene = metadata.sceneLabel ? ` in ${metadata.sceneLabel}` : "";
-  if (event.action === "scene.edited") return `Edited ${metadata.sceneLabel || "a scene"}.`;
-  if (event.action === "breakdown.changed") return `Updated ${count} Breakdown item${count === 1 ? "" : "s"}${scene}.`;
-  if (event.action === "shot.added") return `Added ${count} shot${count === 1 ? "" : "s"}${scene}.`;
-  if (event.action === "shot.modified") return `Modified ${count} shot${count === 1 ? "" : "s"}${scene}.`;
-  if (event.action === "canvas.modified") return `Modified ${count} Canvas object${count === 1 ? "" : "s"}.`;
-  return String(event.summary || "Project updated.").slice(0, 400);
-}
-
-function publicActivity(row) {
-  return { id: row.id, projectId: row.project_id, module: row.module, actor: { id: row.actor_user_id, name: row.name || (row.actor_type === "lumiere" ? "Lumiere" : "FilmScript"), picture: row.picture_url || null, type: row.actor_type }, entityType: row.entity_type, entityId: row.entity_id, action: row.action, summary: row.summary, count: Number(row.aggregation_count) || 1, metadata: jsonParse(row.metadata_json, {}), containsFinancialData: !!row.contains_financial_data, financialDepartmentId: row.financial_department_id || null, before: jsonParse(row.before_json, null), after: jsonParse(row.after_json, null), createdAt: row.created_at, updatedAt: row.updated_at || row.created_at };
-}
-
 export function recordActivity(event) {
-  const timestamp = event.createdAt || nowIso();
-  const module = PROJECT_MODULES.includes(event.module) ? event.module : "project_settings";
-  const aggregationKey = event.aggregationKey ? String(event.aggregationKey).slice(0, 240) : null;
-  const windowStart = new Date(Date.parse(timestamp) - Math.max(1, Number(event.aggregationWindowMinutes) || 10) * 60_000).toISOString();
-  const existing = aggregationKey ? db.prepare(`SELECT * FROM activity_events WHERE project_id=? AND actor_user_id IS ? AND aggregation_key=? AND updated_at>? ORDER BY updated_at DESC LIMIT 1`).get(event.projectId, event.actorUserId || null, aggregationKey, windowStart) : null;
-  let eventId; let count;
-  if (existing) {
-    eventId = existing.id; count = (Number(existing.aggregation_count) || 1) + 1;
-    db.prepare(`UPDATE activity_events SET summary=?,after_json=?,aggregation_count=?,metadata_json=?,updated_at=? WHERE id=?`)
-      .run(activitySummary(event, count), event.after === undefined ? existing.after_json : JSON.stringify(event.after), count, JSON.stringify(event.metadata || jsonParse(existing.metadata_json, {})), timestamp, eventId);
-  } else {
-    eventId = event.id || id("act"); count = 1;
-    db.prepare(`INSERT INTO activity_events (id, project_id, module, actor_user_id, actor_type, entity_type, entity_id, action, summary, before_json, after_json, contains_financial_data, financial_department_id, aggregation_key, aggregation_count, metadata_json, created_at, updated_at)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`)
-      .run(eventId, event.projectId, module, event.actorUserId || null, event.actorType || "user", event.entityType || "project", event.entityId || null, event.action, activitySummary(event, count), event.before === undefined ? null : JSON.stringify(event.before), event.after === undefined ? null : JSON.stringify(event.after), event.containsFinancialData ? 1 : 0, event.financialDepartmentId || null, aggregationKey, count, JSON.stringify(event.metadata || {}), timestamp, timestamp);
-  }
-  const row = db.prepare(`SELECT activity_events.*, users.name, users.picture_url FROM activity_events LEFT JOIN users ON users.id=activity_events.actor_user_id WHERE activity_events.id=?`).get(eventId);
-  const activity = publicActivity(row);
-  emitPlatformEvent({ type: "activity.updated", projectId: event.projectId, payload: activity });
-  return activity;
+  const timestamp = event.createdAt || nowIso(); const eventId = event.id || id("act");
+  db.prepare(`INSERT INTO activity_events (id, project_id, module, actor_user_id, actor_type, entity_type, entity_id, action, summary, before_json, after_json, contains_financial_data, financial_department_id, created_at)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`)
+    .run(eventId, event.projectId, PROJECT_MODULES.includes(event.module) ? event.module : "project_settings", event.actorUserId || null, event.actorType || "user", event.entityType || "project", event.entityId || null, event.action, String(event.summary || "Project updated.").slice(0, 400), event.before === undefined ? null : JSON.stringify(event.before), event.after === undefined ? null : JSON.stringify(event.after), event.containsFinancialData ? 1 : 0, event.financialDepartmentId || null, timestamp);
+  return eventId;
 }
 
 export function listActivity(projectId, actorUserId, module = null, limit = 50, cursor = null) {
-  const access = projectAccess(actorUserId, projectId);
-  if (!access) throw Object.assign(new Error("You do not have permission for this project action."), { status: 403, code: "permission_denied" });
-  const normalizedModule = PROJECT_MODULES.includes(module) ? module : null;
-  if (normalizedModule && !canAccessModule(access, normalizedModule, "view")) throw Object.assign(new Error("You do not have permission for this project action."), { status: 403, code: "permission_denied" });
-  const requestedLimit = Math.min(100, Math.max(1, Number(limit) || 50));
-  const rows = db.prepare(`SELECT activity_events.*, users.name, users.picture_url FROM activity_events LEFT JOIN users ON users.id=activity_events.actor_user_id
-    WHERE activity_events.project_id=? AND (? IS NULL OR activity_events.module=?) AND (? IS NULL OR COALESCE(activity_events.updated_at,activity_events.created_at) < ?) ORDER BY COALESCE(activity_events.updated_at,activity_events.created_at) DESC LIMIT ?`)
-    .all(projectId, normalizedModule, normalizedModule, cursor, cursor, requestedLimit * 4);
-  return rows.filter((row) => canAccessModule(access, row.module, "view") && (!row.contains_financial_data || canViewFinancialData(access, row.financial_department_id || null))).slice(0, requestedLimit).map(publicActivity);
+  const access = requireProjectPermission(actorUserId, projectId, module && PROJECT_MODULES.includes(module) ? module : "script", "view");
+  const financial = canViewFinancialData(access);
+  const rows = db.prepare(`SELECT activity_events.*, users.name, users.picture_url, users.avatar_key, users.avatar_crop_json FROM activity_events LEFT JOIN users ON users.id=activity_events.actor_user_id
+    WHERE activity_events.project_id=? AND (? IS NULL OR activity_events.module=?) AND (? IS NULL OR activity_events.created_at < ?) AND (? = 1 OR activity_events.contains_financial_data = 0) ORDER BY activity_events.created_at DESC LIMIT ?`)
+    .all(projectId, module, module, cursor, cursor, financial ? 1 : 0, Math.min(100, Math.max(1, Number(limit) || 50)));
+  return rows.map((row) => ({ id: row.id, projectId: row.project_id, module: row.module, actor: { id: row.actor_user_id, name: row.name || (row.actor_type === "lumiere" ? "Lumiere" : "FilmScript"), type: row.actor_type, ...avatarPresentationFromRow(row, { userIdKey: "actor_user_id" }) }, entityType: row.entity_type, entityId: row.entity_id, action: row.action, summary: row.summary, before: jsonParse(row.before_json, null), after: jsonParse(row.after_json, null), createdAt: row.created_at }));
 }
 
 export function createNotification(input) {
   if (!input.userId) return null;
   const timestamp = nowIso();
   if (input.aggregationKey) {
-    const existing = db.prepare("SELECT id,aggregation_count FROM notifications WHERE user_id=? AND aggregation_key=? AND read_at IS NULL AND updated_at > ?").get(input.userId, input.aggregationKey, new Date(Date.now() - 10 * 60_000).toISOString());
+    const existing = db.prepare("SELECT id FROM notifications WHERE user_id=? AND aggregation_key=? AND read_at IS NULL AND updated_at > ?").get(input.userId, input.aggregationKey, new Date(Date.now() - 10 * 60_000).toISOString());
     if (existing) {
-      db.prepare("UPDATE notifications SET title=?, message=?, deep_link=?, actor_user_id=?, aggregation_count=?, metadata_json=?, updated_at=? WHERE id=?").run(input.title, input.message, input.deepLink || null, input.actorUserId || null, (Number(existing.aggregation_count) || 1) + 1, JSON.stringify(input.metadata || {}), timestamp, existing.id);
-      emitPlatformEvent({ type: "notification.updated", projectId: input.projectId || null, userId: input.userId, payload: { id: existing.id } });
+      db.prepare("UPDATE notifications SET title=?, message=?, updated_at=? WHERE id=?").run(input.title, input.message, timestamp, existing.id);
       return existing.id;
     }
   }
   const notificationId = id("not");
-  db.prepare(`INSERT INTO notifications (id,user_id,project_id,type,title,message,actor_user_id,deep_link,contains_financial_data,financial_department_id,aggregation_key,aggregation_count,metadata_json,created_at,updated_at)
-    VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`).run(notificationId, input.userId, input.projectId || null, input.type, input.title, input.message, input.actorUserId || null, input.deepLink || null, input.containsFinancialData ? 1 : 0, input.financialDepartmentId || null, input.aggregationKey || null, 1, JSON.stringify(input.metadata || {}), timestamp, timestamp);
-  emitPlatformEvent({ type: "notification.updated", projectId: input.projectId || null, userId: input.userId, payload: { id: notificationId } });
+  db.prepare(`INSERT INTO notifications (id,user_id,project_id,type,title,message,actor_user_id,deep_link,contains_financial_data,financial_department_id,aggregation_key,created_at,updated_at)
+    VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)`).run(notificationId, input.userId, input.projectId || null, input.type, input.title, input.message, input.actorUserId || null, input.deepLink || null, input.containsFinancialData ? 1 : 0, input.financialDepartmentId || null, input.aggregationKey || null, timestamp, timestamp);
   return notificationId;
 }
 
-export function createAICompletionNotification({ userId, projectId, kind, actorUserId = null, deepLink = null, message = null }) {
-  const definitions = {
-    analysis: ["analysis_completed", "Analysis completed", "Your screenplay analysis is ready."],
-    breakdown: ["breakdown_completed", "Breakdown completed", "Your production breakdown is ready."],
-    translation: ["translation_completed", "Translation completed", "Your translated screenplay is ready."],
-    shot_list: ["shot_list_generation_completed", "Shot List completed", "Your generated Shot List is ready."],
-  };
-  const definition = definitions[kind];
-  if (!definition) throw Object.assign(new Error("Choose a supported AI completion notification."), { status: 422, code: "invalid_notification_type" });
-  return createNotification({ userId, projectId, type: definition[0], title: definition[1], message: message || definition[2], actorUserId, deepLink, aggregationKey: `ai:${kind}:${projectId}` });
-}
-
 export function listNotifications(userId, { limit = 40 } = {}) {
-  const rows = db.prepare(`SELECT notifications.*, users.name AS actor_name, users.picture_url AS actor_picture FROM notifications LEFT JOIN users ON users.id=notifications.actor_user_id WHERE notifications.user_id=? ORDER BY notifications.updated_at DESC LIMIT ?`).all(userId, Math.min(100, Math.max(1, Number(limit) || 40)));
-  return rows.map((row) => {
-    const access = row.project_id ? projectAccess(userId, row.project_id) : null;
-    const financialAllowed = !row.contains_financial_data || canViewFinancialData(access, row.financial_department_id || null);
-    return { id: row.id, projectId: row.project_id, type: row.type, title: financialAllowed ? row.title : "Financial access changed", message: financialAllowed ? row.message : "Your financial access settings were updated.", actor: row.actor_user_id ? { id: row.actor_user_id, name: row.actor_name, picture: row.actor_picture } : null, deepLink: financialAllowed ? row.deep_link : (row.project_id ? `/App.dc.html?project=${encodeURIComponent(row.project_id)}` : null), read: !!row.read_at, count: Number(row.aggregation_count) || 1, metadata: financialAllowed ? jsonParse(row.metadata_json, {}) : {}, createdAt: row.created_at, updatedAt: row.updated_at };
-  });
+  const rows = db.prepare(`SELECT notifications.*, users.name AS actor_name, users.picture_url, users.avatar_key, users.avatar_crop_json FROM notifications LEFT JOIN users ON users.id=notifications.actor_user_id WHERE notifications.user_id=? ORDER BY notifications.updated_at DESC LIMIT ?`).all(userId, Math.min(100, Math.max(1, Number(limit) || 40)));
+  return rows.map((row) => ({ id: row.id, projectId: row.project_id, type: row.type, title: row.title, message: row.message, actor: row.actor_user_id ? { id: row.actor_user_id, name: row.actor_name, ...avatarPresentationFromRow(row, { userIdKey: "actor_user_id" }) } : null, deepLink: row.deep_link, read: !!row.read_at, createdAt: row.created_at, updatedAt: row.updated_at }));
 }
 
-export function markNotificationsRead(userId, notificationId = null, read = true) {
+export function markNotificationsRead(userId, notificationId = null) {
   const timestamp = nowIso();
-  if (notificationId) db.prepare("UPDATE notifications SET read_at=?, updated_at=? WHERE id=? AND user_id=?").run(read ? timestamp : null, timestamp, notificationId, userId);
-  else if (read) db.prepare("UPDATE notifications SET read_at=COALESCE(read_at,?), updated_at=? WHERE user_id=? AND read_at IS NULL").run(timestamp, timestamp, userId);
+  if (notificationId) db.prepare("UPDATE notifications SET read_at=COALESCE(read_at,?), updated_at=? WHERE id=? AND user_id=?").run(timestamp, timestamp, notificationId, userId);
+  else db.prepare("UPDATE notifications SET read_at=COALESCE(read_at,?), updated_at=? WHERE user_id=? AND read_at IS NULL").run(timestamp, timestamp, userId);
   return db.prepare("SELECT count(*) AS count FROM notifications WHERE user_id=? AND read_at IS NULL").get(userId).count;
+}
+
+export function deleteNotifications(userId, notificationId = null) {
+  const result = notificationId
+    ? db.prepare("DELETE FROM notifications WHERE id=? AND user_id=?").run(notificationId, userId)
+    : db.prepare("DELETE FROM notifications WHERE user_id=?").run(userId);
+  const unreadCount = db.prepare("SELECT count(*) AS count FROM notifications WHERE user_id=? AND read_at IS NULL").get(userId).count;
+  return { deletedCount: result.changes, unreadCount };
 }
 
 function passwordRecord(password) {
@@ -464,190 +495,53 @@ function passwordRecord(password) {
 export function verifySharedPassword(shared, password) {
   if (!shared.password_hash || !shared.password_salt) return false;
   const candidate = crypto.scryptSync(String(password || ""), shared.password_salt, 32);
-  const expected = Buffer.from(shared.password_hash, "hex");
-  return candidate.length === expected.length && crypto.timingSafeEqual(candidate, expected);
+  return crypto.timingSafeEqual(candidate, Buffer.from(shared.password_hash, "hex"));
 }
 
-function normalizeSharedEmails(value) {
-  const emails = [...new Set((Array.isArray(value) ? value : String(value || "").split(","))
-    .map(normalizedEmail).filter(Boolean))];
-  if (emails.some((email) => !SHARED_EMAIL.test(email))) throw Object.assign(new Error("Use valid email addresses for restricted access."), { status: 422, code: "invalid_shared_emails" });
-  return emails.slice(0, 100);
+export function createSharedProject(projectId, actorUserId, input = {}) {
+  requireProjectPermission(actorUserId, projectId, "shared_projects", "manage");
+  const accessMode = ["public", "password", "email_restricted"].includes(input.accessMode) ? input.accessMode : "public";
+  if (accessMode === "password" && String(input.password || "").length < 8) throw Object.assign(new Error("Use a password with at least eight characters."), { status: 422 });
+  const sections = (Array.isArray(input.sections) ? input.sections : []).filter((section) => PROJECT_MODULES.includes(section?.module) && section.canView).map((section) => ({ module: section.module, canView: true, canExport: section.canExport === true }));
+  if (!sections.length) throw Object.assign(new Error("Select at least one section to share."), { status: 422 });
+  const record = accessMode === "password" ? passwordRecord(input.password) : {};
+  const sharedId = id("shr"); const slug = crypto.randomBytes(18).toString("base64url"); const timestamp = nowIso();
+  db.prepare(`INSERT INTO shared_projects (id,project_id,created_by_user_id,slug,status,access_mode,password_hash,password_salt,allowed_emails_json,sections_json,cover_json,created_at,updated_at)
+    VALUES (?,?,?,?,'active',?,?,?,?,?,?,?,?)`).run(sharedId, projectId, actorUserId, slug, accessMode, record.hash || null, record.salt || null, JSON.stringify((input.allowedEmails || []).map((email) => String(email).trim().toLowerCase()).filter(Boolean)), JSON.stringify(sections), JSON.stringify(input.cover || {}), timestamp, timestamp);
+  recordActivity({ projectId, module: "shared_projects", actorUserId, entityType: "shared_project", entityId: sharedId, action: "shared_project.created", summary: "Shared Project settings were created." });
+  return { id: sharedId, projectId, slug, status: "active", accessMode, allowedEmails: input.allowedEmails || [], sections, cover: input.cover || {}, createdAt: timestamp, updatedAt: timestamp };
 }
 
-function cleanSharedUrl(value) {
-  const raw = String(value || "").trim().slice(0, 2000);
-  if (!raw) return "";
-  try {
-    const url = new URL(raw);
-    return url.protocol === "https:" ? url.toString() : "";
-  } catch { return ""; }
+export function getSharedProject(slug) {
+  const row = db.prepare("SELECT shared_projects.*, scripts.title AS project_title FROM shared_projects JOIN scripts ON scripts.id=shared_projects.project_id WHERE slug=?").get(slug);
+  if (!row) return null;
+  return { id: row.id, projectId: row.project_id, createdByUserId: row.created_by_user_id, slug: row.slug, status: row.status, accessMode: row.access_mode, password_hash: row.password_hash, password_salt: row.password_salt, allowedEmails: jsonParse(row.allowed_emails_json, []), sections: jsonParse(row.sections_json, []), cover: jsonParse(row.cover_json, {}), projectTitle: row.project_title, createdAt: row.created_at, updatedAt: row.updated_at, revokedAt: row.revoked_at };
 }
 
-function normalizeSharedCover(value) {
-  const input = value && typeof value === "object" && !Array.isArray(value) ? value : {};
-  const assetId = (entry) => /^cas_[a-f0-9]+$/.test(String(entry || "")) ? String(entry) : "";
-  return {
-    logoUrl: cleanSharedUrl(input.logoUrl),
-    coverUrl: cleanSharedUrl(input.coverUrl),
-    logoAssetId: assetId(input.logoAssetId),
-    coverAssetId: assetId(input.coverAssetId),
-    subtitle: String(input.subtitle || "").replace(/[\u0000-\u001f]/g, "").trim().slice(0, 240),
-  };
-}
-
-function canShareExport(access, module) {
-  if (!canAccessModule(access, "exports", "view")) return false;
-  return module !== "budget" || (access.financialPermissions || []).includes("financial.export");
-}
-
-function normalizeSharedSections(value, access) {
-  const seen = new Set();
-  const sections = [];
-  for (const candidate of Array.isArray(value) ? value : []) {
-    const module = String(candidate?.module || "");
-    if (!candidate?.canView || !SHARED_PROJECT_SECTION_MODULES.includes(module) || seen.has(module)) continue;
-    if (!canAccessModule(access, module, "view")) throw Object.assign(new Error(`You cannot share the ${module.replaceAll("_", " ")} section.`), { status: 403, code: "share_source_permission_denied" });
-    if (module === "budget" && !canViewFinancialData(access)) throw Object.assign(new Error("You need financial access before sharing Budget."), { status: 403, code: "financial_permission_denied" });
-    const fileIds = module === "files"
-      ? [...new Set((Array.isArray(candidate.fileIds) ? candidate.fileIds : []).map(String).filter((entry) => /^cas_[a-f0-9]+$/.test(entry)))].slice(0, 100)
-      : [];
-    if (module === "files" && !fileIds.length) throw Object.assign(new Error("Select at least one file to share."), { status: 422, code: "shared_files_required" });
-    sections.push({ module, canView: true, canExport: candidate.canExport === true && canShareExport(access, module), ...(fileIds.length ? { fileIds } : {}) });
-    seen.add(module);
-  }
-  if (!sections.length) throw Object.assign(new Error("Select at least one section to share."), { status: 422, code: "shared_sections_required" });
-  return sections;
-}
-
-function safeSharedProject(shared) {
-  if (!shared) return null;
+export function authorizeSharedProject(slug, { email = null, password = null } = {}) {
+  const shared = getSharedProject(slug);
+  if (!shared || shared.status !== "active") throw Object.assign(new Error("This Shared Project link has been revoked."), { status: 410, code: "shared_project_revoked" });
+  if (shared.accessMode === "password" && !verifySharedPassword(shared, password)) throw Object.assign(new Error("That password is not correct."), { status: 401, code: "shared_password_required" });
+  if (shared.accessMode === "email_restricted" && (!email || !shared.allowedEmails.includes(String(email).toLowerCase()))) throw Object.assign(new Error("Sign in with an invited email address."), { status: 403, code: "shared_email_required" });
   const { password_hash, password_salt, ...safe } = shared;
   return safe;
 }
 
-function sharedProjectRow(row) {
-  if (!row) return null;
-  return {
-    id: row.id, projectId: row.project_id, createdByUserId: row.created_by_user_id, slug: row.slug,
-    status: row.status, accessMode: row.access_mode, password_hash: row.password_hash,
-    password_salt: row.password_salt, allowedEmails: jsonParse(row.allowed_emails_json, []),
-    sections: jsonParse(row.sections_json, []), cover: jsonParse(row.cover_json, {}),
-    projectTitle: row.project_title, createdAt: row.created_at, updatedAt: row.updated_at, revokedAt: row.revoked_at,
-  };
-}
-
-function sharedProjectById(sharedId) {
-  return sharedProjectRow(db.prepare("SELECT shared_projects.*, scripts.title AS project_title FROM shared_projects JOIN scripts ON scripts.id=shared_projects.project_id WHERE shared_projects.id=?").get(sharedId));
-}
-
-export function getSharedProject(slug) {
-  return sharedProjectRow(db.prepare("SELECT shared_projects.*, scripts.title AS project_title FROM shared_projects JOIN scripts ON scripts.id=shared_projects.project_id WHERE slug=?").get(slug));
-}
-
-function sharedAccessMode(input, fallback = "public") {
-  const mode = input === undefined ? fallback : String(input || "");
-  if (!SHARED_ACCESS_MODES.has(mode)) throw Object.assign(new Error("Choose a valid Shared Project access mode."), { status: 422, code: "invalid_shared_access_mode" });
-  return mode;
-}
-
-function sharedAccessValues(input, existing = null) {
-  const accessMode = sharedAccessMode(input.accessMode, existing?.accessMode || "public");
-  const providedPassword = Object.prototype.hasOwnProperty.call(input, "password");
-  const password = providedPassword ? String(input.password || "") : null;
-  if (accessMode === "password" && ((existing?.accessMode !== "password" && !providedPassword) || (providedPassword && (password.length < 8 || password.length > 256)))) {
-    throw Object.assign(new Error("Use a password with 8 to 256 characters."), { status: 422, code: "invalid_shared_password" });
-  }
-  const allowedEmails = accessMode === "email_restricted"
-    ? normalizeSharedEmails(Object.prototype.hasOwnProperty.call(input, "allowedEmails") ? input.allowedEmails : existing?.allowedEmails || [])
-    : [];
-  if (accessMode === "email_restricted" && !allowedEmails.length) throw Object.assign(new Error("Add at least one invited email address."), { status: 422, code: "shared_emails_required" });
-  return { accessMode, password: accessMode === "password" ? password : null, providedPassword, allowedEmails };
-}
-
-export function createSharedProject(projectId, actorUserId, input = {}) {
-  const access = requireProjectPermission(actorUserId, projectId, "shared_projects", "manage");
-  const accessValues = sharedAccessValues(input);
-  const sections = normalizeSharedSections(input.sections, access);
-  const record = accessValues.accessMode === "password" ? passwordRecord(accessValues.password) : {};
-  const sharedId = id("shr"); const slug = crypto.randomBytes(24).toString("base64url"); const timestamp = nowIso();
-  const cover = normalizeSharedCover(input.cover);
-  db.prepare(`INSERT INTO shared_projects (id,project_id,created_by_user_id,slug,status,access_mode,password_hash,password_salt,allowed_emails_json,sections_json,cover_json,created_at,updated_at)
-    VALUES (?,?,?,?,'active',?,?,?,?,?,?,?,?)`).run(sharedId, projectId, actorUserId, slug, accessValues.accessMode, record.hash || null, record.salt || null, JSON.stringify(accessValues.allowedEmails), JSON.stringify(sections), JSON.stringify(cover), timestamp, timestamp);
-  recordActivity({ projectId, module: "shared_projects", actorUserId, entityType: "shared_project", entityId: sharedId, action: "shared_project.created", summary: "Shared Project settings were created." });
-  return safeSharedProject(sharedProjectById(sharedId));
-}
-
-export function listSharedProjects(projectId, actorUserId) {
-  requireProjectPermission(actorUserId, projectId, "shared_projects", "manage");
-  return db.prepare("SELECT shared_projects.*, scripts.title AS project_title FROM shared_projects JOIN scripts ON scripts.id=shared_projects.project_id WHERE shared_projects.project_id=? ORDER BY shared_projects.updated_at DESC").all(projectId).map(sharedProjectRow).map(safeSharedProject);
-}
-
-export function updateSharedProject(sharedId, actorUserId, input = {}) {
-  const current = sharedProjectById(sharedId);
-  if (!current) throw Object.assign(new Error("Shared Project was not found."), { status: 404, code: "shared_project_not_found" });
-  const access = requireProjectPermission(actorUserId, current.projectId, "shared_projects", "manage");
-  const accessValues = sharedAccessValues(input, current);
-  const sections = Object.prototype.hasOwnProperty.call(input, "sections") ? normalizeSharedSections(input.sections, access) : normalizeSharedSections(current.sections, access);
-  const cover = Object.prototype.hasOwnProperty.call(input, "cover") ? normalizeSharedCover(input.cover) : current.cover;
-  const record = accessValues.accessMode === "password" && accessValues.providedPassword ? passwordRecord(accessValues.password) : null;
-  const timestamp = nowIso();
-  db.prepare(`UPDATE shared_projects SET access_mode=?,password_hash=?,password_salt=?,allowed_emails_json=?,sections_json=?,cover_json=?,updated_at=? WHERE id=?`).run(
-    accessValues.accessMode,
-    accessValues.accessMode === "password" ? (record?.hash || current.password_hash) : null,
-    accessValues.accessMode === "password" ? (record?.salt || current.password_salt) : null,
-    JSON.stringify(accessValues.allowedEmails), JSON.stringify(sections), JSON.stringify(cover), timestamp, sharedId,
-  );
-  recordActivity({ projectId: current.projectId, module: "shared_projects", actorUserId, entityType: "shared_project", entityId: sharedId, action: "shared_project.updated", summary: "Shared Project settings were updated." });
-  return safeSharedProject(sharedProjectById(sharedId));
-}
-
-export function authorizeSharedProject(slug, { email = null, emailVerified = false, password = null, passwordAuthorized = false } = {}) {
-  const shared = getSharedProject(slug);
-  if (!shared || shared.status !== "active") throw Object.assign(new Error("This Shared Project link has been revoked."), { status: 410, code: "shared_project_revoked" });
-  if (shared.accessMode === "password" && !passwordAuthorized && !verifySharedPassword(shared, password)) throw Object.assign(new Error("Enter the correct password to continue."), { status: 401, code: "shared_password_required" });
-  if (shared.accessMode === "email_restricted") {
-    if (!email) throw Object.assign(new Error("Sign in with an invited email address."), { status: 401, code: "shared_email_sign_in_required" });
-    if (!emailVerified) throw Object.assign(new Error("Verify your email address before opening this Shared Project."), { status: 403, code: "shared_email_unverified" });
-    if (!shared.allowedEmails.includes(normalizedEmail(email))) throw Object.assign(new Error("This signed-in email has not been invited to this Shared Project."), { status: 403, code: "shared_email_not_invited" });
-  }
-  return safeSharedProject(shared);
-}
-
-export function requestSharedProjectAccess(slug, input = {}) {
-  const shared = getSharedProject(slug);
-  if (!shared || shared.status !== "active") throw Object.assign(new Error("This Shared Project link has been revoked."), { status: 410, code: "shared_project_revoked" });
-  const email = normalizedEmail(input.email);
-  if (!SHARED_EMAIL.test(email)) throw Object.assign(new Error("Enter a valid email address so the project owner can respond."), { status: 422, code: "invalid_request_access_email" });
-  const note = String(input.note || "").replace(/[\u0000-\u001f]/g, "").trim().slice(0, 800);
-  createNotification({
-    userId: shared.createdByUserId, projectId: shared.projectId, type: "shared_project_access_request",
-    title: "Shared Project access request", message: `${email}${note ? `: ${note}` : " requested access."}`,
-    deepLink: `/Editor%20v5.dc.html?script=${encodeURIComponent(shared.projectId)}&view=editor`,
-    aggregationKey: `shared-access-request:${shared.id}:${email}`,
-  });
-  return { accepted: true };
-}
-
 export function revokeSharedProject(sharedId, actorUserId) {
-  const row = sharedProjectById(sharedId);
-  if (!row) throw Object.assign(new Error("Shared Project was not found."), { status: 404, code: "shared_project_not_found" });
-  requireProjectPermission(actorUserId, row.projectId, "shared_projects", "manage");
+  const row = db.prepare("SELECT * FROM shared_projects WHERE id=?").get(sharedId);
+  if (!row) throw Object.assign(new Error("Shared Project was not found."), { status: 404 });
+  requireProjectPermission(actorUserId, row.project_id, "shared_projects", "manage");
   const timestamp = nowIso(); db.prepare("UPDATE shared_projects SET status='revoked', revoked_at=?, updated_at=? WHERE id=?").run(timestamp, timestamp, sharedId);
-  recordActivity({ projectId: row.projectId, module: "shared_projects", actorUserId, entityType: "shared_project", entityId: sharedId, action: "shared_project.revoked", summary: "Shared Project access was revoked." });
+  recordActivity({ projectId: row.project_id, module: "shared_projects", actorUserId, entityType: "shared_project", entityId: sharedId, action: "shared_project.revoked", summary: "Shared Project access was revoked." });
 }
 
 export function createAIJob(input) {
   const existing = db.prepare("SELECT * FROM ai_jobs WHERE idempotency_key=?").get(input.idempotencyKey);
-  if (existing) return { ...rowToJob(existing), created: false };
-  if (!isAIJobType(input.type)) throw Object.assign(new Error("Choose a supported AI job type."), { status: 422, code: "invalid_ai_job_type" });
-  if (!String(input.projectId || "").trim() || !String(input.requestedByUserId || "").trim() || !String(input.sourceScriptId || "").trim() || !String(input.idempotencyKey || "").trim()) {
-    throw Object.assign(new Error("AI jobs require a project, requester, source and idempotency key."), { status: 422, code: "invalid_ai_job" });
-  }
+  if (existing) return rowToJob(existing);
   const jobId = id("job"); const timestamp = nowIso();
   db.prepare(`INSERT INTO ai_jobs (id,project_id,requested_by_user_id,type,status,progress,stage,source_script_id,source_script_version_id,source_content_hash,internal_primary_model,reserved_credits,idempotency_key,input_json,output_schema_version,created_at,updated_at)
     VALUES (?,?,?,?,'queued',0,'queued',?,?,?,?,?,?,?, ?,?,?)`).run(jobId, input.projectId, input.requestedByUserId, input.type, input.sourceScriptId, input.sourceScriptVersionId, input.sourceContentHash, input.internalPrimaryModel, Number(input.reservedCredits)||0, input.idempotencyKey, JSON.stringify(input.input || {}), Number(input.outputSchemaVersion)||1, timestamp, timestamp);
-  return { ...getAIJobInternal(jobId), created: true };
+  return getAIJob(jobId, input.requestedByUserId, true);
 }
 
 function rowToJob(row, internal = false) {
@@ -661,88 +555,17 @@ export function getAIJob(jobId, userId, internal = false) {
   const row = db.prepare("SELECT * FROM ai_jobs WHERE id=?").get(jobId);
   if (!row) return null;
   const access = projectAccess(userId, row.project_id);
-  const module = moduleForAIJob(row.type);
-  if (!access || !module || !canAccessModule(access, module, "view")) return null;
+  if (!access) return null;
   return rowToJob(row, internal);
-}
-
-export function getAIJobInternal(jobId) {
-  return rowToJob(db.prepare("SELECT * FROM ai_jobs WHERE id=?").get(jobId), true);
-}
-
-export function findAIJobByIdempotency(idempotencyKey) {
-  return rowToJob(db.prepare("SELECT * FROM ai_jobs WHERE idempotency_key=?").get(idempotencyKey), true);
-}
-
-export function listRecoverableAIJobs(limit = 40) {
-  return db.prepare(`SELECT * FROM ai_jobs
-    WHERE status IN ('queued','processing','saving')
-    ORDER BY updated_at ASC LIMIT ?`).all(Math.min(200, Math.max(1, Number(limit) || 40))).map((row) => rowToJob(row, true));
-}
-
-export function activeAIJobForProject(projectId, types = []) {
-  const allowed = Array.isArray(types) ? types.filter(isAIJobType) : [];
-  if (!projectId || !allowed.length) return null;
-  const placeholders = allowed.map(() => "?").join(",");
-  const row = db.prepare(`SELECT * FROM ai_jobs WHERE project_id=? AND type IN (${placeholders}) AND status IN ('queued','processing','saving','interrupted') ORDER BY updated_at DESC LIMIT 1`).get(projectId, ...allowed);
-  return rowToJob(row, true);
-}
-
-export function retryAIJob(jobId, userId) {
-  const current = db.prepare("SELECT * FROM ai_jobs WHERE id=?").get(jobId);
-  if (!current) throw Object.assign(new Error("AI job was not found."), { status: 404, code: "job_not_found" });
-  const module = moduleForAIJob(current.type);
-  const access = projectAccess(userId, current.project_id);
-  if (!access || !module || !canAccessModule(access, module, "edit")) throw Object.assign(new Error("You do not have permission to retry this AI job."), { status: 403, code: "permission_denied" });
-  if (!["failed", "cancelled", "interrupted"].includes(current.status)) throw Object.assign(new Error("Only a finished AI job can be retried."), { status: 409, code: "ai_job_not_retryable" });
-  const attempts = db.prepare("SELECT COUNT(*) AS count FROM ai_jobs WHERE idempotency_key LIKE ?").get(`${current.idempotency_key}:retry:%`);
-  return createAIJob({
-    projectId: current.project_id,
-    requestedByUserId: userId,
-    type: current.type,
-    sourceScriptId: current.source_script_id,
-    sourceScriptVersionId: current.source_script_version_id,
-    sourceContentHash: current.source_content_hash,
-    internalPrimaryModel: current.internal_primary_model,
-    reservedCredits: current.reserved_credits,
-    idempotencyKey: `${current.idempotency_key}:retry:${Number(attempts?.count || 0) + 1}`,
-    input: jsonParse(current.input_json, {}),
-    outputSchemaVersion: current.output_schema_version,
-  });
-}
-
-export function recordAIJobAttempt(input = {}) {
-  if (!input.jobId) return null;
-  const attemptId = id("aia");
-  db.prepare(`INSERT INTO ai_job_attempts (id,job_id,attempt_number,model_id,is_fallback,outcome,error_code,created_at)
-    VALUES (?,?,?,?,?,?,?,?)`).run(
-    attemptId,
-    input.jobId,
-    Math.max(1, Number(input.attemptNumber) || 1),
-    String(input.modelId || "").slice(0, 160),
-    input.isFallback ? 1 : 0,
-    String(input.outcome || "started").slice(0, 40),
-    input.errorCode ? String(input.errorCode).slice(0, 120) : null,
-    nowIso(),
-  );
-  return attemptId;
 }
 
 export function updateAIJob(jobId, patch = {}) {
   const current = db.prepare("SELECT * FROM ai_jobs WHERE id=?").get(jobId);
   if (!current) return null;
-  const statuses = new Set(["queued", "processing", "saving", "completed", "failed", "cancelled", "interrupted"]);
-  const status = patch.status && statuses.has(patch.status) ? patch.status : current.status; const timestamp = nowIso();
+  const status = patch.status || current.status; const timestamp = nowIso();
   db.prepare(`UPDATE ai_jobs SET status=?,progress=?,stage=?,internal_completed_model=?,used_fallback=?,settled_credits=?,output_json=?,error_code=?,started_at=?,completed_at=?,updated_at=? WHERE id=?`)
     .run(status, Math.max(0, Math.min(100, Number(patch.progress ?? current.progress))), patch.stage || current.stage, patch.internalCompletedModel ?? current.internal_completed_model, patch.usedFallback === undefined ? current.used_fallback : patch.usedFallback ? 1 : 0, Number(patch.settledCredits ?? current.settled_credits), patch.output === undefined ? current.output_json : JSON.stringify(patch.output), patch.errorCode ?? current.error_code, patch.startedAt ?? current.started_at ?? (status === "processing" ? timestamp : null), patch.completedAt ?? current.completed_at ?? (["completed","failed","cancelled"].includes(status) ? timestamp : null), timestamp, jobId);
   return rowToJob(db.prepare("SELECT * FROM ai_jobs WHERE id=?").get(jobId), true);
-}
-
-export function updateAIJobInput(jobId, input = {}) {
-  const current = db.prepare("SELECT * FROM ai_jobs WHERE id=?").get(jobId);
-  if (!current) return null;
-  db.prepare("UPDATE ai_jobs SET input_json=?, updated_at=? WHERE id=?").run(JSON.stringify(input || {}), nowIso(), jobId);
-  return getAIJobInternal(jobId);
 }
 
 export function saveCollaborationOperation(input) {
@@ -803,69 +626,73 @@ export function saveLocationPlan(projectId, userId, plan, expectedVersion = null
 }
 
 export function listComments(projectId, userId, module = null, entityId = null) {
-  const normalizedModule = module && PROJECT_MODULES.includes(module) ? module : null;
-  const access = normalizedModule ? requireProjectPermission(userId, projectId, normalizedModule, "view") : projectAccess(userId, projectId);
-  if (!access) throw Object.assign(new Error("You do not have permission for this project action."), { status: 403, code: "permission_denied" });
-  if (normalizedModule === "budget" && !canViewFinancialData(access)) throw Object.assign(new Error("You do not have permission to view financial comments."), { status: 403, code: "financial_permission_denied" });
-  const rows = db.prepare(`SELECT project_comments.*, users.name, users.picture_url FROM project_comments LEFT JOIN users ON users.id=project_comments.author_user_id
+  requireProjectPermission(userId, projectId, module && PROJECT_MODULES.includes(module) ? module : "script", "view");
+  return db.prepare(`SELECT project_comments.*, users.name, users.picture_url, users.avatar_key, users.avatar_crop_json FROM project_comments LEFT JOIN users ON users.id=project_comments.author_user_id
     WHERE project_id=? AND (? IS NULL OR module=?) AND (? IS NULL OR entity_id=?) ORDER BY created_at ASC`)
-    .all(projectId, normalizedModule, normalizedModule, entityId, entityId);
-  return rows.filter((row) => canAccessModule(access, row.module, "view") && (row.module !== "budget" || canViewFinancialData(access))).map((row) => ({ id: row.id, projectId: row.project_id, module: row.module, entityType: row.entity_type, entityId: row.entity_id, parentCommentId: row.parent_comment_id || null, coordinate: jsonParse(row.coordinate_json, null), body: row.body, author: { id: row.author_user_id, name: row.name || "Guest", picture: row.picture_url || null }, resolved: !!row.resolved_at, resolvedAt: row.resolved_at, resolvedByUserId: row.resolved_by_user_id || null, reopenedAt: row.reopened_at || null, createdAt: row.created_at, updatedAt: row.updated_at }));
+    .all(projectId, module, module, entityId, entityId).map((row) => ({ id: row.id, projectId: row.project_id, module: row.module, entityType: row.entity_type, entityId: row.entity_id, coordinate: jsonParse(row.coordinate_json, null), body: row.body, author: { id: row.author_user_id, name: row.name || "Guest", ...avatarPresentationFromRow(row, { userIdKey: "author_user_id" }) }, resolved: !!row.resolved_at, resolvedAt: row.resolved_at, createdAt: row.created_at, updatedAt: row.updated_at }));
 }
 
 export function createComment(projectId, userId, input = {}) {
   const module = PROJECT_MODULES.includes(input.module) ? input.module : "script";
-  const access = requireProjectPermission(userId, projectId, module, "comment");
-  if (module === "budget" && !canViewFinancialData(access)) throw Object.assign(new Error("You do not have permission to comment on financial information."), { status: 403, code: "financial_permission_denied" });
+  requireProjectPermission(userId, projectId, module, "comment");
   const body = String(input.body || "").replace(/[\u0000-\u0008\u000b\u000c\u000e-\u001f]/g, "").trim().slice(0, 5000);
   if (!body) throw Object.assign(new Error("Write a comment before posting."), { status: 422 });
-  const parent = input.parentCommentId ? db.prepare("SELECT * FROM project_comments WHERE id=? AND project_id=?").get(input.parentCommentId, projectId) : null;
-  if (input.parentCommentId && (!parent || parent.module !== module || String(parent.entity_id || "") !== String(input.entityId || ""))) throw Object.assign(new Error("The reply target is not available."), { status: 422, code: "invalid_reply_target" });
   const commentId = id("cmt"); const timestamp = nowIso();
-  db.prepare(`INSERT INTO project_comments (id,project_id,module,entity_type,entity_id,coordinate_json,body,author_user_id,parent_comment_id,created_at,updated_at) VALUES (?,?,?,?,?,?,?,?,?,?,?)`)
-    .run(commentId, projectId, module, String(input.entityType || "project").slice(0,80), input.entityId || null, input.coordinate ? JSON.stringify(input.coordinate) : null, body, userId, parent?.id || null, timestamp, timestamp);
-  const action = parent ? "comment.replied" : "comment.created";
-  recordActivity({ projectId, module, actorUserId: userId, entityType: "comment", entityId: commentId, action, summary: parent ? "A reply was added." : "A comment was added.", aggregationKey: `comment:${parent?.id || commentId}` });
-  const view = module === "script" ? "editor" : module === "shot_list" ? "shotlist" : module;
-  const deepLink = `/Editor%20v5.dc.html?script=${encodeURIComponent(projectId)}&view=${encodeURIComponent(view)}${input.entityId ? `&entity=${encodeURIComponent(input.entityId)}` : ""}&comment=${encodeURIComponent(commentId)}`;
-  const notificationUserIds = new Set();
-  if (parent?.author_user_id && parent.author_user_id !== userId) {
-    createNotification({ userId: parent.author_user_id, projectId, type: "comment_reply", title: "New reply to your comment", message: body.slice(0,220), actorUserId: userId, deepLink, aggregationKey: `reply:${parent.id}:${parent.author_user_id}` });
-    notificationUserIds.add(parent.author_user_id);
-  }
-  const mentioned = [...new Set([...body.matchAll(/@([a-z0-9_]{2,30})/gi)].map((match) => match[1].toLowerCase()))];
+  db.prepare(`INSERT INTO project_comments (id,project_id,module,entity_type,entity_id,coordinate_json,body,author_user_id,created_at,updated_at) VALUES (?,?,?,?,?,?,?,?,?,?)`)
+    .run(commentId, projectId, module, String(input.entityType || "project").slice(0,80), input.entityId || null, input.coordinate ? JSON.stringify(input.coordinate) : null, body, userId, timestamp, timestamp);
+  recordActivity({ projectId, module, actorUserId: userId, entityType: "comment", entityId: commentId, action: "comment.created", summary: "A comment was added." });
+  const mentioned = [...body.matchAll(/@([a-z0-9_]{2,30})/gi)].map((match) => match[1].toLowerCase());
   if (mentioned.length) {
     const placeholders = mentioned.map(() => "?").join(",");
     for (const user of db.prepare(`SELECT id FROM users WHERE lower(username) IN (${placeholders})`).all(...mentioned)) {
-      if (user.id !== userId && projectAccess(user.id, projectId)) {
-        db.prepare("INSERT OR IGNORE INTO comment_mentions (comment_id,user_id,created_at) VALUES (?,?,?)").run(commentId, user.id, timestamp);
-        createNotification({ userId: user.id, projectId, type: "mention", title: "You were mentioned", message: body.slice(0,220), actorUserId: userId, deepLink, aggregationKey: `mention:${commentId}:${user.id}` });
-        notificationUserIds.add(user.id);
-      }
+      if (user.id !== userId && projectAccess(user.id, projectId)) createNotification({ userId: user.id, projectId, type: "mention", title: "You were mentioned", message: body.slice(0,220), actorUserId: userId, deepLink: `/Editor%20v5.dc.html?script=${encodeURIComponent(projectId)}&view=${encodeURIComponent(module)}` });
     }
   }
-  const comment = listComments(projectId, userId, module, input.entityId || null).find((entry) => entry.id === commentId);
-  Object.defineProperty(comment, "notificationUserIds", { value: [...notificationUserIds], enumerable: false });
-  return comment;
+  return listComments(projectId, userId, module, input.entityId || null).find((comment) => comment.id === commentId);
 }
 
-export function resolveComment(projectId, userId, commentId, resolved = true) {
+export function listProjectMessages(projectId, userId, peerUserId) {
+  requireProjectPermission(userId, projectId, "script", "view");
+  const peer = String(peerUserId || "").trim();
+  if (!peer || !projectAccess(peer, projectId)) throw Object.assign(new Error("That collaborator is not part of this project."), { status: 404, code: "collaborator_not_found" });
+  db.prepare("UPDATE project_messages SET read_at=? WHERE project_id=? AND sender_user_id=? AND recipient_user_id=? AND read_at IS NULL").run(nowIso(), projectId, peer, userId);
+  return db.prepare(`SELECT m.*, s.name AS sender_name, r.name AS recipient_name FROM project_messages m LEFT JOIN users s ON s.id=m.sender_user_id LEFT JOIN users r ON r.id=m.recipient_user_id WHERE m.project_id=? AND ((m.sender_user_id=? AND m.recipient_user_id=?) OR (m.sender_user_id=? AND m.recipient_user_id=?)) ORDER BY m.created_at ASC LIMIT 200`).all(projectId, userId, peer, peer, userId).map((row) => ({ id: row.id, projectId: row.project_id, senderId: row.sender_user_id, recipientId: row.recipient_user_id, senderName: row.sender_name || "Collaborator", recipientName: row.recipient_name || "Collaborator", body: row.body, createdAt: row.created_at, readAt: row.read_at }));
+}
+
+export function createProjectMessage(projectId, userId, input = {}) {
+  requireProjectPermission(userId, projectId, "script", "view");
+  const recipientId = String(input.recipientId || "").trim();
+  if (!recipientId || recipientId === userId || !projectAccess(recipientId, projectId)) throw Object.assign(new Error("Choose a collaborator in this project."), { status: 422, code: "invalid_recipient" });
+  const body = String(input.body || "").replace(/[\u0000-\u001f]/g, "").trim().slice(0, 2000);
+  if (!body) throw Object.assign(new Error("Write a message before sending."), { status: 422, code: "empty_message" });
+  const messageId = id("msg"); const timestamp = nowIso();
+  db.prepare("INSERT INTO project_messages (id,project_id,sender_user_id,recipient_user_id,body,created_at) VALUES (?,?,?,?,?,?)").run(messageId, projectId, userId, recipientId, body, timestamp);
+  createNotification({ userId: recipientId, projectId, type: "message", title: "New collaborator message", message: body.slice(0, 220), actorUserId: userId, deepLink: `/Editor%20v5.dc.html?script=${encodeURIComponent(projectId)}&view=script&chat=${encodeURIComponent(userId)}` });
+  return listProjectMessages(projectId, userId, recipientId).find((message) => message.id === messageId);
+}
+
+export function resolveComment(projectId, userId, commentId) {
   const row = db.prepare("SELECT * FROM project_comments WHERE id=? AND project_id=?").get(commentId, projectId);
   if (!row) throw Object.assign(new Error("Comment was not found."), { status: 404 });
   const access = requireProjectPermission(userId, projectId, row.module, "comment");
-  if (row.module === "budget" && !canViewFinancialData(access)) throw Object.assign(new Error("You do not have permission to update financial comments."), { status: 403, code: "financial_permission_denied" });
   if (row.author_user_id !== userId && !canAccessModule(access, row.module, "edit")) throw Object.assign(new Error("You do not have permission to resolve this comment."), { status: 403 });
-  const timestamp = nowIso();
-  if (resolved) db.prepare("UPDATE project_comments SET resolved_at=?,resolved_by_user_id=?,updated_at=? WHERE id=?").run(timestamp, userId, timestamp, commentId);
-  else db.prepare("UPDATE project_comments SET resolved_at=NULL,resolved_by_user_id=NULL,reopened_at=?,updated_at=? WHERE id=?").run(timestamp, timestamp, commentId);
-  recordActivity({ projectId, module: row.module, actorUserId: userId, entityType: "comment", entityId: commentId, action: resolved ? "comment.resolved" : "comment.reopened", summary: resolved ? "A comment was resolved." : "A comment was reopened." });
-  const comment = listComments(projectId, userId, row.module, row.entity_id).find((entry) => entry.id === commentId);
-  return { ok: true, comment };
+  const timestamp = nowIso(); db.prepare("UPDATE project_comments SET resolved_at=?,resolved_by_user_id=?,updated_at=? WHERE id=?").run(timestamp, userId, timestamp, commentId);
+  recordActivity({ projectId, module: row.module, actorUserId: userId, entityType: "comment", entityId: commentId, action: "comment.resolved", summary: "A comment was resolved." });
+  return { ok: true, resolvedAt: timestamp };
 }
 
 export function userPlatformProfile(userId) {
   const row = db.prepare("SELECT username,theme,avatar_key,avatar_crop_json FROM users WHERE id=?").get(userId);
-  return row ? { username: row.username || null, theme: row.theme || "filmscript", avatarKey: row.avatar_key || null, avatarCrop: jsonParse(row.avatar_crop_json, {}) } : null;
+  return row ? { username: row.username || null, theme: row.theme || "filmscript", avatarKey: row.avatar_key || null, avatarCrop: cleanStoredAvatarCrop(jsonParse(row.avatar_crop_json, {})) } : null;
+}
+
+export function userAvatarPresentation(userId) {
+  const cached = avatarPresentationCache.get(userId);
+  if (cached && Date.now() - cached.createdAt < 15_000) return cached.value;
+  const row = db.prepare("SELECT id,picture_url,avatar_key,avatar_crop_json FROM users WHERE id=?").get(userId);
+  const value = row ? avatarPresentationFromRow(row) : null;
+  avatarPresentationCache.set(userId, { value, createdAt: Date.now() });
+  return value;
 }
 
 export function updateUserPlatformProfile(userId, input = {}) {
@@ -873,7 +700,9 @@ export function updateUserPlatformProfile(userId, input = {}) {
   const current = userPlatformProfile(userId); if (!current) return null;
   const username = input.username === undefined ? current.username : String(input.username || "").trim().toLowerCase().replace(/[^a-z0-9_]/g, "").slice(0,30) || null;
   const theme = input.theme === undefined ? current.theme : themes.has(input.theme) ? input.theme : "filmscript";
-  db.prepare("UPDATE users SET username=?,theme=?,avatar_key=?,avatar_crop_json=?,updated_at=? WHERE id=?").run(username, theme, input.avatarKey === undefined ? current.avatarKey : input.avatarKey || null, JSON.stringify(input.avatarCrop === undefined ? current.avatarCrop : input.avatarCrop || {}), nowIso(), userId);
+  const avatarCrop = avatarCropPatch(current.avatarCrop, input.avatarCrop);
+  db.prepare("UPDATE users SET username=?,theme=?,avatar_key=?,avatar_crop_json=?,updated_at=? WHERE id=?").run(username, theme, input.avatarKey === undefined ? current.avatarKey : input.avatarKey || null, JSON.stringify(avatarCrop), nowIso(), userId);
+  avatarPresentationCache.delete(userId);
   return userPlatformProfile(userId);
 }
 

@@ -1163,3 +1163,22 @@ test("Lumiere personalization stays compact, section-navigable, and keeps action
   assert.match(source, /grid-template-rows:auto auto minmax\(0,1fr\) auto/);
   assert.match(source, /\.fs-lp-foot\{display:flex/);
 });
+
+test("collaborator chat has a project-scoped API and accessible Liquid Glass composer", async () => {
+  const [client, server, database, migration, css] = await Promise.all([
+    fs.readFile(path.join(ROOT, "platform-client.js"), "utf8"),
+    fs.readFile(path.join(ROOT, "server.js"), "utf8"),
+    fs.readFile(path.join(ROOT, "platform-database.js"), "utf8"),
+    fs.readFile(path.join(ROOT, "migrations/013_project_messages.sql"), "utf8"),
+    fs.readFile(path.join(ROOT, "platform-ui.css"), "utf8"),
+  ]);
+  assert.match(client, /data-chat/);
+  assert.match(client, /api\.sendChat/);
+  assert.match(client, /aria-label=\"Message\"/);
+  assert.match(server, /handleProjectMessages/);
+  assert.match(database, /export function listProjectMessages/);
+  assert.match(database, /export function createProjectMessage/);
+  assert.match(migration, /CREATE TABLE IF NOT EXISTS project_messages/);
+  assert.match(css, /\.fs-chat-panel \{[^}]*backdrop-filter:blur\(38px\)/);
+  assert.match(css, /\.fs-chat-bubble\.is-mine/);
+});
