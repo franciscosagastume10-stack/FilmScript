@@ -4,6 +4,7 @@
 .vercel
 api/*
 !api/auth-complete.js
+!api/scripts-proxy.js
 data
 dist
 node_modules
