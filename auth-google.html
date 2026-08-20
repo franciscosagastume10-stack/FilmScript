@@ -1,0 +1,7 @@
+<!doctype html><html><head><meta charset="utf-8"><title>FilmScript · Sign in</title></head><body>
+<p>Connecting to Google…</p>
+<script>
+  const returnTo = new URLSearchParams(location.search).get('returnTo') || '/App.dc.html';
+  location.replace(`https://api.filmscript.app/auth/google?returnTo=${encodeURIComponent(returnTo)}`);
+</script>
+</body></html>
