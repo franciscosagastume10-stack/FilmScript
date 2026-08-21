@@ -11,11 +11,11 @@
 <script defer src="./seamless-navigation.js?v=20260728-route1"></script>
 <script src="./runtime-config.js?v=20260820-module-routes2"></script>
 <script src="./theme-preference.js?v=20260720-themefade1"></script>
-<script defer src="./language-preference.js?v=20260820-people-access1"></script>
+<script defer src="./language-preference.js?v=20260820-i18n2"></script>
 <script defer src="./ui-sounds.js?v=20260804-imagine-live2"></script>
 <script defer src="./billing-client.js?v=20260820-proration1"></script>
 <script defer src="./credit-indicator.js?v=20260820-credit-glass1"></script>
-<script defer src="./profile-onboarding.js?v=20260716-profile1"></script>
+<script defer src="./profile-onboarding.js?v=20260820-i18n2"></script>
 <script defer src="./lumiere-client.js?v=20260820-credit-usage1"></script>
 <script defer src="./lumiere-access-modal.js?v=20260820-access-modal1"></script>
 <script defer src="./lumiere-preferences.js?v=20260820-navigable1"></script>
@@ -27,15 +27,15 @@
 <script defer src="./canvas-client.js?v=20260820-module-routes2"></script>
 <script defer src="./canvas-workspace.js?v=20260819-imagine-frost150"></script>
 <script defer src="./analysis-client.js?v=20260820-access-gate1"></script>
-    <script type="module" src="./analysis-workspace.js?v=20260820-spacing1"></script>
+    <script type="module" src="./analysis-workspace.js?v=20260820-i18n2"></script>
 <script defer src="./budget-client.js?v=20260820-module-routes3"></script>
 <script type="module" src="./budget-workspace.js?v=20260820-dark1"></script>
 <script defer src="./calendar-client.js?v=20260820-module-routes3"></script>
 <script type="module" src="./calendar-workspace.js?v=20260801-calendar-glass1"></script>
-<script defer src="./platform-client.js?v=20260820-release2"></script>
+<script defer src="./platform-client.js?v=20260820-i18n2"></script>
 <script defer src="./assets/vendor/realtime-collaboration.bundle.js?v=20260819-collab2"></script>
 <link rel="stylesheet" href="./filmscript-controls.css?v=20260716-typography1">
-<link rel="stylesheet" href="./platform-ui.css?v=20260820-release2">
+<link rel="stylesheet" href="./platform-ui.css?v=20260820-i18n2">
 <link rel="prefetch" href="./App.dc.html" as="document">
 </head>
 <body>
@@ -1380,7 +1380,7 @@
             <button type="button" class="v5-breakdown-nav-button" onClick="{{ breakdownPrev }}" aria-label="Previous breakdown scene" aria-disabled="{{ breakdownPrevDisabled }}" style="cursor: {{ breakdownPrevCursor }}; opacity: {{ breakdownPrevOpacity }};">‹</button>
             <div class="v5-breakdown-scene-copy">
               <div class="v5-breakdown-scene-count">Scene {{ breakdownSceneNo }} of {{ breakdownSceneTotal }}</div>
-              <div class="v5-breakdown-scene-heading">{{ breakdownSceneHeading }}</div>
+              <div class="v5-breakdown-scene-heading"><sc-if value="{{ breakdownSceneHeadingProjectContent }}" hint-placeholder-val="true"><span data-project-content>{{ breakdownSceneHeading }}</span></sc-if><sc-if value="{{ breakdownSceneHeadingInterfaceContent }}" hint-placeholder-val="false"><span>{{ breakdownSceneHeading }}</span></sc-if></div>
             </div>
             <button type="button" class="v5-breakdown-nav-button" onClick="{{ breakdownNext }}" aria-label="Next breakdown scene" aria-disabled="{{ breakdownNextDisabled }}" style="cursor: {{ breakdownNextCursor }}; opacity: {{ breakdownNextOpacity }};">›</button>
           </div>
@@ -1411,7 +1411,7 @@
             <button type="button" class="v5-breakdown-nav-button" onClick="{{ breakdownPrev }}" aria-label="Previous breakdown scene" aria-disabled="{{ breakdownPrevDisabled }}" style="cursor: {{ breakdownPrevCursor }}; opacity: {{ breakdownPrevOpacity }};">‹</button>
             <div class="v5-breakdown-scene-copy">
               <div class="v5-breakdown-scene-count">Scene {{ breakdownSceneNo }} of {{ breakdownSceneTotal }}</div>
-              <div class="v5-breakdown-scene-heading">{{ breakdownSceneHeading }}</div>
+              <div class="v5-breakdown-scene-heading"><sc-if value="{{ breakdownSceneHeadingProjectContent }}" hint-placeholder-val="true"><span data-project-content>{{ breakdownSceneHeading }}</span></sc-if><sc-if value="{{ breakdownSceneHeadingInterfaceContent }}" hint-placeholder-val="false"><span>{{ breakdownSceneHeading }}</span></sc-if></div>
             </div>
             <button type="button" class="v5-breakdown-nav-button" onClick="{{ breakdownNext }}" aria-label="Next breakdown scene" aria-disabled="{{ breakdownNextDisabled }}" style="cursor: {{ breakdownNextCursor }}; opacity: {{ breakdownNextOpacity }};">›</button>
           </div>
@@ -1423,22 +1423,22 @@
                 <div class="v5-breakdown-meta-row" data-breakdown-focus="Page count"><strong class="v5-breakdown-meta-label">Page Count</strong><sc-if value="{{ breakdownEditing }}" hint-placeholder-val="false"><input class="v5-breakdown-input" aria-label="Page count" value="{{ breakdownPageCount }}" onInput="{{ breakdownPageCountInput }}" onBlur="{{ breakdownPageCountBlur }}"></sc-if><sc-if value="{{ breakdownViewing }}" hint-placeholder-val="true"><span class="v5-breakdown-value">{{ breakdownPageCount }}</span></sc-if></div>
               </div>
               <div class="v5-breakdown-title-lockup">
-                <strong>{{ breakdownProjectTitle }}</strong>
+                <strong><sc-if value="{{ breakdownProjectTitleProjectContent }}" hint-placeholder-val="true"><span data-project-content>{{ breakdownProjectTitle }}</span></sc-if><sc-if value="{{ breakdownProjectTitleInterfaceContent }}" hint-placeholder-val="false"><span>{{ breakdownProjectTitle }}</span></sc-if></strong>
                 <span>Production Breakdown</span>
                 <div class="v5-breakdown-title-mark"></div>
               </div>
               <div class="v5-breakdown-meta-group is-right">
                 <div class="v5-breakdown-meta-row"><strong class="v5-breakdown-meta-label">Sheet #</strong><span class="v5-breakdown-value">{{ breakdownSceneNo }}</span></div>
-                <div class="v5-breakdown-meta-row" data-breakdown-focus="Interior or exterior"><strong class="v5-breakdown-meta-label">Int/Ext</strong><sc-if value="{{ breakdownEditing }}" hint-placeholder-val="false"><input class="v5-breakdown-input" aria-label="Interior or exterior" value="{{ breakdownIntExt }}" onInput="{{ breakdownIntExtInput }}" onBlur="{{ breakdownIntExtBlur }}"></sc-if><sc-if value="{{ breakdownViewing }}" hint-placeholder-val="true"><span class="v5-breakdown-value">{{ breakdownIntExt }}</span></sc-if></div>
-                <div class="v5-breakdown-meta-row" data-breakdown-focus="Day or night"><strong class="v5-breakdown-meta-label">Day/Night</strong><sc-if value="{{ breakdownEditing }}" hint-placeholder-val="false"><input class="v5-breakdown-input" aria-label="Day or night" value="{{ breakdownDayNight }}" onInput="{{ breakdownDayNightInput }}" onBlur="{{ breakdownDayNightBlur }}"></sc-if><sc-if value="{{ breakdownViewing }}" hint-placeholder-val="true"><span class="v5-breakdown-value">{{ breakdownDayNight }}</span></sc-if></div>
-                <div class="v5-breakdown-meta-row" data-breakdown-focus="Estimated time"><strong class="v5-breakdown-meta-label">Est. Time</strong><sc-if value="{{ breakdownEditing }}" hint-placeholder-val="false"><input class="v5-breakdown-input" aria-label="Estimated time" value="{{ breakdownEstTime }}" onInput="{{ breakdownEstTimeInput }}" onBlur="{{ breakdownEstTimeBlur }}"></sc-if><sc-if value="{{ breakdownViewing }}" hint-placeholder-val="true"><span class="v5-breakdown-value">{{ breakdownEstTime }}</span></sc-if></div>
+                <div class="v5-breakdown-meta-row" data-breakdown-focus="Interior or exterior"><strong class="v5-breakdown-meta-label">Int/Ext</strong><sc-if value="{{ breakdownEditing }}" hint-placeholder-val="false"><input class="v5-breakdown-input" aria-label="Interior or exterior" value="{{ breakdownIntExt }}" onInput="{{ breakdownIntExtInput }}" onBlur="{{ breakdownIntExtBlur }}"></sc-if><sc-if value="{{ breakdownViewing }}" hint-placeholder-val="true"><sc-if value="{{ breakdownIntExtProjectContent }}" hint-placeholder-val="false"><span class="v5-breakdown-value" data-project-content>{{ breakdownIntExt }}</span></sc-if><sc-if value="{{ breakdownIntExtInterfaceContent }}" hint-placeholder-val="true"><span class="v5-breakdown-value">{{ breakdownIntExt }}</span></sc-if></sc-if></div>
+                <div class="v5-breakdown-meta-row" data-breakdown-focus="Day or night"><strong class="v5-breakdown-meta-label">Day/Night</strong><sc-if value="{{ breakdownEditing }}" hint-placeholder-val="false"><input class="v5-breakdown-input" aria-label="Day or night" value="{{ breakdownDayNight }}" onInput="{{ breakdownDayNightInput }}" onBlur="{{ breakdownDayNightBlur }}"></sc-if><sc-if value="{{ breakdownViewing }}" hint-placeholder-val="true"><sc-if value="{{ breakdownDayNightProjectContent }}" hint-placeholder-val="false"><span class="v5-breakdown-value" data-project-content>{{ breakdownDayNight }}</span></sc-if><sc-if value="{{ breakdownDayNightInterfaceContent }}" hint-placeholder-val="true"><span class="v5-breakdown-value">{{ breakdownDayNight }}</span></sc-if></sc-if></div>
+                <div class="v5-breakdown-meta-row" data-breakdown-focus="Estimated time"><strong class="v5-breakdown-meta-label">Est. Time</strong><sc-if value="{{ breakdownEditing }}" hint-placeholder-val="false"><input class="v5-breakdown-input" aria-label="Estimated time" value="{{ breakdownEstTime }}" onInput="{{ breakdownEstTimeInput }}" onBlur="{{ breakdownEstTimeBlur }}"></sc-if><sc-if value="{{ breakdownViewing }}" hint-placeholder-val="true"><sc-if value="{{ breakdownEstTimeProjectContent }}" hint-placeholder-val="false"><span class="v5-breakdown-value" data-project-content>{{ breakdownEstTime }}</span></sc-if><sc-if value="{{ breakdownEstTimeInterfaceContent }}" hint-placeholder-val="true"><span class="v5-breakdown-value">{{ breakdownEstTime }}</span></sc-if></sc-if></div>
               </div>
             </div>
 
             <div class="v5-breakdown-scene-meta">
-              <div class="v5-breakdown-meta-row is-description" data-breakdown-focus="Scene description"><strong class="v5-breakdown-meta-label">Scene Description</strong><sc-if value="{{ breakdownEditing }}" hint-placeholder-val="false"><input class="v5-breakdown-input" aria-label="Scene description" value="{{ breakdownDescription }}" onInput="{{ breakdownDescriptionInput }}" onBlur="{{ breakdownDescriptionBlur }}"></sc-if><sc-if value="{{ breakdownViewing }}" hint-placeholder-val="true"><span class="v5-breakdown-value">{{ breakdownDescription }}</span></sc-if></div>
-              <div class="v5-breakdown-meta-row is-pair"><strong class="v5-breakdown-meta-label">Set</strong><span data-breakdown-focus="Set"><sc-if value="{{ breakdownEditing }}" hint-placeholder-val="false"><input class="v5-breakdown-input" aria-label="Set" value="{{ breakdownSet }}" onInput="{{ breakdownSetInput }}" onBlur="{{ breakdownSetBlur }}"></sc-if><sc-if value="{{ breakdownViewing }}" hint-placeholder-val="true"><span class="v5-breakdown-value" style="display:block;">{{ breakdownSet }}</span></sc-if></span><strong class="v5-breakdown-meta-label">Location</strong><span data-breakdown-focus="Location"><sc-if value="{{ breakdownEditing }}" hint-placeholder-val="false"><input class="v5-breakdown-input" aria-label="Location" value="{{ breakdownLocation }}" onInput="{{ breakdownLocationInput }}" onBlur="{{ breakdownLocationBlur }}"></sc-if><sc-if value="{{ breakdownViewing }}" hint-placeholder-val="true"><span class="v5-breakdown-value" style="display:block;">{{ breakdownLocation }}</span></sc-if></span></div>
-              <div class="v5-breakdown-meta-row is-sequence"><strong class="v5-breakdown-meta-label">Sequence</strong><span data-breakdown-focus="Sequence"><sc-if value="{{ breakdownEditing }}" hint-placeholder-val="false"><input class="v5-breakdown-input" aria-label="Sequence" value="{{ breakdownSequence }}" onInput="{{ breakdownSequenceInput }}" onBlur="{{ breakdownSequenceBlur }}"></sc-if><sc-if value="{{ breakdownViewing }}" hint-placeholder-val="true"><span class="v5-breakdown-value" style="display:block;">{{ breakdownSequence }}</span></sc-if></span><strong class="v5-breakdown-meta-label">Script Day</strong><span data-breakdown-focus="Script day"><sc-if value="{{ breakdownEditing }}" hint-placeholder-val="false"><input class="v5-breakdown-input" aria-label="Script day" value="{{ breakdownScriptDay }}" onInput="{{ breakdownScriptDayInput }}" onBlur="{{ breakdownScriptDayBlur }}"></sc-if><sc-if value="{{ breakdownViewing }}" hint-placeholder-val="true"><span class="v5-breakdown-value" style="display:block;">{{ breakdownScriptDay }}</span></sc-if></span></div>
+              <div class="v5-breakdown-meta-row is-description" data-breakdown-focus="Scene description"><strong class="v5-breakdown-meta-label">Scene Description</strong><sc-if value="{{ breakdownEditing }}" hint-placeholder-val="false"><input class="v5-breakdown-input" aria-label="Scene description" value="{{ breakdownDescription }}" onInput="{{ breakdownDescriptionInput }}" onBlur="{{ breakdownDescriptionBlur }}"></sc-if><sc-if value="{{ breakdownViewing }}" hint-placeholder-val="true"><sc-if value="{{ breakdownDescriptionProjectContent }}" hint-placeholder-val="false"><span class="v5-breakdown-value" data-project-content>{{ breakdownDescription }}</span></sc-if><sc-if value="{{ breakdownDescriptionInterfaceContent }}" hint-placeholder-val="true"><span class="v5-breakdown-value">{{ breakdownDescription }}</span></sc-if></sc-if></div>
+              <div class="v5-breakdown-meta-row is-pair"><strong class="v5-breakdown-meta-label">Set</strong><span data-breakdown-focus="Set"><sc-if value="{{ breakdownEditing }}" hint-placeholder-val="false"><input class="v5-breakdown-input" aria-label="Set" value="{{ breakdownSet }}" onInput="{{ breakdownSetInput }}" onBlur="{{ breakdownSetBlur }}"></sc-if><sc-if value="{{ breakdownViewing }}" hint-placeholder-val="true"><sc-if value="{{ breakdownSetProjectContent }}" hint-placeholder-val="false"><span class="v5-breakdown-value" data-project-content style="display:block;">{{ breakdownSet }}</span></sc-if><sc-if value="{{ breakdownSetInterfaceContent }}" hint-placeholder-val="true"><span class="v5-breakdown-value" style="display:block;">{{ breakdownSet }}</span></sc-if></sc-if></span><strong class="v5-breakdown-meta-label">Location</strong><span data-breakdown-focus="Location"><sc-if value="{{ breakdownEditing }}" hint-placeholder-val="false"><input class="v5-breakdown-input" aria-label="Location" value="{{ breakdownLocation }}" onInput="{{ breakdownLocationInput }}" onBlur="{{ breakdownLocationBlur }}"></sc-if><sc-if value="{{ breakdownViewing }}" hint-placeholder-val="true"><sc-if value="{{ breakdownLocationProjectContent }}" hint-placeholder-val="false"><span class="v5-breakdown-value" data-project-content style="display:block;">{{ breakdownLocation }}</span></sc-if><sc-if value="{{ breakdownLocationInterfaceContent }}" hint-placeholder-val="true"><span class="v5-breakdown-value" style="display:block;">{{ breakdownLocation }}</span></sc-if></sc-if></span></div>
+              <div class="v5-breakdown-meta-row is-sequence"><strong class="v5-breakdown-meta-label">Sequence</strong><span data-breakdown-focus="Sequence"><sc-if value="{{ breakdownEditing }}" hint-placeholder-val="false"><input class="v5-breakdown-input" aria-label="Sequence" value="{{ breakdownSequence }}" onInput="{{ breakdownSequenceInput }}" onBlur="{{ breakdownSequenceBlur }}"></sc-if><sc-if value="{{ breakdownViewing }}" hint-placeholder-val="true"><sc-if value="{{ breakdownSequenceProjectContent }}" hint-placeholder-val="false"><span class="v5-breakdown-value" data-project-content style="display:block;">{{ breakdownSequence }}</span></sc-if><sc-if value="{{ breakdownSequenceInterfaceContent }}" hint-placeholder-val="true"><span class="v5-breakdown-value" style="display:block;">{{ breakdownSequence }}</span></sc-if></sc-if></span><strong class="v5-breakdown-meta-label">Script Day</strong><span data-breakdown-focus="Script day"><sc-if value="{{ breakdownEditing }}" hint-placeholder-val="false"><input class="v5-breakdown-input" aria-label="Script day" value="{{ breakdownScriptDay }}" onInput="{{ breakdownScriptDayInput }}" onBlur="{{ breakdownScriptDayBlur }}"></sc-if><sc-if value="{{ breakdownViewing }}" hint-placeholder-val="true"><sc-if value="{{ breakdownScriptDayProjectContent }}" hint-placeholder-val="false"><span class="v5-breakdown-value" data-project-content style="display:block;">{{ breakdownScriptDay }}</span></sc-if><sc-if value="{{ breakdownScriptDayInterfaceContent }}" hint-placeholder-val="true"><span class="v5-breakdown-value" style="display:block;">{{ breakdownScriptDay }}</span></sc-if></sc-if></span></div>
             </div>
 
             <div class="v5-breakdown-grid">
@@ -1447,11 +1447,11 @@
                   <div class="v5-breakdown-cell-label">{{ cell.label }}</div>
                   <sc-if value="{{ cell.editing }}" hint-placeholder-val="false"><textarea class="v5-breakdown-textarea" aria-label="{{ cell.label }}" value="{{ cell.editText }}" onInput="{{ cell.onInput }}" onBlur="{{ cell.onBlur }}"></textarea></sc-if>
                   <sc-if value="{{ cell.viewing }}" hint-placeholder-val="true">
-                    <sc-if value="{{ cell.manualHasText }}" hint-placeholder-val="false"><div style="display: grid; gap: 4px;"><sc-for list="{{ cell.manualItems }}" as="entry" hint-placeholder-count="3"><button type="button" class="{{ entry.entryClass }}" data-breakdown-key="{{ entry.visualType }}" data-visual-name="{{ entry.visualName }}" onClick="{{ entry.openInScript }}" aria-label="{{ entry.openLabel }}" title="{{ entry.openTitle }}"><div class="v5-breakdown-entry-name">{{ entry.name }}</div><span class="v5-breakdown-entry-jump" style="display: {{ entry.jumpDisplay }};" aria-hidden="true">↗</span></button></sc-for></div></sc-if>
+                    <sc-if value="{{ cell.manualHasText }}" hint-placeholder-val="false"><div style="display: grid; gap: 4px;"><sc-for list="{{ cell.manualItems }}" as="entry" hint-placeholder-count="3"><button type="button" class="{{ entry.entryClass }}" data-breakdown-key="{{ entry.visualType }}" data-visual-name="{{ entry.visualName }}" onClick="{{ entry.openInScript }}" aria-label="{{ entry.openLabel }}" title="{{ entry.openTitle }}"><div class="v5-breakdown-entry-name" data-project-content>{{ entry.name }}</div><span class="v5-breakdown-entry-jump" style="display: {{ entry.jumpDisplay }};" aria-hidden="true">↗</span></button></sc-for></div></sc-if>
                     <sc-if value="{{ cell.manualNoItems }}" hint-placeholder-val="false"><div class="v5-breakdown-empty">None listed</div></sc-if>
                     <sc-if value="{{ cell.hasItems }}" hint-placeholder-val="false">
                       <div style="display: grid; gap: 6px;">
-                        <sc-for list="{{ cell.items }}" as="entry" hint-placeholder-count="3"><button type="button" class="{{ entry.entryClass }}" data-breakdown-key="{{ entry.visualType }}" data-visual-name="{{ entry.visualName }}" onClick="{{ entry.openInScript }}" aria-label="{{ entry.openLabel }}" title="{{ entry.openTitle }}"><div class="v5-breakdown-entry-name">{{ entry.name }}</div><div class="v5-breakdown-entry-description" style="display: {{ entry.descriptionDisplay }};">{{ entry.description }}</div><div class="v5-breakdown-entry-appearances" style="display: {{ entry.appearanceDisplay }};">{{ entry.appearanceLabel }}</div><span class="v5-breakdown-entry-jump" style="display: {{ entry.jumpDisplay }};" aria-hidden="true">↗</span></button></sc-for>
+                        <sc-for list="{{ cell.items }}" as="entry" hint-placeholder-count="3"><button type="button" class="{{ entry.entryClass }}" data-breakdown-key="{{ entry.visualType }}" data-visual-name="{{ entry.visualName }}" onClick="{{ entry.openInScript }}" aria-label="{{ entry.openLabel }}" title="{{ entry.openTitle }}"><div class="v5-breakdown-entry-name" data-project-content>{{ entry.name }}</div><div class="v5-breakdown-entry-description" data-project-content style="display: {{ entry.descriptionDisplay }};">{{ entry.description }}</div><div class="v5-breakdown-entry-appearances" style="display: {{ entry.appearanceDisplay }};">{{ entry.appearanceLabel }}</div><span class="v5-breakdown-entry-jump" style="display: {{ entry.jumpDisplay }};" aria-hidden="true">↗</span></button></sc-for>
                       </div>
                     </sc-if>
                     <sc-if value="{{ cell.noItems }}" hint-placeholder-val="true"><div class="v5-breakdown-empty">None listed</div></sc-if>
@@ -1542,18 +1542,18 @@
 	                  <sc-if value="{{ row.showDragGrip }}" hint-placeholder-val="true"><span class="v5-strip-grip" aria-hidden="true"><svg viewBox="0 0 14 20" style="width: 12px; height: 18px;" fill="currentColor"><circle cx="4" cy="5" r="1.15"></circle><circle cx="10" cy="5" r="1.15"></circle><circle cx="4" cy="10" r="1.15"></circle><circle cx="10" cy="10" r="1.15"></circle><circle cx="4" cy="15" r="1.15"></circle><circle cx="10" cy="15" r="1.15"></circle></svg></span></sc-if>
                   <sc-if value="{{ row.editing }}" hint-placeholder-val="false"><span style="display: flex; justify-content: center; gap: 4px;"><button type="button" class="v5-strip-move" onClick="{{ row.moveUp }}" disabled="{{ row.moveUpDisabled }}" aria-disabled="{{ row.moveUpDisabled }}" style="opacity: {{ row.moveUpOpacity }}; cursor: {{ row.moveUpCursor }};">↑</button><button type="button" class="v5-strip-move" onClick="{{ row.moveDown }}" disabled="{{ row.moveDownDisabled }}" aria-disabled="{{ row.moveDownDisabled }}" style="opacity: {{ row.moveDownOpacity }}; cursor: {{ row.moveDownCursor }};">↓</button></span></sc-if>
                   <span style="text-align: center;"><button type="button" class="v5-strip-scene-link" onClick="{{ row.openInScript }}" aria-label="Open scene {{ row.sceneNo }} in script">{{ row.sceneNo }}</button></span>
-                  <span class="v5-strip-set"><button type="button" class="v5-strip-set-name v5-strip-set-link" onClick="{{ row.openInScript }}" aria-label="Open the scene for location {{ row.setName }}" title="Open this scene in the script">{{ row.setName }}</button><span class="v5-strip-synopsis">{{ row.synopsis }}</span></span>
-                  <span class="v5-strip-ie-day"><span>{{ row.intExt }}</span><span>{{ row.dayNight }}</span></span>
-	                  <span class="v5-strip-cast-ids" aria-label="Cast IDs from Breakdown"><sc-if value="{{ row.hasCastIds }}" hint-placeholder-val="true"><sc-for list="{{ row.castIdTokens }}" as="castId" hint-placeholder-count="4"><button type="button" class="v5-strip-cast-id" data-v5-cast-id onMouseEnter="{{ castId.hover }}" onFocus="{{ castId.hover }}" onClick="{{ castId.openInScript }}" aria-label="{{ castId.ariaLabel }}" aria-describedby="{{ castId.tooltipId }}"><span aria-hidden="true">{{ castId.number }}</span><span id="{{ castId.tooltipId }}" class="v5-strip-cast-tooltip" role="tooltip"><span class="v5-strip-cast-tooltip-label">Cast {{ castId.number }}</span><strong class="v5-strip-cast-tooltip-name">{{ castId.name }}</strong><span class="v5-strip-cast-tooltip-action">Open in Scene {{ castId.sceneNo }}</span></span></button></sc-for></sc-if><sc-if value="{{ row.noCastIds }}" hint-placeholder-val="false"><span style="font-size: 11px; opacity: .5;">—</span></sc-if></span>
+                  <span class="v5-strip-set"><button type="button" class="v5-strip-set-name v5-strip-set-link" onClick="{{ row.openInScript }}" aria-label="Open the scene for location {{ row.setName }}" title="Open this scene in the script"><sc-if value="{{ row.setNameProjectContent }}" hint-placeholder-val="true"><span data-project-content>{{ row.setName }}</span></sc-if><sc-if value="{{ row.setNameInterfaceContent }}" hint-placeholder-val="false"><span>{{ row.setName }}</span></sc-if></button><span class="v5-strip-synopsis"><sc-if value="{{ row.synopsisProjectContent }}" hint-placeholder-val="true"><span data-project-content>{{ row.synopsis }}</span></sc-if><sc-if value="{{ row.synopsisInterfaceContent }}" hint-placeholder-val="false"><span>{{ row.synopsis }}</span></sc-if></span></span>
+                  <span class="v5-strip-ie-day"><span data-project-content>{{ row.intExt }}</span><span data-project-content>{{ row.dayNight }}</span></span>
+	                  <span class="v5-strip-cast-ids" aria-label="Cast IDs from Breakdown"><sc-if value="{{ row.hasCastIds }}" hint-placeholder-val="true"><sc-for list="{{ row.castIdTokens }}" as="castId" hint-placeholder-count="4"><button type="button" class="v5-strip-cast-id" data-v5-cast-id onMouseEnter="{{ castId.hover }}" onFocus="{{ castId.hover }}" onClick="{{ castId.openInScript }}" aria-label="{{ castId.ariaLabel }}" aria-describedby="{{ castId.tooltipId }}"><span aria-hidden="true">{{ castId.number }}</span><span id="{{ castId.tooltipId }}" class="v5-strip-cast-tooltip" role="tooltip"><span class="v5-strip-cast-tooltip-label">Cast {{ castId.number }}</span><strong class="v5-strip-cast-tooltip-name"><sc-if value="{{ castId.nameProjectContent }}" hint-placeholder-val="true"><span data-project-content>{{ castId.name }}</span></sc-if><sc-if value="{{ castId.nameInterfaceContent }}" hint-placeholder-val="false"><span>{{ castId.name }}</span></sc-if></strong><span class="v5-strip-cast-tooltip-action">Open in Scene {{ castId.sceneNo }}</span></span></button></sc-for></sc-if><sc-if value="{{ row.noCastIds }}" hint-placeholder-val="false"><span style="font-size: 11px; opacity: .5;">—</span></sc-if></span>
                   <span class="v5-strip-location {{ row.shootLocationClass }}">
-                    <button type="button" class="v5-strip-location-button" onClick="{{ row.openLocation }}" aria-label="Assign shoot location for scene {{ row.sceneNo }}" aria-haspopup="dialog" aria-expanded="{{ row.locationOpen }}"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M20 10c0 5-8 11-8 11S4 15 4 10a8 8 0 1 1 16 0Z"></path><circle cx="12" cy="10" r="2.5"></circle></svg><span>{{ row.shootLocation }}</span></button>
+                    <button type="button" class="v5-strip-location-button" onClick="{{ row.openLocation }}" aria-label="Assign shoot location for scene {{ row.sceneNo }}" aria-haspopup="dialog" aria-expanded="{{ row.locationOpen }}"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M20 10c0 5-8 11-8 11S4 15 4 10a8 8 0 1 1 16 0Z"></path><circle cx="12" cy="10" r="2.5"></circle></svg><sc-if value="{{ row.shootLocationProjectContent }}" hint-placeholder-val="true"><span data-project-content>{{ row.shootLocation }}</span></sc-if><sc-if value="{{ row.shootLocationInterfaceContent }}" hint-placeholder-val="false"><span>{{ row.shootLocation }}</span></sc-if></button>
                     <sc-if value="{{ row.locationOpen }}" hint-placeholder-val="false">
                       <span class="v5-strip-location-popover {{ row.locationPopoverDirection }}" role="dialog" aria-label="Shoot location for scene {{ row.sceneNo }}">
                         <span class="v5-strip-location-heading"><span class="v5-strip-location-kicker">Real-world location</span><strong class="v5-strip-location-title">Shoot location</strong><span class="v5-strip-location-copy">Where this scene will actually be filmed. This stays separate from the screenplay set.</span></span>
-                        <sc-if value="{{ row.locationHasRecent }}" hint-placeholder-val="false"><span class="v5-strip-location-recent-wrap"><span class="v5-strip-location-recent-label">Quick assign</span><button type="button" class="v5-strip-location-recent {{ row.locationRecent.selectedClass }}" data-scene-id="{{ row.sceneId }}" data-location-name="{{ row.locationRecent.name }}" onClick="{{ assignSavedStripboardLocation }}" aria-label="Assign most recent shoot location {{ row.locationRecent.name }} to scene {{ row.sceneNo }}"><span class="v5-strip-location-recent-pin" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M20 10c0 5-8 11-8 11S4 15 4 10a8 8 0 1 1 16 0Z"></path><circle cx="12" cy="10" r="2.5"></circle></svg></span><span class="v5-strip-location-recent-copy"><small>Most recently used</small><strong>{{ row.locationRecent.name }}</strong></span><span class="v5-strip-location-recent-action">{{ row.locationRecent.actionLabel }}</span></button></span></sc-if>
+                        <sc-if value="{{ row.locationHasRecent }}" hint-placeholder-val="false"><span class="v5-strip-location-recent-wrap"><span class="v5-strip-location-recent-label">Quick assign</span><button type="button" class="v5-strip-location-recent {{ row.locationRecent.selectedClass }}" data-scene-id="{{ row.sceneId }}" data-location-name="{{ row.locationRecent.name }}" onClick="{{ assignSavedStripboardLocation }}" aria-label="Assign most recent shoot location {{ row.locationRecent.name }} to scene {{ row.sceneNo }}"><span class="v5-strip-location-recent-pin" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M20 10c0 5-8 11-8 11S4 15 4 10a8 8 0 1 1 16 0Z"></path><circle cx="12" cy="10" r="2.5"></circle></svg></span><span class="v5-strip-location-recent-copy"><small>Most recently used</small><strong data-project-content>{{ row.locationRecent.name }}</strong></span><span class="v5-strip-location-recent-action">{{ row.locationRecent.actionLabel }}</span></button></span></sc-if>
                         <label class="v5-strip-location-field">New location<input type="text" value="{{ row.locationDraft }}" placeholder="e.g. Stage 4, Downtown Studio" onInput="{{ row.locationInput }}" onKeyDown="{{ row.locationKeyDown }}" autocomplete="off" maxlength="120"></label>
                         <sc-if value="{{ row.locationHasOptions }}" hint-placeholder-val="false">
-                          <span class="v5-strip-location-library"><span class="v5-strip-location-library-label">Other saved locations</span><span class="v5-strip-location-options"><sc-for list="{{ row.locationOptions }}" as="location" hint-placeholder-count="4"><button type="button" class="v5-strip-location-option {{ location.selectedClass }}" data-scene-id="{{ row.sceneId }}" data-location-name="{{ location.name }}" onClick="{{ assignSavedStripboardLocation }}" title="Assign {{ location.name }}"><span class="v5-strip-location-option-pin" aria-hidden="true">⌖</span><span class="v5-strip-location-option-name">{{ location.name }}</span></button></sc-for></span></span>
+                          <span class="v5-strip-location-library"><span class="v5-strip-location-library-label">Other saved locations</span><span class="v5-strip-location-options"><sc-for list="{{ row.locationOptions }}" as="location" hint-placeholder-count="4"><button type="button" class="v5-strip-location-option {{ location.selectedClass }}" data-scene-id="{{ row.sceneId }}" data-location-name="{{ location.name }}" onClick="{{ assignSavedStripboardLocation }}" title="Assign {{ location.name }}"><span class="v5-strip-location-option-pin" aria-hidden="true">⌖</span><span class="v5-strip-location-option-name" data-project-content>{{ location.name }}</span></button></sc-for></span></span>
                         </sc-if>
                         <span class="v5-strip-popover-actions"><sc-if value="{{ row.locationAssigned }}" hint-placeholder-val="false"><button type="button" class="v5-strip-location-clear" onClick="{{ row.locationClear }}">Clear</button></sc-if><button type="button" onClick="{{ row.locationCancel }}">Cancel</button><button type="button" onClick="{{ row.locationSave }}" disabled="{{ row.locationSaveDisabled }}">Save &amp; assign</button></span>
                       </span>
@@ -1571,7 +1571,7 @@
 	          <sc-if value="{{ stripboardCalendarView }}" hint-placeholder-val="false">
 	            <div class="v5-strip-calendar" role="list" aria-label="Shooting days calendar">
 	              <sc-for list="{{ stripboardCalendarDays }}" as="day" hint-placeholder-count="4">
-	                <section class="v5-strip-calendar-day" role="listitem"><button type="button" class="v5-strip-calendar-day-head" onClick="{{ day.open }}" aria-label="Edit {{ day.label }}"><span class="v5-strip-calendar-day-kicker">{{ day.label }}</span><strong style="font-size:14px; color:var(--ink,#2C2C2A);">{{ day.dateLabel }}</strong><span class="v5-strip-calendar-day-meta">{{ day.summary }}</span><span class="v5-strip-calendar-day-meta">{{ day.locationLabel }}</span></button><div class="v5-strip-calendar-scenes"><sc-for list="{{ day.scenes }}" as="scene" hint-placeholder-count="4"><button type="button" class="v5-strip-calendar-scene" onClick="{{ scene.open }}" style="background:{{ scene.bg }}; border-color:{{ scene.border }};"><span class="v5-strip-calendar-scene-no">{{ scene.sceneNo }}</span><span class="v5-strip-calendar-scene-copy"><strong>{{ scene.setName }}</strong><span>{{ scene.location }}</span></span><span class="v5-strip-calendar-scene-time">{{ scene.time }}</span></button></sc-for></div></section>
+	                <section class="v5-strip-calendar-day" role="listitem"><button type="button" class="v5-strip-calendar-day-head" onClick="{{ day.open }}" aria-label="Edit {{ day.label }}"><span class="v5-strip-calendar-day-kicker">{{ day.label }}</span><strong style="font-size:14px; color:var(--ink,#2C2C2A);">{{ day.dateLabel }}</strong><span class="v5-strip-calendar-day-meta">{{ day.summary }}</span><span class="v5-strip-calendar-day-meta">{{ day.locationLabel }}</span></button><div class="v5-strip-calendar-scenes"><sc-for list="{{ day.scenes }}" as="scene" hint-placeholder-count="4"><button type="button" class="v5-strip-calendar-scene" onClick="{{ scene.open }}" style="background:{{ scene.bg }}; border-color:{{ scene.border }};"><span class="v5-strip-calendar-scene-no">{{ scene.sceneNo }}</span><span class="v5-strip-calendar-scene-copy"><sc-if value="{{ scene.setNameProjectContent }}" hint-placeholder-val="true"><strong data-project-content>{{ scene.setName }}</strong></sc-if><sc-if value="{{ scene.setNameInterfaceContent }}" hint-placeholder-val="false"><strong>{{ scene.setName }}</strong></sc-if><sc-if value="{{ scene.locationProjectContent }}" hint-placeholder-val="true"><span data-project-content>{{ scene.location }}</span></sc-if><sc-if value="{{ scene.locationInterfaceContent }}" hint-placeholder-val="false"><span>{{ scene.location }}</span></sc-if></span><span class="v5-strip-calendar-scene-time">{{ scene.time }}</span></button></sc-for></div></section>
 	              </sc-for>
 	            </div>
 	          </sc-if>
@@ -1595,8 +1595,8 @@
                   <div class="v5-shotlist-scene-number" aria-label="Scene {{ scene.number }}">{{ scene.number }}</div>
                   <div class="v5-shotlist-scene-copy">
                     <div class="v5-shotlist-scene-kicker">{{ scene.sourceLabel }}</div>
-                    <sc-if value="{{ scene.titleViewing }}" hint-placeholder-val="true"><h3 class="v5-shotlist-scene-title">{{ scene.title }}</h3></sc-if>
-                    <sc-if value="{{ scene.titleEditing }}" hint-placeholder-val="false"><div class="v5-shotlist-scene-title-input" role="textbox" aria-label="Manual scene name" contenteditable="true" data-i18n-skip onKeyDown="{{ scene.titleKey }}" onBlur="{{ scene.titleBlur }}">{{ scene.title }}</div></sc-if>
+                    <sc-if value="{{ scene.titleViewing }}" hint-placeholder-val="true"><sc-if value="{{ scene.titleHasContent }}" hint-placeholder-val="true"><h3 class="v5-shotlist-scene-title" data-project-content>{{ scene.title }}</h3></sc-if><sc-if value="{{ scene.titleMissing }}" hint-placeholder-val="false"><h3 class="v5-shotlist-scene-title">{{ scene.title }}</h3></sc-if></sc-if>
+                    <sc-if value="{{ scene.titleEditing }}" hint-placeholder-val="false"><div class="v5-shotlist-scene-title-input" role="textbox" aria-label="Manual scene name" contenteditable="true" onKeyDown="{{ scene.titleKey }}" onBlur="{{ scene.titleBlur }}">{{ scene.title }}</div></sc-if>
                     <div class="v5-shotlist-time-bridge {{ scene.timeBudgetClass }}" style="--shot-time-progress: {{ scene.timeBudgetProgress }}%;" data-testid="{{ scene.timeBudgetTestId }}">
                       <div class="v5-shotlist-time-copy"><span class="v5-shotlist-time-source">Stripboard time</span><strong>{{ scene.timeBudgetLabel }}</strong><span class="v5-shotlist-time-status">{{ scene.timeStatusLabel }}</span></div>
                       <div class="v5-shotlist-time-track" aria-hidden="true"><span></span></div>
@@ -1632,10 +1632,10 @@
                               <button type="button" class="v5-shot-reference-generate" onClick="{{ shot.referenceGenerate }}" disabled="{{ shot.referenceDisabled }}" title="Generate a cinematic reference image">Generate</button>
                             </sc-if>
                           </div>
-                          <sc-if value="{{ shot.viewing }}" hint-placeholder-val="true"><span style="font-size: 11.5px; font-weight: 650; color: var(--ink, #2C2C2A); padding-right: 14px;">{{ shot.size }}</span><span style="font-size: 11.5px; color: var(--ink, #2C2C2A); padding-right: 14px;">{{ shot.angle }}</span><span style="font-size: 11.5px; color: var(--ink, #2C2C2A); padding-right: 14px;">{{ shot.focalLengthDisplay }}</span></sc-if>
+                          <sc-if value="{{ shot.viewing }}" hint-placeholder-val="true"><sc-if value="{{ shot.sizeHasContent }}" hint-placeholder-val="true"><span data-project-content style="font-size: 11.5px; font-weight: 650; color: var(--ink, #2C2C2A); padding-right: 14px;">{{ shot.size }}</span></sc-if><sc-if value="{{ shot.sizeMissing }}" hint-placeholder-val="false"><span style="font-size: 11.5px; font-weight: 650; color: var(--ink, #2C2C2A); padding-right: 14px;">{{ shot.size }}</span></sc-if><sc-if value="{{ shot.angleHasContent }}" hint-placeholder-val="true"><span data-project-content style="font-size: 11.5px; color: var(--ink, #2C2C2A); padding-right: 14px;">{{ shot.angle }}</span></sc-if><sc-if value="{{ shot.angleMissing }}" hint-placeholder-val="false"><span style="font-size: 11.5px; color: var(--ink, #2C2C2A); padding-right: 14px;">{{ shot.angle }}</span></sc-if><span data-project-content style="font-size: 11.5px; color: var(--ink, #2C2C2A); padding-right: 14px;">{{ shot.focalLengthDisplay }}</span></sc-if>
                           <sc-if value="{{ shot.editing }}" hint-placeholder-val="false"><input class="v5-shot-input" aria-label="Shot size" placeholder="e.g. Medium" value="{{ shot.size }}" onInput="{{ shot.sizeInput }}" onBlur="{{ shot.sizeBlur }}"><input class="v5-shot-input" aria-label="Shot angle" placeholder="e.g. Eye level" value="{{ shot.angle }}" onInput="{{ shot.angleInput }}" onBlur="{{ shot.angleBlur }}"><input class="v5-shot-input" aria-label="Lens focal length" placeholder="e.g. 50mm" value="{{ shot.focalLength }}" onInput="{{ shot.focalLengthInput }}" onBlur="{{ shot.focalLengthBlur }}"></sc-if>
                           <span class="v5-shot-time-control"><button type="button" class="v5-shot-time-button" onClick="{{ shot.openTime }}" aria-label="Set duration for shot {{ shot.number }}" title="Set duration in 15-minute intervals">{{ shot.timeDisplay }}</button></span>
-                          <sc-if value="{{ shot.viewing }}" hint-placeholder-val="true"><span style="font-size: 11.5px; color: var(--ink, #2C2C2A); padding-right: 14px;">{{ shot.movement }}</span><span style="font-size: 11.5px; line-height: 1.45; color: var(--muted, #888780);">{{ shot.descriptionDisplay }}</span></sc-if>
+                          <sc-if value="{{ shot.viewing }}" hint-placeholder-val="true"><sc-if value="{{ shot.movementHasContent }}" hint-placeholder-val="true"><span data-project-content style="font-size: 11.5px; color: var(--ink, #2C2C2A); padding-right: 14px;">{{ shot.movement }}</span></sc-if><sc-if value="{{ shot.movementMissing }}" hint-placeholder-val="false"><span style="font-size: 11.5px; color: var(--ink, #2C2C2A); padding-right: 14px;">{{ shot.movement }}</span></sc-if><sc-if value="{{ shot.descriptionHasContent }}" hint-placeholder-val="true"><span data-project-content style="font-size: 11.5px; line-height: 1.45; color: var(--muted, #888780);">{{ shot.descriptionDisplay }}</span></sc-if><sc-if value="{{ shot.descriptionMissing }}" hint-placeholder-val="false"><span style="font-size: 11.5px; line-height: 1.45; color: var(--muted, #888780);">{{ shot.descriptionDisplay }}</span></sc-if></sc-if>
                           <sc-if value="{{ shot.editing }}" hint-placeholder-val="false"><input class="v5-shot-input" aria-label="Shot movement" placeholder="e.g. Static" value="{{ shot.movement }}" onInput="{{ shot.movementInput }}" onBlur="{{ shot.movementBlur }}"><textarea class="v5-shot-input" aria-label="Shot description" placeholder="Describe what the camera captures" value="{{ shot.description }}" onInput="{{ shot.descriptionInput }}" onBlur="{{ shot.descriptionBlur }}"></textarea><div class="v5-shot-actions"><button type="button" class="v5-shot-action" onClick="{{ shot.moveUp }}" disabled="{{ shot.moveUpDisabled }}" aria-label="Move shot up">↑</button><button type="button" class="v5-shot-action" onClick="{{ shot.moveDown }}" disabled="{{ shot.moveDownDisabled }}" aria-label="Move shot down">↓</button><button type="button" class="v5-shot-action" onClick="{{ shot.remove }}" aria-label="Delete shot">×</button></div></sc-if>
                         </div>
                       </sc-for>
@@ -2009,8 +2009,8 @@
               <div style="font-size: 13px; line-height: 1.58; color: var(--ink, #2C2C2A);">{{ titleRoomIntro }}</div>
               <div class="v5-title-analysis" style="margin-top: 14px;">
                 <div style="font-size: 9.5px; letter-spacing: 1.15px; text-transform: uppercase; font-weight: 650; color: var(--accent, #BA7517);">What Lumiere found</div>
-                <div style="font-size: 11.5px; line-height: 1.55; color: var(--ink, #2C2C2A); margin-top: 7px;">{{ titleRoomInsight }}</div>
-                <div style="font-size: 10.5px; color: var(--muted, #888780); margin-top: 8px;">{{ titleRoomAnalysisTheme }} · {{ titleRoomAnalysisTone }}</div>
+                <div data-lumiere-generated style="font-size: 11.5px; line-height: 1.55; color: var(--ink, #2C2C2A); margin-top: 7px;">{{ titleRoomInsight }}</div>
+                <div data-lumiere-generated style="font-size: 10.5px; color: var(--muted, #888780); margin-top: 8px;">{{ titleRoomAnalysisTheme }} · {{ titleRoomAnalysisTone }}</div>
               </div>
               <div style="display: flex; align-items: center; gap: 8px; margin-top: 20px;">
                 <div style="font-size: 10px; font-weight: 650; letter-spacing: 1px; text-transform: uppercase; color: var(--accent, #BA7517);">Question {{ titleRoomQuestionNumber }} of {{ titleRoomQuestionTotal }}</div>
@@ -2048,17 +2048,17 @@
                 <button type="button" class="v5-title-action" onClick="{{ titleRoomEditDirection }}">Refine</button>
                 <button type="button" class="v5-title-action" onClick="{{ titleRoomRegenerate }}">Regenerate</button>
               </div>
-              <sc-if value="{{ titleRoomComparisonOn }}" hint-placeholder-val="{{ false }}"><div class="v5-title-analysis" style="font-size: 11.5px; line-height: 1.55; color: var(--ink, #2C2C2A); margin-top: 14px; white-space: pre-wrap;">{{ titleRoomComparison }}</div></sc-if>
+              <sc-if value="{{ titleRoomComparisonOn }}" hint-placeholder-val="{{ false }}"><div class="v5-title-analysis" data-lumiere-generated style="font-size: 11.5px; line-height: 1.55; color: var(--ink, #2C2C2A); margin-top: 14px; white-space: pre-wrap;">{{ titleRoomComparison }}</div></sc-if>
               <sc-for list="{{ titleRoomCategories }}" as="category" hint-placeholder-count="5">
                 <section style="margin-top: 20px;">
                   <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 9px;"><span style="font-size: 10px; font-weight: 650; letter-spacing: 1.1px; text-transform: uppercase; color: var(--accent, #BA7517);">{{ category.label }}</span><span style="height: 1px; flex: 1; background: var(--hair, #E7E4DA);"></span></div>
                   <div style="display: flex; flex-direction: column; gap: 9px;">
                     <sc-for list="{{ category.titles }}" as="title" hint-placeholder-count="3">
                       <article class="v5-title-card">
-                        <div style="display: flex; align-items: flex-start; gap: 8px;"><div style="font-size: 15px; line-height: 1.3; font-weight: 650; color: var(--ink, #2C2C2A); flex: 1;">{{ title.title }}</div><button type="button" class="v5-title-action" onClick="{{ title.toggleSave }}" style="color: {{ title.saveColor }}; white-space: nowrap;">{{ title.saveLabel }}</button></div>
-                        <div style="font-size: 11.5px; line-height: 1.55; color: var(--muted, #888780); margin-top: 7px;">{{ title.explanation }}</div>
-                        <div style="display: flex; flex-wrap: wrap; gap: 5px; margin-top: 9px;"><sc-for list="{{ title.tags }}" as="tag" hint-placeholder-count="2"><span style="font-size: 9.5px; padding: 3px 6px; border-radius: 999px; background: var(--soft, #EFEBE1); color: var(--muted, #888780);">{{ tag }}</span></sc-for></div>
-                        <sc-if value="{{ title.note }}" hint-placeholder-val="false"><div style="font-size: 11px; line-height: 1.5; color: var(--ink, #2C2C2A); margin-top: 10px; padding-top: 9px; border-top: 1px solid var(--hair, #E7E4DA);">{{ title.note }}</div></sc-if>
+                        <div style="display: flex; align-items: flex-start; gap: 8px;"><div data-lumiere-generated style="font-size: 15px; line-height: 1.3; font-weight: 650; color: var(--ink, #2C2C2A); flex: 1;">{{ title.title }}</div><button type="button" class="v5-title-action" onClick="{{ title.toggleSave }}" style="color: {{ title.saveColor }}; white-space: nowrap;">{{ title.saveLabel }}</button></div>
+                        <div data-lumiere-generated style="font-size: 11.5px; line-height: 1.55; color: var(--muted, #888780); margin-top: 7px;">{{ title.explanation }}</div>
+                        <div style="display: flex; flex-wrap: wrap; gap: 5px; margin-top: 9px;"><sc-for list="{{ title.tags }}" as="tag" hint-placeholder-count="2"><span data-lumiere-generated style="font-size: 9.5px; padding: 3px 6px; border-radius: 999px; background: var(--soft, #EFEBE1); color: var(--muted, #888780);">{{ tag }}</span></sc-for></div>
+                        <sc-if value="{{ title.note }}" hint-placeholder-val="false"><div data-lumiere-generated style="font-size: 11px; line-height: 1.5; color: var(--ink, #2C2C2A); margin-top: 10px; padding-top: 9px; border-top: 1px solid var(--hair, #E7E4DA);">{{ title.note }}</div></sc-if>
                         <sc-if value="{{ title.busy }}" hint-placeholder-val="false"><div style="font-size: 10px; color: var(--accent, #BA7517); margin-top: 9px;">Lumiere is working…</div></sc-if>
                         <div style="display: flex; flex-wrap: wrap; column-gap: 11px; row-gap: 3px; margin-top: 10px;">
                           <button type="button" class="v5-title-action" onClick="{{ title.variations }}">Generate variations</button><button type="button" class="v5-title-action" onClick="{{ title.shorter }}">Make it shorter</button><button type="button" class="v5-title-action" onClick="{{ title.darker }}">Make it darker</button><button type="button" class="v5-title-action" onClick="{{ title.commercial }}">Make it more commercial</button><button type="button" class="v5-title-action" onClick="{{ title.why }}">Ask Lumiere why</button><button type="button" class="v5-title-action" onClick="{{ title.compare }}" style="color: {{ title.compareColor }};">Compare with another title</button>
@@ -2216,8 +2216,8 @@
       <button type="button" onClick="{{ closeShotReferencePreview }}" aria-label="Close reference preview" style="position: absolute; top: 13px; right: 13px; z-index: 2; width: 32px; height: 32px; border: 1px solid color-mix(in srgb, var(--surface, #FFFEF9) 62%, transparent); border-radius: 10px; background: color-mix(in srgb, var(--chrome, #232322) 78%, transparent); color: #fff; font: 22px/1 inherit; cursor: pointer;">×</button>
       <img src="{{ shotReferencePreviewImage }}" alt="Reference for shot {{ shotReferencePreviewShot }}" style="display: block; width: 100%; max-height: min(57vh, 500px); object-fit: contain; background: #191918; border-radius: 19px 16px 0 0;">
       <div style="padding: 18px 21px 20px;">
-        <div style="display: flex; align-items: flex-start; gap: 14px; justify-content: space-between;"><div><div style="color: var(--accent, #BA7517); font-size: 10px; font-weight: 800; letter-spacing: 1.2px; text-transform: uppercase;">Shot {{ shotReferencePreviewShot }}</div><div style="margin-top: 3px; color: var(--ink, #2C2C2A); font-size: 19px; font-weight: 800;">{{ shotReferencePreviewScene }}</div></div><div style="padding-top: 2px; color: var(--muted, #888780); font-size: 11px;">Generated reference</div></div>
-        <div style="display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 8px; margin-top: 16px; padding: 12px; border-radius: 12px; background: var(--soft, #EFEBE1);"><div><div style="font-size: 8px; color: var(--muted, #888780); font-weight: 800; letter-spacing: .7px; text-transform: uppercase;">Size</div><div style="margin-top: 4px; font-size: 10.5px; font-weight: 700; color: var(--ink, #2C2C2A);">{{ shotReferencePreviewSize }}</div></div><div><div style="font-size: 8px; color: var(--muted, #888780); font-weight: 800; letter-spacing: .7px; text-transform: uppercase;">Angle</div><div style="margin-top: 4px; font-size: 10.5px; font-weight: 700; color: var(--ink, #2C2C2A);">{{ shotReferencePreviewAngle }}</div></div><div><div style="font-size: 8px; color: var(--muted, #888780); font-weight: 800; letter-spacing: .7px; text-transform: uppercase;">Lens</div><div style="margin-top: 4px; font-size: 10.5px; font-weight: 700; color: var(--ink, #2C2C2A);">{{ shotReferencePreviewLens }}</div></div><div><div style="font-size: 8px; color: var(--muted, #888780); font-weight: 800; letter-spacing: .7px; text-transform: uppercase;">Time</div><div style="margin-top: 4px; font-size: 10.5px; font-weight: 700; color: var(--ink, #2C2C2A);">{{ shotReferencePreviewTime }}</div></div><div><div style="font-size: 8px; color: var(--muted, #888780); font-weight: 800; letter-spacing: .7px; text-transform: uppercase;">Movement</div><div style="margin-top: 4px; font-size: 10.5px; font-weight: 700; color: var(--ink, #2C2C2A);">{{ shotReferencePreviewMovement }}</div></div></div>
+        <div style="display: flex; align-items: flex-start; gap: 14px; justify-content: space-between;"><div><div style="color: var(--accent, #BA7517); font-size: 10px; font-weight: 800; letter-spacing: 1.2px; text-transform: uppercase;">Shot {{ shotReferencePreviewShot }}</div><div style="margin-top: 3px; color: var(--ink, #2C2C2A); font-size: 19px; font-weight: 800;"><sc-if value="{{ shotReferencePreviewSceneProjectContent }}" hint-placeholder-val="true"><span data-project-content>{{ shotReferencePreviewScene }}</span></sc-if><sc-if value="{{ shotReferencePreviewSceneInterfaceContent }}" hint-placeholder-val="false"><span>{{ shotReferencePreviewScene }}</span></sc-if></div></div><div style="padding-top: 2px; color: var(--muted, #888780); font-size: 11px;">Generated reference</div></div>
+        <div style="display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 8px; margin-top: 16px; padding: 12px; border-radius: 12px; background: var(--soft, #EFEBE1);"><div><div style="font-size: 8px; color: var(--muted, #888780); font-weight: 800; letter-spacing: .7px; text-transform: uppercase;">Size</div><div style="margin-top: 4px; font-size: 10.5px; font-weight: 700; color: var(--ink, #2C2C2A);"><sc-if value="{{ shotReferencePreviewSizeProjectContent }}" hint-placeholder-val="true"><span data-project-content>{{ shotReferencePreviewSize }}</span></sc-if><sc-if value="{{ shotReferencePreviewSizeInterfaceContent }}" hint-placeholder-val="false"><span>{{ shotReferencePreviewSize }}</span></sc-if></div></div><div><div style="font-size: 8px; color: var(--muted, #888780); font-weight: 800; letter-spacing: .7px; text-transform: uppercase;">Angle</div><div style="margin-top: 4px; font-size: 10.5px; font-weight: 700; color: var(--ink, #2C2C2A);"><sc-if value="{{ shotReferencePreviewAngleProjectContent }}" hint-placeholder-val="true"><span data-project-content>{{ shotReferencePreviewAngle }}</span></sc-if><sc-if value="{{ shotReferencePreviewAngleInterfaceContent }}" hint-placeholder-val="false"><span>{{ shotReferencePreviewAngle }}</span></sc-if></div></div><div><div style="font-size: 8px; color: var(--muted, #888780); font-weight: 800; letter-spacing: .7px; text-transform: uppercase;">Lens</div><div style="margin-top: 4px; font-size: 10.5px; font-weight: 700; color: var(--ink, #2C2C2A);"><sc-if value="{{ shotReferencePreviewLensProjectContent }}" hint-placeholder-val="true"><span data-project-content>{{ shotReferencePreviewLens }}</span></sc-if><sc-if value="{{ shotReferencePreviewLensInterfaceContent }}" hint-placeholder-val="false"><span>{{ shotReferencePreviewLens }}</span></sc-if></div></div><div><div style="font-size: 8px; color: var(--muted, #888780); font-weight: 800; letter-spacing: .7px; text-transform: uppercase;">Time</div><div style="margin-top: 4px; font-size: 10.5px; font-weight: 700; color: var(--ink, #2C2C2A);">{{ shotReferencePreviewTime }}</div></div><div><div style="font-size: 8px; color: var(--muted, #888780); font-weight: 800; letter-spacing: .7px; text-transform: uppercase;">Movement</div><div style="margin-top: 4px; font-size: 10.5px; font-weight: 700; color: var(--ink, #2C2C2A);"><sc-if value="{{ shotReferencePreviewMovementProjectContent }}" hint-placeholder-val="true"><span data-project-content>{{ shotReferencePreviewMovement }}</span></sc-if><sc-if value="{{ shotReferencePreviewMovementInterfaceContent }}" hint-placeholder-val="false"><span>{{ shotReferencePreviewMovement }}</span></sc-if></div></div></div>
         <div style="display: flex; justify-content: flex-end; gap: 8px; margin-top: 17px;"><button type="button" onClick="{{ reimagineShotReference }}" disabled="{{ shotReferencePreviewBusy }}" style="height: 36px; padding: 0 13px; border: 1px solid var(--hair, #E7E4DA); border-radius: 10px; background: transparent; color: var(--ink, #2C2C2A); font: 700 11.5px inherit; cursor: pointer; opacity: {{ shotReferencePreviewBusyOpacity }};">{{ shotReferencePreviewActionLabel }}</button><button type="button" onClick="{{ downloadShotReference }}" disabled="{{ shotReferencePreviewDownloading }}" style="height: 36px; padding: 0 14px; border: 1px solid var(--accent, #BA7517); border-radius: 10px; background: var(--accent, #BA7517); color: #fff; font: 800 11.5px inherit; cursor: pointer; opacity: {{ shotReferencePreviewDownloadOpacity }};">{{ shotReferencePreviewDownloadLabel }}</button></div>
       </div>
     </section>
@@ -2942,6 +2942,11 @@ class Component extends DCLogic {
     document.addEventListener('visibilitychange', this._creditsVisibilityHandler);
     this._themeHandler = (event) => this.setState({ darkMode: event?.detail?.theme === 'dark' });
     window.addEventListener('filmscript:theme-change', this._themeHandler);
+    // Recompute runtime labels, dates and accessible names when the personal
+    // interface language changes. Durable screenplay and production values
+    // remain protected by data-project-content/data-lumiere-generated.
+    this._languageHandler = () => this.setState({});
+    window.addEventListener('filmscript:language-change', this._languageHandler);
     this._creditsUpdatedHandler = (event) => {
       const credits = event?.detail;
       if (!credits || typeof credits !== 'object') return;
@@ -3223,7 +3228,7 @@ class Component extends DCLogic {
           if (!this._unmounted) this._loadImportedScript();
         }, 700);
       } else {
-        this.setState({ toast: 'Could not open this screenplay.' });
+        this._toast('Could not open this screenplay.');
       }
     }
   }
@@ -6290,7 +6295,8 @@ class Component extends DCLogic {
   // ---------- toast ----------
   _toast(msg) {
     clearTimeout(this._toastT);
-    this.setState({ toast: msg });
+    const source = String(msg || '');
+    this.setState({ toast: window.filmscriptLanguage?.t?.(source) || source });
     this._toastT = setTimeout(() => this.setState({ toast: '' }), 2800);
   }
 
@@ -8031,6 +8037,7 @@ Write Lumiere's next reply only:`;
     if (this._writingIdleVisibilityHandler) document.removeEventListener('visibilitychange', this._writingIdleVisibilityHandler);
     if (this._creditsVisibilityHandler) document.removeEventListener('visibilitychange', this._creditsVisibilityHandler);
     if (this._themeHandler) window.removeEventListener('filmscript:theme-change', this._themeHandler);
+    if (this._languageHandler) window.removeEventListener('filmscript:language-change', this._languageHandler);
     if (this._creditsUpdatedHandler) window.removeEventListener('filmscript:credits-updated', this._creditsUpdatedHandler);
     if (this._proRequiredHandler) window.removeEventListener('filmscript:pro-required', this._proRequiredHandler);
     if (this._analysisOpenEditorHandler) window.removeEventListener('filmscript:analysis-open-editor', this._analysisOpenEditorHandler);
@@ -8069,6 +8076,10 @@ Write Lumiere's next reply only:`;
       ? { bg: '#1D1D1B', chrome: '#141413', surface: '#262624', ink: '#ECEAE2', muted: '#96948B', hair: '#3A3A36', soft: '#31312E' }
       : { bg: '#F5F0E8', chrome: '#232322', surface: '#FFFEF9', ink: '#2C2C2A', muted: '#888780', hair: '#E7E4DA', soft: '#EFEBE1' };
     const pages = this._buildPages();
+    const interfaceLanguage = String(window.filmscriptLanguage?.get?.() || document.documentElement.lang || 'en').toLowerCase();
+    const interfaceSpanish = interfaceLanguage.startsWith('es');
+    const interfaceLocale = interfaceSpanish ? 'es-GT' : 'en-US';
+    const ui = (english, spanish) => interfaceSpanish ? spanish : english;
 
     const workMode = this.state.workMode || 'editor';
     const canvasTool = this.state.canvasTool || 'home';
@@ -8327,7 +8338,10 @@ Write Lumiere's next reply only:`;
       makeBreakdownCell('music', 'Music', ['music'], 2, '5', { lastRow: true }),
       makeBreakdownCell('sound', 'Sound', ['sound'], 3, '5', { lastRow: true }),
     ];
-    const breakdownHeading = String(breakdownScene.title || `Scene ${breakdownSceneIndex + 1}`);
+    const breakdownHeadingSource = String(breakdownScene.title || '').trim();
+    const breakdownHeading = breakdownHeadingSource || `Scene ${breakdownSceneIndex + 1}`;
+    const breakdownProjectTitleSource = String(this.state.docTitle || '').trim();
+    const breakdownProjectTitleIsDefault = !breakdownProjectTitleSource || breakdownProjectTitleSource.toLowerCase() === 'untitled screenplay';
     const headingWithoutNumber = breakdownHeading.replace(/\s+\d+\s*$/, '').trim();
     const intExtMatch = headingWithoutNumber.match(/^(INT\.?\s*\/\s*EXT\.?|INT\.?\/EXT\.?|INT\.?|EXT\.?)/i);
     const breakdownIntExt = intExtMatch ? intExtMatch[0].replace(/\s+/g, '').toUpperCase() : 'Not set';
@@ -8339,10 +8353,14 @@ Write Lumiere's next reply only:`;
       .trim() || 'Not set';
     const locationElement = normalizedElements.find(element => element.normalizedCategory === 'locations');
     const stripLocation = breakdownScene.strip?.location && breakdownScene.strip.location !== 'Unassigned' ? breakdownScene.strip.location : '';
-    const breakdownMetadataField = (key, fallback) => {
-      const value = hasOwn(breakdownMetadataEdits, key) ? String(breakdownMetadataEdits[key] ?? '') : String(fallback ?? '');
+    const breakdownMetadataField = (key, fallback, fallbackIsProjectContent = false) => {
+      const hasSavedValue = hasOwn(breakdownMetadataEdits, key);
+      const value = hasSavedValue ? String(breakdownMetadataEdits[key] ?? '') : String(fallback ?? '');
+      const projectContent = hasSavedValue || fallbackIsProjectContent;
       return {
         value,
+        projectContent,
+        interfaceContent: !projectContent,
         onInput: (event) => this._updateBreakdownFormLocal(breakdownScene.id, 'metadata', key, event.target.value),
         onBlur: (event) => this._saveBreakdownField(breakdownScene.id, 'metadata', key, event.target.value),
       };
@@ -8350,14 +8368,14 @@ Write Lumiere's next reply only:`;
     const breakdownFields = {
       scriptPage: breakdownMetadataField('scriptPage', breakdownScene.page || (this._scenes || [])[breakdownSceneIndex]?.page || 'Not set'),
       pageCount: breakdownMetadataField('pageCount', breakdownScene.pageCount || 'Not set'),
-      intExt: breakdownMetadataField('intExt', breakdownIntExt),
-      dayNight: breakdownMetadataField('dayNight', breakdownDayNight),
-      estimatedTime: breakdownMetadataField('estimatedTime', breakdownScene.estimatedTime || 'Not set'),
-      sceneDescription: breakdownMetadataField('sceneDescription', breakdownData.generated === false ? 'Pending review' : breakdownData.synopsis || 'Pending analysis'),
-      set: breakdownMetadataField('set', breakdownSet),
-      location: breakdownMetadataField('location', locationElement?.name || stripLocation || 'Not set'),
-      sequence: breakdownMetadataField('sequence', breakdownScene.sequence || 'Not set'),
-      scriptDay: breakdownMetadataField('scriptDay', breakdownScene.strip?.day || 'Not set'),
+      intExt: breakdownMetadataField('intExt', breakdownIntExt, !!intExtMatch),
+      dayNight: breakdownMetadataField('dayNight', breakdownDayNight, !!dayNightMatch),
+      estimatedTime: breakdownMetadataField('estimatedTime', breakdownScene.estimatedTime || 'Not set', !!String(breakdownScene.estimatedTime || '').trim()),
+      sceneDescription: breakdownMetadataField('sceneDescription', breakdownData.generated === false ? 'Pending review' : breakdownData.synopsis || 'Pending analysis', breakdownData.generated !== false && !!String(breakdownData.synopsis || '').trim()),
+      set: breakdownMetadataField('set', breakdownSet, breakdownSet !== 'Not set'),
+      location: breakdownMetadataField('location', locationElement?.name || stripLocation || 'Not set', !!String(locationElement?.name || stripLocation || '').trim()),
+      sequence: breakdownMetadataField('sequence', breakdownScene.sequence || 'Not set', !!String(breakdownScene.sequence || '').trim()),
+      scriptDay: breakdownMetadataField('scriptDay', breakdownScene.strip?.day || 'Not set', !!String(breakdownScene.strip?.day || '').trim()),
     };
     const breakdownStatus = breakdownScene.status === 'outdated' ? 'Outdated' : breakdownScene.breakdown && breakdownData.generated !== false ? 'Synced' : 'Needs review';
     const stripPalette = dark
@@ -8397,7 +8415,7 @@ Write Lumiere's next reply only:`;
       if (!date) return '';
       const parsed = new Date(`${date}T00:00:00Z`);
       if (Number.isNaN(parsed.getTime())) return '';
-      return new Intl.DateTimeFormat('en-US', { month: 'short', day: 'numeric', timeZone: 'UTC' }).format(parsed);
+      return new Intl.DateTimeFormat(interfaceLocale, { month: 'short', day: 'numeric', timeZone: 'UTC' }).format(parsed);
     };
     const shootingDayDate = (day) => {
       if (!shootingStartDate) return '';
@@ -8449,7 +8467,8 @@ Write Lumiere's next reply only:`;
     const stripScenes = stripSceneSource.map((scene, orderIndex) => {
       const sceneIndex = Math.max(0, (sceneNumberById.get(scene.id) || 1) - 1);
       const sceneNo = sceneNumberById.get(scene.id) || sceneIndex + 1;
-      const heading = String(scene.title || `Scene ${sceneIndex + 1}`);
+      const headingSource = String(scene.title || '').trim();
+      const heading = headingSource || ui(`Scene ${sceneIndex + 1}`, `Escena ${sceneIndex + 1}`);
       const headingWithoutNumber = heading.replace(/\s+\d+\s*$/, '').trim();
       const intExtMatch = headingWithoutNumber.match(/^(INT\.?\s*\/\s*EXT\.?|INT\.?\/EXT\.?|INT\.?|EXT\.?)/i);
       const intExt = intExtMatch ? intExtMatch[0].replace(/\./g, '').replace(/\s+/g, '').toUpperCase() : 'N/A';
@@ -8462,12 +8481,12 @@ Write Lumiere's next reply only:`;
           : timeRaw
             ? 'DAY'
             : 'N/A';
-      const parsedSet = headingWithoutNumber
+      const parsedSet = headingSource ? headingWithoutNumber
         .replace(/^(INT\.?\s*\/\s*EXT\.?|INT\.?\/EXT\.?|INT\.?|EXT\.?)\s*[-.]?\s*/i, '')
         .replace(/\s*-\s*(NIGHT|DAY|DAWN|MORNING|AFTERNOON|SUNSET|NOCHE|D[IÍ]A|AMANECER|MAÑANA|TARDE|ATARDECER).*$/i, '')
-        .trim();
+        .trim() : '';
       const savedLocation = scene.strip?.location && scene.strip.location !== 'Unassigned' ? scene.strip.location : '';
-      const shootLocation = savedLocation || 'Assign';
+      const shootLocation = savedLocation || ui('Assign', 'Asignar');
       const estimatedLines = String(scene.text || '').split('\n').reduce((total, line) => total + Math.max(1, Math.ceil((line.length || 1) / 58)), 0);
       const estimatedEighths = Math.max(1, Math.ceil((estimatedLines / 42) * 8));
       const savedLength = scene.strip?.eighths ?? scene.strip?.pageEighths;
@@ -8488,27 +8507,39 @@ Write Lumiere's next reply only:`;
         : hasSavedEstimate
           ? Math.max(1, Math.min(720, Math.round(savedMinutesRaw)))
           : null;
-      const estimatedTimeLabel = Number.isFinite(estimatedMinutes) ? formatDuration(estimatedMinutes) : 'Set time';
-      const synopsis = String(scene.breakdown?.synopsis || scene.text || '').replace(/\s+/g, ' ').trim() || 'No scene description yet.';
+      const estimatedTimeLabel = Number.isFinite(estimatedMinutes) ? formatDuration(estimatedMinutes) : ui('Set time', 'Definir tiempo');
+      const synopsisSource = String(scene.breakdown?.synopsis || scene.text || '').replace(/\s+/g, ' ').trim();
+      const synopsis = synopsisSource || ui('No scene description yet.', 'Aún no hay descripción de la escena.');
       return {
         isStrip: true,
         isDivider: false,
         sceneId: scene.id,
         sceneNo,
         intExt,
-        setName: parsedSet || 'UNASSIGNED SET',
+        setName: parsedSet || ui('UNASSIGNED SET', 'SET SIN ASIGNAR'),
+        setNameProjectContent: Boolean(parsedSet),
+        setNameInterfaceContent: !parsedSet,
         synopsis,
+        synopsisProjectContent: Boolean(synopsisSource),
+        synopsisInterfaceContent: !synopsisSource,
         shootLocation,
+        shootLocationProjectContent: Boolean(savedLocation),
+        shootLocationInterfaceContent: !savedLocation,
         shootLocationClass: savedLocation ? '' : 'is-unassigned',
-        shootLocationTitle: savedLocation ? `Shoot location: ${savedLocation}` : 'Assign a real-world shoot location',
+        shootLocationTitle: savedLocation
+          ? ui(`Shoot location: ${savedLocation}`, `Locación de rodaje: ${savedLocation}`)
+          : ui('Assign a real-world shoot location', 'Asignar una locación real de rodaje'),
         castIds,
         castIdTokens: castNumbers.map((number) => {
-          const castName = stripboardCastById.get(number)?.name || `Cast member ${number}`;
+          const savedCastName = stripboardCastById.get(number)?.name || '';
+          const castName = savedCastName || ui(`Cast member ${number}`, `Miembro del reparto ${number}`);
           return {
             number: String(number),
             name: castName,
+            nameProjectContent: Boolean(savedCastName),
+            nameInterfaceContent: !savedCastName,
             sceneNo,
-            ariaLabel: `Open Cast ${number}: ${castName} in scene ${sceneNo}`,
+            ariaLabel: ui(`Open Cast ${number}: ${castName} in scene ${sceneNo}`, `Abrir reparto ${number}: ${castName} en la escena ${sceneNo}`),
             tooltipId: `v5-strip-cast-${scene.id}-${number}`,
             hover: () => this._playStripboardCastHover(),
             openInScript: () => this.openBreakdownReference(sceneNo, 'cast', [castName], castName),
@@ -8521,7 +8552,9 @@ Write Lumiere's next reply only:`;
         eighths,
         estimatedMinutes,
         estimatedTimeLabel,
-        estimatedTimeAriaLabel: hasSavedEstimate ? `Edit estimated time for scene ${sceneNo}` : 'Est. time…',
+        estimatedTimeAriaLabel: hasSavedEstimate
+          ? ui(`Edit estimated time for scene ${sceneNo}`, `Editar tiempo estimado de la escena ${sceneNo}`)
+          : ui('Set estimated time', 'Definir tiempo estimado'),
         timeUnsetClass: estimatedMinutes == null ? 'is-unset' : '',
         timeSaved: hasSavedEstimate,
         shootDay: scene.strip?.day,
@@ -8541,7 +8574,10 @@ Write Lumiere's next reply only:`;
         showDragGrip: !this.state.stripboardEditing,
         gridColumns: this.state.stripboardEditing ? '32px 54px 46px minmax(220px, 1.55fr) 80px 112px minmax(140px, .95fr) 58px 76px 80px 40px 58px' : '32px 26px 46px minmax(220px, 1.55fr) 80px 112px minmax(140px, .95fr) 58px 76px 80px 40px',
         testId: `stripboard-strip-${sceneNumberById.get(scene.id) || sceneIndex + 1}`,
-        ariaLabel: `Scene ${sceneNumberById.get(scene.id) || sceneIndex + 1}, set ${parsedSet || 'unassigned'}, shoot location ${savedLocation || 'not assigned'}, cast IDs ${castIds}, ${dayNight}. Drag to reorder. Press Option plus Arrow Up or Arrow Down for keyboard reordering.`,
+        ariaLabel: ui(
+          `Scene ${sceneNumberById.get(scene.id) || sceneIndex + 1}, set ${parsedSet || 'unassigned'}, shoot location ${savedLocation || 'not assigned'}, cast IDs ${castIds}, ${dayNight}. Drag to reorder. Press Option plus Arrow Up or Arrow Down for keyboard reordering.`,
+          `Escena ${sceneNumberById.get(scene.id) || sceneIndex + 1}, set ${parsedSet || 'sin asignar'}, locación de rodaje ${savedLocation || 'sin asignar'}, IDs de reparto ${castIds}, ${dayNight}. Arrastra para reordenar. Presiona Opción más Flecha arriba o Flecha abajo para reordenar con el teclado.`
+        ),
         canMoveUp: orderIndex > 0,
         canMoveDown: orderIndex < stripSceneSource.length - 1,
         moveUpDisabled: orderIndex === 0,
@@ -8563,12 +8599,16 @@ Write Lumiere's next reply only:`;
         locationHasRecent: Boolean(recentShootLocation),
         locationRecent: {
           name: recentShootLocation,
+          nameProjectContent: Boolean(recentShootLocation),
           selectedClass: recentShootLocation.toLocaleLowerCase('en') === String(savedLocation).toLocaleLowerCase('en') ? 'is-selected' : '',
-          actionLabel: recentShootLocation.toLocaleLowerCase('en') === String(savedLocation).toLocaleLowerCase('en') ? 'Current' : 'Assign →',
+          actionLabel: recentShootLocation.toLocaleLowerCase('en') === String(savedLocation).toLocaleLowerCase('en')
+            ? ui('Current', 'Actual')
+            : ui('Assign →', 'Asignar →'),
         },
         locationHasOptions: otherShootLocations.length > 0,
         locationOptions: otherShootLocations.map((name) => ({
           name,
+          nameProjectContent: true,
           selectedClass: name.toLocaleLowerCase('en') === String(savedLocation).toLocaleLowerCase('en') ? 'is-selected' : '',
         })),
         openLocation: () => this.openStripboardLocation(scene.id, shootLocation),
@@ -8606,11 +8646,11 @@ Write Lumiere's next reply only:`;
     const stripboardRows = [];
     let currentMinutes = defaultStartMinutes; let shootingDay = 1; let dayEighths = 0; let scheduleKnown = true;
     stripScenes.forEach((strip, index) => {
-      strip.startTimeLabel = scheduleKnown ? formatClock(currentMinutes) : 'Pending';
+      strip.startTimeLabel = scheduleKnown ? formatClock(currentMinutes) : ui('Pending', 'Pendiente');
       strip.startTimePendingClass = scheduleKnown ? '' : 'is-pending';
       strip.timeLabel = scheduleKnown && Number.isFinite(strip.estimatedMinutes)
         ? `${formatClock(currentMinutes)}–${formatClock(currentMinutes + strip.estimatedMinutes)}`
-        : 'Not scheduled';
+        : ui('Not scheduled', 'Sin programar');
       stripboardRows.push(strip);
       if (scheduleKnown && Number.isFinite(strip.estimatedMinutes)) currentMinutes += strip.estimatedMinutes;
       else scheduleKnown = false;
@@ -8618,13 +8658,20 @@ Write Lumiere's next reply only:`;
       (eventsByScene.get(strip.sceneId) || []).forEach((event) => {
         const type = String(event.type || '');
         if (type === 'end_day') {
-          const endTime = scheduleKnown ? formatClock(currentMinutes) : 'Time pending';
+          const endTime = scheduleKnown ? formatClock(currentMinutes) : ui('Time pending', 'Hora pendiente');
           const shootDate = formatShootDate(shootingDayDate(shootingDay));
           stripboardRows.push({
             isStrip: false, isDivider: true, isBreak: false, isEvent: true, eventId: event.id, eventType: type,
-            label: `End of day ${shootingDay}`, total: `${shootDate ? `${shootDate} · ` : ''}${endTime} · ${formatEighths(dayEighths)} pages`,
+            label: ui(`End of day ${shootingDay}`, `Fin del día ${shootingDay}`),
+            total: ui(
+              `${shootDate ? `${shootDate} · ` : ''}${endTime} · ${formatEighths(dayEighths)} pages`,
+              `${shootDate ? `${shootDate} · ` : ''}${endTime} · ${formatEighths(dayEighths)} páginas`
+            ),
             rotation: shootingDay % 2 ? .04 : -.04, itemIndex: itemIndexById.get(event.id) ?? -1,
-            eventAriaLabel: `End of day ${shootingDay}. Finishes at ${endTime}. Drag to move.`,
+            eventAriaLabel: ui(
+              `End of day ${shootingDay}. Finishes at ${endTime}. Drag to move.`,
+              `Fin del día ${shootingDay}. Termina a las ${endTime}. Arrastra para mover.`
+            ),
             moveUpDisabled: (itemIndexById.get(event.id) ?? 0) <= 0,
             moveDownDisabled: (itemIndexById.get(event.id) ?? 0) >= itemSequence.length - 1,
             moveUp: () => this._moveStripboardEvent(event.id, -1), moveDown: () => this._moveStripboardEvent(event.id, 1),
@@ -8633,13 +8680,16 @@ Write Lumiere's next reply only:`;
           return;
         }
         const duration = Math.max(0, Number(event.durationMinutes) || (type === 'lunch' ? 60 : 30));
-        const breakStart = scheduleKnown ? formatClock(currentMinutes) : 'Pending';
+        const breakStart = scheduleKnown ? formatClock(currentMinutes) : ui('Pending', 'Pendiente');
         if (scheduleKnown) currentMinutes += duration;
-        const breakEnd = scheduleKnown ? formatClock(currentMinutes) : 'Pending';
+        const breakEnd = scheduleKnown ? formatClock(currentMinutes) : ui('Pending', 'Pendiente');
         stripboardRows.push({
           isStrip: false, isDivider: false, isBreak: true, isEvent: true, eventId: event.id, eventType: type,
-          label: type === 'lunch' ? 'Lunch' : 'Move company', total: `${duration} min · ${breakStart}–${breakEnd}`,
-          duration, durationLabel: `${duration} min`, eventAriaLabel: `${type === 'lunch' ? 'Lunch' : 'Move company'}, ${duration} minutes, ${breakStart} to ${breakEnd}. Drag to move.`,
+          label: type === 'lunch' ? ui('Lunch', 'Almuerzo') : ui('Move company', 'Traslado de equipo'), total: `${duration} min · ${breakStart}–${breakEnd}`,
+          duration, durationLabel: `${duration} min`, eventAriaLabel: ui(
+            `${type === 'lunch' ? 'Lunch' : 'Move company'}, ${duration} minutes, ${breakStart} to ${breakEnd}. Drag to move.`,
+            `${type === 'lunch' ? 'Almuerzo' : 'Traslado de equipo'}, ${duration} minutos, de ${breakStart} a ${breakEnd}. Arrastra para mover.`
+          ),
           itemIndex: itemIndexById.get(event.id) ?? -1,
           moveUpDisabled: (itemIndexById.get(event.id) ?? 0) <= 0,
           moveDownDisabled: (itemIndexById.get(event.id) ?? 0) >= itemSequence.length - 1,
@@ -8649,39 +8699,65 @@ Write Lumiere's next reply only:`;
         });
       });
       if (index === stripScenes.length - 1 && (!eventsByScene.get(strip.sceneId) || !eventsByScene.get(strip.sceneId).some((event) => event.type === 'end_day'))) {
-        const endTime = scheduleKnown ? formatClock(currentMinutes) : 'Time pending';
+        const endTime = scheduleKnown ? formatClock(currentMinutes) : ui('Time pending', 'Hora pendiente');
         const shootDate = formatShootDate(shootingDayDate(shootingDay));
-        stripboardRows.push({ isStrip: false, isDivider: true, isBreak: false, isEvent: false, label: `End of day ${shootingDay}`, total: `${shootDate ? `${shootDate} · ` : ''}${endTime} · ${formatEighths(dayEighths)} pages`, rotation: shootingDay % 2 ? .04 : -.04 });
+        stripboardRows.push({
+          isStrip: false, isDivider: true, isBreak: false, isEvent: false,
+          label: ui(`End of day ${shootingDay}`, `Fin del día ${shootingDay}`),
+          total: ui(
+            `${shootDate ? `${shootDate} · ` : ''}${endTime} · ${formatEighths(dayEighths)} pages`,
+            `${shootDate ? `${shootDate} · ` : ''}${endTime} · ${formatEighths(dayEighths)} páginas`
+          ),
+          rotation: shootingDay % 2 ? .04 : -.04,
+        });
       }
     });
     stripboardRows.forEach((row, index) => { row.animationDelay = Math.min(index, 16) * 24; });
     const stripboardCalendarDays = [];
-    let calendarDay = { day: 1, dateLabel: formatShootDate(shootingDayDate(1)) || 'Date to be set', scenes: [], pages: 0, minutes: 0, locations: new Set(), endLabel: '' };
+    let calendarDay = { day: 1, dateLabel: formatShootDate(shootingDayDate(1)) || ui('Date to be set', 'Fecha por definir'), scenes: [], pages: 0, minutes: 0, locations: new Set(), endLabel: '' };
     const finishCalendarDay = () => {
       if (!calendarDay.scenes.length) return;
       const locationNames = Array.from(calendarDay.locations);
       const firstScene = calendarDay.scenes[0];
       stripboardCalendarDays.push({
-        label: `Shooting day ${calendarDay.day}`,
+        label: ui(`Shooting day ${calendarDay.day}`, `Día de rodaje ${calendarDay.day}`),
         dateLabel: calendarDay.dateLabel,
-        summary: `${calendarDay.scenes.length} scene${calendarDay.scenes.length === 1 ? '' : 's'} · ${formatEighths(calendarDay.pages)} pages · ${formatDuration(calendarDay.minutes)}`,
-        locationLabel: locationNames.length ? `Location${locationNames.length === 1 ? '' : 's'} · ${locationNames.join(' · ')}` : 'Shoot location to be assigned',
+        summary: ui(
+          `${calendarDay.scenes.length} scene${calendarDay.scenes.length === 1 ? '' : 's'} · ${formatEighths(calendarDay.pages)} pages · ${formatDuration(calendarDay.minutes)}`,
+          `${calendarDay.scenes.length} ${calendarDay.scenes.length === 1 ? 'escena' : 'escenas'} · ${formatEighths(calendarDay.pages)} páginas · ${formatDuration(calendarDay.minutes)}`
+        ),
+        locationLabel: locationNames.length
+          ? ui(`Location${locationNames.length === 1 ? '' : 's'} · ${locationNames.join(' · ')}`, `${locationNames.length === 1 ? 'Locación' : 'Locaciones'} · ${locationNames.join(' · ')}`)
+          : ui('Shoot location to be assigned', 'Locación de rodaje por asignar'),
+        locationLabelProjectContent: locationNames.length > 0,
         scenes: calendarDay.scenes,
         open: (event) => firstScene?.open(event),
       });
     };
     stripboardRows.forEach((row) => {
       if (row.isStrip) {
-        calendarDay.scenes.push({ sceneNo: row.sceneNo, setName: row.setName, location: row.shootLocation === 'Assign' ? 'Location to be assigned' : row.shootLocation, time: row.timeLabel, bg: row.bg, border: row.border, open: (event) => this.openStripboardTime(row.sceneId, row.estimatedMinutes || 60, event) });
+        calendarDay.scenes.push({
+          sceneNo: row.sceneNo,
+          setName: row.setName,
+          setNameProjectContent: row.setNameProjectContent,
+          setNameInterfaceContent: !row.setNameProjectContent,
+          location: row.shootLocationProjectContent ? row.shootLocation : ui('Location to be assigned', 'Locación por asignar'),
+          locationProjectContent: row.shootLocationProjectContent,
+          locationInterfaceContent: !row.shootLocationProjectContent,
+          time: row.timeLabel,
+          bg: row.bg,
+          border: row.border,
+          open: (event) => this.openStripboardTime(row.sceneId, row.estimatedMinutes || 60, event),
+        });
         calendarDay.pages += Number(row.eighths) || 0;
         calendarDay.minutes += Number(row.estimatedMinutes) || 0;
-        if (row.shootLocation && row.shootLocation !== 'Assign') calendarDay.locations.add(row.shootLocation);
+        if (row.shootLocationProjectContent) calendarDay.locations.add(row.shootLocation);
       } else if (row.isBreak) {
         calendarDay.minutes += Number(row.duration) || 0;
       } else if (row.isDivider) {
         calendarDay.endLabel = row.total || '';
         finishCalendarDay();
-        calendarDay = { day: calendarDay.day + 1, dateLabel: formatShootDate(shootingDayDate(calendarDay.day + 1)) || 'Date to be set', scenes: [], pages: 0, minutes: 0, locations: new Set(), endLabel: '' };
+        calendarDay = { day: calendarDay.day + 1, dateLabel: formatShootDate(shootingDayDate(calendarDay.day + 1)) || ui('Date to be set', 'Fecha por definir'), scenes: [], pages: 0, minutes: 0, locations: new Set(), endLabel: '' };
       }
     });
     finishCalendarDay();
@@ -8750,6 +8826,10 @@ Write Lumiere's next reply only:`;
       const timeFull = timeBudgetMinutes != null && remainingMinutes < 1;
       const rows = selectedShots.map((shot, shotIndex) => {
         const shotId = shot.id || `${scene.id || 'scene'}-${shotIndex}`;
+        const sizeValue = String(shot.size || shot.type || '').trim();
+        const angleValue = String(shot.angle || shot.cameraAngle || '').trim();
+        const movementValue = String(shot.movement || shot.move || shot.cameraMovement || '').trim();
+        const descriptionValue = String(shot.description || '').trim();
         const referenceImage = shotReferenceImage(shot.referenceAsset, shot.referenceImage);
         const referenceKey = `${scene.id}:${shotId}`;
         const referenceUploading = Boolean(this.state.shotReferenceUploading?.[referenceKey]);
@@ -8759,8 +8839,12 @@ Write Lumiere's next reply only:`;
         return {
           id: shotId,
           number: `${sceneIndex + 1}${shotSuffix(shotIndex)}`,
-          size: shot.size || shot.type || 'Not set',
-          angle: shot.angle || shot.cameraAngle || 'Not set',
+          size: sizeValue || ui('Not set', 'Sin definir'),
+          sizeHasContent: !!sizeValue,
+          sizeMissing: !sizeValue,
+          angle: angleValue || ui('Not set', 'Sin definir'),
+          angleHasContent: !!angleValue,
+          angleMissing: !angleValue,
           focalLength: shot.focalLength || shot.lens || '50mm',
           focalLengthDisplay: shot.focalLength || shot.lens || '50mm',
           estimatedMinutes: this._shotMinutes(shot),
@@ -8770,8 +8854,10 @@ Write Lumiere's next reply only:`;
           referenceEmpty: !referenceImage,
           referenceClass: `${referenceImage ? 'has-image' : ''} ${referenceUploading ? 'is-uploading' : ''} ${referenceDisabled ? 'is-disabled' : ''}`,
           referenceStackClass: referenceImage ? 'has-reference' : 'is-empty',
-          referenceCaption: referenceImage ? 'Replace' : 'Reference',
-          referenceTitle: referenceImage ? `Open reference image for shot ${sceneIndex + 1}${shotSuffix(shotIndex)}` : `Add reference image for shot ${sceneIndex + 1}${shotSuffix(shotIndex)}`,
+          referenceCaption: referenceImage ? ui('Replace', 'Reemplazar') : ui('Reference', 'Referencia'),
+          referenceTitle: referenceImage
+            ? ui(`Open reference image for shot ${sceneIndex + 1}${shotSuffix(shotIndex)}`, `Abrir imagen de referencia del plano ${sceneIndex + 1}${shotSuffix(shotIndex)}`)
+            : ui(`Add reference image for shot ${sceneIndex + 1}${shotSuffix(shotIndex)}`, `Agregar imagen de referencia al plano ${sceneIndex + 1}${shotSuffix(shotIndex)}`),
           referenceTestId: `shotlist-shot-reference-${sceneIndex + 1}-${shotIndex + 1}`,
           referenceDisabled,
           referenceInput: (event) => this._setShotReference(scene.id, shotId, event),
@@ -8792,18 +8878,27 @@ Write Lumiere's next reply only:`;
             image: referenceImage,
             sceneId: scene.id,
             shotId,
-            sceneTitle: scene.title || `Scene ${sceneIndex + 1}`,
+            sceneTitle: scene.title || ui(`Scene ${sceneIndex + 1}`, `Escena ${sceneIndex + 1}`),
+            sceneTitleProjectContent: Boolean(String(scene.title || '').trim()),
             shotNumber: `${sceneIndex + 1}${shotSuffix(shotIndex)}`,
-            size: shot.size || shot.type || 'Not set',
-            angle: shot.angle || shot.cameraAngle || 'Not set',
+            size: shot.size || shot.type || ui('Not set', 'Sin definir'),
+            sizeProjectContent: Boolean(String(shot.size || shot.type || '').trim()),
+            angle: shot.angle || shot.cameraAngle || ui('Not set', 'Sin definir'),
+            angleProjectContent: Boolean(String(shot.angle || shot.cameraAngle || '').trim()),
             focalLength: shot.focalLength || shot.lens || '50mm',
+            focalLengthProjectContent: Boolean(String(shot.focalLength || shot.lens || '').trim()),
             estimatedMinutes: this._shotMinutes(shot),
-            movement: shot.movement || shot.move || shot.cameraMovement || 'Not set',
+            movement: shot.movement || shot.move || shot.cameraMovement || ui('Not set', 'Sin definir'),
+            movementProjectContent: Boolean(String(shot.movement || shot.move || shot.cameraMovement || '').trim()),
             });
           },
-          movement: shot.movement || shot.move || shot.cameraMovement || 'Not set',
-          description: shot.description || '',
-          descriptionDisplay: shot.description || 'No description',
+          movement: movementValue || ui('Not set', 'Sin definir'),
+          movementHasContent: !!movementValue,
+          movementMissing: !movementValue,
+          description: descriptionValue,
+          descriptionDisplay: descriptionValue || ui('No description', 'Sin descripción'),
+          descriptionHasContent: !!descriptionValue,
+          descriptionMissing: !descriptionValue,
           editing: this.state.shotListEditing,
           viewing: !this.state.shotListEditing,
           sizeInput: (event) => this._updateShotField(scene.id, shotIndex, 'size', event.target.value),
@@ -8824,6 +8919,7 @@ Write Lumiere's next reply only:`;
           borderBottom: shotIndex === selectedShots.length - 1 ? 'none' : '1px solid var(--hair, #E7E4DA)',
         };
       });
+      const sceneTitleValue = String(scene.title || '').trim();
       const sceneReferenceImage = shotReferenceImage(scene.referenceAsset);
       const sceneReferenceKey = `${scene.id}:scene`;
       const sceneReferenceUploading = Boolean(this.state.shotReferenceUploading?.[sceneReferenceKey]);
@@ -8831,9 +8927,11 @@ Write Lumiere's next reply only:`;
       return {
         id: scene.id,
         number: sceneIndex + 1,
-        title: scene.title || `Scene ${sceneIndex + 1}`,
+        title: sceneTitleValue || ui(`Scene ${sceneIndex + 1}`, `Escena ${sceneIndex + 1}`),
+        titleHasContent: !!sceneTitleValue,
+        titleMissing: !sceneTitleValue,
         openInScript: (event) => this.openShotListSceneInScript(scene.id, event),
-        sourceLabel: manual ? 'Manual scene' : 'Screenplay scene',
+        sourceLabel: manual ? ui('Manual scene', 'Escena manual') : ui('Screenplay scene', 'Escena del guion'),
         titleViewing: !manual || !this.state.shotListEditing,
         titleEditing: manual && this.state.shotListEditing,
         titleKey: (event) => { if (event.key === 'Enter') { event.preventDefault(); event.currentTarget.blur(); } },
@@ -8841,8 +8939,10 @@ Write Lumiere's next reply only:`;
         referenceImage: sceneReferenceImage,
         referenceEmpty: !sceneReferenceImage,
         referenceClass: `${sceneReferenceImage ? 'has-image' : ''} ${sceneReferenceUploading ? 'is-uploading' : ''} ${sceneReferenceDisabled ? 'is-disabled' : ''}`,
-        referenceCaption: sceneReferenceImage ? 'Replace' : 'Scene ref',
-        referenceTitle: sceneReferenceImage ? `Replace reference image for scene ${sceneIndex + 1}` : `Add reference image for scene ${sceneIndex + 1}`,
+        referenceCaption: sceneReferenceImage ? ui('Replace', 'Reemplazar') : ui('Scene ref', 'Referencia de escena'),
+        referenceTitle: sceneReferenceImage
+          ? ui(`Replace reference image for scene ${sceneIndex + 1}`, `Reemplazar imagen de referencia de la escena ${sceneIndex + 1}`)
+          : ui(`Add reference image for scene ${sceneIndex + 1}`, `Agregar imagen de referencia a la escena ${sceneIndex + 1}`),
         referenceTestId: `shotlist-scene-reference-${sceneIndex + 1}`,
         referenceDisabled: sceneReferenceDisabled,
         referenceInput: (event) => this._setShotReference(scene.id, '', event),
@@ -8854,30 +8954,39 @@ Write Lumiere's next reply only:`;
         rows,
         hasShots: rows.length > 0,
         empty: rows.length === 0,
-        countLabel: `${rows.length} shot${rows.length === 1 ? '' : 's'} · ${this._formatProductionMinutes(plannedMinutes)}`,
-        timeBudgetLabel: timeBudgetMinutes == null ? 'Not set' : `${this._formatProductionMinutes(timeBudgetMinutes)} available`,
+        countLabel: ui(
+          `${rows.length} shot${rows.length === 1 ? '' : 's'} · ${this._formatProductionMinutes(plannedMinutes)}`,
+          `${rows.length} ${rows.length === 1 ? 'plano' : 'planos'} · ${this._formatProductionMinutes(plannedMinutes)}`
+        ),
+        timeBudgetLabel: timeBudgetMinutes == null
+          ? ui('Not set', 'Sin definir')
+          : ui(`${this._formatProductionMinutes(timeBudgetMinutes)} available`, `${this._formatProductionMinutes(timeBudgetMinutes)} disponibles`),
         timeStatusLabel: timeBudgetMinutes == null
-          ? `${this._formatProductionMinutes(plannedMinutes)} planned · 15m reserved per shot`
+          ? ui(`${this._formatProductionMinutes(plannedMinutes)} planned · 15m reserved per shot`, `${this._formatProductionMinutes(plannedMinutes)} planificados · 15 min reservados por plano`)
           : overMinutes > 0
-            ? `${this._formatProductionMinutes(overMinutes)} over schedule`
-            : `${this._formatProductionMinutes(plannedMinutes)} planned · ${this._formatProductionMinutes(remainingMinutes)} left`,
+            ? ui(`${this._formatProductionMinutes(overMinutes)} over schedule`, `${this._formatProductionMinutes(overMinutes)} sobre el horario`)
+            : ui(`${this._formatProductionMinutes(plannedMinutes)} planned · ${this._formatProductionMinutes(remainingMinutes)} left`, `${this._formatProductionMinutes(plannedMinutes)} planificados · ${this._formatProductionMinutes(remainingMinutes)} restantes`),
         timeBudgetClass: timeBudgetMinutes == null ? 'is-unset' : overMinutes > 0 ? 'is-over' : timeFull ? 'is-full' : '',
         timeBudgetProgress: timeBudgetMinutes == null ? 0 : Math.max(0, Math.min(100, Math.round((plannedMinutes / timeBudgetMinutes) * 100))),
         timeBudgetTestId: `shotlist-time-budget-${sceneIndex + 1}`,
         gridColumns: shotListGridColumns,
         addShot: () => this.addShot(scene.id),
         addShotDisabled: timeFull || this.state.shotListSaving,
-        addShotLabel: timeFull ? 'Time full' : '+ Add shot',
+        addShotLabel: timeFull ? ui('Time full', 'Tiempo completo') : ui('+ Add shot', '+ Agregar plano'),
         addShotTitle: timeFull
-          ? 'Reduce a shot time or increase this scene in the Stripboard.'
+          ? ui('Reduce a shot time or increase this scene in the Stripboard.', 'Reduce la duración de un plano o aumenta la de esta escena en el plan de rodaje.')
           : timeBudgetMinutes == null
-            ? 'Adds a 15 minute camera slot. Set scene time in the Stripboard to enforce a limit.'
-            : `${this._formatProductionMinutes(remainingMinutes)} remain in this scene.`,
+            ? ui('Adds a 15 minute camera slot. Set scene time in the Stripboard to enforce a limit.', 'Agrega un espacio de cámara de 15 minutos. Define la duración de la escena en el plan de rodaje para aplicar un límite.')
+            : ui(`${this._formatProductionMinutes(remainingMinutes)} remain in this scene.`, `Quedan ${this._formatProductionMinutes(remainingMinutes)} en esta escena.`),
         addTestId: `shotlist-add-shot-${sceneIndex + 1}`,
         generateAvailable: !manual,
         generate: canGenerateShotLists ? () => this.generateShotListForScene(scene.id) : () => this._requireLumierePlan('Your included storyboard has been used. Choose Creator or Full for more Lumiere shot lists.'),
         generateDisabled: productionProgress,
-        generateLabel: productionProgress ? 'Planning…' : canGenerateShotLists ? 'Generate with Lumiere' : 'Creator or Full required',
+        generateLabel: productionProgress
+          ? ui('Planning…', 'Planificando…')
+          : canGenerateShotLists
+            ? ui('Generate with Lumiere', 'Generar con Lumiere')
+            : ui('Creator or Full required', 'Se requiere Creator o Full'),
         deleteAvailable: manual && this.state.shotListEditing,
         remove: () => this.deleteShotListScene(scene.id),
         testId: `shotlist-scene-${sceneIndex + 1}`,
@@ -8987,33 +9096,42 @@ Write Lumiere's next reply only:`;
     const cameraReviewCount = shotListSceneSource.filter(scene => !Array.isArray(scene.shots) || scene.shots.length === 0).length;
     const completedScenes = activeProductionAnalysis?.completed || 0;
     const totalScenes = activeProductionAnalysis?.total || productionScenesRaw.length;
-    const productionProgressText = activeProductionAnalysis?.message || `Analyzing scene ${Math.min(completedScenes + 1, totalScenes)} of ${totalScenes}`;
+    const productionProgressText = activeProductionAnalysis?.message || ui(
+      `Analyzing scene ${Math.min(completedScenes + 1, totalScenes)} of ${totalScenes}`,
+      `Analizando escena ${Math.min(completedScenes + 1, totalScenes)} de ${totalScenes}`
+    );
     const breakdownGenerationActive = workMode === 'breakdown' && this.state.breakdownManualGenerating;
     const breakdownGenerationTotal = Math.max(1, Number(totalScenes) || productionScenesRaw.length || 1);
     const breakdownGenerationCompleted = Math.max(0, Math.min(breakdownGenerationTotal, Number(completedScenes) || 0));
     const breakdownGenerationPercent = breakdownGenerationCompleted > 0
       ? Math.max(6, Math.min(99, Math.round((breakdownGenerationCompleted / breakdownGenerationTotal) * 100)))
       : 4;
-    const breakdownGenerationText = activeProductionAnalysis?.message || 'Sending every scene to Lumiere…';
+    const breakdownGenerationText = activeProductionAnalysis?.message || ui('Sending every scene to Lumiere…', 'Enviando cada escena a Lumiere…');
     const productionSyncLabel = workMode === 'budget'
-      ? 'Budget saves automatically'
+      ? ui('Budget saves automatically', 'El presupuesto se guarda automáticamente')
       : workMode === 'calendar'
-      ? 'Calendar saves automatically'
+      ? ui('Calendar saves automatically', 'El calendario se guarda automáticamente')
       : shotListMode
-      ? `${shotListSceneSource.length} scene${shotListSceneSource.length === 1 ? '' : 's'} · ${cameraReviewCount} need camera plans`
+      ? ui(
+        `${shotListSceneSource.length} scene${shotListSceneSource.length === 1 ? '' : 's'} · ${cameraReviewCount} need camera plans`,
+        `${shotListSceneSource.length} ${shotListSceneSource.length === 1 ? 'escena' : 'escenas'} · ${cameraReviewCount} necesitan plan de cámara`
+      )
       : workMode === 'canvas'
-      ? 'Canvas saves visual work automatically'
-      : `${productionScenesRaw.length} scene${productionScenesRaw.length === 1 ? '' : 's'} · ${reviewCount} need review`;
+      ? ui('Canvas saves visual work automatically', 'Canvas guarda el trabajo visual automáticamente')
+      : ui(
+        `${productionScenesRaw.length} scene${productionScenesRaw.length === 1 ? '' : 's'} · ${reviewCount} need review`,
+        `${productionScenesRaw.length} ${productionScenesRaw.length === 1 ? 'escena' : 'escenas'} · ${reviewCount} requieren revisión`
+      );
     const productionIsCurrent = shotListMode
       ? shotListSceneSource.length > 0 && cameraReviewCount === 0 && !productionProgress
       : workMode === 'canvas' || workMode === 'budget' || workMode === 'calendar'
       ? true
       : productionScenesRaw.length > 0 && reviewCount === 0 && !productionProgress;
     const productionSyncState = productionProgress
-      ? 'Lumiere updating'
+      ? ui('Lumiere updating', 'Lumiere está actualizando')
       : productionIsCurrent
-        ? 'Up to date'
-        : 'Refresh needed';
+        ? ui('Up to date', 'Actualizado')
+        : ui('Refresh needed', 'Requiere actualización');
     const productionRefreshDisabled = this.state.productionRefreshBusy || productionProgress;
     const productionSyncDotColor = productionIsCurrent
       ? (dark ? '#61B58B' : '#2E7D5B')
@@ -9282,8 +9400,8 @@ Write Lumiere's next reply only:`;
       stripboardHistoryOpen: this.state.stripboardHistoryOpen,
       stripboardVersions: (this.state.stripboardVersions || []).map((version, index) => ({
         ...version,
-        label: version.label || `Version ${(this.state.stripboardVersions || []).length - index}`,
-        timeLabel: new Intl.DateTimeFormat('en-US', { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' }).format(new Date(version.createdAt || Date.now())),
+        label: version.label || ui(`Version ${(this.state.stripboardVersions || []).length - index}`, `Versión ${(this.state.stripboardVersions || []).length - index}`),
+        timeLabel: new Intl.DateTimeFormat(interfaceLocale, { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' }).format(new Date(version.createdAt || Date.now())),
         restore: () => this.restoreStripboardVersion(version.id),
         duplicate: () => this.duplicateStripboardVersion(version.id),
         rename: () => this.renameStripboardVersion(version.id),
@@ -9298,7 +9416,11 @@ Write Lumiere's next reply only:`;
       stripboardTimePopoverLeft: this.state.stripboardTimeAnchorLeft,
       stripboardTimePopoverTop: this.state.stripboardTimeAnchorTop,
       stripboardTimeSceneNo: activeStripboardTime?.sceneNo || '',
-      stripboardTimeEventLabel: activeStripboardEvent?.type === 'lunch' ? 'Lunch' : activeStripboardEvent?.type === 'move_company' ? 'Move company' : '',
+      stripboardTimeEventLabel: activeStripboardEvent?.type === 'lunch'
+        ? ui('Lunch', 'Almuerzo')
+        : activeStripboardEvent?.type === 'move_company'
+          ? ui('Move company', 'Traslado de equipo')
+          : '',
       stripboardTimeIsEvent: Boolean(activeStripboardEvent),
       stripboardTimeHoursDisplay,
       stripboardTimeMinutesDisplay,
@@ -9345,12 +9467,16 @@ Write Lumiere's next reply only:`;
       },
       stripboardBulkActive: stripboardSelectionCount > 0,
       stripboardBulkVisible: stripboardSelectionCount > 0 || Boolean(this.state.stripboardBulkLeaving),
-      stripboardBulkCountLabel: stripboardSelectionCount > 0 ? `${stripboardSelectionCount} scene${stripboardSelectionCount === 1 ? '' : 's'} selected` : 'Selection cleared',
-      stripboardBulkHint: stripboardSelectionCount > 0 ? 'Apply one change to every selected strip' : 'Closing selection tools',
+      stripboardBulkCountLabel: stripboardSelectionCount > 0
+        ? ui(`${stripboardSelectionCount} scene${stripboardSelectionCount === 1 ? '' : 's'} selected`, `${stripboardSelectionCount} ${stripboardSelectionCount === 1 ? 'escena seleccionada' : 'escenas seleccionadas'}`)
+        : ui('Selection cleared', 'Selección borrada'),
+      stripboardBulkHint: stripboardSelectionCount > 0
+        ? ui('Apply one change to every selected strip', 'Aplica un cambio a todas las tiras seleccionadas')
+        : ui('Closing selection tools', 'Cerrando herramientas de selección'),
       stripboardSelectAllClass: stripboardAllSelected ? 'is-checked' : stripboardSomeSelected ? 'is-mixed' : '',
       stripboardSelectAllAria: stripboardAllSelected ? 'true' : stripboardSomeSelected ? 'mixed' : 'false',
       stripboardSelectAllMark: stripboardAllSelected ? '✓' : stripboardSomeSelected ? '−' : '',
-      stripboardSelectAllLabel: stripboardAllSelected ? 'Deselect all scenes' : 'Select all scenes',
+      stripboardSelectAllLabel: stripboardAllSelected ? ui('Deselect all scenes', 'Deseleccionar todas las escenas') : ui('Select all scenes', 'Seleccionar todas las escenas'),
       stripboardSelectAll: () => this.toggleStripboardSelectAll(),
       stripboardBulkSlotClass: selectedStripboardSceneIds.length ? 'is-active' : this.state.stripboardBulkLeaving ? 'is-leaving' : '',
       stripboardBulkClearSelection: () => this.clearStripboardSelection(),
@@ -9388,18 +9514,29 @@ Write Lumiere's next reply only:`;
       stripboardBulkCastRemoveMode: this.state.stripboardBulkCastMode === 'remove',
       stripboardBulkToggleCast: (event) => this.toggleStripboardBulkCastId(event.currentTarget?.getAttribute('data-cast-id')),
       stripboardBulkCastApplyDisabled: stripboardBulkCastOptions.length === 0 || selectedBulkCastIds.size === 0,
-      stripboardBulkCastActionLabel: this.state.stripboardBulkCastMode === 'remove' ? 'Remove selected' : 'Add selected',
+      stripboardBulkCastActionLabel: this.state.stripboardBulkCastMode === 'remove' ? ui('Remove selected', 'Quitar seleccionados') : ui('Add selected', 'Agregar seleccionados'),
       stripboardBulkApplyCast: () => this.applyStripboardBulkCast(),
       stripboardBulkClearCast: () => this.clearStripboardBulkCast(),
       assignSavedStripboardLocation: (event) => this.assignStripboardLocation(event.currentTarget?.getAttribute('data-scene-id'), event.currentTarget?.getAttribute('data-location-name')),
       bindProductionScroll: this.bindProductionScroll,
       bindStripboardBoard: this.bindStripboardBoard,
-      stripboardSummary: `${stripScenes.length} scene${stripScenes.length === 1 ? '' : 's'} · Day 1 starts ${formatClock(defaultStartMinutes)}`,
+      stripboardSummary: ui(
+        `${stripScenes.length} scene${stripScenes.length === 1 ? '' : 's'} · Day 1 starts ${formatClock(defaultStartMinutes)}`,
+        `${stripScenes.length} ${stripScenes.length === 1 ? 'escena' : 'escenas'} · El día 1 comienza a las ${formatClock(defaultStartMinutes)}`
+      ),
       stripboardEditing: this.state.stripboardEditing,
-      stripboardEditLabel: this.state.stripboardEditing ? 'Done' : 'Keyboard order',
+      stripboardEditLabel: this.state.stripboardEditing ? ui('Done', 'Listo') : ui('Keyboard order', 'Ordenar con teclado'),
       stripboardEdit: () => this.toggleStripboardEditing(),
-      stripboardKeyboardHelp: this.state.stripboardKeyboardNotice || (this.state.stripboardEditing ? 'Select one or more strips, then use ↑ / ↓ to move them. Every following start time updates instantly.' : 'Drag selected strips together, or open Keyboard order and use ↑ / ↓.'),
-      stripboardSaveLabel: this.state.stripboardSaving ? 'Saving order…' : this.state.stripboardSaved ? 'Order saved' : this.state.stripboardEditing ? 'Drag strips or use arrows' : 'Drag any strip to reorder',
+      stripboardKeyboardHelp: this.state.stripboardKeyboardNotice || (this.state.stripboardEditing
+        ? ui('Select one or more strips, then use ↑ / ↓ to move them. Every following start time updates instantly.', 'Selecciona una o más tiras y usa ↑ / ↓ para moverlas. Todas las horas de inicio siguientes se actualizan al instante.')
+        : ui('Drag selected strips together, or open Keyboard order and use ↑ / ↓.', 'Arrastra juntas las tiras seleccionadas o abre Ordenar con teclado y usa ↑ / ↓.')),
+      stripboardSaveLabel: this.state.stripboardSaving
+        ? ui('Saving order…', 'Guardando orden…')
+        : this.state.stripboardSaved
+          ? ui('Order saved', 'Orden guardado')
+          : this.state.stripboardEditing
+            ? ui('Drag strips or use arrows', 'Arrastra las tiras o usa las flechas')
+            : ui('Drag any strip to reorder', 'Arrastra cualquier tira para reordenar'),
       stripboardStartTimeLabel: formatClock(defaultStartMinutes),
       stripboardStartTimeOpen: this.state.stripboardStartTimeOpen,
       stripboardStartTimeDraft: this.state.stripboardStartTimeDraft,
@@ -9413,42 +9550,49 @@ Write Lumiere's next reply only:`;
       stripboardAddMoveCompany: () => this.addStripboardBreak('move_company'),
       stripboardAddEndDay: () => this.addStripboardBreak('end_day'),
       stripboardAddScene: () => this.addSceneFromStripboard(),
-      stripboardExportLabel: this.state.stripboardExporting ? 'Exporting' : 'Export',
+      stripboardExportLabel: this.state.stripboardExporting ? ui('Exporting', 'Exportando') : ui('Export', 'Exportar'),
       stripboardExport: () => this.exportStripboardPdf(),
       stripboardExportDisabled: this.state.stripboardExporting || this.state.stripboardEditing || this.state.stripboardSaving,
       stripboardExportOpacity: this.state.stripboardExporting || this.state.stripboardEditing || this.state.stripboardSaving ? 0.48 : 1,
       shotListScenes,
       shotListHasScenes: shotListScenes.length > 0,
       shotListNoScenes: shotListScenes.length === 0,
-      shotListSummary: `${shotListScenes.length} scene${shotListScenes.length === 1 ? '' : 's'} · ${shotListTotalShots} shot${shotListTotalShots === 1 ? '' : 's'}`,
+      shotListSummary: ui(
+        `${shotListScenes.length} scene${shotListScenes.length === 1 ? '' : 's'} · ${shotListTotalShots} shot${shotListTotalShots === 1 ? '' : 's'}`,
+        `${shotListScenes.length} ${shotListScenes.length === 1 ? 'escena' : 'escenas'} · ${shotListTotalShots} ${shotListTotalShots === 1 ? 'plano' : 'planos'}`
+      ),
       shotListEditing: this.state.shotListEditing,
       shotListViewing: !this.state.shotListEditing,
-      shotListEditLabel: this.state.shotListEditing ? 'Done' : 'Edit shots',
+      shotListEditLabel: this.state.shotListEditing ? ui('Done', 'Listo') : ui('Edit shots', 'Editar planos'),
       shotListEdit: () => this.toggleShotListEditing(),
       shotListEditDisabled: shotListScenes.length === 0 && !this.state.shotListEditing,
       shotListAddScene: () => this.addShotListScene(),
-      shotListAddSceneLabel: this.state.shotListAddingScene ? 'Adding scene…' : '+ Add scene',
+      shotListAddSceneLabel: this.state.shotListAddingScene ? ui('Adding scene…', 'Agregando escena…') : ui('+ Add scene', '+ Agregar escena'),
       shotListAddSceneDisabled: this.state.shotListAddingScene || this.state.shotListSaving,
-      shotListExportLabel: this.state.shotListExporting ? 'Exporting' : 'Export',
+      shotListExportLabel: this.state.shotListExporting ? ui('Exporting', 'Exportando') : ui('Export', 'Exportar'),
       shotListExport: () => this.exportShotListPdf(),
       shotListExportDisabled: shotListScenes.length === 0 || this.state.shotListExporting || this.state.shotListEditing || this.state.shotListSaving,
       shotListSaveLabel: this.state.shotListAddingScene
-        ? 'Adding scene…'
+        ? ui('Adding scene…', 'Agregando escena…')
         : this.state.shotListSaving
-        ? 'Saving…'
+        ? ui('Saving…', 'Guardando…')
         : this.state.shotListSaveError
-          ? 'Save failed'
+          ? ui('Save failed', 'Error al guardar')
           : this.state.shotListEditing
-            ? 'Autosave on'
+            ? ui('Autosave on', 'Autoguardado activado')
             : this.state.shotListLastSavedAt
-              ? 'Saved'
+              ? ui('Saved', 'Guardado')
               : '',
       shotListGenerating: productionProgress,
       breakdownSceneNo: breakdownSceneIndex + 1,
       breakdownSceneId: breakdownScene.id || '',
       breakdownSceneTotal: productionScenesRaw.length,
       breakdownSceneHeading: breakdownHeading,
+      breakdownSceneHeadingProjectContent: !!breakdownHeadingSource,
+      breakdownSceneHeadingInterfaceContent: !breakdownHeadingSource,
       breakdownProjectTitle: this.state.docTitle,
+      breakdownProjectTitleProjectContent: !breakdownProjectTitleIsDefault,
+      breakdownProjectTitleInterfaceContent: breakdownProjectTitleIsDefault,
       breakdownScriptPage: breakdownFields.scriptPage.value,
       breakdownScriptPageInput: breakdownFields.scriptPage.onInput,
       breakdownScriptPageBlur: breakdownFields.scriptPage.onBlur,
@@ -9456,27 +9600,43 @@ Write Lumiere's next reply only:`;
       breakdownPageCountInput: breakdownFields.pageCount.onInput,
       breakdownPageCountBlur: breakdownFields.pageCount.onBlur,
       breakdownIntExt: breakdownFields.intExt.value,
+      breakdownIntExtProjectContent: breakdownFields.intExt.projectContent,
+      breakdownIntExtInterfaceContent: breakdownFields.intExt.interfaceContent,
       breakdownIntExtInput: breakdownFields.intExt.onInput,
       breakdownIntExtBlur: breakdownFields.intExt.onBlur,
       breakdownDayNight: breakdownFields.dayNight.value,
+      breakdownDayNightProjectContent: breakdownFields.dayNight.projectContent,
+      breakdownDayNightInterfaceContent: breakdownFields.dayNight.interfaceContent,
       breakdownDayNightInput: breakdownFields.dayNight.onInput,
       breakdownDayNightBlur: breakdownFields.dayNight.onBlur,
       breakdownEstTime: breakdownFields.estimatedTime.value,
+      breakdownEstTimeProjectContent: breakdownFields.estimatedTime.projectContent,
+      breakdownEstTimeInterfaceContent: breakdownFields.estimatedTime.interfaceContent,
       breakdownEstTimeInput: breakdownFields.estimatedTime.onInput,
       breakdownEstTimeBlur: breakdownFields.estimatedTime.onBlur,
       breakdownDescription: breakdownFields.sceneDescription.value,
+      breakdownDescriptionProjectContent: breakdownFields.sceneDescription.projectContent,
+      breakdownDescriptionInterfaceContent: breakdownFields.sceneDescription.interfaceContent,
       breakdownDescriptionInput: breakdownFields.sceneDescription.onInput,
       breakdownDescriptionBlur: breakdownFields.sceneDescription.onBlur,
       breakdownSet: breakdownFields.set.value,
+      breakdownSetProjectContent: breakdownFields.set.projectContent,
+      breakdownSetInterfaceContent: breakdownFields.set.interfaceContent,
       breakdownSetInput: breakdownFields.set.onInput,
       breakdownSetBlur: breakdownFields.set.onBlur,
       breakdownLocation: breakdownFields.location.value,
+      breakdownLocationProjectContent: breakdownFields.location.projectContent,
+      breakdownLocationInterfaceContent: breakdownFields.location.interfaceContent,
       breakdownLocationInput: breakdownFields.location.onInput,
       breakdownLocationBlur: breakdownFields.location.onBlur,
       breakdownSequence: breakdownFields.sequence.value,
+      breakdownSequenceProjectContent: breakdownFields.sequence.projectContent,
+      breakdownSequenceInterfaceContent: breakdownFields.sequence.interfaceContent,
       breakdownSequenceInput: breakdownFields.sequence.onInput,
       breakdownSequenceBlur: breakdownFields.sequence.onBlur,
       breakdownScriptDay: breakdownFields.scriptDay.value,
+      breakdownScriptDayProjectContent: breakdownFields.scriptDay.projectContent,
+      breakdownScriptDayInterfaceContent: breakdownFields.scriptDay.interfaceContent,
       breakdownScriptDayInput: breakdownFields.scriptDay.onInput,
       breakdownScriptDayBlur: breakdownFields.scriptDay.onBlur,
       breakdownEditing: this.state.breakdownEditing,
@@ -9850,11 +10010,21 @@ Write Lumiere's next reply only:`;
       shotReferencePreviewImage: this.state.shotReferencePreview?.image || '',
       shotReferencePreviewShot: this.state.shotReferencePreview?.shotNumber || '',
       shotReferencePreviewScene: this.state.shotReferencePreview?.sceneTitle || '',
-      shotReferencePreviewSize: this.state.shotReferencePreview?.size || 'Not set',
-      shotReferencePreviewAngle: this.state.shotReferencePreview?.angle || 'Not set',
-      shotReferencePreviewLens: this.state.shotReferencePreview?.focalLength || 'Not set',
+      shotReferencePreviewSceneProjectContent: Boolean(this.state.shotReferencePreview?.sceneTitleProjectContent),
+      shotReferencePreviewSceneInterfaceContent: !this.state.shotReferencePreview?.sceneTitleProjectContent,
+      shotReferencePreviewSize: this.state.shotReferencePreview?.size || ui('Not set', 'Sin definir'),
+      shotReferencePreviewSizeProjectContent: Boolean(this.state.shotReferencePreview?.sizeProjectContent),
+      shotReferencePreviewSizeInterfaceContent: !this.state.shotReferencePreview?.sizeProjectContent,
+      shotReferencePreviewAngle: this.state.shotReferencePreview?.angle || ui('Not set', 'Sin definir'),
+      shotReferencePreviewAngleProjectContent: Boolean(this.state.shotReferencePreview?.angleProjectContent),
+      shotReferencePreviewAngleInterfaceContent: !this.state.shotReferencePreview?.angleProjectContent,
+      shotReferencePreviewLens: this.state.shotReferencePreview?.focalLength || ui('Not set', 'Sin definir'),
+      shotReferencePreviewLensProjectContent: Boolean(this.state.shotReferencePreview?.focalLengthProjectContent),
+      shotReferencePreviewLensInterfaceContent: !this.state.shotReferencePreview?.focalLengthProjectContent,
       shotReferencePreviewTime: this._formatProductionMinutes(this.state.shotReferencePreview?.estimatedMinutes || 0),
-      shotReferencePreviewMovement: this.state.shotReferencePreview?.movement || 'Not set',
+      shotReferencePreviewMovement: this.state.shotReferencePreview?.movement || ui('Not set', 'Sin definir'),
+      shotReferencePreviewMovementProjectContent: Boolean(this.state.shotReferencePreview?.movementProjectContent),
+      shotReferencePreviewMovementInterfaceContent: !this.state.shotReferencePreview?.movementProjectContent,
       shotReferencePreviewBusy: !!this.state.shotReferencePreview && Boolean(this.state.shotReferenceUploading?.[`${this.state.shotReferencePreview.sceneId}:${this.state.shotReferencePreview.shotId}`]),
       shotReferencePreviewBusyOpacity: this.state.shotReferencePreview && this.state.shotReferenceUploading?.[`${this.state.shotReferencePreview.sceneId}:${this.state.shotReferencePreview.shotId}`] ? '.55' : '1',
       shotReferencePreviewActionLabel: this.state.shotReferencePreview && this.state.shotReferenceUploading?.[`${this.state.shotReferencePreview.sceneId}:${this.state.shotReferencePreview.shotId}`] ? 'Reimagining…' : 'Reimagine',

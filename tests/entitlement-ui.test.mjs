@@ -551,7 +551,7 @@ test("Shot List is grouped by scene, connected to Stripboard time, and supports 
   assert.match(editor, /class="v5-shotlist-scenes" role="list" aria-label="Shot list scenes"/);
   assert.match(editor, /<sc-for list="\{\{ shotListScenes \}\}" as="scene"/);
   assert.match(editor, /data-testid="shotlist-add-scene"/);
-  assert.match(editor, /sourceLabel: manual \? 'Manual scene' : 'Screenplay scene'/);
+  assert.match(editor, /sourceLabel: manual \? ui\('Manual scene', 'Escena manual'\) : ui\('Screenplay scene', 'Escena del guion'\)/);
   assert.match(editor, /shotListSceneSource = \[/);
   assert.match(editor, /addShotListScene\(\)/);
   assert.match(client, /addShotScene:/);
@@ -595,7 +595,7 @@ test("Stripboard carries the cast IDs assigned by Breakdown", async () => {
   assert.match(editor, /v5-strip-cast-id/);
   assert.match(editor, /v5-strip-cast-tooltip/);
   assert.match(editor, /const stripboardCastById = new Map/);
-  assert.match(editor, /ariaLabel: `Open Cast \$\{number\}: \$\{castName\} in scene \$\{sceneNo\}`/);
+  assert.match(editor, /ariaLabel: ui\(`Open Cast \$\{number\}: \$\{castName\} in scene \$\{sceneNo\}`, `Abrir reparto \$\{number\}: \$\{castName\} en la escena \$\{sceneNo\}`\)/);
   assert.match(editor, /Most recently used/);
   assert.match(editor, /const recentShootLocation = shootLocationLibrary\[0\]/);
   assert.match(editor, /Other saved locations/);
@@ -604,17 +604,17 @@ test("Stripboard carries the cast IDs assigned by Breakdown", async () => {
   assert.match(editor, /minmax\(220px, 1\.55fr\) 80px 112px minmax\(140px, \.95fr\) 58px 76px 80px 40px/);
   assert.match(editor, /startTimeLabel = scheduleKnown \? formatClock/);
   assert.match(editor, /Estimated time/);
-  assert.match(editor, /Est\. time…/);
+  assert.match(editor, /estimatedTimeLabel = Number\.isFinite\(estimatedMinutes\) \? formatDuration\(estimatedMinutes\) : ui\('Set time', 'Definir tiempo'\)/);
   assert.match(editor, /const sceneNo = sceneNumberById\.get\(scene\.id\) \|\| sceneIndex \+ 1;/);
-  assert.match(editor, /estimatedTimeAriaLabel: hasSavedEstimate \? `Edit estimated time for scene \$\{sceneNo\}` : 'Est\. time…'/);
+  assert.match(editor, /estimatedTimeAriaLabel: hasSavedEstimate[\s\S]*?ui\(`Edit estimated time for scene \$\{sceneNo\}`, `Editar tiempo estimado de la escena \$\{sceneNo\}`\)[\s\S]*?: ui\('Set estimated time', 'Definir tiempo estimado'\)/);
   assert.match(editor, /data-testid="stripboard-time-popover"/);
   assert.match(editor, /aria-label="Increase minutes by 15"/);
   assert.match(editor, /Exact duration/);
   assert.match(editor, /stripboardTimeAnchorLeft/);
   assert.match(editor, /let scheduleKnown = true/);
-  assert.match(editor, /startTimeLabel = scheduleKnown \? formatClock\(currentMinutes\) : 'Pending'/);
+  assert.match(editor, /startTimeLabel = scheduleKnown \? formatClock\(currentMinutes\) : ui\('Pending', 'Pendiente'\)/);
   assert.match(editor, /stripboardLocationPopoverSceneId/);
-  assert.match(editor, /const shootLocation = savedLocation \|\| 'Assign'/);
+  assert.match(editor, /const shootLocation = savedLocation \|\| ui\('Assign', 'Asignar'\)/);
   assert.match(editor, /Real-world location/);
   assert.match(editor, /Other saved locations/);
   assert.match(editor, /assignStripboardLocation\(sceneId, location\)/);
@@ -1068,7 +1068,7 @@ test("a saved photo or preset avatar is restored after reload and reactive remou
   assert.match(platform, /hasNewAvatar[\s\S]*?requestAnimationFrame\(\(\) => \{ identityFrame = 0; applyAccountIdentity\(\); \}\)/);
   assert.match(platform, /backgroundSize = 'cover'/);
   assert.match(platform, /state\.profile\?\.avatarCrop\?\.presetIcon/);
-  for (const page of [scripts, editor]) assert.match(page, /platform-client\.js\?v=20260820-release2/);
+  for (const page of [scripts, editor]) assert.match(page, /platform-client\.js\?v=20260820-i18n2/);
 });
 
 test("Account offers ten original film icons, fixed backgrounds, and never lists the current session as a collaborator", async () => {
@@ -1174,7 +1174,10 @@ test("collaborator chat has a project-scoped API and accessible Liquid Glass com
   ]);
   assert.match(client, /data-chat/);
   assert.match(client, /api\.sendChat/);
-  assert.match(client, /aria-label=\"Message\"/);
+  assert.match(client, /localize\('Message', 'Mensaje'\)/);
+  assert.match(client, /panel\.setAttribute\('role', 'dialog'\)/);
+  assert.match(client, /event\.key === 'Escape'/);
+  assert.match(client, /returnFocus\?\.isConnected/);
   assert.match(server, /handleProjectMessages/);
   assert.match(database, /export function listProjectMessages/);
   assert.match(database, /export function createProjectMessage/);
