@@ -5,6 +5,14 @@
   "outputDirectory": "dist",
   "rewrites": [
     {
+      "source": "/access-data/requests",
+      "destination": "https://api.filmscript.app/api/invitations"
+    },
+    {
+      "source": "/access-data/requests/:path*",
+      "destination": "https://api.filmscript.app/api/invitations/:path*"
+    },
+    {
       "source": "/film-data/document",
       "destination": "/api/scripts-proxy"
     },

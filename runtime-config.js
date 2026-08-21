@@ -34,6 +34,12 @@
     || String(configured.firstPartyApi || '').toLowerCase() === 'true';
   const resolveApiUrl = (pathname) => {
     const path = pathname.startsWith('/') ? pathname : `/${pathname}`;
+    // Some browser privacy lists block invitation-related route names even on
+    // the official first-party origin. Keep the public browser path neutral
+    // and translate it back to the existing AWS invitation API at Vercel.
+    if (firstPartyApi && (path === '/api/invitations' || path.startsWith('/api/invitations/'))) {
+      return `${apiUrl}/access-data/requests${path.slice('/api/invitations'.length)}`;
+    }
     // Embedded-browser privacy lists can block nested routes under both
     // `/scripts` and `/workspace`. Use a neutral first-party data route and
     // translate it back to the unchanged AWS API path at Vercel's edge.

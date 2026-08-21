@@ -80,6 +80,8 @@ test('the official app uses privacy-safe first-party project routes', () => {
   assert.equal(window.filmscriptApiUrl('/api/me'), '/workspace/me');
   assert.equal(window.filmscriptApiUrl('/api/scripts'), '/film-data/document');
   assert.equal(window.filmscriptApiUrl('/api/scripts/scr_123'), '/film-data/document/scr_123');
+  assert.equal(window.filmscriptApiUrl('/api/invitations'), '/access-data/requests');
+  assert.equal(window.filmscriptApiUrl('/api/invitations/inv_123/accept'), '/access-data/requests/inv_123/accept');
   assert.equal(window.filmscriptApiUrl('/api/projects/scr_123/chat'), '/workspace/projects/scr_123/chat');
 });
 
@@ -113,6 +115,14 @@ test('Vercel completes the Google handoff through a same-origin cookie proxy', a
     source: '/film-data/document/:path*',
     destination: '/api/scripts-proxy?path=:path*',
   });
+  assert.deepEqual(vercelConfig.rewrites.find((entry) => entry.source === '/access-data/requests'), {
+    source: '/access-data/requests',
+    destination: 'https://api.filmscript.app/api/invitations',
+  });
+  assert.deepEqual(vercelConfig.rewrites.find((entry) => entry.source === '/access-data/requests/:path*'), {
+    source: '/access-data/requests/:path*',
+    destination: 'https://api.filmscript.app/api/invitations/:path*',
+  });
   assert.deepEqual(vercelConfig.rewrites.find((entry) => entry.source === '/workspace/scripts'), {
     source: '/workspace/scripts',
     destination: '/api/scripts-proxy',
@@ -135,7 +145,7 @@ test('Vercel completes the Google handoff through a same-origin cookie proxy', a
     { key: 'Cache-Control', value: 'public, max-age=0, must-revalidate' },
   ]);
   for (const page of [featuresPage, scriptsPage, editorPage]) {
-    assert.match(page, /runtime-config\.js\?v=20260820-module-routes2/);
+    assert.match(page, /runtime-config\.js\?v=20260821-invitation-route1/);
   }
   for (const page of [scriptsPage, editorPage]) {
     assert.match(page, /project-client\.js\?v=20260820-browser-safe1/);
