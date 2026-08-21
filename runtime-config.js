@@ -34,11 +34,11 @@
     || String(configured.firstPartyApi || '').toLowerCase() === 'true';
   const resolveApiUrl = (pathname) => {
     const path = pathname.startsWith('/') ? pathname : `/${pathname}`;
-    // Some embedded-browser privacy lists block a path containing `/scripts`
-    // even when it is first-party. Use a neutral public route and translate it
-    // back to the unchanged AWS API path at Vercel's edge.
+    // Embedded-browser privacy lists can block nested routes under both
+    // `/scripts` and `/workspace`. Use a neutral first-party data route and
+    // translate it back to the unchanged AWS API path at Vercel's edge.
     if (firstPartyApi && (path === '/api/scripts' || path.startsWith('/api/scripts/'))) {
-      return `${apiUrl}/workspace/projects${path.slice('/api/scripts'.length)}`;
+      return `${apiUrl}/project-data${path.slice('/api/scripts'.length)}`;
     }
     const firstPartyPath = firstPartyApi && (path === '/api' || path.startsWith('/api/'))
       ? `/workspace${path.slice(4)}`

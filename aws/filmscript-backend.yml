@@ -31,6 +31,10 @@ Parameters:
     Type: String
     Default: Lax
     AllowedValues: [Lax, None, Strict]
+  SessionCookieDomain:
+    Type: String
+    Default: ""
+    Description: Optional shared cookie domain used by the production frontend and API sibling hosts.
   TaskCpu:
     Type: String
     Default: "512"
@@ -288,6 +292,8 @@ Resources:
               Value: !Ref FrontendUrl
             - Name: SESSION_COOKIE_SAMESITE
               Value: !Ref SessionCookieSameSite
+            - Name: SESSION_COOKIE_DOMAIN
+              Value: !Ref SessionCookieDomain
             - Name: SESSION_COOKIE_SECURE
               Value: "true"
             - Name: RECURRENTE_CREATOR_AMOUNT_CENTS

@@ -9,7 +9,7 @@
 <script defer src="/_vercel/insights/script.js"></script>
 <script src="./support.js"></script>
 <script defer src="./seamless-navigation.js?v=20260728-route1"></script>
-<script src="./runtime-config.js?v=20260820-auth-session3"></script>
+<script src="./runtime-config.js?v=20260820-module-routes1"></script>
 <script src="./theme-preference.js?v=20260720-themefade1"></script>
 <script defer src="./language-preference.js?v=20260819-billing-glass1"></script>
 <script defer src="./ui-sounds.js?v=20260804-imagine-live2"></script>
@@ -24,7 +24,7 @@
 <script defer src="./pdf-import.js?v=20260731-scenes3"></script>
 <script defer src="./project-client.js?v=20260820-browser-safe1"></script>
 <script defer src="./preproduction-client.js?v=20260819-collab2"></script>
-<script defer src="./canvas-client.js?v=20260819-collab2"></script>
+<script defer src="./canvas-client.js?v=20260820-module-routes1"></script>
 <script defer src="./canvas-workspace.js?v=20260819-imagine-frost150"></script>
 <script defer src="./analysis-client.js?v=20260820-access-gate1"></script>
     <script type="module" src="./analysis-workspace.js?v=20260731-plan-entitlements2"></script>
@@ -1385,7 +1385,7 @@
               <header class="v5-breakdown-script-head"><div><strong>Script</strong><span>Edit while you break down the scene</span></div><div class="v5-breakdown-script-status">Autosave on</div></header>
               <div class="v5-breakdown-script-frame-wrap">
                 <div class="v5-breakdown-script-loading {{ breakdownScriptReadyClass }}" aria-live="polite"><span><i aria-hidden="true"></i>Opening screenplay…</span></div>
-                <iframe class="v5-breakdown-script-frame {{ breakdownScriptReadyClass }}" data-testid="breakdown-script-frame" src="{{ breakdownScriptSrc }}" title="Editable screenplay" loading="eager" onLoad="{{ breakdownScriptLoaded }}"></iframe>
+                <iframe ref="{{ bindBreakdownScriptFrame }}" class="v5-breakdown-script-frame {{ breakdownScriptReadyClass }}" data-testid="breakdown-script-frame" src="{{ breakdownScriptSrc }}" title="Editable screenplay" loading="eager"></iframe>
               </div>
             </aside>
           </sc-if>
@@ -3912,6 +3912,23 @@ class Component extends DCLogic {
   }
 
   bindProductionScroll = (el) => { this._productionScroll = el || null; };
+
+  _onBreakdownScriptFrameLoad = () => {
+    if (!this._unmounted && this.state.breakdownSplitView && !this.state.breakdownSplitLoaded) {
+      this.setState({ breakdownSplitLoaded: true });
+    }
+  };
+
+  bindBreakdownScriptFrame = (el) => {
+    if (this._breakdownScriptFrame === el) return;
+    if (this._breakdownScriptFrame) {
+      this._breakdownScriptFrame.removeEventListener('load', this._onBreakdownScriptFrameLoad);
+    }
+    this._breakdownScriptFrame = el || null;
+    if (this._breakdownScriptFrame) {
+      this._breakdownScriptFrame.addEventListener('load', this._onBreakdownScriptFrameLoad);
+    }
+  };
 
   _restartWorkModeMotion = () => {
     if (window.matchMedia?.('(prefers-reduced-motion: reduce)').matches) return;
@@ -7983,6 +8000,9 @@ Write Lumiere's next reply only:`;
       if (this._stripboardBoardPointerDown) this._stripboardBoard.removeEventListener('pointerdown', this._stripboardBoardPointerDown);
       if (this._stripboardBoardKeyDown) this._stripboardBoard.removeEventListener('keydown', this._stripboardBoardKeyDown);
     }
+    if (this._breakdownScriptFrame) {
+      this._breakdownScriptFrame.removeEventListener('load', this._onBreakdownScriptFrameLoad);
+    }
     if (this._selHandler) document.removeEventListener('selectionchange', this._selHandler);
     if (this._remoteScriptHandler) window.removeEventListener('filmscript:content.operation', this._remoteScriptHandler);
     if (this._structuredCollaborationHandler) window.removeEventListener('filmscript:content.operation', this._structuredCollaborationHandler);
@@ -9472,7 +9492,7 @@ Write Lumiere's next reply only:`;
         this.setState({ breakdownSplitView: next, breakdownSplitLoaded: false });
       },
       breakdownScriptSrc: `Editor%20v5.dc.html?script=${encodeURIComponent(this.state.activeScriptId || this._activeScriptId || '')}&title=${encodeURIComponent(this.state.docTitle || '')}&view=editor&embed=breakdown`,
-      breakdownScriptLoaded: () => this.setState({ breakdownSplitLoaded: true }),
+      bindBreakdownScriptFrame: this.bindBreakdownScriptFrame,
       breakdownScriptReadyClass: this.state.breakdownSplitLoaded ? 'is-ready' : '',
       breakdownEmbedLoading: this._isBreakdownEmbed && !this.state.breakdownEmbedReady,
       breakdownStatus,

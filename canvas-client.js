@@ -1,6 +1,5 @@
 (function () {
-  const base = () => String(window.FILMSCRIPT_CONFIG?.apiUrl || '').replace(/\/$/, '');
-  const resolve = (path) => `${base()}${path}`;
+  const resolve = (path) => window.filmscriptApiUrl ? window.filmscriptApiUrl(path) : path;
   const upgradeErrors = new Set(['filmscript_creator_required', 'image_generation_plan_required', 'image_credits_exhausted', 'filmscript_pro_required']);
   const notifyUpgrade = (data = {}) => {
     const detail = { ...data };
@@ -38,7 +37,7 @@
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(body || {}),
   });
-  const pathFor = (scriptId, suffix = '') => `/api/project-files/${encodeURIComponent(scriptId)}/canvas${suffix}`;
+  const pathFor = (scriptId, suffix = '') => `/api/scripts/${encodeURIComponent(scriptId)}/canvas${suffix}`;
 
   // Older API deployments expose Canvas but not its dedicated Vault/image
   // routes. Keep a private browser-side mirror only for that 404 case so a

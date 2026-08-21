@@ -78,8 +78,8 @@ test('the official app uses privacy-safe first-party project routes', () => {
   };
   vm.runInNewContext(runtimeConfig, { window });
   assert.equal(window.filmscriptApiUrl('/api/me'), '/workspace/me');
-  assert.equal(window.filmscriptApiUrl('/api/scripts'), '/workspace/projects');
-  assert.equal(window.filmscriptApiUrl('/api/scripts/scr_123'), '/workspace/projects/scr_123');
+  assert.equal(window.filmscriptApiUrl('/api/scripts'), '/project-data');
+  assert.equal(window.filmscriptApiUrl('/api/scripts/scr_123'), '/project-data/scr_123');
 });
 
 test('a successful login on a marketing page redirects to Scripts', () => {
@@ -104,23 +104,23 @@ test('the Features landing opens one clean Google authentication panel', () => {
 });
 
 test('Vercel completes the Google handoff through a same-origin cookie proxy', async (t) => {
-  assert.deepEqual(vercelConfig.rewrites[0], {
-    source: '/workspace/projects',
+  assert.deepEqual(vercelConfig.rewrites.find((entry) => entry.source === '/project-data'), {
+    source: '/project-data',
     destination: '/api/scripts-proxy',
   });
-  assert.deepEqual(vercelConfig.rewrites[1], {
-    source: '/workspace/projects/:path*',
+  assert.deepEqual(vercelConfig.rewrites.find((entry) => entry.source === '/project-data/:path*'), {
+    source: '/project-data/:path*',
     destination: 'https://api.filmscript.app/api/scripts/:path*',
   });
-  assert.deepEqual(vercelConfig.rewrites[2], {
+  assert.deepEqual(vercelConfig.rewrites.find((entry) => entry.source === '/workspace/scripts'), {
     source: '/workspace/scripts',
     destination: '/api/scripts-proxy',
   });
-  assert.deepEqual(vercelConfig.rewrites[3], {
+  assert.deepEqual(vercelConfig.rewrites.find((entry) => entry.source === '/workspace/:path*'), {
     source: '/workspace/:path*',
     destination: 'https://api.filmscript.app/api/:path*',
   });
-  assert.equal(vercelConfig.rewrites[4].source, '/api/:path((?!auth-complete|scripts-proxy).*)');
+  assert.ok(vercelConfig.rewrites.some((entry) => entry.source === '/api/:path((?!auth-complete|scripts-proxy).*)'));
   assert.match(vercelIgnore, /^api\/\*$/m);
   assert.match(vercelIgnore, /^!api\/auth-complete\.js$/m);
   assert.match(vercelIgnore, /^!api\/scripts-proxy\.js$/m);
@@ -130,7 +130,7 @@ test('Vercel completes the Google handoff through a same-origin cookie proxy', a
     { key: 'Cache-Control', value: 'public, max-age=0, must-revalidate' },
   ]);
   for (const page of [featuresPage, scriptsPage, editorPage]) {
-    assert.match(page, /runtime-config\.js\?v=20260820-auth-session3/);
+    assert.match(page, /runtime-config\.js\?v=20260820-module-routes1/);
   }
   for (const page of [scriptsPage, editorPage]) {
     assert.match(page, /project-client\.js\?v=20260820-browser-safe1/);
