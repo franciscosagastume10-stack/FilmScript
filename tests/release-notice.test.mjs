@@ -153,7 +153,7 @@ test('release update UI has bilingual copy, accessible fast dismissal, Liquid Gl
   assert.match(styles, /prefers-reduced-transparency:reduce/);
   assert.match(styles, /prefers-reduced-motion:reduce/);
   for (const page of [app, editor]) {
-    assert.match(page, /platform-client\.js\?v=20260820-i18n2/);
-    assert.match(page, /platform-ui\.css\?v=20260820-i18n2/);
+    assert.match(page, /platform-client\.js\?v=20260821-invitations1/);
+    assert.match(page, /platform-ui\.css\?v=20260821-invitations1/);
   }
 });

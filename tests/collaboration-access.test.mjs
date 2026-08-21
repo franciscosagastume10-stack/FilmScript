@@ -23,6 +23,7 @@ function addUser(id, email, username) {
 addUser('usr_owner', 'owner@example.com', 'owner');
 addUser('usr_writer', 'writer@example.com', 'writer');
 addUser('usr_viewer', 'viewer@example.com', 'viewer');
+addUser('usr_outsider', 'outsider@example.com', 'outsider');
 database.prepare(`INSERT INTO scripts (id,user_id,title,source,text,blocks_json,chat_json,title_room_json,character_names_json,created_at,updated_at)
   VALUES ('scr_access','usr_owner','Access Test','test','','[]','[]','{}','{}',?,?)`).run(timestamp, timestamp);
 platform.backfillOwners();
@@ -44,6 +45,111 @@ test('external email invitation connects after account creation', () => {
   const membership = platform.acceptInvitation(invitation.token,'usr_external');
   assert.equal(membership.projectRole,'commenter');
   assert.equal(membership.status,'active');
+});
+
+test('account invitation actions securely accept a notification and are idempotent', () => {
+  database.prepare(`INSERT INTO scripts (id,user_id,title,source,text,blocks_json,chat_json,title_room_json,character_names_json,created_at,updated_at)
+    VALUES ('scr_notification','usr_owner','Shared Story','test','','[]','[]','{}','{}',?,?)`).run(timestamp, timestamp);
+  platform.backfillOwners();
+  const created = platform.createInvitation('scr_notification','usr_owner',{
+    email:'writer@example.com', projectRole:'editor', cinematicRole:'writer', modulePermissions:{ script:'edit', breakdown:'edit' },
+  });
+
+  assert.throws(() => platform.acceptAccountInvitation(created.id,'usr_outsider'), /not found/i);
+  const pending = platform.listAccountInvitations('usr_writer');
+  assert.equal(pending.some((invitation) => invitation.id === created.id), true);
+  assert.equal(pending.find((invitation) => invitation.id === created.id).project.ownerName, 'owner');
+
+  const notification = platform.listNotifications('usr_writer').find((item) => item.invitation?.id === created.id);
+  assert.equal(notification.invitation.projectTitle, 'Shared Story');
+  assert.equal(notification.invitation.projectRole, 'editor');
+  assert.equal(notification.deepLink, '/App.dc.html');
+
+  const first = platform.acceptAccountInvitation(created.id,'usr_writer');
+  database.prepare("UPDATE project_invitations SET expires_at='2000-01-01T00:00:00.000Z' WHERE id=?").run(created.id);
+  const second = platform.acceptAccountInvitation(created.id,'usr_writer');
+  assert.equal(second.membership.id, first.membership.id);
+  assert.equal(second.membership.version, first.membership.version);
+  assert.equal(first.membership.projectRole, 'editor');
+  assert.equal(first.membership.modulePermissions.breakdown, 'edit');
+  assert.equal(first.project.title, 'Shared Story');
+  assert.equal(platform.listAccessibleProjectIds('usr_writer').includes('scr_notification'), true);
+  assert.equal(platform.listAccountInvitations('usr_writer').some((invitation) => invitation.id === created.id), false);
+  const resolvedNotification = platform.listNotifications('usr_writer').find((item) => item.id === notification.id);
+  assert.equal(resolvedNotification.invitation.status, 'accepted');
+  assert.equal(resolvedNotification.read, true);
+  assert.match(resolvedNotification.deepLink, /acceptedProject=scr_notification/);
+});
+
+test('active members and the billing owner cannot be reinvited or degraded by a stale invitation', () => {
+  database.prepare(`INSERT INTO scripts (id,user_id,title,source,text,blocks_json,chat_json,title_room_json,character_names_json,created_at,updated_at)
+    VALUES ('scr_member_guard','usr_owner','Membership Guard','test','','[]','[]','{}','{}',?,?)`).run(timestamp, timestamp);
+  platform.backfillOwners();
+
+  assert.throws(
+    () => platform.createInvitation('scr_member_guard','usr_owner',{ email:'owner@example.com', projectRole:'viewer' }),
+    (error) => error?.status === 409 && error?.code === 'already_project_member',
+  );
+
+  const writerInvitation = platform.createInvitation('scr_member_guard','usr_owner',{ email:'writer@example.com', projectRole:'editor', modulePermissions:{ script:'edit' } });
+  const writerMembership = platform.acceptAccountInvitation(writerInvitation.id,'usr_writer').membership;
+  assert.throws(
+    () => platform.createInvitation('scr_member_guard','usr_owner',{ email:'writer@example.com', projectRole:'viewer' }),
+    (error) => error?.status === 409 && error?.code === 'already_project_member',
+  );
+  const writerAccess = platform.projectAccess('usr_writer','scr_member_guard');
+  assert.equal(writerAccess.id, writerMembership.id);
+  assert.equal(writerAccess.projectRole, 'editor');
+  assert.equal(writerAccess.modulePermissions.script, 'edit');
+
+  // Simulate an invitation persisted before this guard existed. Accepting it
+  // must resolve the notification without rewriting canonical owner access.
+  const staleOwnerInvitation = platform.createInvitation('scr_member_guard','usr_owner',{ email:'outsider@example.com', projectRole:'viewer' });
+  database.prepare(`UPDATE project_invitations
+    SET invited_user_id='usr_owner', invited_email='owner@example.com'
+    WHERE id=?`).run(staleOwnerInvitation.id);
+  const ownerBefore = platform.projectAccess('usr_owner','scr_member_guard');
+  const accepted = platform.acceptAccountInvitation(staleOwnerInvitation.id,'usr_owner');
+  const ownerAfter = platform.projectAccess('usr_owner','scr_member_guard');
+  assert.equal(accepted.invitation.status, 'accepted');
+  assert.equal(ownerAfter.id, ownerBefore.id);
+  assert.equal(ownerAfter.version, ownerBefore.version);
+  assert.equal(ownerAfter.projectRole, 'owner');
+  assert.equal(ownerAfter.modulePermissions.members, 'manage');
+  assert.equal(ownerAfter.financialPermissions.includes('financial.edit_all'), true);
+  assert.equal(database.prepare("SELECT count(*) AS count FROM activity_events WHERE project_id='scr_member_guard' AND action='project.member.joined' AND actor_user_id='usr_owner'").get().count, 0);
+});
+
+test('account invitation rejection is secure, idempotent, and never creates access', () => {
+  database.prepare(`INSERT INTO scripts (id,user_id,title,source,text,blocks_json,chat_json,title_room_json,character_names_json,created_at,updated_at)
+    VALUES ('scr_decline','usr_owner','Declined Story','test','','[]','[]','{}','{}',?,?)`).run(timestamp, timestamp);
+  platform.backfillOwners();
+  const created = platform.createInvitation('scr_decline','usr_owner',{ email:'viewer@example.com', projectRole:'viewer' });
+  const first = platform.declineAccountInvitation(created.id,'usr_viewer');
+  const second = platform.declineAccountInvitation(created.id,'usr_viewer');
+  assert.equal(first.status, 'declined');
+  assert.equal(second.status, 'declined');
+  assert.equal(platform.projectAccess('usr_viewer','scr_decline'), null);
+  assert.equal(database.prepare("SELECT count(*) AS count FROM activity_events WHERE entity_id=? AND action='project.invitation.declined'").get(created.id).count, 1);
+  assert.throws(() => platform.acceptAccountInvitation(created.id,'usr_viewer'), /no longer available/i);
+  assert.throws(() => platform.declineAccountInvitation(created.id,'usr_outsider'), /not found/i);
+});
+
+test('email-only account actions require a verified matching email', () => {
+  const created = platform.createInvitation('scr_access','usr_owner',{ email:'unverified@example.com', projectRole:'viewer' });
+  database.prepare(`INSERT INTO users (id,google_sub,email,name,email_verified,username,created_at,updated_at)
+    VALUES ('usr_unverified','google_unverified','unverified@example.com','Unverified',0,'unverified',?,?)`).run(timestamp, timestamp);
+  assert.equal(platform.listAccountInvitations('usr_unverified').some((item) => item.id === created.id), false);
+  assert.throws(() => platform.acceptInvitation(created.token,'usr_unverified'), /another account/i);
+});
+
+test('legacy invitation notifications resolve actions without exposing invitation tokens', () => {
+  const created = platform.createInvitation('scr_access','usr_owner',{ email:'outsider@example.com', projectRole:'commenter' });
+  database.prepare("UPDATE notifications SET metadata_json='{}', deep_link='/App.dc.html?project=scr_access' WHERE user_id='usr_outsider' AND type='project_invitation'").run();
+  const notification = platform.listNotifications('usr_outsider').find((item) => item.invitation?.id === created.id);
+  assert.equal(notification.invitation.status, 'pending');
+  assert.doesNotMatch(notification.deepLink, /[?&]invitation=/);
+  assert.equal(JSON.stringify(notification).includes(created.token), false);
 });
 
 test('secure invitation links store only hashes and rotation invalidates the old token', () => {
