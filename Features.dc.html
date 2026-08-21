@@ -20,45 +20,7 @@
 <script src="./lumiere-preferences.js?v=20260820-navigable1"></script>
 <link rel="stylesheet" href="./auth-modal.css?v=20260713-login1">
 <link rel="stylesheet" href="./filmscript-controls.css?v=20260716-typography1">
-  <link rel="stylesheet" href="./filmscript-landing.css?v=20260815-header-login2">
-<style id="filmscript-compact-landing-login">
-  /* Keep the public sign-in control easy to tap without letting it dominate the header. */
-  header :is(a, button):last-child {
-    min-width: 0 !important;
-    height: 46px !important;
-    min-height: 46px !important;
-    padding: 0 18px !important;
-    line-height: 1 !important;
-  }
-
-  @media (max-width: 640px) {
-    header :is(a, button):last-child {
-      height: 44px !important;
-      min-height: 44px !important;
-      padding: 0 16px !important;
-    }
-  }
-</style>
-<style id="filmscript-compact-landing-login">
-  /* Keep sign-in visible without letting it dominate the landing header. */
-  header > :is(a, button):last-child,
-  header > *:last-child :is(a, button):last-child {
-    min-width: 0 !important;
-    height: 46px !important;
-    min-height: 46px !important;
-    padding: 0 18px !important;
-    line-height: 1 !important;
-  }
-
-  @media (max-width: 640px) {
-    header > :is(a, button):last-child,
-    header > *:last-child :is(a, button):last-child {
-      height: 44px !important;
-      min-height: 44px !important;
-      padding: 0 16px !important;
-    }
-  }
-</style>
+  <link rel="stylesheet" href="./filmscript-landing.css?v=20260821-mobile-carousel1">
 </head>
 <body>
 <x-dc>
@@ -195,13 +157,16 @@
         <div class="fs-home-eyebrow" style="animation: fs-rise .55s ease both;">From first page to final delivery</div>
         <h1 class="fs-home-title fs-hero-title" style="animation: fs-rise .55s ease both .05s;"><span class="fs-home-title-line">Write it.</span> <span class="fs-home-title-line">See it.</span> <span class="fs-home-title-line">Make it.</span></h1>
         <p class="fs-home-lede" style="animation: fs-rise .55s ease both .1s;">FilmScript connects every stage of production to the same screenplay, from writing and visual planning through breakdowns, budgets and the final delivery calendar.</p>
+      </header>
+
+      <div class="fs-hero-actions">
         <div class="fs-cta-row" style="display: flex; gap: 16px; align-items: center; justify-content: center; animation: fs-rise .55s ease both .16s;">
           <button type="button" data-testid="landing-primary-hero" onClick="{{ goScripts }}" class="fs-landing-cta fs-landing-cta--primary"><span>{{ landingPrimaryLabel }}</span></button>
           <button type="button" onClick="{{ navPricing }}" class="fs-landing-cta fs-landing-cta--secondary"><span>Compare plans</span><span class="fs-control-arrow" aria-hidden="true">›</span></button>
         </div>
         <button type="button" data-testid="landing-plan-cta" onClick="{{ navPricing }}" class="fs-hero-plan-cta" style="animation: fs-rise .55s ease both .22s;">Start free. Creator $24.99/month. Full $39.99/month.</button>
         <p class="fs-hero-audience" style="animation: fs-rise .55s ease both .25s;">Built for filmmakers, studios and production teams.</p>
-      </header>
+      </div>
 
       <section class="fs-hero-stage" aria-label="A screenplay connected to FilmScript production tools" style="animation: fs-rise .62s ease both .24s;">
         <svg class="fs-hero-stage-frame" viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true"><path d="M2.2 5.8 C5.8 1.8 20 2.9 35 2.2 C54 1.2 77 3 95.6 2.4 C98.8 5.7 97.4 22 98.1 39 C98.8 60 97 79 98.5 94 C94.4 98.5 78 97 59 98 C38 99.2 17 96.8 3.1 98.2 C.7 92.8 2.1 75 1.6 59 C1.1 39 2.9 20 2.2 5.8 Z"></path></svg>
@@ -234,8 +199,13 @@
         </div>
       </section>
 
-      <nav class="fs-suite-nav" aria-label="Explore FilmScript features">
-        <a href="#editor">Editor</a><a href="#lumiere">Lumiere</a><a href="#imagine">Imagine</a><a href="#analysis">Analysis</a><a href="#breakdown">Breakdown</a><a href="#stripboard">Stripboard</a><a href="#shot-list">Shot List</a><a href="#budget">Budget</a><a href="#calendar">Calendar</a>
+      <nav ref="{{ suiteNavRef }}" class="fs-suite-nav" aria-label="Explore FilmScript features" aria-live="off">
+        <span class="fs-suite-nav-track" data-suite-track>
+          <a href="#editor">Editor</a><a href="#lumiere">Lumiere</a><a href="#imagine">Imagine</a><a href="#analysis">Analysis</a><a href="#breakdown">Breakdown</a><a href="#stripboard">Stripboard</a><a href="#shot-list">Shot List</a><a href="#budget">Budget</a><a href="#calendar">Calendar</a>
+        </span>
+        <span class="fs-suite-nav-track fs-suite-nav-track--clone" aria-hidden="true" inert>
+          <a href="#editor" tabindex="-1">Editor</a><a href="#lumiere" tabindex="-1">Lumiere</a><a href="#imagine" tabindex="-1">Imagine</a><a href="#analysis" tabindex="-1">Analysis</a><a href="#breakdown" tabindex="-1">Breakdown</a><a href="#stripboard" tabindex="-1">Stripboard</a><a href="#shot-list" tabindex="-1">Shot List</a><a href="#budget" tabindex="-1">Budget</a><a href="#calendar" tabindex="-1">Calendar</a>
+        </span>
       </nav>
 
       <section class="fs-suite-section" aria-labelledby="suite-title">
@@ -419,19 +389,6 @@
         </div>
       </section>
 
-      <section class="fs-connection-section" aria-labelledby="connection-title">
-        <h2 id="connection-title">One change moves through the whole production.</h2>
-        <p>Update a scene and the next decisions stay traceable, from the visual idea to the final date on the calendar.</p>
-        <div class="fs-connection-flow" aria-label="FilmScript connected workflow">
-          <a class="fs-flow-step" href="#editor" aria-label="Go to Script Editor"><svg class="fs-card-frame" viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true"><path d="M4 9 C18 3 44 8 96 4 L97 91 C71 97 35 92 3 97 Z"></path></svg><span class="fs-flow-step-copy"><strong>Script</strong><small>The source</small></span><span class="fs-flow-link-mark" aria-hidden="true">↗</span></a>
-          <a class="fs-flow-step" href="#imagine" aria-label="Go to Imagine"><svg class="fs-card-frame" viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true"><path d="M2 5 C30 2 66 7 98 3 L96 95 C63 99 29 92 4 98 Z"></path></svg><span class="fs-flow-step-copy"><strong>Imagine</strong><small>The visual world</small></span><span class="fs-flow-link-mark" aria-hidden="true">↗</span></a>
-          <a class="fs-flow-step" href="#breakdown" aria-label="Go to Breakdown"><svg class="fs-card-frame" viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true"><path d="M5 3 C33 7 62 1 96 6 L98 93 C69 96 34 91 2 96 Z"></path></svg><span class="fs-flow-step-copy"><strong>Breakdown</strong><small>Scene requirements</small></span><span class="fs-flow-link-mark" aria-hidden="true">↗</span></a>
-          <a class="fs-flow-step" href="#stripboard" aria-label="Go to Stripboard"><svg class="fs-card-frame" viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true"><path d="M3 7 C25 2 58 8 97 3 L95 97 C65 93 33 99 2 94 Z"></path></svg><span class="fs-flow-step-copy"><strong>Stripboard</strong><small>The shooting order</small></span><span class="fs-flow-link-mark" aria-hidden="true">↗</span></a>
-          <a class="fs-flow-step" href="#budget" aria-label="Go to Budget"><svg class="fs-card-frame" viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true"><path d="M2 4 C37 8 69 1 98 7 L96 94 C68 99 31 93 4 97 Z"></path></svg><span class="fs-flow-step-copy"><strong>Budget</strong><small>Plan and actuals</small></span><span class="fs-flow-link-mark" aria-hidden="true">↗</span></a>
-          <a class="fs-flow-step" href="#calendar" aria-label="Go to Calendar"><svg class="fs-card-frame" viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true"><path d="M4 5 C33 1 66 6 97 4 L98 92 C69 98 34 93 3 97 Z"></path></svg><span class="fs-flow-step-copy"><strong>Calendar</strong><small>The final milestone</small></span><span class="fs-flow-link-mark" aria-hidden="true">↗</span></a>
-        </div>
-      </section>
-
       <section class="fs-final-cta">
         <h2>One script. One source of truth.</h2>
         <p>Open FilmScript and keep every creative and production decision connected from the first scene to delivery.</p>
@@ -554,6 +511,7 @@ class Component extends DCLogic {
 
   canvasRef = React.createRef();
   landingScrollRef = React.createRef();
+  suiteNavRef = React.createRef();
 
   componentDidMount() {
     window.filmscriptSounds?.preload('profile');
@@ -566,8 +524,14 @@ class Component extends DCLogic {
       const el = this.landingScrollRef.current;
       if (!el) { if (++tries < 90) setTimeout(arm, 33); return; }
       this._armReveal(el);
+      this._armSuiteMarquee();
     };
     setTimeout(arm, 0);
+  }
+
+  componentWillUnmount() {
+    this._suiteMarqueeCleanup?.();
+    this._suiteMarqueeCleanup = null;
   }
 
   async _refreshBilling(sync = false, checkoutId = null) {
@@ -598,7 +562,7 @@ class Component extends DCLogic {
       });
     }, { root: c, rootMargin: '0px 0px -70px 0px', threshold: 0.06 });
     const bottom = c.getBoundingClientRect().bottom;
-    const revealTargets = c.querySelectorAll('.fs-section-heading, .fs-feature-card, .fs-connection-section > h2, .fs-connection-section > p, .fs-flow-step, .fs-final-cta');
+    const revealTargets = c.querySelectorAll('.fs-section-heading, .fs-feature-card, .fs-final-cta');
     Array.from(revealTargets).forEach((el, index) => {
       if (el.getBoundingClientRect().top < bottom - 40) return;
       el.style.transition = 'opacity .52s ease ' + ((index % 3) * 45) + 'ms, transform .62s cubic-bezier(.16,1,.3,1) ' + ((index % 3) * 45) + 'ms';
@@ -606,6 +570,101 @@ class Component extends DCLogic {
       el.style.transform = 'translateY(18px)';
       io.observe(el);
     });
+  }
+
+  _armSuiteMarquee() {
+    if (this._suiteMarqueeCleanup) return;
+    const nav = this.suiteNavRef.current;
+    const track = nav?.querySelector('[data-suite-track]');
+    if (!nav || !track) return;
+
+    const mobile = window.matchMedia('(max-width: 700px)');
+    const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)');
+    let frame = 0;
+    let last = performance.now();
+    let speed = 0;
+    let interacting = false;
+    let focusPaused = false;
+    let inView = true;
+    let resumeAt = last + 520;
+    let loopWidth = 0;
+
+    const measure = () => { loopWidth = track.getBoundingClientRect().width; };
+    const normalize = () => {
+      if (!loopWidth) measure();
+      if (!loopWidth) return;
+      while (nav.scrollLeft >= loopWidth) nav.scrollLeft -= loopWidth;
+    };
+    const pause = () => {
+      interacting = true;
+      speed = 0;
+    };
+    const resume = () => {
+      interacting = false;
+      resumeAt = performance.now() + 1000;
+    };
+    const pauseBriefly = () => {
+      speed = 0;
+      resumeAt = performance.now() + 1000;
+    };
+    const onFocusIn = (event) => {
+      focusPaused = Boolean(event.target?.matches?.(':focus-visible'));
+      if (focusPaused) speed = 0;
+    };
+    const onFocusOut = () => { focusPaused = false; resumeAt = performance.now() + 1000; };
+    const onVisibility = () => {
+      last = performance.now();
+      if (!document.hidden) resumeAt = last + 500;
+    };
+
+    const tick = (now) => {
+      const dt = Math.min(40, Math.max(0, now - last));
+      last = now;
+      const canMove = mobile.matches && !reducedMotion.matches && !document.hidden && inView && !interacting && !focusPaused && now >= resumeAt;
+      const targetSpeed = canMove ? 22 : 0;
+      const easingWindow = targetSpeed > speed ? 720 : 180;
+      speed += (targetSpeed - speed) * Math.min(1, dt / easingWindow);
+      if (canMove && speed > .02) {
+        nav.scrollLeft += speed * dt / 1000;
+        normalize();
+      }
+      frame = window.requestAnimationFrame(tick);
+    };
+
+    nav.addEventListener('pointerdown', pause, { passive: true });
+    window.addEventListener('pointerup', resume, { passive: true });
+    window.addEventListener('pointercancel', resume, { passive: true });
+    nav.addEventListener('wheel', pauseBriefly, { passive: true });
+    nav.addEventListener('keydown', pauseBriefly);
+    nav.addEventListener('focusin', onFocusIn);
+    nav.addEventListener('focusout', onFocusOut);
+    document.addEventListener('visibilitychange', onVisibility);
+    const resizeObserver = typeof ResizeObserver === 'function' ? new ResizeObserver(measure) : null;
+    const intersectionObserver = typeof IntersectionObserver === 'function' ? new IntersectionObserver((entries) => {
+      inView = Boolean(entries[0]?.isIntersecting);
+      last = performance.now();
+      if (inView) resumeAt = last + 500;
+    }, { rootMargin: '80px 0px' }) : null;
+    resizeObserver?.observe(track);
+    intersectionObserver?.observe(nav);
+    nav.dataset.carouselReady = 'true';
+    measure();
+    frame = window.requestAnimationFrame(tick);
+
+    this._suiteMarqueeCleanup = () => {
+      window.cancelAnimationFrame(frame);
+      resizeObserver?.disconnect();
+      intersectionObserver?.disconnect();
+      delete nav.dataset.carouselReady;
+      nav.removeEventListener('pointerdown', pause);
+      window.removeEventListener('pointerup', resume);
+      window.removeEventListener('pointercancel', resume);
+      nav.removeEventListener('wheel', pauseBriefly);
+      nav.removeEventListener('keydown', pauseBriefly);
+      nav.removeEventListener('focusin', onFocusIn);
+      nav.removeEventListener('focusout', onFocusOut);
+      document.removeEventListener('visibilitychange', onVisibility);
+    };
   }
 
   _scrollToSec(name) {
@@ -1107,6 +1166,7 @@ Write Lumiere's next reply only:`;
       goHome: () => this.setState({ screen: 'landing' }),
       goLanding: () => this.setState({ screen: 'landing' }),
       landingScrollRef: this.landingScrollRef,
+      suiteNavRef: this.suiteNavRef,
       navHome: () => this._scrollToSec(null),
       navFeatures: () => this._scrollToSec(null),
       navPricing: () => { window.location.href = 'Pricing.dc.html'; },
