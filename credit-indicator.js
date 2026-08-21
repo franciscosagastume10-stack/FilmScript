@@ -103,7 +103,7 @@
       .${INDICATOR_CLASS} .fs-avatar-credit-track { fill: none; stroke: color-mix(in srgb, var(--surface, #FFFEF9) 42%, var(--chrome, #232322)); stroke-width: 2.4; opacity: .8; }
       .${INDICATOR_CLASS} .fs-avatar-credit-progress { fill: none; stroke: var(--fs-credit-color, #5D9976); stroke-width: 2.4; stroke-linecap: round; transition: stroke-dasharray .48s cubic-bezier(.2,.8,.2,1), stroke .28s ease; }
       .fs-avatar-credit-host:hover .${INDICATOR_CLASS}, .fs-avatar-credit-host:focus-within .${INDICATOR_CLASS} { transform: scale(1.055); }
-      .fs-profile-credit { position: relative; isolation: isolate; display: grid; gap: 8px; margin: 9px 0 10px; padding: 10px 11px; overflow: hidden; border: 1px solid color-mix(in srgb, var(--hair, #E7E4DA) 88%, var(--accent, #BA7517)); border-radius: 11px 9px 12px 10px; background: color-mix(in srgb, var(--surface, #FFFEF9) 88%, var(--bg, #F5F0E8)); color: var(--ink, #2C2C2A); animation: fs-credit-panel-in .23s cubic-bezier(.2,.8,.2,1) both; }
+      .fs-profile-credit { position: relative; isolation: isolate; display: grid; gap: 8px; margin: 9px 0 10px; padding: 10px 11px; overflow: hidden; border: 1px solid color-mix(in srgb, var(--hair, #E7E4DA) 88%, var(--accent, #BA7517)); border-radius: 11px 9px 12px 10px; background: color-mix(in srgb, var(--surface, #FFFEF9) 78%, transparent); -webkit-backdrop-filter: blur(28px) saturate(1.18); backdrop-filter: blur(28px) saturate(1.18); color: var(--ink, #2C2C2A); animation: fs-credit-panel-in .23s cubic-bezier(.2,.8,.2,1) both; }
       .fs-profile-credit::after { content: ""; position: absolute; inset: 3px -2px -2px 3px; z-index: -1; border: 1px solid color-mix(in srgb, var(--hair, #E7E4DA) 68%, transparent); border-radius: 9px 11px 10px 12px; pointer-events: none; }
       .fs-profile-credit-head, .fs-profile-credit-meta { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; min-width: 0; }
       .fs-profile-credit-title { font-size: 11.5px; font-weight: 700; letter-spacing: -.08px; }
@@ -119,6 +119,7 @@
       @keyframes fs-credit-panel-in { from { opacity: 0; transform: translate3d(0, -4px, 0) scale(.985); } to { opacity: 1; transform: none; } }
       @keyframes fs-credit-in { from { opacity: 0; transform: scale(.72); } to { opacity: 1; transform: scale(1); } }
       @media (prefers-reduced-motion: reduce) { .${INDICATOR_CLASS}, .fs-profile-credit { animation: none; transition: none; } .fs-profile-credit-fill { transition: none; } }
+      @media (prefers-reduced-transparency: reduce) { .fs-profile-credit { background: var(--surface, #FFFEF9); -webkit-backdrop-filter: none; backdrop-filter: none; } }
     `;
     document.head.appendChild(style);
   }

@@ -1,4 +1,6 @@
 (() => {
+  const localize = (value) => window.filmscriptLanguage?.t?.(value) || value;
+  document.title = `${localize('Project invitation')} | FilmScript`;
   const token = new URLSearchParams(location.search).get('invitation');
   const button = document.querySelector('[data-invitation-continue]');
   if (!token) { button.removeAttribute('href'); button.textContent = 'Invitation link unavailable'; return; }

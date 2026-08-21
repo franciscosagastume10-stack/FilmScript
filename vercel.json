@@ -18,7 +18,7 @@
     },
     {
       "source": "/workspace/projects/:path*",
-      "destination": "https://api.filmscript.app/api/scripts/:path*"
+      "destination": "https://api.filmscript.app/api/projects/:path*"
     },
     {
       "source": "/workspace/scripts",

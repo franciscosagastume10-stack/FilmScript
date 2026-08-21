@@ -3,9 +3,38 @@ import fs from 'node:fs';
 import path from 'node:path';
 import test from 'node:test';
 import { fileURLToPath } from 'node:url';
+import vm from 'node:vm';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const read = (name) => fs.readFileSync(path.join(root, name), 'utf8');
+
+function languageApi(language = 'en') {
+  const values = new Map([['filmscript_language', language]]);
+  const document = {
+    readyState: 'loading',
+    documentElement: { setAttribute() {} },
+    addEventListener() {},
+    querySelectorAll() { return []; },
+  };
+  const window = {
+    location: { search: '', pathname: '/Editor%20v5.dc.html' },
+    addEventListener() {},
+    dispatchEvent() {},
+  };
+  const context = vm.createContext({
+    window,
+    document,
+    localStorage: { getItem: (key) => values.get(key) || null, setItem: (key, value) => values.set(key, value) },
+    URLSearchParams,
+    Node: { ELEMENT_NODE: 1, TEXT_NODE: 3, DOCUMENT_NODE: 9, DOCUMENT_FRAGMENT_NODE: 11 },
+    NodeFilter: { SHOW_ELEMENT: 1, SHOW_TEXT: 4 },
+    CustomEvent: class { constructor(type, options) { this.type = type; this.detail = options?.detail; } },
+    setTimeout() {},
+    clearTimeout() {},
+  });
+  vm.runInContext(read('language-preference.js'), context);
+  return window.filmscriptLanguage;
+}
 
 test('English and Spanish are available from one persistent FilmScript setting', () => {
   const language = read('language-preference.js');
@@ -73,6 +102,59 @@ test('every user-facing FilmScript page loads the shared language preference', (
     assert.match(read(page), /language-preference\.js/, page);
   }
   assert.match(read('scripts/build-netlify.mjs'), /"language-preference\.js"/);
+});
+
+test('People & Access, invitations, and guest access preserve a complete Spanish interface', () => {
+  const language = read('language-preference.js');
+  const client = read('platform-client.js');
+  const invitation = read('Invitation.html');
+  const invitationAccess = read('invitation-access.js');
+  const guest = read('GuestAccess.html');
+  const guestAccess = read('guest-access.js');
+
+  for (const [english, spanish] of [
+    ['People & Access', 'Personas y acceso'],
+    ['Invite a collaborator', 'Invitar a un colaborador'],
+    ['Project collaboration settings', 'Configuración de colaboración del proyecto'],
+    ['Cinematic role', 'Rol cinematográfico'],
+    ['Module permissions', 'Permisos por módulo'],
+    ['Financial access', 'Acceso financiero'],
+    ['No financial access', 'Sin acceso financiero'],
+    ['Temporary Guest', 'Invitado temporal'],
+    ['Pending Invitations', 'Invitaciones pendientes'],
+    ['Guest project access', 'Acceso de invitado al proyecto'],
+    ['Opening your secure invitation', 'Abriendo tu invitación segura'],
+    ['You are invited to collaborate', 'Te invitaron a colaborar'],
+  ]) {
+    assert.match(language, new RegExp(`'${english.replace(/[.*+?^${}()|[\\]\\]/g, '\\$&')}': '${spanish.replace(/[.*+?^${}()|[\\]\\]/g, '\\$&')}'`), english);
+  }
+
+  assert.match(language, /value\.match\(\/\^Access for \(\.\+\)\$\//);
+  assert.match(language, /value\.match\(\/\^Read only access expires \(\.\+\)\\\.\$\//);
+  assert.match(language, /value\.match\(\/\^\(\\d\+\) areas · \(\.\+\)\$\//);
+  assert.match(client, /dialog\('People & Access'/);
+  assert.match(client, /Invite a collaborator/);
+
+  for (const page of [invitation, guest]) {
+    assert.match(page, /language-preference\.js\?v=20260820-people-access1/);
+  }
+  assert.match(invitationAccess, /document\.title = `\$\{localize\('Project invitation'\)\} \| FilmScript`/);
+  assert.match(guestAccess, /document\.title = `\$\{localize\('Guest access'\)\} \| FilmScript`/);
+  assert.match(guestAccess, /toLocaleString\(interfaceLocale\(\)\)/);
+  assert.match(client, /localizedDate\(invitation\.expiresAt\)/);
+  assert.match(client, /confirm\(uiText\('Remove this person from the project now\?'\)\)/);
+});
+
+test('People & Access dynamic roles, permissions, dates, and names follow the active interface language', () => {
+  const spanish = languageApi('es').t;
+  const english = languageApi('en').t;
+
+  assert.equal(spanish('People & Access'), 'Personas y acceso');
+  assert.equal(spanish('3 areas · Script View, Breakdown Edit'), '3 áreas · Guion Ver, Desglose Editar');
+  assert.equal(spanish('script: edit'), 'Guion: Editar');
+  assert.equal(spanish('Access for Sofia'), 'Acceso para Sofia');
+  assert.equal(spanish('Read only access expires Aug 20, 2026.'), 'El acceso de solo lectura vence Aug 20, 2026.');
+  assert.equal(english('People & Access'), 'People & Access');
 });
 
 test('terms disclose durable Free grants and Creator and Full image-credit rules', () => {

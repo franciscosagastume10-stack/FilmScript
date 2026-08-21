@@ -821,7 +821,7 @@ test("Analysis uses one Lumiere insights contract with screenplay evidence and p
   assert.match(editor, /analysisBackgroundVisible/);
   assert.match(editor, /_scheduleAnalysisBackgroundPoll/);
   assert.match(editor, /Lumiere is analyzing/);
-  assert.match(analysis, /data-action="start-quick"/);
+  assert.match(analysis, /data-action="start-analysis"/);
   assert.match(analysis, /const waitingForUser = this\.analysis\.hasEnoughContent/);
   assert.match(analysis, /load\(\{ startAnalysis: true \}\)/);
   assert.doesNotMatch(editor, /Mount the Analysis element first[\s\S]*refreshFromEditor/);
@@ -1068,7 +1068,7 @@ test("a saved photo or preset avatar is restored after reload and reactive remou
   assert.match(platform, /hasNewAvatar[\s\S]*?requestAnimationFrame\(\(\) => \{ identityFrame = 0; applyAccountIdentity\(\); \}\)/);
   assert.match(platform, /backgroundSize = 'cover'/);
   assert.match(platform, /state\.profile\?\.avatarCrop\?\.presetIcon/);
-  for (const page of [scripts, editor]) assert.match(page, /platform-client\.js\?v=20260819-account1/);
+  for (const page of [scripts, editor]) assert.match(page, /platform-client\.js\?v=20260820-release2/);
 });
 
 test("Account offers ten original film icons, fixed backgrounds, and never lists the current session as a collaborator", async () => {
@@ -1145,9 +1145,9 @@ test("the account mini menu is spacious Liquid Glass with themed credits and a r
   assert.match(css, /\.fs-profile-menu-item \{[^}]*min-height:42px[^}]*text-align:left/);
   assert.match(css, /\.fs-profile-signout \{[^}]*color:var\(--semantic-danger\)!important/);
   assert.match(css, /prefers-reduced-transparency: reduce[^}]*\.fs-profile-popover/);
-  assert.match(credits, /\.fs-avatar-credit-progress \{[^}]*stroke: var\(--accent, #BA7517\)/);
+  assert.match(credits, /\.fs-avatar-credit-progress \{[^}]*stroke: var\(--fs-credit-color, #5D9976\)/);
   assert.match(credits, /\.fs-profile-credit \{[^}]*backdrop-filter: blur\(28px\) saturate\(1\.18\)/);
-  assert.match(credits, /\.fs-profile-credit-fill \{[^}]*background: var\(--accent, #BA7517\)/);
+  assert.match(credits, /\.fs-profile-credit-fill \{[^}]*background: var\(--fs-profile-credit-color, #5D9976\)/);
 });
 
 test("Lumiere personalization stays compact, section-navigable, and keeps actions visible", async () => {
@@ -1169,7 +1169,7 @@ test("collaborator chat has a project-scoped API and accessible Liquid Glass com
     fs.readFile(path.join(ROOT, "platform-client.js"), "utf8"),
     fs.readFile(path.join(ROOT, "server.js"), "utf8"),
     fs.readFile(path.join(ROOT, "platform-database.js"), "utf8"),
-    fs.readFile(path.join(ROOT, "migrations/013_project_messages.sql"), "utf8"),
+    fs.readFile(path.join(ROOT, "migrations/015_project_messages.sql"), "utf8"),
     fs.readFile(path.join(ROOT, "platform-ui.css"), "utf8"),
   ]);
   assert.match(client, /data-chat/);
@@ -1181,4 +1181,24 @@ test("collaborator chat has a project-scoped API and accessible Liquid Glass com
   assert.match(migration, /CREATE TABLE IF NOT EXISTS project_messages/);
   assert.match(css, /\.fs-chat-panel \{[^}]*backdrop-filter:blur\(38px\)/);
   assert.match(css, /\.fs-chat-bubble\.is-mine/);
+});
+
+test("Editor export keeps its actions behind an accessible Liquid Glass control", async () => {
+  const editor = await fs.readFile(path.join(ROOT, "Editor v5.dc.html"), "utf8");
+  const start = editor.indexOf('<details class="v5-editor-export-menu">');
+  const end = editor.indexOf('</details>', start);
+  const exportMenu = editor.slice(start, end);
+
+  assert.ok(start >= 0 && end > start, "expected the editor export details menu");
+  assert.match(exportMenu, /<summary class="v5-editor-export-pdf"[^>]*aria-label="\{\{ exportPdfLabel \}\}"/);
+  assert.match(exportMenu, /class="v5-editor-export-icon" aria-hidden="true"/);
+  assert.match(exportMenu, /class="v5-editor-export-caret" viewBox="0 0 16 16"[^>]*focusable="false"><path d="m4 6 4 4 4-4"><\/path>/);
+  assert.doesNotMatch(exportMenu, /⌄/);
+  assert.match(exportMenu, /onClick="\{\{ exportPdfAnalyze \}\}"/);
+  assert.match(exportMenu, /onClick="\{\{ exportPdfNow \}\}"/);
+  assert.match(editor, /\.v5-editor-export-pdf \{[^}]*min-height: 38px[^}]*backdrop-filter: blur\(20px\) saturate\(1\.18\)/);
+  assert.match(editor, /\.v5-editor-export-options button \{[^}]*min-height: 42px/);
+  assert.match(editor, /html\[data-filmscript-theme="dark"\] \.v5-editor-export-options/);
+  assert.match(editor, /prefers-reduced-transparency: reduce/);
+  assert.match(editor, /prefers-reduced-motion: reduce[\s\S]*?\.v5-editor-export-caret/);
 });

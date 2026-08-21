@@ -30,7 +30,7 @@
     { id:'moon', label:'Night exterior', svg:'<svg viewBox="0 0 48 48" aria-hidden="true"><path d="M32.7 8.5c-7.3 2.1-11.4 9.5-9.2 16.7 2.1 7.1 9.5 11.1 16.5 9-3.5 5-9.7 7.6-15.6 6.2C15.2 38.2 9.5 29 11.7 19.8 13.9 10.7 23.2 5 32.7 8.5Z"/><path d="M12 13.2 8.8 10m7.8-.1.1-4.3M9 18.9l-4.2.2"/></svg>' },
     { id:'sun', label:'Day exterior', svg:'<svg viewBox="0 0 48 48" aria-hidden="true"><path d="M24 14.2c5.7-.2 10.2 4.4 10 10-.2 5.4-4.6 9.7-10 9.7-5.5-.1-9.9-4.6-9.8-10 .1-5.2 4.4-9.5 9.8-9.7Z"/><path d="m24 5.5.2 5m-.3 27.6.1 4.5M5.5 24.2l4.7-.2m27.7.2 4.5-.1M10.7 10.8l3.4 3.4m19.6 19.5 3.2 3.2m.1-26.4-3.3 3.6M14 33.8l-3.3 3.3"/></svg>' },
   ];
-  const state = { me: null, profile: null, notifications: [], presence: [], eventSource: null, chatPeer: null, chatMessages: [] };
+  const state = { me: null, profile: null, notifications: [], presence: [], eventSource: null, chatPeer: null, chatMessages: [], chatRequestId: null, releaseNoticeState: 'idle' };
   let lastUserActivityAt = Date.now();
   let themeSave = Promise.resolve();
   const currentModule = () => ({ editor:'script', shotlist:'shot_list' }[new URLSearchParams(location.search).get('view') || 'script'] || new URLSearchParams(location.search).get('view') || 'script');
@@ -41,6 +41,7 @@
     updateMe: (body) => request('/api/me', { method:'PATCH', body:JSON.stringify(body) }),
     updateProfile: (body) => request('/api/me/platform-profile', { method:'PATCH', body:JSON.stringify(body) }),
     notifications: () => request('/api/notifications'), markRead: (id) => request(`/api/notifications${id ? `/${id}` : ''}`, { method:'PATCH' }), deleteNotification: (id) => request(`/api/notifications${id ? `/${id}` : ''}`, { method:'DELETE' }),
+    releaseNotice: () => request('/api/release-notice'), acknowledgeReleaseNotice: () => request('/api/release-notice', { method:'POST', keepalive:true }),
     members: () => request(`/api/projects/${projectId}/members`), invite: (body) => request(`/api/projects/${projectId}/members`, { method:'POST', body:JSON.stringify(body) }),
     updateMember: (id, body) => request(`/api/projects/${projectId}/members/${id}`, { method:'PATCH', body:JSON.stringify(body) }),
     transferOwnership: (membershipId) => request(`/api/projects/${projectId}/ownership/transfer`, { method:'POST', body:JSON.stringify({ membershipId }) }),
@@ -55,6 +56,7 @@
     createLocationPlan: (body) => request(`/api/projects/${projectId}/location-plans`, { method:'POST', body:JSON.stringify(body) }),
     saveLocationPlan: (plan, expectedVersion) => request(`/api/projects/${projectId}/location-plans/${plan.id}`, { method:'PATCH', body:JSON.stringify({ plan, expectedVersion }) }),
     collaborate: (body) => request(`/api/projects/${projectId}/collaboration/operations`, { method:'POST', headers:{ 'X-FilmScript-Client-Id':clientId }, body:JSON.stringify(body) }),
+    chatPeers: () => request(`/api/projects/${projectId}/chat/peers`),
     chat: (peer) => request(`/api/projects/${projectId}/chat?with=${encodeURIComponent(peer)}`),
     sendChat: (peer, body) => request(`/api/projects/${projectId}/chat`, { method:'POST', headers:{ 'X-FilmScript-Client-Id':clientId }, body:JSON.stringify({ recipientId:peer, body }) }),
   };
@@ -206,10 +208,121 @@
     root.querySelector('[data-clear-all]')?.addEventListener('click', async (event) => { if (!confirm('Delete all notifications?')) return; event.currentTarget.disabled = true; await api.deleteNotification(); root.querySelectorAll('[data-notification-row]').forEach((row) => row.classList.add('is-removing')); window.setTimeout(() => { openNotifications(); refreshNotifications(); }, 190); });
   }
 
+  function releaseNoticeCopy() {
+    const spanish = String(window.filmscriptLanguage?.get?.() || document.documentElement.lang || 'en').toLowerCase().startsWith('es');
+    return spanish ? {
+      title: 'FilmScript 2.0 ya está aquí',
+      subtitle: 'Una actualización para planificar con más claridad y mantener a tu equipo cerca.',
+      eyebrow: 'NUEVO EN FILMSCRIPT',
+      action: 'Entendido',
+      close: 'Cerrar actualización de FilmScript 2.0',
+      features: [
+        ['split', 'Vista dividida en Desglose', 'Consulta el guion mientras organizas los elementos de producción.'],
+        ['chat', 'Conversaciones en tu proyecto', 'Mantén conversaciones privadas con tus colaboradores sin salir de FilmScript.'],
+        ['spark', 'Un espacio más claro', 'Controles, notificaciones y tu cuenta ahora son más fáciles de usar.'],
+      ],
+    } : {
+      title: 'FilmScript 2.0 is here',
+      subtitle: 'An update to help you plan with more clarity and keep your team close.',
+      eyebrow: 'NEW IN FILMSCRIPT',
+      action: 'Got it',
+      close: 'Close FilmScript 2.0 update',
+      features: [
+        ['split', 'Split view in Breakdown', 'Keep the screenplay in view while you organize production elements.'],
+        ['chat', 'Conversations in your project', 'Keep private conversations with collaborators inside FilmScript.'],
+        ['spark', 'A clearer workspace', 'Controls, notifications, and your account are now easier to use.'],
+      ],
+    };
+  }
+
+  function releaseNoticeIcon(kind) {
+    if (kind === 'split') return '<svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3.5" y="4" width="17" height="16" rx="3"></rect><path d="M12 4v16M7 8h2M15 8h2M7 12h2M15 12h2"></path></svg>';
+    if (kind === 'chat') return '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 5.5h14v10H10l-5 3v-13Z"></path><path d="M8.5 9.5h7M8.5 12.5h4"></path></svg>';
+    return '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="m12 3 1.45 5.55L19 10l-5.55 1.45L12 17l-1.45-5.55L5 10l5.55-1.45L12 3Z"></path><path d="m18.3 15 .7 2.3 2.3.7-2.3.7-.7 2.3-.7-2.3-2.3-.7 2.3-.7.7-2.3Z"></path></svg>';
+  }
+
+  function hasReleaseNoticeCollision() {
+    return Boolean(document.querySelector('.fs-platform-scrim, .fs-language-modal:not([hidden])'));
+  }
+
+  function openReleaseNotice() {
+    const copy = releaseNoticeCopy();
+    const features = copy.features.map(([icon, title, body]) => `<li class="fs-release-notice-item"><span class="fs-release-notice-icon" aria-hidden="true">${releaseNoticeIcon(icon)}</span><span><strong>${title}</strong><small>${body}</small></span></li>`).join('');
+    const root = dialog(copy.title, copy.subtitle, `<section class="fs-release-notice" data-i18n-skip><div class="fs-release-notice-orbit" aria-hidden="true"><span></span><i></i><b></b></div><div class="fs-release-notice-eyebrow">${copy.eyebrow}</div><ul class="fs-release-notice-list">${features}</ul><div class="fs-release-notice-actions"><button type="button" class="fs-action fs-action-primary" data-release-notice-ack>${copy.action}</button></div></section>`, 'fs-release-notice-dialog');
+    const panel = root.querySelector('.fs-platform-dialog');
+    panel?.setAttribute('data-i18n-skip', '');
+    root.querySelector('.fs-platform-close')?.setAttribute('aria-label', copy.close);
+
+    let acknowledged = false;
+    const acknowledge = () => {
+      if (acknowledged) return;
+      acknowledged = true;
+      api.acknowledgeReleaseNotice().catch(() => {});
+    };
+    const onKeyDown = (event) => { if (event.key === 'Escape') acknowledge(); };
+    const onClickCapture = (event) => {
+      if (event.target === root || event.target.closest('.fs-platform-close')) acknowledge();
+    };
+    document.addEventListener('keydown', onKeyDown, true);
+    root.addEventListener('click', onClickCapture, true);
+    const observer = new MutationObserver(() => {
+      if (root.isConnected) return;
+      observer.disconnect();
+      document.removeEventListener('keydown', onKeyDown, true);
+      root.removeEventListener('click', onClickCapture, true);
+    });
+    observer.observe(document.body, { childList:true });
+    root.querySelector('[data-release-notice-ack]')?.addEventListener('click', () => { acknowledge(); closeDialog(); });
+  }
+
+  let releaseNoticeLanguageListener = null;
+  function scheduleReleaseNotice() {
+    if (!state.me?.authenticated || state.releaseNoticeState !== 'idle') return;
+    const check = (attempt = 0) => {
+      if (state.releaseNoticeState !== 'idle') return;
+      if (window.filmscriptLanguage?.needsInitialChoice?.()) {
+        state.releaseNoticeState = 'waiting-language';
+        if (!releaseNoticeLanguageListener) {
+          releaseNoticeLanguageListener = () => {
+            releaseNoticeLanguageListener = null;
+            state.releaseNoticeState = 'idle';
+            window.setTimeout(scheduleReleaseNotice, 0);
+          };
+          window.addEventListener('filmscript:initial-language-choice', releaseNoticeLanguageListener, { once:true });
+        }
+        return;
+      }
+      if (hasReleaseNoticeCollision()) {
+        if (attempt >= 40) { state.releaseNoticeState = 'deferred'; return; }
+        window.setTimeout(() => check(attempt + 1), 150);
+        return;
+      }
+      state.releaseNoticeState = 'checking';
+      api.releaseNotice().then((result) => {
+        if (!result?.notice?.version) { state.releaseNoticeState = 'done'; return; }
+        // A notification, invitation, or language dialog can appear while the
+        // account-level claim is in flight. Keep this single claim on the
+        // current page until the other dialog has left rather than flashing
+        // two layers at once or losing the welcome entirely.
+        const presentWhenClear = (presentAttempt = 0) => {
+          if (!hasReleaseNoticeCollision()) {
+            state.releaseNoticeState = 'presenting';
+            openReleaseNotice();
+            return;
+          }
+          if (presentAttempt >= 120) { state.releaseNoticeState = 'deferred'; return; }
+          window.setTimeout(() => presentWhenClear(presentAttempt + 1), 150);
+        };
+        presentWhenClear();
+      }).catch(() => { state.releaseNoticeState = 'done'; });
+    };
+    window.setTimeout(() => check(), 120);
+  }
+
   async function openChatDirectory() {
     if (!projectId) return;
-    let result; try { result = await api.members(); } catch (error) { dialog('Chat', 'Collaborator chat is unavailable right now.', `<p class="fs-guest-error">${escapeHtml(error.message)}</p>`); return; }
-    const people = (result.members || []).filter((member) => member.userId && member.userId !== state.me?.id && member.status === 'active');
+    let result; try { result = await api.chatPeers(); } catch (error) { dialog('Chat', 'Collaborator chat is unavailable right now.', `<p class="fs-guest-error">${escapeHtml(error.message)}</p>`); return; }
+    const people = (result.peers || []).filter((member) => member.userId && member.userId !== state.me?.id);
     const cards = people.map((member) => `<button class="fs-chat-person" type="button" data-chat-peer="${escapeHtml(member.userId)}"><span class="fs-chat-avatar">${escapeHtml(String(member.name || member.email || 'C').trim().charAt(0).toUpperCase())}</span><span><strong>${escapeHtml(member.name || member.email || 'Collaborator')}</strong><small>${escapeHtml(member.email || 'FilmScript collaborator')}</small></span><span class="fs-chat-arrow" aria-hidden="true">›</span></button>`).join('');
     const root = dialog('Collaborator chat', 'Pick someone from this project to start a private conversation.', `<div class="fs-chat-directory">${cards || '<div class="fs-chat-empty">Invite a collaborator to start chatting.</div>'}</div>`, 'fs-chat-directory-dialog');
     root.querySelectorAll('[data-chat-peer]').forEach((button) => button.addEventListener('click', () => { closeDialog(); openChat(button.dataset.chatPeer, button.querySelector('strong')?.textContent || 'Collaborator'); }));
@@ -218,19 +331,40 @@
   async function openChat(peerId, peerName = 'Collaborator') {
     if (!projectId || !peerId) return;
     state.chatPeer = peerId;
+    const requestId = `${peerId}:${Date.now()}:${Math.random()}`;
+    state.chatRequestId = requestId;
     let panel = document.querySelector('.fs-chat-panel');
     if (!panel) { panel = document.createElement('section'); panel.className = 'fs-chat-panel'; panel.setAttribute('aria-label', 'Collaborator chat'); document.body.appendChild(panel); }
     panel.innerHTML = `<header class="fs-chat-head"><span class="fs-chat-brand" aria-hidden="true">✦</span><div><strong>${escapeHtml(peerName)}</strong><small>FilmScript collaborator</small></div><button type="button" class="fs-chat-close" data-chat-close aria-label="Close chat">×</button></header><div class="fs-chat-messages" data-chat-messages><div class="fs-chat-loading">Opening conversation…</div></div><form class="fs-chat-compose" data-chat-form><textarea name="body" rows="1" maxlength="2000" placeholder="Write a message…" aria-label="Message"></textarea><button type="submit" aria-label="Send message">↗</button></form>`;
-    panel.querySelector('[data-chat-close]').onclick = () => panel.remove();
+    panel.querySelector('[data-chat-close]').onclick = () => { if (state.chatPeer === peerId) { state.chatPeer = null; state.chatRequestId = null; } panel.remove(); };
     const messages = panel.querySelector('[data-chat-messages]');
     const render = (items) => { messages.innerHTML = items.length ? items.map((item) => `<article class="fs-chat-bubble ${item.senderId === state.me?.id ? 'is-mine' : ''}"><p>${escapeHtml(item.body)}</p><time>${escapeHtml(notificationTime(item.createdAt))}</time></article>`).join('') : '<div class="fs-chat-empty">No messages yet. Say hello.</div>'; messages.scrollTop = messages.scrollHeight; };
-    try { const result = await api.chat(peerId); state.chatMessages = result.messages || []; render(state.chatMessages); } catch (error) { messages.innerHTML = `<div class="fs-chat-empty">${escapeHtml(error.message)}</div>`; }
+    try { const result = await api.chat(peerId); if (state.chatPeer !== peerId || state.chatRequestId !== requestId || !panel.isConnected) return; state.chatMessages = result.messages || []; render(state.chatMessages); } catch (error) { if (state.chatPeer === peerId && state.chatRequestId === requestId && panel.isConnected) messages.innerHTML = `<div class="fs-chat-empty">${escapeHtml(error.message)}</div>`; }
     panel.querySelector('[data-chat-form]').onsubmit = async (event) => { event.preventDefault(); const input = panel.querySelector('textarea'); const body = input.value.trim(); if (!body) return; input.disabled = true; try { const result = await api.sendChat(peerId, body); state.chatMessages = [...state.chatMessages.filter((item) => item.id !== result.message.id), result.message]; input.value = ''; render(state.chatMessages); } catch (error) { input.setCustomValidity(error.message); input.reportValidity(); } finally { input.disabled = false; input.focus(); } };
+  }
+
+  async function openChatFromDeepLink() {
+    const peerId = String(params.get('chat') || '').trim();
+    if (!peerId) return false;
+    const current = new URL(location.href);
+    current.searchParams.delete('chat');
+    history.replaceState(history.state, '', `${current.pathname}${current.search}${current.hash}`);
+    if (!projectId || !/^usr_[A-Za-z0-9_-]{1,80}$/.test(peerId)) return false;
+    try {
+      const result = await api.chatPeers();
+      const peer = (result.peers || []).find((candidate) => candidate.userId === peerId);
+      if (!peer) return false;
+      openChat(peer.userId, peer.name || peer.email || 'Collaborator');
+      return true;
+    } catch { return false; }
   }
 
   const accessModules = ['script','analysis','breakdown','shot_list','stripboard','calendar','budget','canvas','location_plan','imagine','files','project_settings','members','exports','lumiere'];
   const cinematicRoles = ['producer','director','writer','assistant_director','director_of_photography','camera_department','gaffer','grip','production_designer','art_department','sound','hair_and_makeup','wardrobe','production','client','talent'];
   const roleLabels = { owner:'Owner', co_owner:'Co owner', admin:'Admin', editor:'Editor', department_editor:'Department Editor', commenter:'Commenter', viewer:'Viewer', temporary_guest:'Temporary Guest' };
+  const uiText = (value) => window.filmscriptLanguage?.t?.(value) || value;
+  const interfaceLocale = () => window.filmscriptLanguage?.get?.() === 'es' ? 'es' : 'en';
+  const localizedDate = (value) => new Date(value).toLocaleDateString(interfaceLocale());
   const label = (value) => String(value || '').replaceAll('_',' ').replace(/\b\w/g, (character) => character.toUpperCase());
   const financialLabel = (permissions = []) => permissions.includes('financial.manage_access') ? 'Full access and access management' : permissions.includes('financial.edit_all') ? 'Edit all financial information' : permissions.includes('financial.view_all') ? 'View all financial information' : permissions.includes('financial.edit_department') ? 'Edit assigned departments' : permissions.includes('financial.view_department') ? 'View assigned departments' : 'No financial access';
   const permissionSummary = (permissions = {}) => { const entries = Object.entries(permissions).filter(([, level]) => level !== 'no_access'); return entries.length ? `${entries.length} areas · ${entries.slice(0,3).map(([module,level]) => `${label(module)} ${label(level)}`).join(', ')}` : 'No module access'; };
@@ -311,18 +445,18 @@
       const collaboration = member.collaboration || { state:'disconnected', module:null };
       return `<article class="fs-people-row" data-member-id="${member.id}">${avatar({ ...member, color:collaboration.color })}<span class="fs-member-copy"><strong>${escapeHtml(member.name || member.email || 'Collaborator')}</strong><small>${escapeHtml(member.email || member.username || 'FilmScript member')}</small><span class="fs-access-summary">${escapeHtml(permissionSummary(member.modulePermissions))}</span></span><span class="fs-people-meta"><strong>${escapeHtml(label(member.cinematicRole || 'Collaborator'))}</strong><small>${escapeHtml(roleLabels[member.projectRole] || label(member.projectRole))}</small></span><span class="fs-finance-summary${financialLabel(member.financialPermissions) === 'No financial access' ? '' : ' has-access'}">${escapeHtml(financialLabel(member.financialPermissions))}</span><span class="fs-status fs-presence-${escapeHtml(collaboration.state)}">${escapeHtml(label(collaboration.state))}${collaboration.module ? ` · ${escapeHtml(label(collaboration.module))}` : ''}</span>${actions}</article>`;
     }).join('');
-    const pending = (result.invitations || []).filter((invitation) => invitation.status !== 'accepted').map((invitation) => `<article class="fs-invitation-row"><span class="fs-invite-mark" aria-hidden="true"></span><span class="fs-member-copy"><strong>${escapeHtml(invitation.invitedEmail || invitation.invitedUsername || 'Secure guest link')}</strong><small>${escapeHtml(label(invitation.cinematicRole || 'Collaborator'))} · ${escapeHtml(roleLabels[invitation.projectRole] || label(invitation.projectRole))}</small><span class="fs-access-summary">${escapeHtml((invitation.permissionSummary || []).join(', ') || 'No module access')}</span></span><span class="fs-finance-summary">${escapeHtml(invitation.financialSummary)}</span><span class="fs-invite-expiry"><strong>${escapeHtml(label(invitation.status))}</strong><small>${invitation.expiresAt ? `Expires ${escapeHtml(new Date(invitation.expiresAt).toLocaleDateString())}` : 'No expiration'}</small></span>${canManage ? `<details class="fs-context"><summary aria-label="Invitation actions">•••</summary><div class="fs-context-menu"><button data-copy-invite="${invitation.id}">Copy invitation link</button>${result.emailDelivery === 'configured' ? `<button data-resend-invite="${invitation.id}">Resend invitation</button>` : ''}<button data-edit-invite="${invitation.id}">Edit access</button><button class="fs-danger-text" data-revoke-invite="${invitation.id}">Revoke invitation</button></div></details>` : ''}</article>`).join('');
+    const pending = (result.invitations || []).filter((invitation) => invitation.status !== 'accepted').map((invitation) => `<article class="fs-invitation-row"><span class="fs-invite-mark" aria-hidden="true"></span><span class="fs-member-copy"><strong>${escapeHtml(invitation.invitedEmail || invitation.invitedUsername || 'Secure guest link')}</strong><small>${escapeHtml(label(invitation.cinematicRole || 'Collaborator'))} · ${escapeHtml(roleLabels[invitation.projectRole] || label(invitation.projectRole))}</small><span class="fs-access-summary">${escapeHtml((invitation.permissionSummary || []).join(', ') || 'No module access')}</span></span><span class="fs-finance-summary">${escapeHtml(invitation.financialSummary)}</span><span class="fs-invite-expiry"><strong>${escapeHtml(label(invitation.status))}</strong><small>${invitation.expiresAt ? `Expires ${escapeHtml(localizedDate(invitation.expiresAt))}` : 'No expiration'}</small></span>${canManage ? `<details class="fs-context"><summary aria-label="Invitation actions">•••</summary><div class="fs-context-menu"><button data-copy-invite="${invitation.id}">Copy invitation link</button>${result.emailDelivery === 'configured' ? `<button data-resend-invite="${invitation.id}">Resend invitation</button>` : ''}<button data-edit-invite="${invitation.id}">Edit access</button><button class="fs-danger-text" data-revoke-invite="${invitation.id}">Revoke invitation</button></div></details>` : ''}</article>`).join('');
     const content = `<div class="fs-dashboard-toolbar"><div><p class="fs-eyebrow">PROJECT SETTINGS</p><h3>People</h3></div>${canManage ? '<button class="fs-action fs-action-primary" data-new-invite>Invite people</button>' : ''}</div><section class="fs-people-section">${people || '<div class="fs-empty-access"><strong>No collaborators yet</strong><p>Invite someone when you are ready to share the project.</p></div>'}</section><section class="fs-pending-section"><div class="fs-section-title"><h3>Pending Invitations</h3><span>${(result.invitations || []).filter((item) => item.status === 'pending').length}</span></div>${pending || '<div class="fs-empty-access"><strong>No pending invitations</strong><p>New invitations will appear here until they are accepted.</p></div>'}</section>`;
     const root = dialog('People & Access', 'Manage project roles, module permissions, and sensitive financial access.', content, 'fs-people-dialog');
     root.querySelector('[data-new-invite]')?.addEventListener('click', () => openAccessEditor({ inviting:true, dashboard:result }));
     root.querySelectorAll('[data-edit-member]').forEach((button) => button.onclick = () => openAccessEditor({ member:result.members.find((item) => item.id === button.dataset.editMember), dashboard:result }));
     root.querySelectorAll('[data-edit-invite]').forEach((button) => button.onclick = () => openAccessEditor({ invitation:result.invitations.find((item) => item.id === button.dataset.editInvite), dashboard:result }));
     root.querySelectorAll('[data-member-role]').forEach((button) => button.onclick = async () => { const [id,projectRole] = button.dataset.memberRole.split(':'); await api.updateMember(id,{projectRole}); openMembers(); });
-    root.querySelectorAll('[data-member-status]').forEach((button) => button.onclick = async () => { const [id,status] = button.dataset.memberStatus.split(':'); if (status === 'removed' && !confirm('Remove this person from the project now?')) return; await api.updateMember(id,{status}); openMembers(); });
-    root.querySelectorAll('[data-transfer]').forEach((button) => button.onclick = async () => { if (!confirm('Transfer billing ownership to this person?')) return; await api.transferOwnership(button.dataset.transfer); openMembers(); });
-    root.querySelectorAll('[data-copy-invite]').forEach((button) => button.onclick = async () => { await copyInvitationLink(button.dataset.copyInvite); button.textContent = 'Copied'; });
-    root.querySelectorAll('[data-resend-invite]').forEach((button) => button.onclick = async () => { await api.invitationLink(button.dataset.resendInvite,true); button.textContent = 'Sent'; });
-    root.querySelectorAll('[data-revoke-invite]').forEach((button) => button.onclick = async () => { if (!confirm('Revoke this invitation now?')) return; await api.revokeInvitation(button.dataset.revokeInvite); openMembers(); });
+    root.querySelectorAll('[data-member-status]').forEach((button) => button.onclick = async () => { const [id,status] = button.dataset.memberStatus.split(':'); if (status === 'removed' && !confirm(uiText('Remove this person from the project now?'))) return; await api.updateMember(id,{status}); openMembers(); });
+    root.querySelectorAll('[data-transfer]').forEach((button) => button.onclick = async () => { if (!confirm(uiText('Transfer billing ownership to this person?'))) return; await api.transferOwnership(button.dataset.transfer); openMembers(); });
+    root.querySelectorAll('[data-copy-invite]').forEach((button) => button.onclick = async () => { await copyInvitationLink(button.dataset.copyInvite); button.textContent = uiText('Copied'); });
+    root.querySelectorAll('[data-resend-invite]').forEach((button) => button.onclick = async () => { await api.invitationLink(button.dataset.resendInvite,true); button.textContent = uiText('Sent'); });
+    root.querySelectorAll('[data-revoke-invite]').forEach((button) => button.onclick = async () => { if (!confirm(uiText('Revoke this invitation now?'))) return; await api.revokeInvitation(button.dataset.revokeInvite); openMembers(); });
     if (!canManageFinancial) root.querySelectorAll('[name="financial"]').forEach((select) => select.disabled = true);
   }
 
@@ -657,9 +791,12 @@
       applyTheme(state.profile?.theme || state.me.theme || local || 'filmscript'); applyAccountIdentity();
     } catch { applyTheme(window.filmscriptTheme?.get?.() || localStorage.getItem('filmscript_theme') || 'filmscript'); }
     mountHub(); mountMobileNav(); syncResponsiveChrome(); addEventListener('resize', syncResponsiveChrome, { passive:true }); injectProfileControls(); refreshNotifications(); connectCollaboration();
-    const invitation = params.get('invitation'); if (invitation) request('/api/invitations/accept', { method:'POST', body:JSON.stringify({ token:invitation }) }).then((result) => location.replace(`Editor%20v5.dc.html?script=${encodeURIComponent(result.membership.projectId)}`)).catch((error) => dialog('Invitation unavailable', error.message, '<div class="fs-dialog-actions"><button class="fs-action" onclick="location.href=\'App.dc.html\'">Back to projects</button></div>'));
+    const invitation = params.get('invitation');
+    if (invitation) request('/api/invitations/accept', { method:'POST', body:JSON.stringify({ token:invitation }) }).then((result) => location.replace(`Editor%20v5.dc.html?script=${encodeURIComponent(result.membership.projectId)}`)).catch((error) => dialog('Invitation unavailable', error.message, '<div class="fs-dialog-actions"><button class="fs-action" onclick="location.href=\'App.dc.html\'">Back to projects</button></div>'));
+    else if (params.get('chat')) openChatFromDeepLink();
+    else scheduleReleaseNotice();
   }
 
-  window.filmscriptPlatform = { api, clientId, openTranslation, openMembers, openActivity, openAccount, openThemes, openShare, openLocationPlan, openChatDirectory, openChat, sendPresence, sendOperation:(body) => api.collaborate(body), applyTheme };
+  window.filmscriptPlatform = { api, clientId, openTranslation, openMembers, openActivity, openAccount, openThemes, openShare, openLocationPlan, openChatDirectory, openChat, openChatFromDeepLink, sendPresence, sendOperation:(body) => api.collaborate(body), applyTheme };
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', init); else init();
 })();
