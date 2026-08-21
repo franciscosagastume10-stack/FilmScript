@@ -629,7 +629,7 @@ class FilmScriptAnalysis extends HTMLElement {
 
   evidenceDetails(item) {
     if (!item?.referenceText) return '';
-    return `<details class="evidence"><summary>Evidence</summary><blockquote>“${escapeHtml(item.referenceText)}”</blockquote></details>`;
+    return `<details class="evidence"><summary>Evidence</summary><blockquote data-lumiere-generated>“${escapeHtml(item.referenceText)}”</blockquote></details>`;
   }
 
   insightRow(item, tone = 'neutral', actionLabel = 'View in Script') {
@@ -637,7 +637,7 @@ class FilmScriptAnalysis extends HTMLElement {
     const toneIcon = tone === 'working' ? 'check' : tone === 'attention' ? 'alert' : 'production';
     return `<article class="insight-row ${tone}">
       <span class="insight-signal">${icon(toneIcon)}</span>
-      <div class="insight-copy"><h3>${escapeHtml(item.title)}</h3><p title="${escapeHtml(item.explanation)}">${escapeHtml(item.explanation)}</p>${this.evidenceDetails(item)}
+      <div class="insight-copy"><h3 data-lumiere-generated>${escapeHtml(item.title)}</h3><p data-lumiere-generated title="${escapeHtml(item.explanation)}">${escapeHtml(item.explanation)}</p>${this.evidenceDetails(item)}
         <div class="insight-foot"><span>${escapeHtml(reference.label)}</span>${tone === 'attention' ? `<button type="button" data-action="artistic-decision" data-key="${escapeHtml(item.title)}" data-decision="${escapeHtml(item.title)} is an intentional artistic choice." data-scene-id="${escapeHtml(reference.id || '')}" data-scene-ids="${escapeHtml((item.sceneIds || []).join(','))}" data-observation-id="${escapeHtml(item.id || '')}" data-observation-title="${escapeHtml(item.title || '')}">Mark intentional</button>` : ''}${reference.id ? `<button type="button" data-scene-id="${escapeHtml(reference.id)}">${escapeHtml(actionLabel)}${icon('arrow')}</button>` : ''}</div>
       </div>
     </article>`;
@@ -661,7 +661,7 @@ class FilmScriptAnalysis extends HTMLElement {
     return `<details class="signal-card ${tone}">
       <summary>
         <span class="signal-card-icon">${icon(toneIcon)}</span>
-        <span class="signal-card-copy"><small>${escapeHtml(title)}</small><strong>${entries.length} ${label}</strong>${first ? `<em>${escapeHtml(first.title)}</em><span class="signal-hover-copy">${escapeHtml(first.explanation)}</span>` : ''}</span>
+        <span class="signal-card-copy"><small>${escapeHtml(title)}</small><strong>${entries.length} ${label}</strong>${first ? `<em data-lumiere-generated>${escapeHtml(first.title)}</em><span class="signal-hover-copy" data-lumiere-generated>${escapeHtml(first.explanation)}</span>` : ''}</span>
         <span class="signal-card-chevron">${icon('chevron')}</span>
       </summary>
       <div class="signal-card-body">${body}</div>
@@ -675,13 +675,14 @@ class FilmScriptAnalysis extends HTMLElement {
     const reference = this.sceneReference(primary);
     const title = primary?.title || data.status.label || 'Lumiere is reading the current draft';
     const explanation = primary?.explanation || data.status.reason || 'The screenplay needs more evidence before Lumiere can identify a useful next step.';
+    const generatedFocus = Boolean(primary);
     const scenes = this.analysis?.sceneIndex?.length || 0;
     const focusPrompt = 'Help me understand the most important change I should consider next, using evidence from this screenplay.';
     return `<section class="analysis-focus-grid ${stale ? 'is-previous' : ''}" aria-labelledby="analysis-focus-heading">
       <article class="analysis-focus-card">
         <div class="focus-card-top"><span class="focus-spark">${icon('sparkle')}</span><span class="section-kicker">Lumiere focus</span><span class="focus-status">${escapeHtml(data.status.label || 'Developing')}</span></div>
-        <h2 id="analysis-focus-heading">${escapeHtml(title)}</h2>
-        <p class="focus-preview">${escapeHtml(explanation)}</p>
+        <h2 id="analysis-focus-heading"${generatedFocus ? ' data-lumiere-generated' : ''}>${escapeHtml(title)}</h2>
+        <p class="focus-preview"${generatedFocus ? ' data-lumiere-generated' : ''}>${escapeHtml(explanation)}</p>
         <div class="focus-actions">${reference.id ? `<button type="button" class="primary" data-scene-id="${escapeHtml(reference.id)}">Open priority scene${icon('arrow')}</button>` : ''}<button type="button" class="focus-ask" data-action="ask-context" data-context="Draft focus" data-prompt="${escapeHtml(focusPrompt)}">${icon('sparkle')}Ask Lumiere</button></div>
         <div class="focus-stats" aria-label="Analysis summary"><span><strong>${strengths.length}</strong><small>strengths</small></span><span><strong>${priorities.length}</strong><small>priorities</small></span><span><strong>${scenes}</strong><small>scenes read</small></span></div>
       </article>
@@ -726,16 +727,16 @@ class FilmScriptAnalysis extends HTMLElement {
       const text = String(value || 'Ask Lumiere').trim();
       return text.length > 72 ? `${text.slice(0, 71).replace(/\s+\S*$/, '')}…` : text;
     };
-    return `<div class="contextual-assistant" aria-label="Ask Lumiere about ${escapeHtml(label)}"><span>${icon('sparkle')}Ask Lumiere</span><div>${questions.slice(0, 3).map((item) => `<button type="button" data-action="ask-context" data-context="${escapeHtml(label)}" data-prompt="${escapeHtml(item.prompt)}">${escapeHtml(shortLabel(item.label))}</button>`).join('')}</div></div>`;
+    return `<div class="contextual-assistant" aria-label="Ask Lumiere about ${escapeHtml(label)}"><span>${icon('sparkle')}Ask Lumiere</span><div>${questions.slice(0, 3).map((item) => `<button type="button" data-action="ask-context" data-context="${escapeHtml(label)}" data-prompt="${escapeHtml(item.prompt)}" data-lumiere-generated>${escapeHtml(shortLabel(item.label))}</button>`).join('')}</div></div>`;
   }
 
   storyClarityPanel(data, stale) {
     const points = data.storyClarity.points || [];
     return `<section class="analysis-section story-section ${stale ? 'is-previous' : ''}" aria-labelledby="story-heading">
-      <div class="section-heading"><div><span class="section-kicker">Story</span><h2 id="story-heading">Story clarity</h2><p>${escapeHtml(data.storyClarity.summary || 'Where the screenplay begins, turns, peaks, and lands.')}</p></div>${this.contextualAssistant('Story', data.contextualQuestions.story)}</div>
+      <div class="section-heading"><div><span class="section-kicker">Story</span><h2 id="story-heading">Story clarity</h2><p${data.storyClarity.summary ? ' data-lumiere-generated' : ''}>${escapeHtml(data.storyClarity.summary || 'Where the screenplay begins, turns, peaks, and lands.')}</p></div>${this.contextualAssistant('Story', data.contextualQuestions.story)}</div>
       ${points.length ? `<ol class="clarity-track" aria-label="Story clarity timeline">${points.slice(0, 4).map((point, index) => {
         const reference = this.sceneReference(point);
-        return `<li><button type="button" data-scene-id="${escapeHtml(reference.id)}"><span class="clarity-dot">${index + 1}</span><small>${escapeHtml(point.stage || ['Start', 'Conflict', 'Peak', 'Ending'][index])}</small><strong>${escapeHtml(point.title)}</strong><em>${escapeHtml(reference.label)}</em></button>${this.evidenceDetails(point)}</li>`;
+        return `<li><button type="button" data-scene-id="${escapeHtml(reference.id)}"><span class="clarity-dot">${index + 1}</span><small${point.stage ? ' data-lumiere-generated' : ''}>${escapeHtml(point.stage || ['Start', 'Conflict', 'Peak', 'Ending'][index])}</small><strong data-lumiere-generated>${escapeHtml(point.title)}</strong><em>${escapeHtml(reference.label)}</em></button>${this.evidenceDetails(point)}</li>`;
       }).join('')}</ol>` : this.waitingBlock('story clarity')}
     </section>`;
   }
@@ -770,11 +771,11 @@ class FilmScriptAnalysis extends HTMLElement {
         <defs><linearGradient id="story-flow-fill" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="var(--an-accent)" stop-opacity=".18"/><stop offset="1" stop-color="var(--an-accent)" stop-opacity="0"/></linearGradient><filter id="story-flow-handdrawn" x="-2%" y="-8%" width="104%" height="116%"><feTurbulence type="fractalNoise" baseFrequency=".018" numOctaves="1" seed="17" result="paperNoise"/><feDisplacementMap in="SourceGraphic" in2="paperNoise" scale=".75" xChannelSelector="R" yChannelSelector="G"/></filter></defs>
         <line class="flow-guide" x1="${left}" y1="${top + plotHeight * .25}" x2="${width - right}" y2="${top + plotHeight * .25}"/><line class="flow-guide" x1="${left}" y1="${top + plotHeight * .5}" x2="${width - right}" y2="${top + plotHeight * .5}"/><line class="flow-guide" x1="${left}" y1="${top + plotHeight * .75}" x2="${width - right}" y2="${top + plotHeight * .75}"/>
         <polygon class="flow-area" points="${area}"/><polyline class="story-line" points="${polyline}"/>
-        ${coords.map((point) => `<g class="chart-point" tabindex="0" role="button" data-scene-id="${escapeHtml(point.sceneId)}" aria-label="Scene ${point.sceneNumber}: ${escapeHtml(point.label)}. ${escapeHtml(point.explanation)}"><circle cx="${point.x}" cy="${point.y}" r="4.5"/><title>Scene ${point.sceneNumber} · ${escapeHtml(point.heading || '')}\n${escapeHtml(point.label)}\n${escapeHtml(point.explanation)}</title></g>`).join('')}
+        ${coords.map((point) => `<g class="chart-point" tabindex="0" role="button" data-scene-id="${escapeHtml(point.sceneId)}" aria-label="Scene ${point.sceneNumber}: ${escapeHtml(point.label)}. ${escapeHtml(point.explanation)}" data-lumiere-generated><circle cx="${point.x}" cy="${point.y}" r="4.5"/><title>Scene ${point.sceneNumber} · ${escapeHtml(point.heading || '')}\n${escapeHtml(point.label)}\n${escapeHtml(point.explanation)}</title></g>`).join('')}
         <text x="${left}" y="${height - 8}">Start</text><text x="${left + usable / 2}" y="${height - 8}" text-anchor="middle">Middle</text><text x="${width - right}" y="${height - 8}" text-anchor="end">End</text>
       </svg></div></div>
-      ${markers.length ? `<div class="flow-markers">${markers.map((point) => `<button type="button" data-scene-id="${escapeHtml(point.sceneId)}"><i></i><span>Scene ${point.sceneNumber}</span><strong>${escapeHtml(point.marker)}</strong></button>`).join('')}</div>` : ''}
-      ${takeaway ? `<details class="flow-takeaway"><summary><span>${icon('insight')}</span><span><small>Lumiere’s read</small><strong>${escapeHtml(takeaway.title)}</strong></span><em>Read note</em>${icon('chevron')}</summary><div class="flow-takeaway-body"><p>${escapeHtml(takeaway.explanation)}</p><div class="insight-foot"><span>${escapeHtml(this.sceneReference(takeaway).label)}</span><button type="button" data-scene-id="${escapeHtml(this.sceneReference(takeaway).id)}">View in Script${icon('arrow')}</button></div></div></details>` : ''}
+      ${markers.length ? `<div class="flow-markers">${markers.map((point) => `<button type="button" data-scene-id="${escapeHtml(point.sceneId)}"><i></i><span>Scene ${point.sceneNumber}</span><strong data-lumiere-generated>${escapeHtml(point.marker)}</strong></button>`).join('')}</div>` : ''}
+      ${takeaway ? `<details class="flow-takeaway"><summary><span>${icon('insight')}</span><span><small>Lumiere’s read</small><strong data-lumiere-generated>${escapeHtml(takeaway.title)}</strong></span><em>Read note</em>${icon('chevron')}</summary><div class="flow-takeaway-body"><p data-lumiere-generated>${escapeHtml(takeaway.explanation)}</p><div class="insight-foot"><span>${escapeHtml(this.sceneReference(takeaway).label)}</span><button type="button" data-scene-id="${escapeHtml(this.sceneReference(takeaway).id)}">View in Script${icon('arrow')}</button></div></div></details>` : ''}
     </section>`;
   }
 
@@ -800,7 +801,7 @@ class FilmScriptAnalysis extends HTMLElement {
     const [focusTitle, focusIds] = focusMap[this.productionFocus] || focusMap.complex;
     const selectedScenes = (this.analysis?.sceneIndex || []).filter((scene) => focusIds.includes(scene.id));
     const selectedComplex = (production.complexScenes || []).filter((item) => (item.sceneIds?.length ? item.sceneIds : [item.sceneId]).some((id) => focusIds.includes(id)));
-    const focusList = selectedComplex.length ? focusIds.map((sceneId) => { const scene = (this.analysis?.sceneIndex || []).find((item) => item.id === sceneId); const item = selectedComplex.find((candidate) => (candidate.sceneIds?.length ? candidate.sceneIds : [candidate.sceneId]).includes(sceneId)); return scene && item ? `<button type="button" data-scene-id="${escapeHtml(scene.id)}"><span>Scene ${scene.sceneNumber} · Page ${scene.page}</span><strong>${escapeHtml(item.title)}</strong><p>${escapeHtml(item.explanation)}</p></button>` : ''; }).join('') : selectedScenes.length ? selectedScenes.map((scene) => `<button type="button" data-scene-id="${escapeHtml(scene.id)}"><span>Scene ${scene.sceneNumber} · Page ${scene.page}</span><strong>${escapeHtml(scene.heading)}</strong></button>`).join('') : `<p class="quiet-empty">No scenes are associated with this selection.</p>`;
+    const focusList = selectedComplex.length ? focusIds.map((sceneId) => { const scene = (this.analysis?.sceneIndex || []).find((item) => item.id === sceneId); const item = selectedComplex.find((candidate) => (candidate.sceneIds?.length ? candidate.sceneIds : [candidate.sceneId]).includes(sceneId)); return scene && item ? `<button type="button" data-scene-id="${escapeHtml(scene.id)}"><span>Scene ${scene.sceneNumber} · Page ${scene.page}</span><strong data-lumiere-generated>${escapeHtml(item.title)}</strong><p data-lumiere-generated>${escapeHtml(item.explanation)}</p></button>` : ''; }).join('') : selectedScenes.length ? selectedScenes.map((scene) => `<button type="button" data-scene-id="${escapeHtml(scene.id)}"><span>Scene ${scene.sceneNumber} · Page ${scene.page}</span><strong data-project-content>${escapeHtml(scene.heading)}</strong></button>`).join('') : `<p class="quiet-empty">No scenes are associated with this selection.</p>`;
     return `<section class="analysis-section production-section ${stale ? 'is-previous' : ''}" aria-labelledby="production-heading">
       <div class="section-heading"><div><span class="section-kicker">Production</span><h2 id="production-heading">Production overview</h2><p>Only the screenplay choices that change how this film is made.</p></div>${this.contextualAssistant('Production', data.contextualQuestions.production)}</div>
       <div class="production-metrics" role="group" aria-label="Production signals">${metrics.map(([name, label, value]) => `<button type="button" data-action="production-focus" data-focus="${name}" aria-pressed="${this.productionFocus === name}" aria-label="${escapeHtml(value)} ${escapeHtml(label)}" class="production-metric${this.productionFocus === name ? ' is-selected' : ''}"><span class="production-metric-icon">${icon(name)}</span><span class="production-metric-copy"><strong>${escapeHtml(value)}</strong><small>${escapeHtml(label)}</small></span><span class="production-metric-arrow">${icon('chevron')}</span></button>`).join('')}</div>

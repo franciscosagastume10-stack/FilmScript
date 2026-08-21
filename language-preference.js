@@ -5,6 +5,7 @@
   'use strict';
 
   const STORAGE_KEY = 'filmscript_language';
+  const ACCOUNT_STORAGE_PREFIX = 'filmscript_language_user_';
   const SETTINGS_ID = 'filmscript-language-settings';
   const INITIAL_CHOICE_ID = 'filmscript-language-initial-choice';
   const SUPPORTED = new Set(['en', 'es']);
@@ -13,7 +14,12 @@
   const originalAttributes = new WeakMap();
   const lastAttributes = new WeakMap();
   const observedRoots = new WeakSet();
-  const ATTRIBUTES = ['placeholder', 'title', 'aria-label'];
+  const ATTRIBUTES = ['placeholder', 'title', 'aria-label', 'aria-description', 'alt'];
+  const accountState = { hydrated: false, id: null, language: null, saving: false };
+  let modalReturnFocus = null;
+  let modalInerted = [];
+  let lockedLanguageModal = null;
+  let modalInertObserver = null;
 
   const ES = Object.freeze({
     // Navigation, accounts and shared actions.
@@ -31,8 +37,51 @@
     'Sign up': 'Crear cuenta',
     'Log in': 'Iniciar sesión',
     'Open Scripts': 'Abrir Guiones',
+    'Home': 'Inicio',
+    'Projects': 'Proyectos',
+    'Overview': 'Resumen',
+    'Script': 'Guion',
+    'More': 'Más',
+    'Activity': 'Actividad',
+    'FilmScript navigation': 'Navegación de FilmScript',
+    'Project navigation': 'Navegación del proyecto',
+    'Go to scripts': 'Ir a guiones',
+    'FilmScript, go to scripts': 'FilmScript, ir a guiones',
+    'Account menu': 'Menú de cuenta',
+    'More tools': 'Más herramientas',
+    'Opening your writing desk': 'Abriendo tu escritorio de escritura',
+    'Syncing your scripts, preferences and workspace.': 'Sincronizando tus guiones, preferencias y espacio de trabajo.',
+    'Your scripts are taking longer than expected. Please try again.': 'Tus guiones están tardando más de lo esperado. Inténtalo de nuevo.',
     'Sign out': 'Cerrar sesión',
     'Account details': 'Detalles de la cuenta',
+    'Your identity, preferences and private details in one place.': 'Tu identidad, preferencias y datos privados en un solo lugar.',
+    'FilmScript account': 'Cuenta de FilmScript',
+    'FilmScript member': 'Miembro de FilmScript',
+    'No email available': 'Correo no disponible',
+    'Upload photo': 'Subir foto',
+    'Choose an icon': 'Elegir un icono',
+    'Ten original, hand-drawn film symbols. Pick a background or upload your own photo.': 'Diez símbolos cinematográficos originales dibujados a mano. Elige un fondo o sube tu propia foto.',
+    'Use icon': 'Usar icono',
+    'Profile icons': 'Iconos de perfil',
+    'Background': 'Fondo',
+    'Icon background color': 'Color de fondo del icono',
+    'Your email stays on one clean line and is never cropped into a broken address.': 'Tu correo permanece en una sola línea y nunca se corta de forma incorrecta.',
+    'Name': 'Nombre',
+    'FilmScript username': 'Usuario de FilmScript',
+    'Email': 'Correo',
+    'Verified': 'Verificado',
+    'Not signed in': 'Sesión no iniciada',
+    'Personal profile': 'Perfil personal',
+    'Private account information used only for your FilmScript experience.': 'Información privada de tu cuenta utilizada únicamente para tu experiencia en FilmScript.',
+    'How should we refer to you?': '¿Cómo debemos referirnos a ti?',
+    'Not set': 'Sin definir',
+    'Man': 'Hombre',
+    'Woman': 'Mujer',
+    'Prefer not to say': 'Prefiero no decirlo',
+    'Birthday': 'Cumpleaños',
+    'Save details': 'Guardar detalles',
+    'Interface': 'Interfaz',
+    'Your personal theme follows you across FilmScript.': 'Tu tema personal te acompaña en todo FilmScript.',
     'Personalize Lumiere': 'Personalizar Lumiere',
     'Directors, films and the kind of feedback that serves your voice.': 'Directores, películas y el tipo de feedback que fortalece tu voz.',
     'My scripts': 'Mis guiones',
@@ -65,6 +114,10 @@
     'Saving': 'Guardando',
     'Saving…': 'Guardando…',
     'Save failed': 'No se pudo guardar',
+    'Could not update profile.': 'No se pudo actualizar el perfil.',
+    'Interface language must be English or Spanish.': 'El idioma de la interfaz debe ser inglés o español.',
+    'Birthday must be a real date between 1900 and today.': 'El cumpleaños debe ser una fecha válida entre 1900 y hoy.',
+    'Gender must be man, woman, or unspecified.': 'La opción de género debe ser hombre, mujer o sin especificar.',
     'Try again': 'Intentar de nuevo',
     'Close': 'Cerrar',
     'Next': 'Siguiente',
@@ -178,14 +231,30 @@
     'Writing desk': 'Escritorio de escritura',
     'New script': 'Nuevo guion',
     'Import script': 'Importar guion',
+    'Importing screenplay': 'Importando guion',
     'PDF or .fs, the FilmScript text format.': 'PDF o .fs, el formato de texto de FilmScript.',
     'Your scripts': 'Tus guiones',
     'Search scripts': 'Buscar guiones',
     'Script options': 'Opciones del guion',
+    'Rename': 'Renombrar',
+    'Rename screenplay': 'Renombrar guion',
+    'Translate Script': 'Traducir guion',
     'Delete script': 'Eliminar guion',
     'Opening screenplay': 'Abriendo guion',
     'Untitled screenplay': 'Guion sin título',
     'Imported screenplay': 'Guion importado',
+    'Syncing your scripts securely.': 'Sincronizando tus guiones de forma segura.',
+    'Sign in to sync your scripts.': 'Inicia sesión para sincronizar tus guiones.',
+    'Your session has ended. Please sign in again.': 'Tu sesión terminó. Inicia sesión de nuevo.',
+    'We could not sync your scripts. Please try again.': 'No pudimos sincronizar tus guiones. Inténtalo de nuevo.',
+    'Could not create a new screenplay.': 'No se pudo crear un guion nuevo.',
+    'Could not rename that script. Please try again.': 'No se pudo renombrar ese guion. Inténtalo de nuevo.',
+    'No scripts yet. Start a new page when you’re ready.': 'Todavía no hay guiones. Empieza una página nueva cuando quieras.',
+    'Choose a plan →': 'Elegir un plan →',
+    'Typewriter sound': 'Sonido de máquina de escribir',
+    'Close Lumiere': 'Cerrar Lumiere',
+    'Ask Lumiere anything…': 'Pregúntale lo que quieras a Lumiere…',
+    'Send message': 'Enviar mensaje',
     'No scripts match': 'Ningún guion coincide',
     'That PDF keeps its text locked away. Export it as .fs or plain text and try again.': 'Ese PDF mantiene el texto bloqueado. Expórtalo como .fs o texto plano e inténtalo de nuevo.',
     'Could not read that file. Try a .fs or plain text export.': 'No se pudo leer ese archivo. Prueba con una exportación .fs o de texto plano.',
@@ -834,10 +903,10 @@
     'Shooting order': 'Orden de rodaje',
     'Drag any strip to reorder': 'Arrastra cualquier tira para reordenar',
     'Keyboard order': 'Ordenar con teclado',
-    'INT DAY': 'INT DÍA',
-    'EXT DAY': 'EXT DÍA',
-    'INT NIGHT': 'INT NOCHE',
-    'EXT NIGHT': 'EXT NOCHE',
+    'INT DAY': 'INT DAY',
+    'EXT DAY': 'EXT DAY',
+    'INT NIGHT': 'INT NIGHT',
+    'EXT NIGHT': 'EXT NIGHT',
     'DAWN': 'AMANECER',
     'Shooting order. Drag any strip to reorder scenes.': 'Orden de rodaje. Arrastra cualquier tira para reordenar las escenas.',
     'Drag each strip to set the shooting order. Changes save automatically.': 'Arrastra cada tira para definir el orden de rodaje. Los cambios se guardan automáticamente.',
@@ -900,7 +969,250 @@
     'Safety Notes': 'Notas de seguridad',
     'Production Notes': 'Notas de producción',
 
+    // Editor · connected production controls and accessible names.
+    'Lumiere pass used': 'Uso de Lumiere agotado',
+    'Keep editing breakdowns, stripboards, shot lists, budgets, and calendars. Creator unlocks more Lumiere; Full also includes 1,000 image credits each month.': 'Sigue editando desgloses, planes de rodaje, listas de planos, presupuestos y calendarios. Creator desbloquea más usos de Lumiere; Full también incluye 1,000 créditos de imagen al mes.',
+    'Loading Breakdown': 'Cargando desglose',
+    'Preparing your Breakdown': 'Preparando tu desglose',
+    'Opening the screenplay, organizing its scenes and connecting every production department.': 'Abriendo el guion, organizando sus escenas y conectando cada departamento de producción.',
+    'Organizing scene departments…': 'Organizando departamentos de la escena…',
+    'Choose your starting point': 'Elige cómo empezar',
+    'Build the breakdown your way.': 'Crea el desglose a tu manera.',
+    'Start with clean, connected sheets for every scene — or let Lumiere read the screenplay and prepare the first pass for you.': 'Empieza con hojas limpias y conectadas para cada escena, o deja que Lumiere lea el guion y prepare una primera propuesta.',
+    'Hands-on': 'Manual',
+    'Build it manually': 'Crear manualmente',
+    'Open an editable breakdown sheet for each scene. Add exactly what the production needs, at your own pace.': 'Abre una hoja de desglose editable para cada escena. Agrega exactamente lo que necesita la producción, a tu ritmo.',
+    'No Lumiere credits needed': 'No requiere créditos de Lumiere',
+    'Analyze the screenplay': 'Analizar el guion',
+    'Lumiere identifies cast, props, wardrobe, locations and production notes, then opens the result here as it completes.': 'Lumiere identifica reparto, utilería, vestuario, locaciones y notas de producción, y muestra aquí los resultados conforme termina.',
+    'Whichever path you choose, every field stays editable and connected to the rest of FilmScript.': 'Elijas el camino que elijas, cada campo seguirá editable y conectado con el resto de FilmScript.',
+    'Previous breakdown scene': 'Escena anterior del desglose',
+    'Next breakdown scene': 'Escena siguiente del desglose',
+    'Generate this manual breakdown with Lumiere': 'Generar este desglose manual con Lumiere',
+    'More breakdown export options': 'Más opciones de exportación del desglose',
+    'Export breakdown by department': 'Exportar desglose por departamento',
+    'Export a department packet': 'Exportar paquete de departamento',
+    'Only the selected department’s elements are included.': 'Solo se incluyen los elementos del departamento seleccionado.',
+    'Print': 'Imprimir',
+    'Lumiere breakdown generation progress': 'Progreso de generación del desglose con Lumiere',
+    'Generating your full breakdown': 'Generando tu desglose completo',
+    'Editable screenplay beside breakdown': 'Guion editable junto al desglose',
+    'Script': 'Guion',
+    'Edit while you break down the scene': 'Edita mientras desglosas la escena',
+    'Opening screenplay…': 'Abriendo guion…',
+    'Editable screenplay': 'Guion editable',
+    'Breakdown scene navigation': 'Navegación de escenas del desglose',
+    'Breakdown sheet. Click any field to edit.': 'Hoja de desglose. Haz clic en cualquier campo para editarlo.',
+    'Production Breakdown': 'Desglose de producción',
+    'None listed': 'No hay elementos',
+    'Production schedule': 'Plan de producción',
+    'Version history': 'Historial de versiones',
+    'Production schedule version history': 'Historial de versiones del plan de producción',
+    'Drafts are saved at most every 10 minutes, only when the schedule truly changed.': 'Los borradores se guardan como máximo cada 10 minutos y solo cuando el plan realmente cambió.',
+    'milestone': 'hito',
+    'Compare': 'Comparar',
+    'Duplicate': 'Duplicar',
+    'Rename': 'Renombrar',
+    'Draft 1 is created when the schedule opens. Further drafts appear after 10 minutes of real changes.': 'El borrador 1 se crea al abrir el plan. Los siguientes aparecen después de 10 minutos de cambios reales.',
+    'Day starts at': 'El día comienza a las',
+    '+ Break': '+ Pausa',
+    'Lunch · 60 min': 'Almuerzo · 60 min',
+    'Move company · 30 min': 'Traslado de equipo · 30 min',
+    'End of day': 'Fin del día',
+    '+ Scene': '+ Escena',
+    'Actions for selected scenes': 'Acciones para las escenas seleccionadas',
+    'Shoot location': 'Locación de rodaje',
+    'Assign shoot location to selected scenes': 'Asignar locación de rodaje a las escenas seleccionadas',
+    'Selected strips': 'Tiras seleccionadas',
+    'Assign a shoot location': 'Asignar una locación de rodaje',
+    'Apply one real-world filming location to every selected scene.': 'Aplica una misma locación real de filmación a todas las escenas seleccionadas.',
+    'Quick assign': 'Asignación rápida',
+    'Most recently used': 'Usada recientemente',
+    'Assign →': 'Asignar →',
+    'e.g. Stage 4, Downtown Studio': 'p. ej., Foro 4, Estudio del centro',
+    'Saved shoot locations': 'Locaciones de rodaje guardadas',
+    'Unassign': 'Desasignar',
+    'Assign': 'Asignar',
+    'Manage cast for selected scenes': 'Gestionar reparto de las escenas seleccionadas',
+    'Manage cast': 'Gestionar reparto',
+    'Cast IDs stay connected to the numbering established in Breakdown.': 'Los IDs de reparto permanecen conectados con la numeración establecida en el desglose.',
+    'Cast action': 'Acción de reparto',
+    'Add': 'Agregar',
+    'Remove': 'Quitar',
+    'Create or refresh the Breakdown first so FilmScript can establish cast IDs.': 'Primero crea o actualiza el desglose para que FilmScript pueda establecer los IDs de reparto.',
+    'Remove all': 'Quitar todo',
+    'Clear scene selection': 'Borrar selección de escenas',
+    'I/E & day': 'I/E y momento',
+    'Cast ID': 'ID de reparto',
+    'Pages': 'Páginas',
+    'Est. time': 'Tiempo est.',
+    'Start time': 'Hora de inicio',
+    'Open this scene in the script': 'Abrir esta escena en el guion',
+    'Cast IDs from Breakdown': 'IDs de reparto del desglose',
+    'Real-world location': 'Locación real',
+    'Where this scene will actually be filmed. This stays separate from the screenplay set.': 'El lugar real donde se filmará esta escena. Se mantiene separado del set indicado en el guion.',
+    'New location': 'Nueva locación',
+    'Other saved locations': 'Otras locaciones guardadas',
+    'Clear': 'Borrar',
+    'Save & assign': 'Guardar y asignar',
+    'No production notes for this scene': 'No hay notas de producción para esta escena',
+    'Shooting days calendar': 'Calendario de días de rodaje',
+    'Break duration': 'Duración de la pausa',
+    'Set the duration. The Stripboard schedule updates instantly.': 'Define la duración. El plan de rodaje se actualiza al instante.',
+    'Set the scene duration. Every following start time updates instantly.': 'Define la duración de la escena. Todas las horas de inicio siguientes se actualizan al instante.',
+    'Duration clock': 'Selector de duración',
+    'Increase hours': 'Aumentar horas',
+    'Hours': 'Horas',
+    'Decrease hours': 'Disminuir horas',
+    'Increase minutes by 15': 'Aumentar 15 minutos',
+    'Minutes': 'Minutos',
+    'Decrease minutes by 15': 'Disminuir 15 minutos',
+    'Exact duration': 'Duración exacta',
+    'Exact duration in minutes': 'Duración exacta en minutos',
+    'minutes': 'minutos',
+    'Clear estimate': 'Borrar estimación',
+    '← Canvas': '← Canvas',
+    'Stripboard time': 'Tiempo del plan de rodaje',
+    'Reference': 'Referencia',
+    'Lens': 'Lente',
+    'Time': 'Tiempo',
+    'View': 'Ver',
+    'Generating…': 'Generando…',
+    'Reference preview': 'Vista previa de referencia',
+    'Regenerate': 'Regenerar',
+    'Generate': 'Generar',
+    'Scene ref': 'Referencia de escena',
+    'Shot duration': 'Duración del plano',
+    'Camera time': 'Tiempo de cámara',
+    'Set hours and minutes. Every value follows 15-minute intervals.': 'Define horas y minutos. Todos los valores usan intervalos de 15 minutos.',
+    'Shot duration clock': 'Selector de duración del plano',
+    'Set duration in 15-minute intervals': 'Definir duración en intervalos de 15 minutos',
+    'No description': 'Sin descripción',
+    'Creator or Full required': 'Se requiere Creator o Full',
+    'Time full': 'Tiempo completo',
+
+    // Editor · operational feedback.
+    'Could not copy the prompt. Select it and copy it manually.': 'No se pudo copiar el prompt. Selecciónalo y cópialo manualmente.',
+    'Recovered the latest local screenplay changes.': 'Se recuperaron los cambios locales más recientes del guion.',
+    'Analysis is not available right now.': 'El análisis no está disponible en este momento.',
+    'Canvas is not available right now.': 'Canvas no está disponible en este momento.',
+    'Budget is not available right now.': 'El presupuesto no está disponible en este momento.',
+    'Calendar is not available right now.': 'El calendario no está disponible en este momento.',
+    'Could not load Shot List data.': 'No se pudieron cargar los datos de la lista de planos.',
+    'This is a manual shot-list scene and has no screenplay source.': 'Esta es una escena manual de la lista de planos y no tiene una fuente en el guion.',
+    'This scene is already over its Stripboard time. Reduce coverage before adding time.': 'Esta escena ya excede su tiempo en el plan de rodaje. Reduce la cobertura antes de agregar tiempo.',
+    'Choose a PNG, JPEG, or WebP image.': 'Elige una imagen PNG, JPEG o WebP.',
+    'Choose a PNG, JPEG, or WebP reference image': 'Elegir una imagen de referencia PNG, JPEG o WebP',
+    'Scene headings start with INT. or EXT.': 'Los encabezados de escena comienzan con INT. o EXT.',
+    'Nothing readable in that PDF': 'No hay contenido legible en ese PDF',
+    'Write or import more of the screenplay before generating character names.': 'Escribe o importa más del guion antes de generar nombres de personajes.',
+    'That line changed after Lumiere reviewed it. Run the Clichés pass again.': 'Esa línea cambió después de que Lumiere la revisó. Ejecuta de nuevo la revisión de clichés.',
+    'Cliché highlighted in the screenplay.': 'Cliché resaltado en el guion.',
+    'Your manual breakdown is ready to edit.': 'Tu desglose manual está listo para editar.',
+    'Could not create the manual breakdown. Please try again.': 'No se pudo crear el desglose manual. Inténtalo de nuevo.',
+    'Lumiere is reading the screenplay. You can keep working while the breakdown is prepared.': 'Lumiere está leyendo el guion. Puedes seguir trabajando mientras se prepara el desglose.',
+    'Lumiere is preparing the breakdown. Your filled manual fields stay in place.': 'Lumiere está preparando el desglose. Los campos manuales que completaste se conservan.',
+    'Lumiere could not start the manual breakdown generation.': 'Lumiere no pudo iniciar la generación del desglose manual.',
+    'Production data refreshed.': 'Datos de producción actualizados.',
+    'Breakdown is up to date.': 'El desglose está actualizado.',
+    'Lumiere is already updating this breakdown.': 'Lumiere ya está actualizando este desglose.',
+    'Lumiere is updating the changed scenes.': 'Lumiere está actualizando las escenas modificadas.',
+    'Could not refresh the breakdown.': 'No se pudo actualizar el desglose.',
+    'The source line changed. Refresh the breakdown to reconnect it.': 'La línea de origen cambió. Actualiza el desglose para volver a conectarla.',
+    'Breakdown saved. Links are active again.': 'Desglose guardado. Los vínculos están activos de nuevo.',
+    'Breakdown PDF downloaded.': 'PDF del desglose descargado.',
+    'Could not export the Breakdown PDF.': 'No se pudo exportar el PDF del desglose.',
+    'Please allow pop-ups to export this packet.': 'Permite las ventanas emergentes para exportar este paquete.',
+    'Choose Save as PDF in the print dialog.': 'Elige Guardar como PDF en el diálogo de impresión.',
+    'Print packet ready.': 'Paquete listo para imprimir.',
+    'Schedule milestone saved.': 'Hito del plan guardado.',
+    'Version duplicated.': 'Versión duplicada.',
+    'Could not add the scene.': 'No se pudo agregar la escena.',
+    'Could not rename the scene.': 'No se pudo renombrar la escena.',
+    'Could not delete the scene.': 'No se pudo eliminar la escena.',
+    'Scene time is full. Reduce a shot time or increase it in the Stripboard.': 'La duración de la escena está completa. Reduce la duración de un plano o auméntala en el plan de rodaje.',
+    'Your full Lumiere breakdown is ready.': 'Tu desglose completo de Lumiere está listo.',
+    'Lumiere could not start the full breakdown. Please try again.': 'Lumiere no pudo iniciar el desglose completo. Inténtalo de nuevo.',
+    'Lumiere stopped before the breakdown was complete.': 'Lumiere se detuvo antes de completar el desglose.',
+    'This shot changed for another collaborator. Review their edit before replacing it.': 'Otro colaborador modificó este plano. Revisa su cambio antes de reemplazarlo.',
+    'Reference images must be under 6 MB.': 'Las imágenes de referencia deben pesar menos de 6 MB.',
+    'Reference uploads are not available right now.': 'La carga de referencias no está disponible en este momento.',
+    'Could not save the reference image.': 'No se pudo guardar la imagen de referencia.',
+    'Your visual library is not available right now.': 'Tu biblioteca visual no está disponible en este momento.',
+    'Could not load your visual library.': 'No se pudo cargar tu biblioteca visual.',
+    'That visual is no longer available.': 'Ese recurso visual ya no está disponible.',
+    'Connected visual references are not available right now.': 'Las referencias visuales conectadas no están disponibles en este momento.',
+    'Reference added from your visual library.': 'Referencia agregada desde tu biblioteca visual.',
+    'Could not add that reference image.': 'No se pudo agregar esa imagen de referencia.',
+    'Reference image generated.': 'Imagen de referencia generada.',
+    'Could not generate the reference image.': 'No se pudo generar la imagen de referencia.',
+    'Reference image downloaded.': 'Imagen de referencia descargada.',
+    'Could not download this image. Please try again.': 'No se pudo descargar esta imagen. Inténtalo de nuevo.',
+
     // Marketing / Features.
+    'FilmScript | Write it. See it. Make it.': 'FilmScript | Escríbelo. Visualízalo. Hazlo.',
+    'From first page to final delivery': 'De la primera página a la entrega final',
+    'Write it.': 'Escríbelo.',
+    'See it.': 'Visualízalo.',
+    'Make it.': 'Hazlo.',
+    'FilmScript connects every stage of production to the same screenplay, from writing and visual planning through breakdowns, budgets and the final delivery calendar.': 'FilmScript conecta cada etapa de producción con el mismo guion, desde la escritura y la planificación visual hasta los desgloses, presupuestos y el calendario final de entrega.',
+    'Compare plans': 'Comparar planes',
+    'Built for filmmakers, studios and production teams.': 'Creado para cineastas, estudios y equipos de producción.',
+    'Boards, references and visual direction': 'Tableros, referencias y dirección visual',
+    'Milestones, dependencies and delivery': 'Hitos, dependencias y entrega',
+    'Plan, actuals and cash flow': 'Plan, gastos reales y flujo de caja',
+    'One connected workspace': 'Un espacio de trabajo conectado',
+    'Every part of the film starts with the same script.': 'Cada parte de la película nace del mismo guion.',
+    'Write the scene once. FilmScript keeps the creative, production and financial decisions beside it all the way to delivery.': 'Escribe la escena una vez. FilmScript mantiene a su lado las decisiones creativas, de producción y financieras hasta la entrega.',
+    'Write': 'Escribe',
+    'Write in a production-ready screenplay editor with smart formatting, autosave, imports and PDF export.': 'Escribe en un editor de guion listo para producción, con formato inteligente, guardado automático, importación y exportación a PDF.',
+    'Collaborate': 'Colabora',
+    'Explore titles, character names and scene directions while keeping every creative decision yours.': 'Explora títulos, nombres de personajes y direcciones de escena sin dejar de controlar cada decisión creativa.',
+    'Visual development': 'Desarrollo visual',
+    'Collect references, build boards and develop the visual direction of each scene beside the screenplay.': 'Reúne referencias, crea tableros y desarrolla la dirección visual de cada escena junto al guion.',
+    'Understand': 'Comprende',
+    'See story flow, priority scenes, production impact and the screenplay evidence behind every insight.': 'Consulta el flujo de la historia, las escenas prioritarias, el impacto de producción y la evidencia del guion detrás de cada observación.',
+    'Prepare': 'Prepara',
+    'Build editable scene sheets for cast, props, wardrobe, sound and every production element.': 'Crea fichas de escena editables para reparto, utilería, vestuario, sonido y cada elemento de producción.',
+    'Reorder scenes, assign cast and locations, set timings and day breaks, then shape the shooting plan.': 'Reordena escenas, asigna reparto y locaciones, define tiempos y cortes de jornada, y da forma al plan de rodaje.',
+    'Plan coverage with lens, movement, reference images and time connected to the Stripboard.': 'Planifica la cobertura con lente, movimiento, imágenes de referencia y tiempos conectados al plan de rodaje.',
+    'Control': 'Controla',
+    'Track planned and actual costs, funding, cash flow, expenses, receipts and tax in one production view.': 'Controla costos planificados y reales, financiamiento, flujo de caja, gastos, recibos e impuestos en una sola vista de producción.',
+    'Deliver': 'Entrega',
+    'Move from development to delivery with dependencies, milestones, critical path and live progress.': 'Avanza del desarrollo a la entrega con dependencias, hitos, ruta crítica y progreso en vivo.',
+    'One change moves through the whole production.': 'Un cambio recorre toda la producción.',
+    'Update a scene and the next decisions stay traceable, from the visual idea to the final date on the calendar.': 'Actualiza una escena y las decisiones siguientes siguen siendo rastreables, desde la idea visual hasta la fecha final del calendario.',
+    'The source': 'La fuente',
+    'The visual world': 'El mundo visual',
+    'Scene requirements': 'Necesidades de la escena',
+    'The shooting order': 'El orden de rodaje',
+    'Plan and actuals': 'Plan y gastos reales',
+    'The final milestone': 'El hito final',
+    'One script. One source of truth.': 'Un guion. Una sola fuente de verdad.',
+    'Open FilmScript and keep every creative and production decision connected from the first scene to delivery.': 'Abre FilmScript y mantén conectada cada decisión creativa y de producción desde la primera escena hasta la entrega.',
+    'FilmScript · From the page to the production.': 'FilmScript · De la página a la producción.',
+    'This replaces your current plan. Your FilmScript work stays exactly where it is; only your access changes.': 'Esto reemplaza tu plan actual. Tu trabajo en FilmScript permanece exactamente donde está; solo cambia tu acceso.',
+    'A screenplay connected to FilmScript production tools': 'Un guion conectado con las herramientas de producción de FilmScript',
+    'A screenplay page with a Lumiere note': 'Una página de guion con una nota de Lumiere',
+    'Connected FilmScript modules': 'Módulos conectados de FilmScript',
+    'Explore FilmScript features': 'Explorar las funciones de FilmScript',
+    'FilmScript screenplay editor illustration': 'Ilustración del editor de guion de FilmScript',
+    'A conversation with Lumiere': 'Una conversación con Lumiere',
+    'FilmScript Imagine visual board illustration': 'Ilustración de un tablero visual de Imagine en FilmScript',
+    'FilmScript analysis chart illustration': 'Ilustración de una gráfica de análisis de FilmScript',
+    'Scene breakdown illustration': 'Ilustración de un desglose de escena',
+    'FilmScript stripboard illustration': 'Ilustración del plan de rodaje de FilmScript',
+    'FilmScript shot list illustration': 'Ilustración de la lista de planos de FilmScript',
+    'FilmScript budget illustration': 'Ilustración del presupuesto de FilmScript',
+    'FilmScript production calendar illustration': 'Ilustración del calendario de producción de FilmScript',
+    'FilmScript connected workflow': 'Flujo conectado de FilmScript',
+    'Go to Script Editor': 'Ir al Editor de guion',
+    'Go to Imagine': 'Ir a Imagine',
+    'Go to Breakdown': 'Ir al Desglose',
+    'Go to Stripboard': 'Ir al Plan de rodaje',
+    'Go to Budget': 'Ir al Presupuesto',
+    'Go to Calendar': 'Ir al Calendario',
+    'Sign up free': 'Crear cuenta gratis',
     'Write the script. FilmScript handles the rest.': 'Escribe el guion. FilmScript se encarga del resto.',
     'A professional screenplay editor with an AI companion named Lumiere. Write your pages, then turn them into breakdowns, stripboards and shot lists. All text, all yours.': 'Un editor profesional de guion con un compañero de IA llamado Lumiere. Escribe tus páginas y conviértelas en desgloses, planes de rodaje y listas de planos. Todo el texto, completamente tuyo.',
     'Start writing': 'Empezar a escribir',
@@ -986,7 +1298,13 @@
     'FilmScript. Write better, not louder.': 'FilmScript. Escribe mejor, no más fuerte.',
 
     // Pricing.
+    'Pricing · FilmScript': 'Precios · FilmScript',
     'Choose the workspace that fits your process.': 'Elige el espacio de trabajo que se adapta a tu proceso.',
+    'Manage your plan from the account menu.': 'Administra tu plan desde el menú de tu cuenta.',
+    'Start free, create with 100 monthly image credits in Creator, or unlock Full with 1,000.': 'Empieza gratis, crea con 100 créditos de imagen mensuales en Creator o desbloquea Full con 1,000.',
+    '100 image credits': '100 créditos de imagen',
+    'A complete creative workspace with AI writing and visual exploration.': 'Un espacio creativo completo con Lumiere para escritura y exploración visual.',
+    'Complete studio': 'Estudio completo',
     'Start free, create with Lumiere in Creator, or unlock Full with 1,000 monthly image credits.': 'Empieza gratis, crea con Lumiere en Creator o desbloquea Full con 1,000 créditos mensuales para imágenes.',
     'Most loved': 'Más elegido',
     '/ month': '/ mes',
@@ -1004,6 +1322,29 @@
     'The full production studio, with image generation across FilmScript.': 'El estudio de producción completo, con generación de imágenes en todo FilmScript.',
     'Choose Creator': 'Elegir Creator',
     'Choose Full': 'Elegir Full',
+    'Professional screenplay editor with standard formatting and PDF export': 'Editor profesional de guion con formato estándar y exportación a PDF',
+    'Import a screenplay and organize scenes, cast, and production notes': 'Importa un guion y organiza escenas, reparto y notas de producción',
+    'Upload references and build mood boards manually': 'Sube referencias y crea tableros de inspiración manualmente',
+    'Your scripts, boards, and production work remain exportable': 'Tus guiones, tableros y trabajo de producción siguen disponibles para exportar',
+    'Everything in the Free workspace': 'Todo lo incluido en el espacio del plan Free',
+    '100 image credits in every monthly billing cycle': '100 créditos de imagen en cada ciclo de facturación mensual',
+    'Every AI image uses 3 credits': 'Cada imagen generada con Lumiere usa 3 créditos',
+    'Generate frames in Imagine, Boards, and Shot List': 'Genera imágenes en Imagine, Boards y Lista de planos',
+    'AI script analysis, scene breakdowns, and production suggestions': 'Análisis de guion, desgloses de escena y sugerencias de producción con Lumiere',
+    'AI-assisted scheduling, shot coverage, and budget generation': 'Programación, cobertura de planos y generación de presupuestos asistidas por Lumiere',
+    'Lumiere creative taste profile and consistent project feedback': 'Perfil de gusto creativo de Lumiere y retroalimentación coherente para el proyecto',
+    'Connected Budget, Cash Flow, expense reporting, and A4 exports': 'Presupuesto, flujo de caja, informes de gastos y exportaciones A4 conectados',
+    'Use generated visuals across Imagine, Boards, Vault, and Shot List': 'Usa recursos visuales generados en Imagine, Boards, Vault y Lista de planos',
+    'Keep editing every AI result manually': 'Sigue editando manualmente cada resultado de Lumiere',
+    'Generate visual frames in Imagine, Boards, and Shot List': 'Genera imágenes visuales en Imagine, Boards y Lista de planos',
+    'Choose Low, Medium, or High image quality for each generation': 'Elige calidad de imagen baja, media o alta para cada generación',
+    'Highest Lumiere text limits for writing and production work': 'Los límites de texto más altos de Lumiere para escritura y producción',
+    'Deep script analysis, breakdowns, scheduling, and budget generation': 'Análisis profundo de guion, desgloses, programación y generación de presupuestos',
+    'Keep character and visual references connected across every scene': 'Mantén conectadas las referencias de personajes y visuales en todas las escenas',
+    'Use visuals across Imagine, Boards, Vault, and Shot List': 'Usa recursos visuales en Imagine, Boards, Vault y Lista de planos',
+    'Download, share, and keep editing every generated result': 'Descarga, comparte y sigue editando cada resultado generado',
+    'FilmScript could not open secure checkout. Please try again.': 'FilmScript no pudo abrir el pago seguro. Inténtalo de nuevo.',
+    'FilmScript could not complete this action. Nothing was charged.': 'FilmScript no pudo completar esta acción. No se realizó ningún cobro.',
     'Professional screenplay editor and PDF export': 'Editor profesional de guion y exportación a PDF',
     'Manual Breakdown, Stripboard, Shot List, Budget, Canvas, and Calendar': 'Desglose, plan de rodaje, lista de planos, presupuesto, Canvas y calendario manuales',
     'Upload reference images and build mood boards manually': 'Sube imágenes de referencia y crea mood boards manualmente',
@@ -1077,9 +1418,24 @@
     'Canvas, Imagine, selected files and professional PDF exports across production modules.': 'Canvas, Imagine, archivos seleccionados y exportaciones PDF profesionales en los módulos de producción.',
 
     // Plan and billing.
+    'Plan and billing · FilmScript': 'Plan y facturación · FilmScript',
     'Checking your subscription': 'Verificando tu suscripción',
     'FilmScript is securely checking your subscription with Recurrente.': 'FilmScript está verificando de forma segura tu suscripción con Recurrente.',
     'Google account': 'Cuenta de Google',
+    'Use the same Google account connected to your FilmScript subscription.': 'Usa la misma cuenta de Google vinculada a tu suscripción de FilmScript.',
+    'Membership': 'Membresía',
+    'Plan & billing': 'Plan y facturación',
+    'Manage your membership, billing and access to your FilmScript plan.': 'Administra tu membresía, facturación y acceso a tu plan de FilmScript.',
+    'Plan highlights': 'Aspectos destacados del plan',
+    '1,000 image credits monthly': '1,000 créditos de imagen mensuales',
+    '100 image credits monthly': '100 créditos de imagen mensuales',
+    'Screenplay and translation': 'Guion y traducción',
+    'Professional formatting, safe simultaneous editing and independent translated projects.': 'Formato profesional, edición simultánea segura y proyectos traducidos independientes.',
+    'Script analysis, breakdown generation and creative conversations saved per screenplay.': 'Análisis de guion, generación de desgloses y conversaciones creativas guardadas por cada guion.',
+    'Production planning': 'Planificación de producción',
+    'Stripboard, Shot List, Calendar and scene-linked planning in one workflow.': 'Plan de rodaje, Lista de planos, Calendario y planificación vinculada a escenas en un solo flujo.',
+    'Budget and cash flow': 'Presupuesto y flujo de caja',
+    'Connected budgets, weekly cash flow, expenses and production-ready exports.': 'Presupuestos conectados, flujo de caja semanal, gastos y exportaciones listas para producción.',
     'Your FilmScript Creator plan': 'Tu plan FilmScript Creator',
     'Your FilmScript Full plan': 'Tu plan FilmScript Full',
     'Everything in FilmScript is unlocked for this Google account, from the first page to the production plan.': 'Todo FilmScript está desbloqueado para esta cuenta de Google, desde la primera página hasta el plan de producción.',
@@ -1121,6 +1477,21 @@
     'Nothing was changed': 'No se modificó nada',
     'We could not complete that': 'No pudimos completar la acción',
     'Recurrente could not be reached. Your plan remains active.': 'No fue posible comunicarse con Recurrente. Tu plan sigue activo.',
+    'FilmScript will securely stop future renewals. Your scripts and existing production documents will remain editable and exportable.': 'FilmScript detendrá de forma segura las renovaciones futuras. Tus guiones y documentos de producción existentes seguirán disponibles para editar y exportar.',
+    'I understand that canceling stops renewals, while my scripts and existing production documents remain editable and exportable.': 'Entiendo que cancelar detiene las renovaciones, mientras mis guiones y documentos de producción existentes siguen disponibles para editar y exportar.',
+    'Your plan is active. Billing details are temporarily refreshing, so no changes can be made right now.': 'Tu plan está activo. Los detalles de facturación se están actualizando, así que no se pueden realizar cambios en este momento.',
+    'FilmScript billing is still loading. Please try again.': 'La facturación de FilmScript aún está cargando. Inténtalo de nuevo.',
+    'Finishing your subscription': 'Finalizando tu suscripción',
+    'Your payment was received. FilmScript is waiting for Recurrente to confirm the recurring subscription.': 'Recibimos tu pago. FilmScript está esperando que Recurrente confirme la suscripción recurrente.',
+    'Recurrente could not be reached. Your plan has not been changed.': 'No fue posible comunicarse con Recurrente. Tu plan no se modificó.',
+    'Cancellation was not confirmed. Your plan remains active.': 'No se confirmó la cancelación. Tu plan sigue activo.',
+    'The cancellation could not be verified. Your plan has not been changed.': 'No se pudo verificar la cancelación. Tu plan no se modificó.',
+    'Canceling FilmScript Creator…': 'Cancelando FilmScript Creator…',
+    'Canceling FilmScript Full…': 'Cancelando FilmScript Full…',
+    'FilmScript Creator is canceled. Your existing work remains available to edit and export.': 'FilmScript Creator está cancelado. Tu trabajo existente sigue disponible para editar y exportar.',
+    'FilmScript Full is canceled. Your existing work remains available to edit and export.': 'FilmScript Full está cancelado. Tu trabajo existente sigue disponible para editar y exportar.',
+    'Plan canceled': 'Plan cancelado',
+    'Your plan is canceled. Your existing work remains available to edit and export.': 'Tu plan está cancelado. Tu trabajo existente sigue disponible para editar y exportar.',
 
     // Budget workspace: short labels and primary explanations.
     'Quick Budget': 'Presupuesto rápido',
@@ -1878,8 +2249,94 @@
     'This invitation link is incomplete.': 'Este enlace de invitación está incompleto.',
     'No project areas were shared.': 'No se compartió ninguna área del proyecto.',
     'Ask the project owner for a new invitation.': 'Pídele al responsable del proyecto una nueva invitación.',
-    'This guest invitation is no longer available.': 'Esta invitación de invitado ya no está disponible.'
+    'This guest invitation is no longer available.': 'Esta invitación de invitado ya no está disponible.',
+
+    // Public Shared Project and authentication routes.
+    'Project View · FilmScript': 'Vista del proyecto · FilmScript',
+    'Project View': 'Vista del proyecto',
+    'Opening Project View': 'Abriendo la vista del proyecto',
+    'Loading the latest shared project content.': 'Cargando el contenido compartido más reciente del proyecto.',
+    'Canvas': 'Lienzo',
+    'Location Plans': 'Planos de locación',
+    'Imagine': 'Imagina',
+    'Selected Files': 'Archivos seleccionados',
+    'This Project View is unavailable.': 'Esta vista del proyecto no está disponible.',
+    'Just now': 'Ahora mismo',
+    'Request access': 'Solicitar acceso',
+    'Tell the project owner how to reach you. They can invite you to FilmScript if access is approved.': 'Indica al responsable del proyecto cómo contactarte. Podrá invitarte a FilmScript si aprueba el acceso.',
+    'Email address': 'Correo electrónico',
+    'Optional note': 'Nota opcional',
+    'Back to Project View': 'Volver a la vista del proyecto',
+    'Sign In': 'Iniciar sesión',
+    'Your request was sent to the project owner.': 'Tu solicitud se envió al responsable del proyecto.',
+    'We could not send your access request. Please try again.': 'No pudimos enviar tu solicitud de acceso. Inténtalo de nuevo.',
+    'Password protected': 'Protegido con contraseña',
+    'Sign in to continue': 'Inicia sesión para continuar',
+    'Project View unavailable': 'Vista del proyecto no disponible',
+    'Enter the password provided by the project owner.': 'Ingresa la contraseña proporcionada por el responsable del proyecto.',
+    'This Shared Project link is no longer available.': 'Este enlace de proyecto compartido ya no está disponible.',
+    'Project password': 'Contraseña del proyecto',
+    'Open Project View': 'Abrir vista del proyecto',
+    'Open in FilmScript': 'Abrir en FilmScript',
+    'That password is not correct.': 'La contraseña no es correcta.',
+    'Sign in with an invited email address.': 'Inicia sesión con un correo electrónico invitado.',
+    'This Shared Project link has been revoked.': 'Este enlace de proyecto compartido fue revocado.',
+    'The screenplay has no shared pages yet.': 'El guion aún no tiene páginas compartidas.',
+    'No analysis has been shared yet.': 'Aún no se ha compartido ningún análisis.',
+    'Story overview': 'Resumen de la historia',
+    'Analysis is ready to view when the project adds it.': 'El análisis estará disponible cuando el proyecto lo agregue.',
+    'No shared scenes are available yet.': 'Aún no hay escenas compartidas disponibles.',
+    'Item': 'Elemento',
+    'No items yet': 'Aún no hay elementos',
+    'Scheduled scene': 'Escena programada',
+    'No stripboard scenes are shared yet.': 'Aún no hay escenas del plan de rodaje compartidas.',
+    'not started': 'sin iniciar',
+    'No calendar tasks are shared yet.': 'Aún no hay tareas de calendario compartidas.',
+    'No budget is shared yet.': 'Aún no hay un presupuesto compartido.',
+    'Budget item': 'Partida presupuestaria',
+    'Department': 'Departamento',
+    'Details': 'Detalles',
+    'The project owner has shared this budget.': 'El responsable del proyecto compartió este presupuesto.',
+    'Untitled board': 'Tablero sin título',
+    'Shared visual board': 'Tablero visual compartido',
+    'object': 'objeto',
+    'objects': 'objetos',
+    'Canvas asset': 'Recurso del lienzo',
+    'No Canvas boards are shared yet.': 'Aún no hay tableros del lienzo compartidos.',
+    'measured spaces': 'espacios medidos',
+    'Project plan': 'Plano del proyecto',
+    'No Location Plans are shared yet.': 'Aún no hay planos de locación compartidos.',
+    'Imagine frame': 'imagen de Imagina',
+    'selected file': 'archivo seleccionado',
+    'No Imagine frames are shared yet.': 'Aún no hay imágenes de Imagina compartidas.',
+    'No selected files are shared yet.': 'Aún no hay archivos seleccionados compartidos.',
+    'No shared content is available in this section.': 'No hay contenido compartido disponible en esta sección.',
+    'No shared sections': 'No hay secciones compartidas',
+    'The project owner has not exposed any content.': 'El responsable del proyecto no ha compartido contenido.',
+    'Project View · Read only': 'Vista del proyecto · Solo lectura',
+    'Refresh latest content': 'Actualizar el contenido más reciente',
+    'Request': 'Solicitar',
+    'Open': 'Abrir',
+    'Shared sections': 'Secciones compartidas',
+    'Latest project source': 'Fuente más reciente del proyecto',
+    'A live, read-only view of the sections selected by the project owner.': 'Una vista actualizada y de solo lectura de las secciones seleccionadas por el responsable del proyecto.',
+    'Read only': 'Solo lectura',
+    'Source refreshed': 'Fuente actualizada',
+    'Preparing…': 'Preparando…',
+    'This Shared Project link is incomplete.': 'Este enlace de proyecto compartido está incompleto.',
+    'We could not prepare this export. Please try again.': 'No pudimos preparar esta exportación. Inténtalo de nuevo.',
+    'Finishing sign in · FilmScript': 'Finalizando el inicio de sesión · FilmScript',
+    'Opening your scripts…': 'Abriendo tus guiones…',
+    'Securing your FilmScript session.': 'Protegiendo tu sesión de FilmScript.',
+    'Try Google sign in again': 'Intentar iniciar sesión con Google de nuevo',
+    'We could not finish your sign in. Please try again.': 'No pudimos completar tu inicio de sesión. Inténtalo de nuevo.',
+    'FilmScript · Sign in': 'FilmScript · Iniciar sesión',
+    'Connecting to Google…': 'Conectando con Google…'
   });
+
+  const supportedLanguage = (value) => SUPPORTED.has(String(value || '').toLowerCase())
+    ? String(value).toLowerCase()
+    : null;
 
   const normalize = (value) => SUPPORTED.has(String(value || '').toLowerCase())
     ? String(value).toLowerCase()
@@ -1893,13 +2350,26 @@
     if (SUPPORTED.has(checkoutLanguage)) localStorage.setItem(STORAGE_KEY, checkoutLanguage);
   } catch (error) {}
 
+  const accountStorageKey = (id) => `${ACCOUNT_STORAGE_PREFIX}${String(id || '').trim()}`;
+
   const get = () => {
-    try { return normalize(localStorage.getItem(STORAGE_KEY)); }
+    try {
+      if (accountState.id) {
+        const accountLanguage = supportedLanguage(accountState.language)
+          || supportedLanguage(localStorage.getItem(accountStorageKey(accountState.id)));
+        if (accountLanguage) return accountLanguage;
+      }
+      return normalize(localStorage.getItem(STORAGE_KEY));
+    }
     catch (error) { return 'en'; }
   };
 
   const hasStoredLanguage = () => {
     try {
+      if (accountState.hydrated && accountState.id) {
+        return Boolean(supportedLanguage(accountState.language)
+          || supportedLanguage(localStorage.getItem(accountStorageKey(accountState.id))));
+      }
       const stored = String(localStorage.getItem(STORAGE_KEY) || '').toLowerCase();
       return SUPPORTED.has(stored);
     } catch (error) {
@@ -1908,6 +2378,7 @@
   };
 
   const shouldOfferInitialChoice = () => {
+    if (!accountState.hydrated || !accountState.id) return false;
     if (hasStoredLanguage()) return false;
     try {
       const page = decodeURIComponent(window.location.pathname.split('/').pop() || '');
@@ -1976,6 +2447,38 @@
     if ((match = value.match(/^Creator or Full unlocks a new Lumiere (.+) analysis\.$/))) return `Creator o Full desbloquean un nuevo análisis de ${match[1]} con Lumiere.`;
     if ((match = value.match(/^(.+) is included with FilmScript Creator and FilmScript Full\. Your scripts and manual production documents remain available to edit and export\.$/))) return `${t(match[1], 'es')} está incluido con FilmScript Creator y Full. Tus guiones y documentos manuales de producción siguen disponibles para editar y exportar.`;
     if ((match = value.match(/^Ask Lumiere about (.+)$/))) return `Preguntar a Lumiere sobre ${match[1]}`;
+    if ((match = value.match(/^Manual breakdown ready for (\d+) scenes?\.$/))) return `Desglose manual listo para ${match[1]} ${Number(match[1]) === 1 ? 'escena' : 'escenas'}.`;
+    if ((match = value.match(/^(.+) highlighted in the script\.$/))) return `${match[1]} resaltado en el guion.`;
+    if ((match = value.match(/^(.+) · appearance (\d+) of (\d+)\.$/))) return `${match[1]} · aparición ${match[2]} de ${match[3]}.`;
+    if ((match = value.match(/^Could not find (.+) in this scene\. Refresh the breakdown to reconnect it\.$/))) return `No se pudo encontrar ${match[1]} en esta escena. Actualiza el desglose para volver a conectarlo.`;
+    if ((match = value.match(/^(.+) Excel export downloaded\.$/))) return `Exportación de ${match[1]} para Excel descargada.`;
+    if ((match = value.match(/^Shoot location assigned to (\d+) scenes?\.$/))) return `Locación de rodaje asignada a ${match[1]} ${Number(match[1]) === 1 ? 'escena' : 'escenas'}.`;
+    if ((match = value.match(/^Shoot location removed from (\d+) scenes?\.$/))) return `Locación de rodaje quitada de ${match[1]} ${Number(match[1]) === 1 ? 'escena' : 'escenas'}.`;
+    if ((match = value.match(/^Cast (added to|removed from) (\d+) scenes?\.$/))) return `Reparto ${match[1] === 'added to' ? 'agregado a' : 'quitado de'} ${match[2]} ${Number(match[2]) === 1 ? 'escena' : 'escenas'}.`;
+    if ((match = value.match(/^All cast removed from (\d+) scenes?\.$/))) return `Todo el reparto se quitó de ${match[1]} ${Number(match[1]) === 1 ? 'escena' : 'escenas'}.`;
+    if ((match = value.match(/^(\d+) strips moved together · start times recalculated\.$/))) return `${match[1]} tiras movidas juntas · horas de inicio recalculadas.`;
+    if ((match = value.match(/^Only (.+) remain for this scene\.$/))) return `Solo quedan ${match[1]} para esta escena.`;
+    if ((match = value.match(/^Open scene (\d+) in script$/))) return `Abrir la escena ${match[1]} en el guion`;
+    if ((match = value.match(/^Select scene (\d+)$/))) return `Seleccionar escena ${match[1]}`;
+    if ((match = value.match(/^Open the scene for location (.+)$/))) return `Abrir en el guion la escena de la locación ${match[1]}`;
+    if ((match = value.match(/^Cast (\d+)$/))) return `Reparto ${match[1]}`;
+    if ((match = value.match(/^Open in Scene (\d+)$/))) return `Abrir en la escena ${match[1]}`;
+    if ((match = value.match(/^Assign shoot location for scene (\d+)$/))) return `Asignar locación de rodaje a la escena ${match[1]}`;
+    if ((match = value.match(/^Shoot location for scene (\d+)$/))) return `Locación de rodaje de la escena ${match[1]}`;
+    if ((match = value.match(/^Assign most recent shoot location (.+) to scene (\d+)$/))) return `Asignar la locación de rodaje reciente ${match[1]} a la escena ${match[2]}`;
+    if ((match = value.match(/^Assign most recent shoot location (.+) to selected scenes$/))) return `Asignar la locación de rodaje reciente ${match[1]} a las escenas seleccionadas`;
+    if ((match = value.match(/^Assign (.+)$/))) return `Asignar ${match[1]}`;
+    if ((match = value.match(/^Move (.+) (earlier|later)$/))) return `Mover ${match[1]} ${match[2] === 'earlier' ? 'antes' : 'después'}`;
+    if ((match = value.match(/^Edit (.+) duration$/))) return `Editar duración de ${match[1]}`;
+    if ((match = value.match(/^Edit (Shooting day \d+)$/))) return `Editar ${t(match[1], 'es').toLowerCase()}`;
+    if ((match = value.match(/^Estimated time for scene (\d+)$/))) return `Tiempo estimado de la escena ${match[1]}`;
+    if ((match = value.match(/^Reference for scene (\d+)$/))) return `Referencia de la escena ${match[1]}`;
+    if ((match = value.match(/^Reference image for shot (.+)$/))) return `Imagen de referencia del plano ${match[1]}`;
+    if ((match = value.match(/^Set duration for shot (.+)$/))) return `Definir duración del plano ${match[1]}`;
+    if ((match = value.match(/^Open reference image for shot (.+)$/))) return `Abrir imagen de referencia del plano ${match[1]}`;
+    if ((match = value.match(/^Add reference image for shot (.+)$/))) return `Agregar imagen de referencia al plano ${match[1]}`;
+    if ((match = value.match(/^Replace reference image for scene (\d+)$/))) return `Reemplazar imagen de referencia de la escena ${match[1]}`;
+    if ((match = value.match(/^Add reference image for scene (\d+)$/))) return `Agregar imagen de referencia a la escena ${match[1]}`;
     if ((match = value.match(/^Scene (\d+) · Page (\d+)$/))) return `Escena ${match[1]} · Página ${match[2]}`;
     if ((match = value.match(/^Scene (\d+) · Pages? ([\d,\s–-]+)$/))) return `Escena ${match[1]} · Páginas ${match[2]}`;
     if ((match = value.match(/^Scene (\d+): (.+)$/))) return `Escena ${match[1]}: ${match[2]}`;
@@ -2096,7 +2599,7 @@
   const isSkipped = (node) => {
     const element = node.nodeType === Node.ELEMENT_NODE ? node : node.parentElement;
     if (!element) return true;
-    if (element.closest('[data-i18n-skip], [data-fs-page], [data-v5-cover], [contenteditable="true"]')) return true;
+    if (element.closest('[data-i18n-skip], [data-lumiere-generated], [data-project-content], [data-fs-page], [data-v5-cover], [contenteditable="true"]')) return true;
     const tag = element.tagName;
     return tag === 'SCRIPT' || tag === 'STYLE' || tag === 'TEMPLATE' || tag === 'TEXTAREA' || tag === 'X-DC';
   };
@@ -2226,15 +2729,68 @@
     });
   };
 
+  const modalFocusables = (modal) => [...modal.querySelectorAll('button:not(:disabled), [href], input:not(:disabled), select:not(:disabled), textarea:not(:disabled), [tabindex]:not([tabindex="-1"])')]
+    .filter((element) => element.getClientRects().length);
+
+  const inertLanguageModalSibling = (element, modal) => {
+    if (!(element instanceof HTMLElement) || element === modal || element.inert) return;
+    element.inert = true;
+    modalInerted.push(element);
+  };
+
+  const lockLanguageModal = (modal) => {
+    if (lockedLanguageModal) return false;
+    lockedLanguageModal = modal;
+    modalReturnFocus = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+    modalInerted = [];
+    [...document.body.children].forEach((element) => inertLanguageModalSibling(element, modal));
+    // Language changes can remount global chrome (notably the mobile
+    // navigation). Keep every new body sibling behind the active dialog inert
+    // instead of relying on a one-time snapshot of the page.
+    modalInertObserver = new MutationObserver((records) => {
+      records.forEach((record) => record.addedNodes.forEach((element) => inertLanguageModalSibling(element, modal)));
+    });
+    modalInertObserver.observe(document.body, { childList: true });
+    modal.addEventListener('keydown', trapLanguageModalFocus);
+    return true;
+  };
+
+  const unlockLanguageModal = (modal) => {
+    if (lockedLanguageModal !== modal) return false;
+    modalInertObserver?.disconnect();
+    modalInertObserver = null;
+    modal?.removeEventListener('keydown', trapLanguageModalFocus);
+    modalInerted.forEach((element) => { element.inert = false; });
+    modalInerted = [];
+    if (modalReturnFocus?.isConnected) modalReturnFocus.focus({ preventScroll: true });
+    modalReturnFocus = null;
+    lockedLanguageModal = null;
+    return true;
+  };
+
+  function trapLanguageModalFocus(event) {
+    if (event.key !== 'Tab') return;
+    const focusable = modalFocusables(event.currentTarget);
+    if (!focusable.length) return;
+    const first = focusable[0];
+    const last = focusable.at(-1);
+    if (event.shiftKey && document.activeElement === first) { event.preventDefault(); last.focus(); }
+    else if (!event.shiftKey && document.activeElement === last) { event.preventDefault(); first.focus(); }
+  }
+
   const renderSettings = (modal) => {
     const language = get();
     const spanish = language === 'es';
     const setText = (selector, value) => { const node = modal.querySelector(selector); if (node && node.textContent !== value) node.textContent = value; };
     setText('[data-settings-eyebrow]', spanish ? 'FILMSCRIPT' : 'FILMSCRIPT');
     setText('[data-settings-title]', spanish ? 'Ajustes' : 'Settings');
-    setText('[data-settings-copy]', spanish ? 'Personaliza cómo se siente FilmScript en este dispositivo.' : 'Personalize how FilmScript feels on this device.');
+    setText('[data-settings-copy]', spanish ? 'Personaliza cómo se siente FilmScript en tu cuenta.' : 'Personalize how FilmScript feels in your account.');
     setText('[data-settings-language-label]', spanish ? 'Idioma' : 'Language');
-    setText('[data-settings-language-copy]', spanish ? 'Elige el idioma de la interfaz. Tus guiones y chats nunca se traducen.' : 'Choose the interface language. Your scripts and chats are never translated.');
+    setText('[data-settings-language-copy]', spanish ? 'Elige el idioma de la interfaz.' : 'Choose the interface language.');
+    setText('[data-settings-warning-title]', spanish ? 'Importante' : 'Important');
+    setText('[data-settings-warning-copy]', spanish
+      ? 'La interfaz cambia de inmediato. Tus guiones y el trabajo que Lumiere ya generó permanecen en su idioma original.'
+      : 'The interface updates immediately. Your screenplays and work already generated by Lumiere remain in their original language.');
     setText('[data-settings-helper]', spanish ? 'Los cambios se aplican de inmediato en todo FilmScript.' : 'Changes apply across FilmScript immediately.');
     const close = modal.querySelector('[data-settings-close]');
     const closeLabel = spanish ? 'Cerrar ajustes' : 'Close settings';
@@ -2257,24 +2813,26 @@
     modal.hidden = true;
     modal.innerHTML = `
       <div class="fs-language-backdrop" data-settings-dismiss></div>
-      <section class="fs-language-sheet" role="dialog" aria-modal="true" aria-labelledby="fs-language-title">
+      <section class="fs-language-sheet" role="dialog" aria-modal="true" aria-labelledby="fs-language-title" aria-describedby="fs-language-settings-warning">
         <button type="button" class="fs-language-close" data-settings-close aria-label="Close settings">×</button>
         <div class="fs-language-eyebrow" data-settings-eyebrow>FILMSCRIPT</div>
         <h2 id="fs-language-title" data-settings-title>Settings</h2>
-        <p class="fs-language-intro" data-settings-copy>Personalize how FilmScript feels on this device.</p>
+        <p class="fs-language-intro" data-settings-copy>Personalize how FilmScript feels in your account.</p>
         <div class="fs-language-rule" aria-hidden="true"></div>
         <div class="fs-language-section-title" data-settings-language-label>Language</div>
-        <p class="fs-language-section-copy" data-settings-language-copy>Choose the interface language. Your scripts and chats are never translated.</p>
+        <p class="fs-language-section-copy" data-settings-language-copy>Choose the interface language.</p>
         <div class="fs-language-options" role="group" aria-label="Language">
           <button type="button" class="fs-language-option" data-language-option="en" data-i18n-skip aria-pressed="false"><span><strong>English</strong></span><i class="fs-language-check" aria-hidden="true"></i></button>
           <button type="button" class="fs-language-option" data-language-option="es" data-i18n-skip aria-pressed="false"><span><strong>Español</strong></span><i class="fs-language-check" aria-hidden="true"></i></button>
         </div>
+        <div class="fs-language-warning" id="fs-language-settings-warning" role="note"><span aria-hidden="true">!</span><p><strong data-settings-warning-title>Important</strong><small data-settings-warning-copy>The interface updates immediately. Your screenplays and work already generated by Lumiere remain in their original language.</small></p></div>
         <p class="fs-language-helper" data-settings-helper>Changes apply across FilmScript immediately.</p>
+        <p class="fs-language-status" data-language-status role="status" aria-live="polite"></p>
       </section>`;
     document.body.appendChild(modal);
     modal.addEventListener('click', (event) => {
       const option = event.target.closest('[data-language-option]');
-      if (option) { set(option.dataset.languageOption); return; }
+      if (option) { saveLanguage(option.dataset.languageOption, modal); return; }
       if (event.target.closest('[data-settings-close], [data-settings-dismiss]')) closeSettings();
     });
     renderSettings(modal);
@@ -2288,26 +2846,27 @@
     modal.id = INITIAL_CHOICE_ID;
     modal.className = 'fs-language-modal fs-language-initial-choice';
     modal.setAttribute('data-i18n-skip', '');
+    modal.hidden = true;
     modal.innerHTML = `
       <div class="fs-language-backdrop"></div>
-      <section class="fs-language-sheet" role="dialog" aria-modal="true" aria-labelledby="fs-language-initial-title">
+      <section class="fs-language-sheet" role="dialog" aria-modal="true" aria-labelledby="fs-language-initial-title" aria-describedby="fs-language-initial-copy fs-language-initial-warning">
         <div class="fs-language-eyebrow">FILMSCRIPT</div>
         <h2 id="fs-language-initial-title">Choose your language<br><span>Elige tu idioma</span></h2>
-        <p class="fs-language-intro">Choose the language you want to use across FilmScript.<br>Elige el idioma que quieres usar en FilmScript.</p>
+        <p class="fs-language-intro" id="fs-language-initial-copy">Choose the language you want to use across FilmScript.<br>Elige el idioma que quieres usar en FilmScript.</p>
         <div class="fs-language-rule" aria-hidden="true"></div>
         <div class="fs-language-options" role="group" aria-label="Choose your language / Elige tu idioma">
           <button type="button" class="fs-language-option" data-initial-language-option="en" aria-label="Choose English"><span><strong>English</strong><small>Use FilmScript in English</small></span><i class="fs-language-arrow" aria-hidden="true">→</i></button>
           <button type="button" class="fs-language-option" data-initial-language-option="es" aria-label="Elegir Español"><span><strong>Español</strong><small>Usa FilmScript en español</small></span><i class="fs-language-arrow" aria-hidden="true">→</i></button>
         </div>
+        <div class="fs-language-warning fs-language-warning--bilingual" id="fs-language-initial-warning" role="note"><span aria-hidden="true">!</span><p><strong>IMPORTANT · IMPORTANTE</strong><small>Changing FilmScript’s language later will not translate work already generated by Lumiere.<br>Cambiar después el idioma de FilmScript no traducirá el trabajo que Lumiere ya haya generado.</small></p></div>
         <p class="fs-language-helper">You can change this later from your profile settings.<br>Puedes cambiarlo después desde los ajustes de tu perfil.</p>
+        <p class="fs-language-status" data-language-status role="status" aria-live="polite"></p>
       </section>`;
     document.body.appendChild(modal);
     modal.addEventListener('click', (event) => {
       const option = event.target.closest('[data-initial-language-option]');
       if (!option) return;
-      const next = set(option.dataset.initialLanguageOption);
-      closeInitialChoice();
-      window.dispatchEvent(new CustomEvent('filmscript:initial-language-choice', { detail: { language: next } }));
+      saveLanguage(option.dataset.initialLanguageOption, modal, { initial: true });
     });
     return modal;
   };
@@ -2320,6 +2879,11 @@
   const openInitialChoice = () => {
     if (!shouldOfferInitialChoice()) return false;
     const modal = ensureInitialChoice();
+    if (!modal.hidden) {
+      window.setTimeout(() => modal.querySelector('[data-initial-language-option="en"]')?.focus(), 0);
+      return true;
+    }
+    if (lockedLanguageModal || !lockLanguageModal(modal)) return false;
     modal.hidden = false;
     document.documentElement.classList.add('fs-language-open');
     window.setTimeout(() => modal.querySelector('[data-initial-language-option="en"]')?.focus(), 20);
@@ -2331,14 +2895,21 @@
     if (!modal || modal.hidden) return;
     modal.hidden = true;
     document.documentElement.classList.remove('fs-language-open');
+    unlockLanguageModal(modal);
   };
 
   const openSettings = () => {
     const modal = ensureSettings();
     renderSettings(modal);
+    if (!modal.hidden) {
+      window.setTimeout(() => modal.querySelector(`[data-language-option="${get()}"]`)?.focus(), 0);
+      return true;
+    }
+    if (lockedLanguageModal || !lockLanguageModal(modal)) return false;
     modal.hidden = false;
     document.documentElement.classList.add('fs-language-open');
     window.setTimeout(() => modal.querySelector(`[data-language-option="${get()}"]`)?.focus(), 20);
+    return true;
   };
 
   const closeSettings = () => {
@@ -2346,6 +2917,7 @@
     if (!modal || modal.hidden) return;
     modal.hidden = true;
     document.documentElement.classList.remove('fs-language-open');
+    unlockLanguageModal(modal);
   };
 
   const apply = (language = get(), root = document) => {
@@ -2360,12 +2932,86 @@
     return next;
   };
 
-  const set = (language) => {
+  const set = (language, { persist = true } = {}) => {
     const next = normalize(language);
-    try { localStorage.setItem(STORAGE_KEY, next); } catch (error) {}
+    accountState.language = accountState.id ? next : accountState.language;
+    try {
+      localStorage.setItem(STORAGE_KEY, next);
+      if (accountState.id) localStorage.setItem(accountStorageKey(accountState.id), next);
+    } catch (error) {}
     apply(next);
     window.dispatchEvent(new CustomEvent('filmscript:language-change', { detail: { language: next } }));
+    if (persist && accountState.id) persistAccountLanguage(next).catch(() => {});
     return next;
+  };
+
+  const persistAccountLanguage = async (language) => {
+    if (!accountState.id || !window.filmscriptBilling?.updateProfile) return null;
+    const next = normalize(language);
+    accountState.saving = true;
+    try {
+      const account = await window.filmscriptBilling.updateProfile({ interfaceLanguage: next });
+      const saved = supportedLanguage(account?.interfaceLanguage) || supportedLanguage(account?.profile?.interfaceLanguage) || next;
+      accountState.language = saved;
+      try {
+        localStorage.setItem(STORAGE_KEY, saved);
+        localStorage.setItem(accountStorageKey(accountState.id), saved);
+      } catch (error) {}
+      return account;
+    } finally {
+      accountState.saving = false;
+    }
+  };
+
+  const languageStatus = (modal, message, error = false) => {
+    const node = modal?.querySelector('[data-language-status]');
+    if (!node) return;
+    node.textContent = message;
+    node.classList.toggle('is-error', error);
+  };
+
+  const saveLanguage = async (language, modal, { initial = false } = {}) => {
+    if (accountState.saving) return;
+    const next = set(language, { persist: false });
+    modal?.querySelectorAll('button').forEach((button) => { button.disabled = true; });
+    languageStatus(modal, next === 'es' ? 'Guardando el idioma de tu cuenta…' : 'Saving your account language…');
+    try {
+      await persistAccountLanguage(next);
+      if (initial) {
+        closeInitialChoice();
+        window.dispatchEvent(new CustomEvent('filmscript:initial-language-choice', { detail: { language: next } }));
+      } else {
+        renderSettings(modal);
+        languageStatus(modal, next === 'es'
+          ? 'Interfaz cambiada a español. El trabajo existente de Lumiere no se tradujo.'
+          : 'Interface changed to English. Existing Lumiere work was not translated.');
+      }
+    } catch (error) {
+      languageStatus(modal, next === 'es'
+        ? 'No se pudo guardar el idioma. Inténtalo de nuevo.'
+        : 'The language could not be saved. Try again.', true);
+    } finally {
+      modal?.querySelectorAll('button').forEach((button) => { button.disabled = false; });
+    }
+  };
+
+  const hydrateAccount = async (account) => {
+    const id = String(account?.id || '').trim();
+    if (!account?.authenticated || !id) return false;
+    accountState.id = id;
+    accountState.hydrated = true;
+    const serverLanguage = supportedLanguage(account?.interfaceLanguage) || supportedLanguage(account?.profile?.interfaceLanguage);
+    let cachedLanguage = null;
+    try { cachedLanguage = supportedLanguage(localStorage.getItem(accountStorageKey(id))); } catch (error) {}
+    accountState.language = serverLanguage || cachedLanguage || null;
+    if (accountState.language) {
+      set(accountState.language, { persist: false });
+      if (!serverLanguage && cachedLanguage) persistAccountLanguage(cachedLanguage).catch(() => {});
+    }
+    window.dispatchEvent(new CustomEvent('filmscript:language-account-hydrated', {
+      detail: { accountId: id, language: accountState.language },
+    }));
+    return true;
   };
 
   function observeRoot(root) {
@@ -2398,9 +3044,9 @@
       [data-filmscript-profile-host="1"]{position:relative;z-index:2147482000!important}
       [data-filmscript-profile-panel]{z-index:2147482500!important}
       [data-testid="account-details-overlay"]{z-index:2147483000!important}
-      .fs-language-modal[hidden]{display:none!important}.fs-language-modal{position:fixed;inset:0;z-index:2147483000;display:grid;place-items:center;padding:24px;font-family:"Helvetica Neue",Helvetica,Arial,sans-serif}.fs-language-backdrop{position:absolute;inset:0;background:rgba(20,20,18,.48);backdrop-filter:blur(10px);animation:fsLanguageFade .16s ease both}.fs-language-sheet{--fs-lang-bg:#FFFEF9;--fs-lang-ink:#242421;--fs-lang-muted:#77756e;--fs-lang-line:rgba(36,36,33,.34);position:relative;width:min(460px,calc(100vw - 32px));box-sizing:border-box;padding:28px;background:var(--fs-lang-bg);color:var(--fs-lang-ink);border:1px solid var(--fs-lang-line);border-radius:21px 18px 23px 17px/19px 22px 17px 21px;box-shadow:0 26px 90px rgba(0,0,0,.28);animation:fsLanguageRise .2s cubic-bezier(.2,.8,.2,1) both}.fs-language-sheet:after{content:"";position:absolute;pointer-events:none;inset:4px 5px 4px 4px;border:1px solid color-mix(in srgb,var(--fs-lang-ink) 24%,transparent);border-radius:17px 16px 18px 15px/16px 18px 15px 17px;opacity:.42;transform:rotate(.08deg)}
-      :root[data-filmscript-theme="dark"] .fs-language-sheet{--fs-lang-bg:#242422;--fs-lang-ink:#F0EEE7;--fs-lang-muted:#aaa79e;--fs-lang-line:rgba(240,238,231,.3)}
-      .fs-language-sheet>*{position:relative;z-index:1}.fs-language-close{position:absolute;z-index:3;right:17px;top:15px;width:32px;height:32px;border:0;border-radius:50%;background:transparent;color:var(--fs-lang-muted);font:300 24px/1 sans-serif;cursor:pointer;transition:background-color .15s ease,color .15s ease}.fs-language-close:hover{background:color-mix(in srgb,var(--fs-lang-ink) 8%,transparent);color:var(--fs-lang-ink)}.fs-language-eyebrow{font-size:10px;font-weight:750;letter-spacing:1.7px;color:#BA7517}.fs-language-sheet h2{margin:8px 0 0;font-size:28px;line-height:1.08;letter-spacing:-.75px}.fs-language-initial-choice .fs-language-sheet h2 span{font-size:.64em;font-weight:500;letter-spacing:-.2px;color:var(--fs-lang-muted)}.fs-language-intro{margin:9px 42px 0 0;color:var(--fs-lang-muted);font-size:13px;line-height:1.5}.fs-language-rule{width:100%;height:1px;margin:22px 0 20px;background:color-mix(in srgb,var(--fs-lang-ink) 14%,transparent);transform:rotate(-.15deg)}.fs-language-section-title{font-size:14px;font-weight:700}.fs-language-section-copy{margin:5px 0 0;color:var(--fs-lang-muted);font-size:12px;line-height:1.5}.fs-language-options{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:16px}.fs-language-option{display:flex;align-items:center;justify-content:space-between;gap:12px;min-height:70px;padding:12px 13px;border:1px solid color-mix(in srgb,var(--fs-lang-ink) 20%,transparent);border-radius:13px 11px 14px 10px/11px 14px 10px 13px;background:transparent;color:var(--fs-lang-ink);text-align:left;cursor:pointer;transition:transform .16s cubic-bezier(.2,.8,.2,1),border-color .16s ease,background-color .16s ease}.fs-language-option:hover{transform:translateY(-1px);border-color:color-mix(in srgb,#BA7517 66%,var(--fs-lang-line))}.fs-language-option.is-active{border-color:#BA7517;background:rgba(186,117,23,.09)}.fs-language-option span,.fs-language-option strong,.fs-language-option small{display:block}.fs-language-option strong{font-size:13px}.fs-language-option small{margin-top:4px;color:var(--fs-lang-muted);font-size:10.5px}.fs-language-arrow{font-style:normal;color:#BA7517;font-size:18px;transition:transform .16s ease}.fs-language-option:hover .fs-language-arrow{transform:translateX(3px)}.fs-language-check{display:grid;place-items:center;width:22px;height:22px;flex:0 0 22px;border:1px solid color-mix(in srgb,var(--fs-lang-ink) 24%,transparent);border-radius:50%;color:#BA7517;font:800 12px/1 sans-serif}.fs-language-option.is-active .fs-language-check{border-color:#BA7517}.fs-language-helper{margin:15px 0 0;color:var(--fs-lang-muted);font-size:10.5px;line-height:1.45}.fs-language-open{overflow:hidden}@keyframes fsLanguageFade{from{opacity:0}to{opacity:1}}@keyframes fsLanguageRise{from{opacity:0;transform:translateY(8px) scale(.985)}to{opacity:1;transform:none}}@media(max-width:520px){.fs-language-modal{padding:14px}.fs-language-sheet{padding:25px 20px}.fs-language-options{grid-template-columns:1fr}}@media(prefers-reduced-motion:reduce){.fs-language-backdrop,.fs-language-sheet,.fs-language-quick,.fs-language-option{animation-duration:.01ms!important;transition-duration:.01ms!important}}
+      .fs-language-modal[hidden]{display:none!important}.fs-language-modal{position:fixed;inset:0;z-index:2147483000;display:grid;place-items:center;padding:24px;font-family:"Helvetica Neue",Helvetica,Arial,sans-serif}.fs-language-backdrop{position:absolute;inset:0;background:rgba(20,20,18,.34);backdrop-filter:blur(30px) saturate(1.3);-webkit-backdrop-filter:blur(30px) saturate(1.3);animation:fsLanguageFade .16s ease both}.fs-language-sheet{--fs-lang-bg:#FFFEF9;--fs-lang-ink:#242421;--fs-lang-muted:#6d6b64;--fs-lang-line:rgba(36,36,33,.28);position:relative;width:min(480px,calc(100vw - 32px));max-height:calc(100dvh - 40px);overflow:auto;box-sizing:border-box;padding:30px;background:linear-gradient(145deg,color-mix(in srgb,var(--fs-lang-bg) 82%,transparent),color-mix(in srgb,var(--fs-lang-bg) 68%,transparent));color:var(--fs-lang-ink);border:1px solid color-mix(in srgb,var(--fs-lang-ink) 17%,rgba(255,255,255,.68));border-radius:24px;box-shadow:inset 0 1px 0 rgba(255,255,255,.72),0 26px 90px rgba(0,0,0,.28);backdrop-filter:blur(42px) saturate(1.6);-webkit-backdrop-filter:blur(42px) saturate(1.6);animation:fsLanguageRise .2s cubic-bezier(.2,.8,.2,1) both}.fs-language-sheet:after{content:"";position:absolute;pointer-events:none;inset:4px;border:1px solid color-mix(in srgb,var(--fs-lang-ink) 10%,transparent);border-radius:20px;opacity:.55}
+      :root[data-filmscript-theme="dark"] .fs-language-sheet{--fs-lang-bg:#242422;--fs-lang-ink:#F0EEE7;--fs-lang-muted:#b6b3aa;--fs-lang-line:rgba(240,238,231,.3)}
+      .fs-language-sheet>*{position:relative;z-index:1}.fs-language-close{position:absolute;z-index:3;right:17px;top:15px;width:44px;height:44px;border:0;border-radius:50%;background:color-mix(in srgb,var(--fs-lang-bg) 42%,transparent);color:var(--fs-lang-muted);font:300 24px/1 sans-serif;cursor:pointer;backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);transition:background-color .15s ease,color .15s ease,transform .15s ease}.fs-language-close:hover{background:color-mix(in srgb,var(--fs-lang-ink) 8%,transparent);color:var(--fs-lang-ink);transform:scale(1.03)}.fs-language-eyebrow{font-size:10px;font-weight:750;letter-spacing:1.7px;color:#BA7517}.fs-language-sheet h2{margin:8px 0 0;font-size:28px;line-height:1.08;letter-spacing:-.75px}.fs-language-initial-choice .fs-language-sheet h2 span{font-size:.64em;font-weight:500;letter-spacing:-.2px;color:var(--fs-lang-muted)}.fs-language-intro{margin:9px 48px 0 0;color:var(--fs-lang-muted);font-size:13px;line-height:1.5}.fs-language-rule{width:100%;height:1px;margin:22px 0 20px;background:color-mix(in srgb,var(--fs-lang-ink) 14%,transparent)}.fs-language-section-title{font-size:14px;font-weight:700}.fs-language-section-copy{margin:5px 0 0;color:var(--fs-lang-muted);font-size:12px;line-height:1.5}.fs-language-options{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:16px}.fs-language-option{display:flex;align-items:center;justify-content:space-between;gap:12px;min-height:70px;padding:12px 13px;border:1px solid color-mix(in srgb,var(--fs-lang-ink) 20%,transparent);border-radius:16px;background:color-mix(in srgb,var(--fs-lang-bg) 48%,transparent);color:var(--fs-lang-ink);text-align:left;cursor:pointer;backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px);transition:transform .16s cubic-bezier(.2,.8,.2,1),border-color .16s ease,background-color .16s ease}.fs-language-option:hover{transform:translateY(-1px);border-color:color-mix(in srgb,#BA7517 66%,var(--fs-lang-line))}.fs-language-option.is-active{border-color:#BA7517;background:color-mix(in srgb,#BA7517 12%,var(--fs-lang-bg) 52%)}.fs-language-option:disabled{opacity:.62;cursor:wait;transform:none}.fs-language-option span,.fs-language-option strong,.fs-language-option small{display:block}.fs-language-option strong{font-size:13px}.fs-language-option small{margin-top:4px;color:var(--fs-lang-muted);font-size:10.5px}.fs-language-arrow{font-style:normal;color:#BA7517;font-size:18px;transition:transform .16s ease}.fs-language-option:hover .fs-language-arrow{transform:translateX(3px)}.fs-language-check{display:grid;place-items:center;width:22px;height:22px;flex:0 0 22px;border:1px solid color-mix(in srgb,var(--fs-lang-ink) 24%,transparent);border-radius:50%;color:#BA7517;font:800 12px/1 sans-serif}.fs-language-option.is-active .fs-language-check{border-color:#BA7517}.fs-language-warning{display:grid;grid-template-columns:28px minmax(0,1fr);gap:11px;margin-top:16px;padding:12px 13px;border:1px solid color-mix(in srgb,#c9483d 58%,transparent);border-radius:15px;background:color-mix(in srgb,#c9483d 9%,var(--fs-lang-bg) 42%);color:var(--fs-lang-ink)}.fs-language-warning>span{display:grid;place-items:center;width:25px;height:25px;border-radius:50%;background:#c9483d;color:#fff;font-size:12px;font-weight:800}.fs-language-warning p{margin:0}.fs-language-warning strong,.fs-language-warning small{display:block}.fs-language-warning strong{color:#b63e35;font-size:10px;letter-spacing:.8px;text-transform:uppercase}.fs-language-warning small{margin-top:4px;color:var(--fs-lang-muted);font-size:10.5px;line-height:1.45}.fs-language-helper{margin:14px 0 0;color:var(--fs-lang-muted);font-size:10.5px;line-height:1.45}.fs-language-status{min-height:16px;margin:8px 0 0;color:var(--fs-lang-muted);font-size:10.5px;line-height:1.35}.fs-language-status.is-error{color:#b63e35}.fs-language-open{overflow:hidden}@keyframes fsLanguageFade{from{opacity:0}to{opacity:1}}@keyframes fsLanguageRise{from{opacity:0;transform:translateY(8px) scale(.985)}to{opacity:1;transform:none}}@media(max-width:520px){.fs-language-modal{padding:12px;align-items:end}.fs-language-sheet{max-height:calc(100dvh - 24px);padding:25px 20px calc(22px + env(safe-area-inset-bottom));border-radius:24px}.fs-language-options{grid-template-columns:1fr}}@media(prefers-reduced-transparency:reduce){.fs-language-backdrop{background:rgba(20,20,18,.78);backdrop-filter:none;-webkit-backdrop-filter:none}.fs-language-sheet,.fs-language-option,.fs-language-close{background:var(--fs-lang-bg);backdrop-filter:none;-webkit-backdrop-filter:none}}@supports not ((backdrop-filter:blur(1px)) or (-webkit-backdrop-filter:blur(1px))){.fs-language-sheet,.fs-language-option,.fs-language-close{background:var(--fs-lang-bg)}}@media(prefers-reduced-motion:reduce){.fs-language-backdrop,.fs-language-sheet,.fs-language-quick,.fs-language-option,.fs-language-close{animation-duration:.01ms!important;transition-duration:.01ms!important}}
     `;
     document.head.appendChild(style);
   };
@@ -2429,7 +3075,15 @@
         openSettings();
       }
     });
-    if (shouldOfferInitialChoice()) window.setTimeout(openInitialChoice, 80);
+    const offerAfterProfile = () => {
+      if (!shouldOfferInitialChoice()) return;
+      if (document.querySelector('.fs-profile-onboarding')) return;
+      window.setTimeout(openInitialChoice, 40);
+    };
+    window.addEventListener('filmscript:profile-onboarding-resolved', offerAfterProfile);
+    window.addEventListener('filmscript:language-account-hydrated', () => {
+      if (!window.filmscriptProfileOnboarding?.isPending?.()) offerAfterProfile();
+    });
   };
 
   document.documentElement.lang = get();
@@ -2439,6 +3093,7 @@
     get,
     hasStoredLanguage,
     needsInitialChoice: shouldOfferInitialChoice,
+    isAccountHydrated: () => accountState.hydrated,
     set,
     t,
     apply,
@@ -2446,11 +3101,12 @@
     closeSettings,
     openInitialChoice,
     closeInitialChoice,
+    hydrateAccount,
     languages: Object.freeze(['en', 'es']),
   });
 
   window.addEventListener('storage', (event) => {
-    if (event.key === STORAGE_KEY) apply(get());
+    if (event.key === STORAGE_KEY || (accountState.id && event.key === accountStorageKey(accountState.id))) apply(get());
   });
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', install, { once: true });
   else install();

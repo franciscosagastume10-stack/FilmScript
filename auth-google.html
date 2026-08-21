@@ -1,6 +1,8 @@
-<!doctype html><html><head><meta charset="utf-8"><title>FilmScript · Sign in</title></head><body>
-<p>Connecting to Google…</p>
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>FilmScript · Sign in</title><script src="./language-preference.js?v=20260820-i18n2"></script></head><body>
+<p role="status" aria-live="polite">Connecting to Google…</p>
 <script>
+  document.title = window.filmscriptLanguage?.t?.('FilmScript · Sign in') || 'FilmScript · Sign in';
+  document.querySelector('[role="status"]').textContent = window.filmscriptLanguage?.t?.('Connecting to Google…') || 'Connecting to Google…';
   const returnTo = new URLSearchParams(location.search).get('returnTo') || '/App.dc.html';
   location.replace(`https://api.filmscript.app/auth/google?returnTo=${encodeURIComponent(returnTo)}`);
 </script>

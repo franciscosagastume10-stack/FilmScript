@@ -157,7 +157,7 @@ class FilmScriptBreakdown extends HTMLElement {
         : scene?.status === 'needs_review' ? this.t('Needs review', 'Revisar')
           : this.t('Ready', 'Listo');
     return {
-      id: scene.id, scene, number: index + 1, heading: word(scene.title, `Scene ${index + 1}`), elements,
+      id: scene.id, scene, number: index + 1, heading: word(scene.title, `Scene ${index + 1}`), headingIsProjectContent: !!String(scene?.title || '').trim(), elements,
       pageLength: word(form.pageCount || scene.pageCount || scene.page), intExt: word(form.intExt || parts.intExt),
       dayNight: word(form.dayNight || parts.dayNight), location: word(form.location || locationElement?.name || parts.location),
       castCount: elements.filter((element) => normalCategory(element.category) === 'cast').length,
@@ -202,8 +202,8 @@ class FilmScriptBreakdown extends HTMLElement {
 
   renderMeta(info) {
     return `<div class="scene-meta">
-      <span>${this.t('Pages', 'Páginas')} <b>${escapeHtml(info.pageLength)}</b></span><span>${escapeHtml(info.intExt)}</span>
-      <span>${escapeHtml(info.dayNight)}</span><span>${this.t('Cast', 'Reparto')} <b>${info.castCount}</b></span>
+      <span>${this.t('Pages', 'Páginas')} <b>${escapeHtml(info.pageLength)}</b></span><span data-project-content>${escapeHtml(info.intExt)}</span>
+      <span data-project-content>${escapeHtml(info.dayNight)}</span><span>${this.t('Cast', 'Reparto')} <b>${info.castCount}</b></span>
       <span>${this.t('Elements', 'Elementos')} <b>${info.elementCount}</b></span><span>${this.t('Updated', 'Actualizado')} <b>${escapeHtml(absoluteTime(info.updatedAt))}</b></span>
     </div>`;
   }
@@ -222,9 +222,9 @@ class FilmScriptBreakdown extends HTMLElement {
     const links = [
       ['budget', this.t('Budget', 'Presupuesto')], ['calendar', this.t('Calendar', 'Calendario')], ['canvas', this.t('Canvas', 'Lienzo')],
     ].map(([view, label]) => `<a href="Editor%20v5.dc.html?script=${encodeURIComponent(this.scriptId)}&view=${view}">${label}</a>`).join('');
-    if (element._note) return `<article class="element is-note" style="--tone:${tone}"><div class="element-main"><div class="element-top"><strong>${escapeHtml(element.name)}</strong></div></div></article>`;
+    if (element._note) return `<article class="element is-note" style="--tone:${tone}"><div class="element-main"><div class="element-top"><strong data-project-content>${escapeHtml(element.name)}</strong></div></div></article>`;
     if (isEditing) return `<article class="element is-editing" style="--tone:${tone}" data-element-id="${escapeHtml(element.id)}" data-scene-id="${escapeHtml(info.id)}">
-      <div class="element-edit-head"><strong>${escapeHtml(element.name)}</strong><button type="button" class="quiet" data-action="cancel-element">${this.t('Cancel', 'Cancelar')}</button></div>
+      <div class="element-edit-head"><strong data-project-content>${escapeHtml(element.name)}</strong><button type="button" class="quiet" data-action="cancel-element">${this.t('Cancel', 'Cancelar')}</button></div>
       <div class="element-edit-grid"><label>${this.t('Name', 'Nombre')}<input data-field="name" value="${escapeHtml(element.name)}"></label><label>${this.t('Qty', 'Cant.')}<input data-field="quantity" inputmode="numeric" value="${escapeHtml(element.quantity || 1)}"></label>
       <label>${this.t('Owner', 'Responsable')}<input data-field="assignee" value="${escapeHtml(element.assignee || '')}" placeholder="${this.t('Assign collaborator', 'Asignar colaborador')}"></label><label>${this.t('Status', 'Estado')}<select data-field="status"><option value="open"${status === 'open' ? ' selected' : ''}>${this.t('To do', 'Por hacer')}</option><option value="in_progress"${status === 'in_progress' ? ' selected' : ''}>${this.t('In progress', 'En curso')}</option><option value="ready"${status === 'ready' ? ' selected' : ''}>${this.t('Ready', 'Listo')}</option><option value="blocked"${status === 'blocked' ? ' selected' : ''}>${this.t('Blocked', 'Bloqueado')}</option></select></label></div>
       <label class="wide">${this.t('Notes', 'Notas')}<textarea data-field="notes" placeholder="${this.t('Production note', 'Nota de producción')}">${escapeHtml(element.notes || '')}</textarea></label>
@@ -235,9 +235,9 @@ class FilmScriptBreakdown extends HTMLElement {
     const image = element.imageAsset?.id ? `<img src="${escapeHtml(window.filmscriptPreproduction?.breakdownImageUrl?.(this.scriptId, element.imageAsset.id) || '')}" alt="${escapeHtml(`${this.t('Reference image for', 'Imagen de referencia de')} ${element.name}`)}">` : '';
     const scriptLinkLabel = this.t('Open exact source in screenplay for', 'Abrir fuente exacta en el guion para');
     return `<article class="element is-script-link" style="--tone:${tone}" data-action="open-script-reference" data-category-key="${escapeHtml(card.key)}" data-element-id="${escapeHtml(element.id)}" data-scene-id="${escapeHtml(info.id)}" role="link" tabindex="0" title="${escapeHtml(`${scriptLinkLabel} ${element.name}`)}" aria-label="${escapeHtml(`${scriptLinkLabel} ${element.name}`)}">
-      ${image ? `<div class="element-image">${image}</div>` : ''}<div class="element-main"><div class="element-top"><strong>${escapeHtml(element.name)}</strong><span class="qty">×${Math.max(1, Number(element.quantity) || 1)}</span></div>
-      ${element.description ? `<p>${escapeHtml(element.description)}</p>` : ''}${element.notes ? `<small>${escapeHtml(element.notes)}</small>` : ''}
-      ${element.assignee || status !== 'open' ? `<footer>${element.assignee ? `<span class="owner">${escapeHtml(element.assignee)}</span>` : ''}${status !== 'open' ? `<span class="state ${escapeHtml(status)}">${escapeHtml(statusLabel)}</span>` : ''}</footer>` : ''}</div>
+      ${image ? `<div class="element-image">${image}</div>` : ''}<div class="element-main"><div class="element-top"><strong data-project-content>${escapeHtml(element.name)}</strong><span class="qty">×${Math.max(1, Number(element.quantity) || 1)}</span></div>
+      ${element.description ? `<p data-project-content>${escapeHtml(element.description)}</p>` : ''}${element.notes ? `<small data-project-content>${escapeHtml(element.notes)}</small>` : ''}
+      ${element.assignee || status !== 'open' ? `<footer>${element.assignee ? `<span class="owner" data-project-content>${escapeHtml(element.assignee)}</span>` : ''}${status !== 'open' ? `<span class="state ${escapeHtml(status)}">${escapeHtml(statusLabel)}</span>` : ''}</footer>` : ''}</div>
       <button type="button" class="element-open" data-action="edit-element" aria-label="${escapeHtml(`${this.t('Open details for', 'Abrir detalles de')} ${element.name}`)}">${this.t('Open details', 'Abrir')}</button>
     </article>`;
   }
@@ -261,7 +261,7 @@ class FilmScriptBreakdown extends HTMLElement {
     const statusClass = info.loading ? ' is-generating' : info.stale ? ' is-stale' : '';
     const groups = this.elementGroups(info).filter((card) => card.elements.length);
     return `<article class="scene-container${expanded ? ' is-expanded' : ''}${statusClass}" data-scene-id="${escapeHtml(info.id)}">
-      <header class="scene-head"><button type="button" class="scene-open" data-action="toggle-scene" data-scene-id="${escapeHtml(info.id)}" aria-expanded="${expanded}" aria-label="${this.t(expanded ? 'Collapse' : 'Expand', expanded ? 'Contraer' : 'Expandir')} ${escapeHtml(info.heading)}"><span class="scene-number">${String(info.number).padStart(2, '0')}</span><span class="scene-title"><strong>${escapeHtml(info.heading)}</strong><small>${escapeHtml(info.location)}</small></span><span class="scene-status">${escapeHtml(info.status)}</span><span class="chevron">⌄</span></button>
+      <header class="scene-head"><button type="button" class="scene-open" data-action="toggle-scene" data-scene-id="${escapeHtml(info.id)}" aria-expanded="${expanded}" aria-label="${this.t(expanded ? 'Collapse' : 'Expand', expanded ? 'Contraer' : 'Expandir')} ${escapeHtml(info.heading)}"><span class="scene-number">${String(info.number).padStart(2, '0')}</span><span class="scene-title"><strong${info.headingIsProjectContent ? ' data-project-content' : ''}>${escapeHtml(info.heading)}</strong><small data-project-content>${escapeHtml(info.location)}</small></span><span class="scene-status">${escapeHtml(info.status)}</span><span class="chevron">⌄</span></button>
       <button type="button" class="focus" data-action="focus-scene" data-scene-id="${escapeHtml(info.id)}" aria-label="${this.t('Focus scene', 'Enfocar escena')} ${escapeHtml(info.number)}">${this.t('Focus', 'Enfocar')}</button></header>
       ${this.renderMeta(info)}${this.renderDiff(info.diff)}
       ${expanded ? `<div class="scene-content">${info.loading ? `<div class="scene-loading"><i></i><span>${this.t('Lumiere is finishing this scene', 'Lumiere está terminando esta escena')}</span></div>` : ''}<div class="category-grid">${groups.length ? groups.map((card) => this.renderCategory(card, info)).join('') : `<div class="scene-empty">${this.t('No production elements in this scene yet.', 'Esta escena aún no tiene elementos de producción.')}</div>`}</div>${this.renderAddForm(info)}</div>` : ''}
@@ -275,7 +275,7 @@ class FilmScriptBreakdown extends HTMLElement {
       card.elements.forEach((element) => departments.get(card.key).items.push({ element, info }));
     }));
     const populatedDepartments = [...departments.values()].filter((department) => department.items.length);
-    return `<section class="department-view">${populatedDepartments.length ? populatedDepartments.map((department) => `<article class="department-card" style="--tone:${categoryTone[department.key] || '#b7acdb'}"><header><span></span><h3>${escapeHtml(department.label)}</h3><b>${department.items.length}</b></header><div>${department.items.map(({ element, info }) => `<button type="button" class="department-item" data-action="open-script-reference" data-category-key="${escapeHtml(department.key)}" data-element-id="${escapeHtml(element.id)}" data-scene-id="${escapeHtml(info.id)}" aria-label="${escapeHtml(`${this.t('Open exact source for', 'Abrir fuente exacta de')} ${element.name}, ${this.t('scene', 'escena')} ${info.number}`)}"><span>${escapeHtml(element.name)}</span><small>${this.t('Scene', 'Escena')} ${info.number} · ${escapeHtml(info.heading)}</small></button>`).join('')}</div></article>`).join('') : `<div class="department-empty">${this.t('No production elements have been added yet.', 'Aún no se han añadido elementos de producción.')}</div>`}</section>`;
+    return `<section class="department-view">${populatedDepartments.length ? populatedDepartments.map((department) => `<article class="department-card" style="--tone:${categoryTone[department.key] || '#b7acdb'}"><header><span></span><h3>${escapeHtml(department.label)}</h3><b>${department.items.length}</b></header><div>${department.items.map(({ element, info }) => `<button type="button" class="department-item" data-action="open-script-reference" data-category-key="${escapeHtml(department.key)}" data-element-id="${escapeHtml(element.id)}" data-scene-id="${escapeHtml(info.id)}" aria-label="${escapeHtml(`${this.t('Open exact source for', 'Abrir fuente exacta de')} ${element.name}, ${this.t('scene', 'escena')} ${info.number}`)}"><span data-project-content>${escapeHtml(element.name)}</span><small>${this.t('Scene', 'Escena')} ${info.number} · <span${info.headingIsProjectContent ? ' data-project-content' : ''}>${escapeHtml(info.heading)}</span></small></button>`).join('')}</div></article>`).join('') : `<div class="department-empty">${this.t('No production elements have been added yet.', 'Aún no se han añadido elementos de producción.')}</div>`}</section>`;
   }
 
   renderProgress() {

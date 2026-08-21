@@ -60,6 +60,7 @@ sqlite.exec(`
     gender TEXT,
     birth_date TEXT,
     profile_completed_at TEXT,
+    interface_language TEXT,
     email_verified INTEGER NOT NULL DEFAULT 0,
     created_at TEXT NOT NULL,
     updated_at TEXT NOT NULL
@@ -447,6 +448,9 @@ function rowToUser(row) {
   const birthDate = typeof row.birth_date === "string" && /^\d{4}-\d{2}-\d{2}$/.test(row.birth_date)
     ? row.birth_date
     : null;
+  const interfaceLanguage = row.interface_language === "en" || row.interface_language === "es"
+    ? row.interface_language
+    : null;
   return {
     id: row.id,
     googleSub: row.google_sub || null,
@@ -458,6 +462,7 @@ function rowToUser(row) {
     birthDate,
     profileCompletedAt: row.profile_completed_at || null,
     profileComplete: Boolean(row.profile_completed_at || (gender && birthDate)),
+    interfaceLanguage,
     emailVerified: !!row.email_verified,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
@@ -1100,6 +1105,15 @@ function normalizeBirthDate(value) {
   return normalized;
 }
 
+function normalizeInterfaceLanguage(value) {
+  if (value === undefined) return undefined;
+  if (value === null) return null;
+  if (value !== "en" && value !== "es") {
+    throw profileError("Interface language must be English or Spanish.");
+  }
+  return value;
+}
+
 function updateUserProfile(userId, profile = {}) {
   const current = getUser(userId);
   if (!current) return null;
@@ -1109,13 +1123,16 @@ function updateUserProfile(userId, profile = {}) {
   const nextBirthDate = Object.prototype.hasOwnProperty.call(profile, "birthDate")
     ? normalizeBirthDate(profile.birthDate)
     : current.birthDate;
+  const nextInterfaceLanguage = Object.prototype.hasOwnProperty.call(profile, "interfaceLanguage")
+    ? normalizeInterfaceLanguage(profile.interfaceLanguage)
+    : current.interfaceLanguage;
   const complete = Boolean(nextGender && nextBirthDate);
   const completedAt = complete ? (current.profileCompletedAt || nowIso()) : null;
   sqlite.prepare(`
     UPDATE users
-    SET gender = ?, birth_date = ?, profile_completed_at = ?, updated_at = ?
+    SET gender = ?, birth_date = ?, profile_completed_at = ?, interface_language = ?, updated_at = ?
     WHERE id = ?
-  `).run(nextGender, nextBirthDate, completedAt, nowIso(), userId);
+  `).run(nextGender, nextBirthDate, completedAt, nextInterfaceLanguage, nowIso(), userId);
   return getUser(userId);
 }
 

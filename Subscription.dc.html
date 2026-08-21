@@ -14,12 +14,12 @@
   <link href="https://fonts.googleapis.com/css2?family=Courier+Prime:wght@400;700&amp;display=swap" rel="stylesheet">
   <script src="./runtime-config.js?v=20260820-module-routes2"></script>
   <script src="./theme-preference.js?v=20260712-theme1"></script>
-  <script defer src="./language-preference.js?v=20260820-people-access1"></script>
+  <script defer src="./language-preference.js?v=20260820-i18n2"></script>
   <script defer src="./ui-sounds.js?v=20260728-calendar-complete1"></script>
 <!-- Billing must exist before the inline subscription controller starts. -->
 <script src="./billing-client.js?v=20260820-proration1"></script>
 <script defer src="./credit-indicator.js?v=20260819-account-menu2"></script>
-  <script defer src="./profile-onboarding.js?v=20260716-profile1"></script>
+  <script defer src="./profile-onboarding.js?v=20260820-i18n2"></script>
   <style>
     :root {
       --bg: #faf7f2;
@@ -697,6 +697,19 @@
       const byId = (id) => document.getElementById(id);
       const playSound = (name) => window.filmscriptSounds?.play(name);
       const show = (name) => views.forEach((view) => { byId(view + '-view').hidden = view !== name; });
+      const interfaceSpanish = () => String(window.filmscriptLanguage?.get?.() || document.documentElement.lang || 'en').toLowerCase().startsWith('es');
+      const uiText = (english, spanish) => interfaceSpanish() ? spanish : english;
+      const localizedBillingError = (error, englishFallback, spanishFallback) => (
+        interfaceSpanish() ? spanishFallback : (error?.message || englishFallback)
+      );
+      const localizedProviderMessage = (message) => {
+        if (!message) return '';
+        if (!interfaceSpanish()) return message;
+        const translated = window.filmscriptLanguage?.t?.(message, 'es');
+        return translated && translated !== message
+          ? translated
+          : 'Los detalles de facturación se están actualizando. No se realizó ningún cambio.';
+      };
       const syncDocumentTitle = () => {
         document.title = document.documentElement.lang === 'es'
           ? 'Plan y facturación · FilmScript'
@@ -759,7 +772,7 @@
         byId('overview-environment').hidden = true;
         byId('overview-provider').textContent = recurringSubscription ? 'Managed securely with Recurrente' : 'Payment verified securely';
         byId('overview-notice').hidden = !management.message;
-        byId('overview-notice').textContent = management.message || '';
+        byId('overview-notice').textContent = localizedProviderMessage(management.message);
         byId('overview-developer-link').hidden = true;
         byId('start-cancel-button').textContent = `Cancel ${planName}`;
         byId('danger-zone').hidden = !cancelableSubscription;
@@ -774,7 +787,7 @@
         byId('environment-badge').textContent = 'Secure billing';
         byId('developer-link').hidden = true;
         byId('provider-notice').hidden = !management.message;
-        byId('provider-notice').textContent = management.message || '';
+        byId('provider-notice').textContent = localizedProviderMessage(management.message);
         byId('confirm-checkbox').checked = false;
         byId('cancel-button').disabled = true;
         byId('manage-plan-name').textContent = planName;
@@ -837,7 +850,11 @@
           configureOverview();
         } catch (error) {
           if (error.status === 401) return show('signin');
-          byId('error-message').textContent = error.message || 'Recurrente could not be reached. Your plan has not been changed.';
+          byId('error-message').textContent = localizedBillingError(
+            error,
+            'Recurrente could not be reached. Your plan has not been changed.',
+            'No fue posible comunicarse con Recurrente. Tu plan no se modificó.',
+          );
           show('error');
         }
       }
@@ -848,16 +865,23 @@
         const button = byId('cancel-button');
         button.disabled = true;
         const { name: planName } = planDetails(management.plan);
-        button.textContent = `Canceling ${planName}…`;
+        button.textContent = uiText(`Canceling ${planName}…`, `Cancelando ${planName}…`);
         try {
           const result = await window.filmscriptBilling.cancel(management.cancelMode);
           const refreshed = await window.filmscriptBilling.me();
           if (refreshed.plan) throw new Error('Cancellation was not confirmed. Your plan remains active.');
-          byId('success-title').textContent = `${planName} canceled`;
-          byId('success-message').textContent = `${planName} is canceled. Your existing work remains available to edit and export.`;
+          byId('success-title').textContent = uiText(`${planName} canceled`, `${planName} cancelado`);
+          byId('success-message').textContent = uiText(
+            `${planName} is canceled. Your existing work remains available to edit and export.`,
+            `${planName} está cancelado. Tu trabajo existente sigue disponible para editar y exportar.`,
+          );
           show('success');
         } catch (error) {
-          byId('error-message').textContent = error.message || 'The cancellation could not be verified. Your plan has not been changed.';
+          byId('error-message').textContent = localizedBillingError(
+            error,
+            'The cancellation could not be verified. Your plan has not been changed.',
+            'No se pudo verificar la cancelación. Tu plan no se modificó.',
+          );
           show('error');
         }
       });

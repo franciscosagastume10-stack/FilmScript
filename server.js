@@ -6707,6 +6707,7 @@ function accountPayload(userId, verification = null) {
     name: user?.name || null,
     email: user?.email || null,
     picture: user?.picture || null,
+    interfaceLanguage: user?.interfaceLanguage || null,
     username: platformProfile?.username || null,
     theme: platformProfile?.theme || "filmscript",
     avatar: ownAvatarUrl(platformProfile) || user?.picture || null,
@@ -6783,7 +6784,9 @@ async function handleProfileUpdate(req, res) {
   try {
     if (Object.prototype.hasOwnProperty.call(body, "name")) {
       const name = String(body.name || "").replace(/\s+/g, " ").trim();
-      const hasProfileFields = Object.prototype.hasOwnProperty.call(body, "gender") || Object.prototype.hasOwnProperty.call(body, "birthDate");
+      const hasProfileFields = Object.prototype.hasOwnProperty.call(body, "gender")
+        || Object.prototype.hasOwnProperty.call(body, "birthDate")
+        || Object.prototype.hasOwnProperty.call(body, "interfaceLanguage");
       // Older onboarding builds submitted an empty name alongside the profile
       // fields even though the onboarding sheet does not edit a name. Treat it
       // as unchanged; explicit name edits still use the normal validation.
@@ -6792,7 +6795,9 @@ async function handleProfileUpdate(req, res) {
         updateUserName(sid, name);
       }
     }
-    if (Object.prototype.hasOwnProperty.call(body, "gender") || Object.prototype.hasOwnProperty.call(body, "birthDate")) {
+    if (Object.prototype.hasOwnProperty.call(body, "gender")
+      || Object.prototype.hasOwnProperty.call(body, "birthDate")
+      || Object.prototype.hasOwnProperty.call(body, "interfaceLanguage")) {
       updateUserProfile(sid, body);
     }
     return json(res, 200, accountPayload(sid));

@@ -3,6 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Pricing · FilmScript</title>
 <link rel="icon" href="./assets/filmscript-favicon.svg?v=20260813" type="image/svg+xml">
 <link rel="shortcut icon" href="./assets/filmscript-favicon.svg?v=20260813" type="image/svg+xml">
 <!-- Vercel Web Analytics: production page views and navigation. -->
@@ -11,7 +12,7 @@
 <script src="./runtime-config.js?v=20260820-module-routes2"></script>
 <script defer src="./funnel-tracking.js?v=20260716-erp1"></script>
 <script src="./theme-preference.js?v=20260712-theme1"></script>
-<script defer src="./language-preference.js?v=20260820-people-access1"></script>
+<script defer src="./language-preference.js?v=20260820-i18n2"></script>
 <script defer src="./ui-sounds.js?v=20260728-calendar-complete1"></script>
 <script defer src="./billing-client.js?v=20260820-proration1"></script>
 <script defer src="./credit-indicator.js?v=20260819-account-menu1"></script>
@@ -1155,7 +1156,11 @@ Write Lumiere's next reply only:`;
           window.location.href = result.checkoutUrl;
         } catch (e) {
           const stalePreview = /subscription_switch_preview_(?:expired|missing|superseded|failed)|subscription_changed_since_preview|subscription_switch_preview_mismatch/.test(String(e?.code || ''));
-          this.setState({ toast: e.message || 'FilmScript could not complete this action.', checkoutSubmitting: false, ...(stalePreview ? { checkoutSwitchPreview: null } : {}) });
+          const interfaceSpanish = String(window.filmscriptLanguage?.get?.() || document.documentElement.lang || 'en').toLowerCase().startsWith('es');
+          const message = interfaceSpanish
+            ? 'FilmScript no pudo completar esta acción. No se realizó ningún cobro.'
+            : (e?.message || 'FilmScript could not complete this action. Nothing was charged.');
+          this.setState({ toast: message, checkoutSubmitting: false, ...(stalePreview ? { checkoutSwitchPreview: null } : {}) });
         }
       },
       closeCheckout: () => this.setState({ checkoutOpen: false, checkoutStep: 'confirm', checkoutPlan: null, checkoutSwitchPreview: null, checkoutSubmitting: false, checkoutChangeApplied: false }),
