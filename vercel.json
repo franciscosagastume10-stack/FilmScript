@@ -6,11 +6,11 @@
   "rewrites": [
     {
       "source": "/access-data/requests",
-      "destination": "https://api.filmscript.app/api/invitations"
+      "destination": "/api/access-proxy"
     },
     {
       "source": "/access-data/requests/:path*",
-      "destination": "https://api.filmscript.app/api/invitations/:path*"
+      "destination": "/api/access-proxy?path=:path*"
     },
     {
       "source": "/film-data/document",

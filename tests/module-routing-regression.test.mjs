@@ -33,12 +33,17 @@ test('project invitations use a neutral first-party route', async () => {
   const nested = vercel.rewrites.find((entry) => entry.source === '/access-data/requests/:path*');
   assert.deepEqual(exact, {
     source: '/access-data/requests',
-    destination: 'https://api.filmscript.app/api/invitations',
+    destination: '/api/access-proxy',
   });
   assert.deepEqual(nested, {
     source: '/access-data/requests/:path*',
-    destination: 'https://api.filmscript.app/api/invitations/:path*',
+    destination: '/api/access-proxy?path=:path*',
   });
+  const proxy = await fs.readFile(path.join(ROOT, 'api', 'access-proxy.js'), 'utf8');
+  assert.match(proxy, /https:\/\/api\.filmscript\.app\/api\/invitations/);
+  assert.match(proxy, /Cookie: String\(req\.headers\?\.cookie/);
+  assert.match(proxy, /headers\.Origin = String\(req\.headers\.origin\)/);
+  assert.match(proxy, /ALLOWED_METHODS = new Set\(\["GET", "HEAD", "POST"\]\)/);
 });
 
 test('project collaboration APIs retain their project namespace at the Vercel edge', async () => {

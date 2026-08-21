@@ -117,11 +117,11 @@ test('Vercel completes the Google handoff through a same-origin cookie proxy', a
   });
   assert.deepEqual(vercelConfig.rewrites.find((entry) => entry.source === '/access-data/requests'), {
     source: '/access-data/requests',
-    destination: 'https://api.filmscript.app/api/invitations',
+    destination: '/api/access-proxy',
   });
   assert.deepEqual(vercelConfig.rewrites.find((entry) => entry.source === '/access-data/requests/:path*'), {
     source: '/access-data/requests/:path*',
-    destination: 'https://api.filmscript.app/api/invitations/:path*',
+    destination: '/api/access-proxy?path=:path*',
   });
   assert.deepEqual(vercelConfig.rewrites.find((entry) => entry.source === '/workspace/scripts'), {
     source: '/workspace/scripts',
