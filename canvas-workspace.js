@@ -158,6 +158,7 @@
         storyboardImageModal: false, storyboardImageGenerating: false, storyboardReferenceIds: [],
         visualReferencePicker: null, visualReferencePickerSource: 'imagine', visualReferencePickerDragging: false,
         imaginePendingJobs: [], imagineReferenceIds: [], imagineDragging: false, imagineStyle: 'cinematic', imagineStyleMenu: false,
+        imagineMediaMode: '', imagineModelId: '', imagineMediaModeExplicit: false, imagineModelIdExplicit: false,
         imagineOrientation: 'horizontal', imagineAspectMenu: false, imagineSize: '1536x1024', imagineSizeMenu: false, imagineQuality: 'low', imagineQualityMenu: false, imaginePrompt: '', imaginePreviewId: '',
         entitlements: null, accountTier: 'free', accountAuthenticated: null,
       };
@@ -301,7 +302,7 @@
       if (this._loadRetryCount >= 20) {
         this._loadRetryTimer = 0;
         this.state.loading = false;
-        if (this.accountScoped) this.state.error = localize('Imaging is not available right now.', 'Imaging no está disponible en este momento.');
+        if (this.accountScoped) this.state.error = localize('Imagine is not available right now.', 'Imagine no está disponible en este momento.');
         else this.state.error = 'Canvas is not available right now.';
         this.render();
         return;
@@ -350,6 +351,7 @@
           this.getAccountEntitlements(),
         ]);
         this.state.workspace = result.workspace;
+        this._syncImagineCapabilities(result.workspace);
         this._restoreImagineJobs(result.workspace);
         if (account) {
           this.state.entitlements = account.entitlements || {};
@@ -366,7 +368,7 @@
       } catch (error) {
         this.state.loading = false;
         this.state.error = error.message || (this.accountScoped
-          ? localize('Imaging could not be loaded.', 'No se pudo cargar Imaging.')
+          ? localize('Imagine could not be loaded.', 'No se pudo cargar Imagine.')
           : 'Canvas could not be loaded.');
       }
       this.render();
@@ -380,6 +382,92 @@
     }
     asset(assetId) { return this.state.workspace?.assets?.find((entry) => entry.id === assetId) || null; }
     activeBoard() { return this.state.workspace?.boards?.find((board) => board.id === this.state.activeBoardId) || null; }
+
+    _normalizeImagineCapabilityOptions(value, fallback = []) {
+      const supplied = Array.isArray(value) || Boolean(value && typeof value === 'object');
+      const entries = Array.isArray(value)
+        ? value
+        : (value && typeof value === 'object'
+          ? Object.entries(value).map(([id, option]) => (
+            option && typeof option === 'object' && !Array.isArray(option)
+              ? { id, ...option }
+              : { id, enabled: Boolean(option) }
+          ))
+          : []);
+      const normalized = entries.map((option) => {
+        const source = typeof option === 'string' ? { id: option, label: option } : (option || {});
+        const id = String(source.id || source.value || '').trim().toLowerCase();
+        const status = String(source.status || '').trim().toLowerCase();
+        const enabled = source.enabled !== false
+          && source.available !== false
+          && !['disabled', 'unavailable', 'hidden'].includes(status);
+        return {
+          id,
+          label: String(source.labels?.en || source.label || source.name || id).trim(),
+          labelEs: String(source.labels?.es || source.labelEs || source.spanishLabel || '').trim(),
+          mediaMode: String(source.mediaMode || '').trim().toLowerCase(),
+          enabled,
+        };
+      }).filter((option) => option.id && option.enabled);
+      return normalized.length || supplied ? normalized : fallback.map((option) => ({ ...option, enabled: true }));
+    }
+
+    _imagineCapabilities(workspace = this.state.workspace) {
+      const capabilities = workspace?.capabilities && typeof workspace.capabilities === 'object'
+        ? workspace.capabilities
+        : {};
+      const mediaModes = this._normalizeImagineCapabilityOptions(capabilities.mediaModes, [
+        { id: 'image', label: 'Image', mediaMode: '' },
+      ]);
+      const models = this._normalizeImagineCapabilityOptions(capabilities.models ?? capabilities.imageModels, [
+        { id: 'imagine-image-v1', label: 'Imagine Image', mediaMode: 'image' },
+      ]);
+      const suppliedDefaults = capabilities.defaults && typeof capabilities.defaults === 'object'
+        ? capabilities.defaults
+        : {};
+      const defaultMediaMode = String(suppliedDefaults.mediaMode || '').trim().toLowerCase();
+      const mediaMode = mediaModes.some((option) => option.id === defaultMediaMode)
+        ? defaultMediaMode
+        : (mediaModes[0]?.id || '');
+      const modelsForDefaultMode = models.filter((option) => !option.mediaMode || option.mediaMode === mediaMode);
+      const defaultModelId = String(suppliedDefaults.modelId || suppliedDefaults.imageModelId || '').trim().toLowerCase();
+      const modelId = modelsForDefaultMode.some((option) => option.id === defaultModelId)
+        ? defaultModelId
+        : (modelsForDefaultMode[0]?.id || models[0]?.id || '');
+      return { mediaModes, models, imageModels: models, defaults: { mediaMode, modelId } };
+    }
+
+    _imagineModelsForMode(capabilities, mediaMode) {
+      return capabilities.models.filter((option) => !option.mediaMode || option.mediaMode === mediaMode);
+    }
+
+    _syncImagineCapabilities(workspace = this.state.workspace) {
+      const capabilities = this._imagineCapabilities(workspace);
+      const requestedMediaMode = String(this.state.imagineMediaMode || '').trim().toLowerCase();
+      const mediaMode = this.state.imagineMediaModeExplicit && capabilities.mediaModes.some((option) => option.id === requestedMediaMode)
+        ? requestedMediaMode
+        : capabilities.defaults.mediaMode;
+      const models = this._imagineModelsForMode(capabilities, mediaMode);
+      const requestedModelId = String(this.state.imagineModelId || '').trim().toLowerCase();
+      const modelId = this.state.imagineModelIdExplicit && models.some((option) => option.id === requestedModelId)
+        ? requestedModelId
+        : (models.some((option) => option.id === capabilities.defaults.modelId)
+          ? capabilities.defaults.modelId
+          : (models[0]?.id || ''));
+      this.state.imagineMediaMode = mediaMode;
+      this.state.imagineModelId = modelId;
+      return capabilities;
+    }
+
+    _imagineCapabilityLabel(option) {
+      if (option.id === 'image') return localize('Image', 'Imagen');
+      if (option.id === 'video') return 'Video';
+      if (window.filmscriptLanguage?.get?.() === 'es') {
+        if (option.labelEs) return option.labelEs;
+        if (/^Imagine Image\b/i.test(option.label || '')) return String(option.label).replace(/^Imagine Image\b/i, 'Imagen Imagine');
+      }
+      return option.label || option.id;
+    }
 
     _imagineJobsOwnerId() {
       return this.accountScoped ? String(this.state.workspace?.ownerUserId || '') : '';
@@ -401,7 +489,13 @@
         const saved = JSON.parse(this._imagineJobsStorage().getItem(storageKey) || '[]');
         const oldestAllowed = Date.now() - (30 * 60 * 1000);
         const ownerUserId = this._imagineJobsOwnerId();
-        return (Array.isArray(saved) ? saved : []).filter((job) => (
+        return (Array.isArray(saved) ? saved : []).map((job) => ({
+          ...job,
+          // Jobs saved before account capabilities were introduced must keep
+          // their original request fingerprint during refresh recovery.
+          mediaMode: String(job?.mediaMode || 'image').trim().toLowerCase(),
+          modelId: String(job?.modelId || 'imagine-image-v1').trim().toLowerCase(),
+        })).filter((job) => (
           /^imagine-job_[a-f0-9]+$/.test(String(job?.id || ''))
           && Number(job?.createdAtMs || 0) >= oldestAllowed
           && String(job?.prompt || '').trim().length >= 8
@@ -477,9 +571,41 @@
     async _submitImagineJob(job, isRecovery = false) {
       if (!job?.id || !this.state.imaginePendingJobs.some((entry) => entry.id === job.id)) return;
       this._clearImagineRecoveryTimers(job.id);
+      const capabilities = this._imagineCapabilities();
+      const mediaMode = String(job.mediaMode || '').trim().toLowerCase();
+      const modelId = String(job.modelId || '').trim().toLowerCase();
+      const mediaModeSupported = capabilities.mediaModes.some((option) => option.id === mediaMode);
+      const modelSupported = this._imagineModelsForMode(capabilities, mediaMode).some((option) => option.id === modelId);
+      if (!mediaModeSupported || !modelSupported) {
+        if (isRecovery) {
+          // A saved request is immutable. Check once more for the original
+          // result, then retire its placeholder rather than replaying it with
+          // a newer default model and risking a duplicate charge/output.
+          try {
+            const result = await this._getWorkspace();
+            if (result?.workspace) this.state.workspace = result.workspace;
+            const completed = this._assetForImagineJob(job.id, result?.workspace);
+            if (completed) {
+              this._finishImagineJob(job, completed);
+              this._imagineAnimateNextRender = true;
+              this.render();
+              return;
+            }
+          } catch { /* The immutable request still must not be replayed. */ }
+        }
+        this._finishImagineJob(job);
+        this.toast(localize(
+          'This saved Imagine request can no longer be retried with its original model.',
+          'Esta solicitud guardada de Imagine ya no puede reintentarse con su modelo original.',
+        ));
+        this.render();
+        return;
+      }
       try {
         const result = await this._generateImage({
           prompt: job.prompt,
+          mediaMode,
+          modelId,
           orientation: job.orientation,
           size: job.size,
           style: job.style,
@@ -498,7 +624,7 @@
         this.toast(isRecovery
           ? localize('Your image finished after reload.', 'Tu imagen terminó después de recargar.')
           : this.accountScoped
-            ? localize('Image ready in your Imaging gallery.', 'Imagen lista en tu galería de Imaging.')
+            ? localize('Image ready in your Imagine gallery.', 'Imagen lista en tu galería de Imagine.')
             : 'Image ready to reuse across FilmScript.');
       } catch (error) {
         if (isRecovery && (!error?.status || error.status >= 500)) {
@@ -637,8 +763,8 @@
       const vertical = entry.ratio < 1;
       const style = `--cv-imagine-ratio:${entry.ratio.toFixed(4)};--cv-imagine-stagger:${Math.min(index, 15)}`;
       if (entry.type === 'pending') {
-        const product = this.accountScoped ? 'Imaging' : 'Imagine';
-        const productMarkup = this.accountScoped ? '<strong>Imaging</strong>' : '<strong>Imagine</strong>';
+        const product = 'Imagine';
+        const productMarkup = '<strong>Imagine</strong>';
         const direction = vertical ? localize('vertical', 'vertical') : localize('horizontal', 'horizontal');
         return `<div class="cv-imagine-tile cv-imagine-pending ${vertical ? 'vertical' : 'horizontal'}" style="${style}" data-imagine-entry="pending:${esc(entry.id)}" aria-busy="true" aria-label="${product} ${esc(localize(`is creating a ${direction} frame`, `está creando una imagen ${direction}`))}"><span class="cv-imagine-pending-content"><i aria-hidden="true"></i>${productMarkup}<span>${esc(localize('Creating your frame', 'Creando tu imagen'))}</span></span></div>`;
       }
@@ -815,7 +941,7 @@
 
     _renderImagineLoading() {
       const label = esc(this.accountScoped
-        ? localize('Loading your Imaging gallery', 'Cargando tu galería de Imaging')
+        ? localize('Loading your Imagine gallery', 'Cargando tu galería de Imagine')
         : tr('Loading your Imagine gallery'));
       const tiles = [
         'wide', 'square', 'portrait', 'wide', 'portrait', 'square',
@@ -835,7 +961,7 @@
       const content = this.state.loading
         ? (this._isImagineLoadingTarget() ? this._renderImagineLoading() : this._renderCanvasLoading())
         : this.state.error
-          ? `<div class="cv-empty"><div><h3>${esc(this.accountScoped ? localize('Imaging could not open', 'No se pudo abrir Imaging') : 'Canvas could not open')}</h3><p>${esc(this.state.error)}</p><button class="cv-btn" data-action="retry">${esc(localize('Try again', 'Intentar de nuevo'))}</button></div></div>`
+          ? `<div class="cv-empty"><div><h3>${esc(this.accountScoped ? localize('Imagine could not open', 'No se pudo abrir Imagine') : 'Canvas could not open')}</h3><p>${esc(this.state.error)}</p><button class="cv-btn" data-action="retry">${esc(localize('Try again', 'Intentar de nuevo'))}</button></div></div>`
           : this._renderView();
       const overlays = this.state.loading ? '' : this._renderOverlays();
       this.shadowRoot.innerHTML = `<style>${STYLE}</style><div class="cv-root">${content}</div>${overlays}${this.state.toast ? `<div class="cv-toast" role="status">${esc(this.state.toast)}</div>` : ''}`;
@@ -992,8 +1118,19 @@
       // newer one simply to fill a gap.
       const galleryEntries = this.imagineGalleryEntries();
       const references = (this.state.workspace?.assets || []).filter((asset) => this.state.imagineReferenceIds.includes(asset.id));
+      const capabilities = this._imagineCapabilities();
+      const mediaMode = capabilities.mediaModes.some((option) => option.id === this.state.imagineMediaMode)
+        ? this.state.imagineMediaMode
+        : capabilities.defaults.mediaMode;
+      const modelOptionsForMode = this._imagineModelsForMode(capabilities, mediaMode);
+      const modelId = modelOptionsForMode.some((option) => option.id === this.state.imagineModelId)
+        ? this.state.imagineModelId
+        : (modelOptionsForMode.some((option) => option.id === capabilities.defaults.modelId)
+          ? capabilities.defaults.modelId
+          : (modelOptionsForMode[0]?.id || ''));
       const imageLocked = this.state.accountAuthenticated === true && !this.hasImageGenerationAccess();
-      const disabled = imageLocked ? 'disabled' : '';
+      const capabilityUnavailable = !mediaMode || !modelId;
+      const disabled = imageLocked || capabilityUnavailable ? 'disabled' : '';
       const imageActionTitle = imageLocked ? this.imageGenerationMessage({ exhausted: this.state.accountTier === 'full' }) : localize('Generate image', 'Generar imagen');
       const style = ['cinematic', 'animated', 'sketch', 'anime'].includes(this.state.imagineStyle) ? this.state.imagineStyle : 'cinematic';
       const styleLabel = this.imagineStyleLabel(style);
@@ -1033,7 +1170,13 @@
       const aspectLabel = esc(localize('Aspect ratio', 'Relación de aspecto'));
       const styleControlLabel = esc(localize('Style', 'Estilo'));
       const qualityControlLabel = esc(localize('Quality', 'Calidad'));
-      return `<section class="cv-imagine-stage"><div class="cv-imagine-gallery${animateEntrance ? ' is-entering' : ''}">${tiles}</div><form class="cv-imagine-console ${this.state.imagineDragging ? 'is-dragging' : ''}" data-form="imagine-image"><span class="cv-imagine-drop-hint">${dropHint}</span><div class="cv-imagine-console-top">${referenceControl}<textarea data-imagine-prompt name="prompt" required minlength="8" maxlength="3000" placeholder="${promptPlaceholder}" ${disabled}>${esc(this.state.imaginePrompt)}</textarea></div><div class="cv-imagine-controls"><div class="cv-imagine-aspect-picker cv-imagine-size-picker"><input type="hidden" name="size" value="${sizeOption.value}"><input type="hidden" name="orientation" value="${orientation}"><button class="cv-imagine-aspect-trigger" type="button" data-action="imagine-size-menu" aria-label="${aspectLabel}: ${sizeOption.compact}" aria-haspopup="menu" aria-expanded="${this.state.imagineSizeMenu}" ${disabled}><i class="cv-aspect-preview ${orientation}" aria-hidden="true"></i><strong>${sizeOption.compact}</strong></button>${this.state.imagineSizeMenu ? `<div class="cv-imagine-aspect-menu cv-imagine-size-menu" role="menu">${sizeOptions}</div>` : ''}</div><div class="cv-imagine-style-picker"><input type="hidden" name="style" value="${style}"><button class="cv-imagine-style-trigger" type="button" data-action="imagine-style-menu" aria-label="${styleControlLabel}: ${esc(styleLabel)}" aria-haspopup="menu" aria-expanded="${this.state.imagineStyleMenu}" ${disabled}><span>${styleControlLabel}</span><strong>${styleLabel}</strong></button>${this.state.imagineStyleMenu ? `<div class="cv-imagine-style-menu" role="menu">${styleOptions}</div>` : ''}</div><div class="cv-imagine-style-picker cv-imagine-quality-picker"><input type="hidden" name="quality" value="${quality}"><button class="cv-imagine-style-trigger" type="button" data-action="imagine-quality-menu" aria-label="${qualityControlLabel}: ${esc(qualityLabel)}, ${esc(this.imagineCreditLabel(qualityCredits[quality]))}" aria-haspopup="menu" aria-expanded="${this.state.imagineQualityMenu}" ${disabled}><span>${qualityControlLabel}</span><strong>${esc(qualityLabel)}</strong></button>${this.state.imagineQualityMenu ? `<div class="cv-imagine-style-menu cv-imagine-quality-menu" role="menu">${qualityOptions}</div>` : ''}</div>${imageAction}</div></form></section>`;
+      const mediaModeControl = capabilities.mediaModes.length > 1
+        ? `<label class="cv-imagine-style cv-imagine-capability"><span>${esc(localize('Media', 'Tipo'))}</span><select name="mediaMode" data-field="imagine-media-mode" aria-label="${esc(localize('Media type', 'Tipo de contenido'))}" ${disabled}>${capabilities.mediaModes.map((option) => `<option value="${esc(option.id)}" ${option.id === mediaMode ? 'selected' : ''}>${esc(this._imagineCapabilityLabel(option))}</option>`).join('')}</select></label>`
+        : `<input type="hidden" name="mediaMode" value="${esc(mediaMode)}">`;
+      const modelControl = modelOptionsForMode.length > 1
+        ? `<label class="cv-imagine-style cv-imagine-capability"><span>${esc(localize('Model', 'Modelo'))}</span><select name="modelId" data-field="imagine-model-id" aria-label="${esc(localize('Image model', 'Modelo de imagen'))}" ${disabled}>${modelOptionsForMode.map((option) => `<option value="${esc(option.id)}" ${option.id === modelId ? 'selected' : ''}>${esc(this._imagineCapabilityLabel(option))}</option>`).join('')}</select></label>`
+        : `<input type="hidden" name="modelId" value="${esc(modelId)}">`;
+      return `<section class="cv-imagine-stage"><div class="cv-imagine-gallery${animateEntrance ? ' is-entering' : ''}">${tiles}</div><form class="cv-imagine-console ${this.state.imagineDragging ? 'is-dragging' : ''}" data-form="imagine-image"><span class="cv-imagine-drop-hint">${dropHint}</span><div class="cv-imagine-console-top">${referenceControl}<textarea data-imagine-prompt name="prompt" required minlength="8" maxlength="3000" placeholder="${promptPlaceholder}" ${disabled}>${esc(this.state.imaginePrompt)}</textarea></div><div class="cv-imagine-controls">${mediaModeControl}${modelControl}<div class="cv-imagine-aspect-picker cv-imagine-size-picker"><input type="hidden" name="size" value="${sizeOption.value}"><input type="hidden" name="orientation" value="${orientation}"><button class="cv-imagine-aspect-trigger" type="button" data-action="imagine-size-menu" aria-label="${aspectLabel}: ${sizeOption.compact}" aria-haspopup="menu" aria-expanded="${this.state.imagineSizeMenu}" ${disabled}><i class="cv-aspect-preview ${orientation}" aria-hidden="true"></i><strong>${sizeOption.compact}</strong></button>${this.state.imagineSizeMenu ? `<div class="cv-imagine-aspect-menu cv-imagine-size-menu" role="menu">${sizeOptions}</div>` : ''}</div><div class="cv-imagine-style-picker"><input type="hidden" name="style" value="${style}"><button class="cv-imagine-style-trigger" type="button" data-action="imagine-style-menu" aria-label="${styleControlLabel}: ${esc(styleLabel)}" aria-haspopup="menu" aria-expanded="${this.state.imagineStyleMenu}" ${disabled}><span>${styleControlLabel}</span><strong>${styleLabel}</strong></button>${this.state.imagineStyleMenu ? `<div class="cv-imagine-style-menu" role="menu">${styleOptions}</div>` : ''}</div><div class="cv-imagine-style-picker cv-imagine-quality-picker"><input type="hidden" name="quality" value="${quality}"><button class="cv-imagine-style-trigger" type="button" data-action="imagine-quality-menu" aria-label="${qualityControlLabel}: ${esc(qualityLabel)}, ${esc(this.imagineCreditLabel(qualityCredits[quality]))}" aria-haspopup="menu" aria-expanded="${this.state.imagineQualityMenu}" ${disabled}><span>${qualityControlLabel}</span><strong>${esc(qualityLabel)}</strong></button>${this.state.imagineQualityMenu ? `<div class="cv-imagine-style-menu cv-imagine-quality-menu" role="menu">${qualityOptions}</div>` : ''}</div>${imageAction}</div></form></section>`;
     }
 
     // Imagine's pickers are intentionally patched in place. Re-rendering the
@@ -1323,7 +1466,7 @@
       const style = String(generation.style || 'cinematic').replace(/^./, (letter) => letter.toUpperCase());
       const quality = ['low', 'medium', 'high'].includes(String(generation.quality || '')) ? String(generation.quality).replace(/^./, (letter) => letter.toUpperCase()) : 'Low';
       const referenceAssets = (Array.isArray(generation.referenceAssetIds) ? generation.referenceAssetIds : []).map((id) => this.asset(id)).filter(Boolean);
-      const product = this.accountScoped ? 'Imaging' : 'Imagine';
+      const product = 'Imagine';
       const copyTitle = localize(`Copy reference to ${product}`, `Copiar referencia a ${product}`);
       const referenceThumbs = referenceAssets.length ? `<div class="cv-imagine-preview-references">${referenceAssets.slice(0, 4).map((reference) => `<button type="button" class="cv-imagine-preview-reference" data-action="imagine-copy-reference" data-id="${esc(reference.id)}" title="${esc(copyTitle)}"><img src="${esc(this.assetUrl(reference.id))}" alt="${esc(localize('Reference image', 'Imagen de referencia'))}"><span>${esc(localize('Copy', 'Copiar'))}</span></button>`).join('')}${referenceAssets.length > 4 ? `<span>+${referenceAssets.length - 4}</span>` : ''}</div>` : `<span class="cv-imagine-preview-none">${esc(localize('No references', 'Sin referencias'))}</span>`;
       return `<div class="cv-modal-backdrop cv-imagine-preview-backdrop" data-action="close-imagine-preview"><section class="cv-modal cv-imagine-preview cv-imagine-preview-solo" data-stop aria-label="${esc(localize('Generated image preview', 'Vista previa de imagen generada'))}"><div class="cv-imagine-preview-solo-image"><img src="${esc(this.assetUrl(asset.id))}" alt="${esc(asset.prompt || localize('Generated visual', 'Imagen generada'))}"></div><aside class="cv-imagine-inspector"><header class="cv-imagine-inspector-head"><div><div class="cv-eyebrow">${product} ${esc(localize('frame', 'imagen'))}</div><h3>${esc(localize('Generated visual', 'Imagen generada'))}</h3><p>${esc(created)}</p></div></header><section class="cv-imagine-inspector-card"><span class="cv-imagine-inspector-label">Prompt</span><p>${esc(asset.prompt || localize('No prompt stored.', 'No se guardó el prompt.'))}</p></section><section class="cv-imagine-inspector-card cv-imagine-inspector-details"><span class="cv-imagine-inspector-label">${esc(localize('Details', 'Detalles'))}</span><dl><div><dt>${esc(localize('Format', 'Formato'))}</dt><dd>${esc(orientation)}</dd></div><div><dt>${esc(localize('Style', 'Estilo'))}</dt><dd>${esc(style)}</dd></div><div><dt>${esc(localize('Quality', 'Calidad'))}</dt><dd>${esc(quality)}</dd></div><div><dt>${esc(localize('Size', 'Tamaño'))}</dt><dd>${esc(dimensions)}</dd></div><div><dt>${esc(localize('Created', 'Creada'))}</dt><dd>${esc(created)}</dd></div></dl></section><section class="cv-imagine-inspector-card"><span class="cv-imagine-inspector-label">${esc(localize('References', 'Referencias'))}</span>${referenceThumbs}</section></aside><button class="cv-icon-btn cv-close" data-action="close-imagine-preview" aria-label="${esc(localize('Close preview', 'Cerrar vista previa'))}">×</button></section></div>`;
@@ -1609,6 +1752,32 @@
 
     _onChange(event) {
       const field = event.target.dataset.field;
+      if (field === 'imagine-media-mode') {
+        const capabilities = this._imagineCapabilities();
+        const requested = String(event.target.value || '').trim().toLowerCase();
+        if (capabilities.mediaModes.some((option) => option.id === requested)) {
+          this.state.imagineMediaMode = requested;
+          this.state.imagineMediaModeExplicit = true;
+        }
+        const models = this._imagineModelsForMode(capabilities, this.state.imagineMediaMode);
+        if (!models.some((option) => option.id === this.state.imagineModelId)) {
+          this.state.imagineModelId = models.some((option) => option.id === capabilities.defaults.modelId)
+            ? capabilities.defaults.modelId
+            : (models[0]?.id || '');
+          this.state.imagineModelIdExplicit = false;
+        }
+        return this.render();
+      }
+      if (field === 'imagine-model-id') {
+        const capabilities = this._imagineCapabilities();
+        const models = this._imagineModelsForMode(capabilities, this.state.imagineMediaMode);
+        const requested = String(event.target.value || '').trim().toLowerCase();
+        if (models.some((option) => option.id === requested)) {
+          this.state.imagineModelId = requested;
+          this.state.imagineModelIdExplicit = true;
+        }
+        return this.render();
+      }
       if (field === 'vault-category') this.state.category = event.target.value;
       else if (field === 'vault-availability') this.state.availability = event.target.value;
       else if (field === 'vault-condition') this.state.condition = event.target.value;
@@ -2121,6 +2290,19 @@
       const prompt = String(form.get('prompt') || '').trim();
       if (!await this.ensureImageGeneration()) return;
       if (prompt.length < 8) return this.toast('Describe the image in a little more detail.');
+      const capabilities = this._imagineCapabilities();
+      const requestedMediaMode = String(form.get('mediaMode') || this.state.imagineMediaMode || '').trim().toLowerCase();
+      const mediaMode = capabilities.mediaModes.some((option) => option.id === requestedMediaMode)
+        ? requestedMediaMode
+        : capabilities.defaults.mediaMode;
+      const modelOptions = this._imagineModelsForMode(capabilities, mediaMode);
+      const requestedModelId = String(form.get('modelId') || this.state.imagineModelId || '').trim().toLowerCase();
+      const modelId = modelOptions.some((option) => option.id === requestedModelId)
+        ? requestedModelId
+        : (modelOptions.some((option) => option.id === capabilities.defaults.modelId)
+          ? capabilities.defaults.modelId
+          : (modelOptions[0]?.id || ''));
+      if (!mediaMode || !modelId) return this.toast(localize('Image generation is not available right now.', 'La generación de imágenes no está disponible en este momento.'));
       const sizeOption = this.imagineSizeOption(String(form.get('size') || this.state.imagineSize));
       const orientation = sizeOption.orientation === 'vertical' ? 'vertical' : 'horizontal';
       const style = ['cinematic', 'animated', 'sketch', 'anime'].includes(String(form.get('style') || '')) ? String(form.get('style')) : 'cinematic';
@@ -2134,6 +2316,8 @@
         createdAtMs,
         sequence: ++this._imagineJobSequence,
         prompt,
+        mediaMode,
+        modelId,
         orientation,
         size: sizeOption.value,
         style,

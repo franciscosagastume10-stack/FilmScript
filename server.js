@@ -225,9 +225,17 @@ function storyboardImageFailure(error) {
   return Object.assign(new Error('That image could not be generated. Try a more specific visual direction.'), { status: status || 500 });
 }
 
-async function requestStoryboardImage({ prompt, userId, size = OPENAI_STORYBOARD_SIZE, quality = OPENAI_STORYBOARD_QUALITY, referenceImages = [] }) {
+async function requestStoryboardImage({
+  prompt,
+  userId,
+  size = OPENAI_STORYBOARD_SIZE,
+  quality = OPENAI_STORYBOARD_QUALITY,
+  referenceImages = [],
+  model = OPENAI_STORYBOARD_MODEL,
+}) {
   const apiKey = String(process.env.OPENAI_API_KEY || '').trim();
   if (!apiKey) throw Object.assign(new Error('Storyboard image generation is not configured yet.'), { status: 503 });
+  const providerModel = String(model || OPENAI_STORYBOARD_MODEL).trim() || OPENAI_STORYBOARD_MODEL;
   const outputSize = normalizeImageSize(size);
   const outputQuality = normalizeImageQuality(quality);
   const references = Array.isArray(referenceImages) ? referenceImages.slice(0, 4).filter((entry) => entry?.data?.length && ['image/jpeg', 'image/png', 'image/webp'].includes(entry.mimeType)) : [];
@@ -237,7 +245,7 @@ async function requestStoryboardImage({ prompt, userId, size = OPENAI_STORYBOARD
     const useReferences = references.length > 0;
     const form = useReferences ? new FormData() : null;
     if (form) {
-      form.set('model', OPENAI_STORYBOARD_MODEL);
+      form.set('model', providerModel);
       form.set('prompt', prompt);
       form.set('n', '1');
       form.set('quality', outputQuality);
@@ -252,7 +260,7 @@ async function requestStoryboardImage({ prompt, userId, size = OPENAI_STORYBOARD
       headers: useReferences ? { Authorization: `Bearer ${apiKey}` } : { Authorization: `Bearer ${apiKey}`, 'Content-Type': 'application/json' },
       signal: controller.signal,
       body: form || JSON.stringify({
-        model: OPENAI_STORYBOARD_MODEL,
+        model: providerModel,
         prompt,
         n: 1,
         quality: outputQuality,
@@ -427,7 +435,7 @@ const activeShotListJobs = new Set();
 const activeScriptAnalysisJobs = new Set();
 const activeLumiereChats = new Set();
 const activeBudgetImports = new Set();
-// Browsers may retry the same Imaging request while the provider is still
+// Browsers may retry the same Imagine request while the provider is still
 // working. Keep one in-flight promise per account/request so every waiter
 // receives the same frame and, critically, shares one credit reservation.
 const activeAccountImagingGenerations = new Map();
@@ -7149,7 +7157,7 @@ function canvasContext(scriptId, userId) {
   // library, but must never merge their personal Vault or Canvas library into
   // the owner's project as a side effect of opening the page.
   const library = canReadCanvas ? getCanvasLibrary(userId) || {} : {};
-  // Standalone Imaging is an account-private surface. Its assets live in the
+  // Standalone Imagine is an account-private surface. Its assets live in the
   // same durable library record for backwards compatibility, but must never
   // be merged into a project workspace where collaborators could see them.
   const projectLibraryAssets = (Array.isArray(library.assets) ? library.assets : [])
@@ -7197,6 +7205,100 @@ function isImagineVisibleAsset(asset) {
 }
 
 const ACCOUNT_IMAGING_ACCESS_SCOPE = "account_imaging";
+const ACCOUNT_IMAGINE_PRODUCT_NAME = "Imagine";
+const ACCOUNT_IMAGINE_DEFAULT_MEDIA_MODE = "image";
+const ACCOUNT_IMAGINE_DEFAULT_IMAGE_MODEL_ID = "imagine-image-v1";
+const ACCOUNT_IMAGINE_MEDIA_MODES = Object.freeze([
+  Object.freeze({ id: ACCOUNT_IMAGINE_DEFAULT_MEDIA_MODE, label: "Image", enabled: true }),
+]);
+const ACCOUNT_IMAGINE_MODELS = Object.freeze([
+  Object.freeze({
+    id: ACCOUNT_IMAGINE_DEFAULT_IMAGE_MODEL_ID,
+    label: "Imagine Image",
+    mediaMode: ACCOUNT_IMAGINE_DEFAULT_MEDIA_MODE,
+    enabled: true,
+  }),
+]);
+const ACCOUNT_IMAGINE_PROVIDER_MODELS = Object.freeze({
+  [ACCOUNT_IMAGINE_DEFAULT_IMAGE_MODEL_ID]: OPENAI_STORYBOARD_MODEL,
+});
+
+function publicAccountImagineCapabilities() {
+  const models = ACCOUNT_IMAGINE_MODELS.map((model) => ({ ...model }));
+  return {
+    mediaModes: ACCOUNT_IMAGINE_MEDIA_MODES.map((mode) => ({ ...mode })),
+    models,
+    // Temporary compatibility alias for clients shipped before the generic
+    // media-model contract. New clients should consume `models`.
+    imageModels: models.filter((model) => model.mediaMode === "image").map((model) => ({ ...model })),
+    defaults: {
+      mediaMode: ACCOUNT_IMAGINE_DEFAULT_MEDIA_MODE,
+      modelId: ACCOUNT_IMAGINE_DEFAULT_IMAGE_MODEL_ID,
+    },
+  };
+}
+
+function normalizeAccountImagineAsset(value, userId) {
+  const generation = value?.generation && typeof value.generation === "object" && !Array.isArray(value.generation)
+    ? value.generation
+    : {};
+  const source = String(value?.source || "").trim().toLowerCase();
+  const mediaMode = String(value?.mediaMode || generation.mediaMode || ACCOUNT_IMAGINE_DEFAULT_MEDIA_MODE)
+    .trim().toLowerCase();
+  // References are user-provided inputs, not model output. Keep their model
+  // provenance empty while backfilling legacy generated frames to v1.
+  const modelId = String(value?.modelId || generation.modelId
+    || (source === "imagine" ? ACCOUNT_IMAGINE_DEFAULT_IMAGE_MODEL_ID : ""))
+    .trim().toLowerCase();
+  return normalizeAsset({
+    ...value,
+    createdBy: value?.createdBy || userId,
+    // canvas_libraries is physically keyed by user_id. Never trust a stale
+    // or imported owner field over that account boundary.
+    ownerUserId: userId,
+    mediaMode,
+    modelId,
+    generation: { ...generation, mediaMode, modelId },
+  });
+}
+
+function accountImagineGenerationSelection(body) {
+  const mediaMode = String(body?.mediaMode || ACCOUNT_IMAGINE_DEFAULT_MEDIA_MODE).trim().toLowerCase();
+  if (mediaMode !== ACCOUNT_IMAGINE_DEFAULT_MEDIA_MODE) {
+    return {
+      error: {
+        error: "imaging_media_mode_unsupported",
+        message: "Imagine currently supports image generation only.",
+        mediaMode,
+        supportedMediaModes: ACCOUNT_IMAGINE_MEDIA_MODES.filter((mode) => mode.enabled).map((mode) => mode.id),
+      },
+    };
+  }
+  const modelId = String(body?.modelId || ACCOUNT_IMAGINE_DEFAULT_IMAGE_MODEL_ID).trim().toLowerCase();
+  const model = ACCOUNT_IMAGINE_MODELS.find((candidate) => candidate.enabled
+    && candidate.mediaMode === mediaMode
+    && candidate.id === modelId);
+  const providerModel = model ? ACCOUNT_IMAGINE_PROVIDER_MODELS[model.id] : "";
+  if (!model || !providerModel) {
+    return {
+      error: {
+        error: "imaging_model_unsupported",
+        message: "This Imagine image model is not supported.",
+        modelId,
+        supportedModelIds: ACCOUNT_IMAGINE_MODELS
+          .filter((candidate) => candidate.enabled && candidate.mediaMode === mediaMode)
+          .map((candidate) => candidate.id),
+      },
+    };
+  }
+  return { mediaMode, modelId, model, providerModel };
+}
+
+function accountImagineFingerprintMatches(storedFingerprint, requestFingerprint, legacyRequestFingerprint, allowLegacy) {
+  if (!storedFingerprint) return true;
+  return storedFingerprint === requestFingerprint
+    || (allowLegacy && storedFingerprint === legacyRequestFingerprint);
+}
 
 function isPrivateAccountImagingAsset(asset) {
   return String(asset?.generation?.accessScope || "") === ACCOUNT_IMAGING_ACCESS_SCOPE;
@@ -7212,24 +7314,32 @@ function accountImagingAssets(userId) {
   const library = getCanvasLibrary(userId) || {};
   const assets = (Array.isArray(library.assets) ? library.assets : [])
     .filter(isImagineVisibleAsset)
-    .map((value) => normalizeAsset({
-      ...value,
-      createdBy: value?.createdBy || userId,
-      // canvas_libraries is physically keyed by user_id. Never trust a stale
-      // or imported owner field over that account boundary.
-      ownerUserId: userId,
-    }));
+    .map((value) => normalizeAccountImagineAsset(value, userId));
   return { library, assets };
 }
 
 function publicAccountImagingAsset(asset, userId) {
-  const normalized = normalizeAsset({
-    ...asset,
-    createdBy: asset?.createdBy || userId,
-    ownerUserId: userId,
-  });
+  const normalized = normalizeAccountImagineAsset(asset, userId);
   const { key: _key, ...publicAsset } = normalized;
   return publicAsset;
+}
+
+function publicAccountImagineGenerationResult(value, userId) {
+  const source = value && typeof value === "object" && !Array.isArray(value) ? value : {};
+  const { model: _providerModel, ...result } = source;
+  const asset = source.asset && typeof source.asset === "object"
+    ? publicAccountImagingAsset(source.asset, userId)
+    : null;
+  const mediaMode = String(asset?.mediaMode || result.mediaMode || ACCOUNT_IMAGINE_DEFAULT_MEDIA_MODE)
+    .trim().toLowerCase();
+  const modelId = String(asset?.modelId || result.modelId || ACCOUNT_IMAGINE_DEFAULT_IMAGE_MODEL_ID)
+    .trim().toLowerCase();
+  return {
+    ...result,
+    ...(asset ? { asset } : {}),
+    mediaMode,
+    modelId,
+  };
 }
 
 function publicAccountImagingWorkspace(userId) {
@@ -7237,9 +7347,11 @@ function publicAccountImagingWorkspace(userId) {
   const timestamp = new Date().toISOString();
   return {
     version: 1,
+    productName: ACCOUNT_IMAGINE_PRODUCT_NAME,
     accessScope: ACCOUNT_IMAGING_ACCESS_SCOPE,
     accountScoped: true,
     ownerUserId: userId,
+    capabilities: publicAccountImagineCapabilities(),
     settings: { lastTool: "home" },
     assets: assets.map((asset) => publicAccountImagingAsset(asset, userId)),
     createdAt: String(library.createdAt || timestamp),
@@ -7253,7 +7365,7 @@ function appendAccountImagingAsset(userId, value) {
   // completed while the current request was in flight.
   const library = getCanvasLibrary(userId) || {};
   const currentAssets = Array.isArray(library.assets) ? library.assets : [];
-  const asset = normalizeAsset({
+  const asset = normalizeAccountImagineAsset({
     ...value,
     createdBy: value?.createdBy || userId,
     ownerUserId: userId,
@@ -7261,13 +7373,13 @@ function appendAccountImagingAsset(userId, value) {
       ...(value?.generation && typeof value.generation === "object" ? value.generation : {}),
       accessScope: ACCOUNT_IMAGING_ACCESS_SCOPE,
     },
-  });
+  }, userId);
   const assets = currentAssets.some((entry) => entry?.id === asset.id)
     ? currentAssets.map((entry) => entry?.id === asset.id ? asset : entry)
     : [...currentAssets, asset];
   const updatedAt = new Date().toISOString();
   if (!saveCanvasLibrary(userId, { ...library, assets, updatedAt })) {
-    throw Object.assign(new Error("Imaging library is no longer available."), { status: 404 });
+    throw Object.assign(new Error("Imagine library is no longer available."), { status: 404 });
   }
   return asset;
 }
@@ -7283,7 +7395,7 @@ async function handleAccountImagingAssetUpload(req, res) {
   if (!sid) return googleRequired(res);
   const mimeType = String(req.headers["content-type"] || "").split(";")[0].trim().toLowerCase();
   if (!["image/jpeg", "image/png", "image/webp"].includes(mimeType)) {
-    return json(res, 415, { error: "Imaging accepts PNG, JPEG, or WebP images" });
+    return json(res, 415, { error: "Imagine accepts PNG, JPEG, or WebP images" });
   }
   const data = await readBodyBuffer(req, 8 * 1024 * 1024);
   if (!data.length) return json(res, 400, { error: "image is empty" });
@@ -7291,7 +7403,7 @@ async function handleAccountImagingAssetUpload(req, res) {
     return json(res, 415, { error: "image content does not match its declared type" });
   }
   const assetId = createCanvasId("cas");
-  const filename = safeFilename(decodedHeader(req.headers["x-filename"], "Imaging reference")).slice(0, 160) || "Imaging reference";
+  const filename = safeFilename(decodedHeader(req.headers["x-filename"], "Imagine reference")).slice(0, 160) || "Imagine reference";
   const stored = await canvasStorage.put({
     scriptId: accountImagingStorageNamespace(sid),
     assetId,
@@ -7309,6 +7421,8 @@ async function handleAccountImagingAssetUpload(req, res) {
     width: req.headers["x-image-width"],
     height: req.headers["x-image-height"],
     source: "imagine_reference",
+    mediaMode: ACCOUNT_IMAGINE_DEFAULT_MEDIA_MODE,
+    modelId: "",
     createdAt: new Date().toISOString(),
   });
   let accountAsset;
@@ -7333,6 +7447,10 @@ async function storeGeneratedAccountImagingAsset(userId, data, prompt, options =
   const generation = options.generation && typeof options.generation === "object" && !Array.isArray(options.generation)
     ? options.generation
     : {};
+  const mediaMode = String(options.mediaMode || generation.mediaMode || ACCOUNT_IMAGINE_DEFAULT_MEDIA_MODE)
+    .trim().toLowerCase();
+  const modelId = String(options.modelId || generation.modelId || ACCOUNT_IMAGINE_DEFAULT_IMAGE_MODEL_ID)
+    .trim().toLowerCase();
   const stored = await canvasStorage.put({
     scriptId: accountImagingStorageNamespace(userId),
     assetId,
@@ -7345,14 +7463,18 @@ async function storeGeneratedAccountImagingAsset(userId, data, prompt, options =
     createdBy: userId,
     ownerUserId: userId,
     mimeType: "image/jpeg",
-    filename: `Imaging — ${String(prompt || "Untitled").trim().slice(0, 72) || "Untitled"}.jpg`,
+    filename: `Imagine — ${String(prompt || "Untitled").trim().slice(0, 72) || "Untitled"}.jpg`,
     size: data.length,
     width: dimensions.width,
     height: dimensions.height,
     source: "imagine",
+    mediaMode,
+    modelId,
     prompt,
     generation: {
       ...generation,
+      mediaMode,
+      modelId,
       requestedSize,
       actualSize: `${dimensions.width}x${dimensions.height}`,
       aspectRatio: Number((dimensions.width / dimensions.height).toFixed(8)),
@@ -7371,7 +7493,7 @@ async function storeGeneratedAccountImagingAsset(userId, data, prompt, options =
 }
 
 function accountImagingGenerationConflict() {
-  return Object.assign(new Error("This Imaging request id is already being used for different instructions."), {
+  return Object.assign(new Error("This Imagine request id is already being used for different instructions."), {
     status: 409,
     code: "imaging_request_id_conflict",
   });
@@ -7399,6 +7521,9 @@ async function handleAccountImagingImageGenerate(req, res) {
   const sid = sessionId(req, res);
   if (!sid) return googleRequired(res);
   const body = await canvasJsonBody(req, 24_000);
+  const selection = accountImagineGenerationSelection(body);
+  if (selection.error) return json(res, 422, selection.error);
+  const { mediaMode, modelId, providerModel } = selection;
   const { assets } = accountImagingAssets(sid);
   const requestId = /^imagine-job_[a-f0-9]+$/.test(String(body?.requestId || "")) ? String(body.requestId) : "";
   const prompt = String(body?.prompt || "").trim().replace(/\s+/g, " ");
@@ -7420,7 +7545,7 @@ async function handleAccountImagingImageGenerate(req, res) {
   const referenceIds = [...new Set((Array.isArray(body?.referenceAssetIds) ? body.referenceAssetIds : []).map(String))]
     .filter((id) => /^cas_[a-f0-9]+$/.test(id))
     .slice(0, 4);
-  const requestFingerprint = hashText(JSON.stringify({
+  const legacyFingerprintPayload = {
     prompt,
     size,
     orientation,
@@ -7430,14 +7555,24 @@ async function handleAccountImagingImageGenerate(req, res) {
     lens,
     focalLength,
     referenceAssetIds: referenceIds,
-  }));
+  };
+  const legacyRequestFingerprint = hashText(JSON.stringify(legacyFingerprintPayload));
+  const requestFingerprint = hashText(JSON.stringify({ mediaMode, modelId, ...legacyFingerprintPayload }));
+  // The immediately preceding release did not pin mode/model in its receipt.
+  // Its fingerprint is compatible only with the one exact model it used.
+  const allowLegacyFingerprint = mediaMode === ACCOUNT_IMAGINE_DEFAULT_MEDIA_MODE
+    && modelId === ACCOUNT_IMAGINE_DEFAULT_IMAGE_MODEL_ID;
   const activeKey = requestId ? `${sid}:${requestId}` : "";
   if (activeKey) {
     const active = activeAccountImagingGenerations.get(activeKey);
     if (active) {
       if (active.fingerprint !== requestFingerprint) throw accountImagingGenerationConflict();
       const result = await active.promise;
-      return json(res, 200, { ...result, reused: true, credits: creditsSummary(sid) });
+      return json(res, 200, {
+        ...publicAccountImagineGenerationResult(result, sid),
+        reused: true,
+        credits: creditsSummary(sid),
+      });
     }
     // A refresh may repeat the request after the provider completed. Resolve
     // the account-owned receipt before rate limiting or reserving credits.
@@ -7445,26 +7580,43 @@ async function handleAccountImagingImageGenerate(req, res) {
       && isPrivateAccountImagingAsset(asset)
       && asset.generation?.requestId === requestId);
     if (existing) {
-      if (existing.generation?.requestFingerprint && existing.generation.requestFingerprint !== requestFingerprint) {
+      const sameSelection = existing.mediaMode === mediaMode && existing.modelId === modelId;
+      if (!sameSelection || !accountImagineFingerprintMatches(
+        existing.generation?.requestFingerprint,
+        requestFingerprint,
+        legacyRequestFingerprint,
+        allowLegacyFingerprint,
+      )) {
         throw accountImagingGenerationConflict();
       }
+      const publicAsset = publicAccountImagingAsset(existing, sid);
       return json(res, 200, {
-        asset: publicAccountImagingAsset(existing, sid),
+        asset: publicAsset,
         reused: true,
-        model: OPENAI_STORYBOARD_MODEL,
+        mediaMode: publicAsset.mediaMode,
+        modelId: publicAsset.modelId,
         quality: normalizeImageQuality(existing.generation?.quality),
         credits: creditsSummary(sid),
       });
     }
   }
   if (enforceRateLimit(req, res, "storyboard-image", 6, 10 * 60 * 1000, sid)) return;
-  const durableClaim = requestId
+  let durableClaim = requestId
     ? claimAccountImagingGeneration({ userId: sid, requestId, fingerprint: requestFingerprint })
     : null;
+  if (durableClaim?.state === "conflict"
+    && allowLegacyFingerprint
+    && durableClaim.generation?.fingerprint === legacyRequestFingerprint) {
+    durableClaim = claimAccountImagingGeneration({
+      userId: sid,
+      requestId,
+      fingerprint: legacyRequestFingerprint,
+    });
+  }
   if (durableClaim?.state === "conflict") throw accountImagingGenerationConflict();
   if (durableClaim?.state === "completed" && durableClaim.generation?.result) {
     return json(res, 200, {
-      ...durableClaim.generation.result,
+      ...publicAccountImagineGenerationResult(durableClaim.generation.result, sid),
       reused: true,
       credits: creditsSummary(sid),
     });
@@ -7522,10 +7674,15 @@ async function handleAccountImagingImageGenerate(req, res) {
       size,
       quality,
       referenceImages,
+      model: providerModel,
     });
     const asset = await storeGeneratedAccountImagingAsset(sid, result.data, prompt, {
       size,
+      mediaMode,
+      modelId,
       generation: {
+        mediaMode,
+        modelId,
         orientation,
         size,
         style: visualStyle,
@@ -7540,7 +7697,8 @@ async function handleAccountImagingImageGenerate(req, res) {
     });
     const generationResult = {
       asset,
-      model: OPENAI_STORYBOARD_MODEL,
+      mediaMode,
+      modelId,
       quality,
       revisedPrompt: result.revisedPrompt,
     };
@@ -7553,7 +7711,7 @@ async function handleAccountImagingImageGenerate(req, res) {
         result: generationResult,
       });
       if (!completed) {
-        throw Object.assign(new Error("Imaging could not confirm this generation safely."), {
+        throw Object.assign(new Error("Imagine could not confirm this generation safely."), {
           status: 409,
           code: "imaging_generation_claim_lost",
         });
@@ -7578,7 +7736,7 @@ async function handleAccountImagingImageGenerate(req, res) {
   });
   const result = await generation.promise;
   return json(res, generation.reused ? 200 : 201, {
-    ...result,
+    ...publicAccountImagineGenerationResult(result, sid),
     ...(generation.reused ? { reused: true } : {}),
     credits: creditsSummary(sid),
   });
@@ -7589,14 +7747,14 @@ async function handleAccountImagingAsset(req, res, assetId) {
   if (!sid) return googleRequired(res);
   const { assets } = accountImagingAssets(sid);
   const asset = assets.find((entry) => entry.id === assetId);
-  if (!asset) return json(res, 404, { error: "Imaging image not found" });
+  if (!asset) return json(res, 404, { error: "Imagine image not found" });
   let data;
   try { data = await canvasStorage.get(asset); }
   catch (error) {
-    if (error?.code === "ENOENT") return json(res, 404, { error: "Imaging image not found" });
+    if (error?.code === "ENOENT") return json(res, 404, { error: "Imagine image not found" });
     throw error;
   }
-  const filename = safeFilename(asset.filename).replace(/[^a-zA-Z0-9._ -]/g, "") || "Imaging image";
+  const filename = safeFilename(asset.filename).replace(/[^a-zA-Z0-9._ -]/g, "") || "Imagine image";
   res.writeHead(200, {
     "Content-Type": asset.mimeType,
     "Content-Length": data.length,
@@ -8212,7 +8370,7 @@ const MIME = {
 
 const PUBLIC_STATIC_FILES = new Set([
   "App.dc.html",
-  "Imaging.dc.html",
+  "Imagine.dc.html",
   "Editor v5.dc.html",
   "Features.dc.html",
   "Pricing.dc.html",
@@ -9001,6 +9159,15 @@ function serveStatic(req, res) {
     return;
   }
   if (!relativePath) relativePath = "index.html";
+  if (relativePath === "Imaging.dc.html") {
+    const query = new URL(req.url, "http://localhost").search;
+    res.writeHead(308, {
+      Location: `/Imagine.dc.html${query}`,
+      "Cache-Control": "no-store",
+    });
+    res.end();
+    return;
+  }
   const allowed = PUBLIC_STATIC_FILES.has(relativePath)
     || (relativePath.startsWith("assets/") && !relativePath.split("/").includes(".."));
   const filePath = path.resolve(ROOT, relativePath);

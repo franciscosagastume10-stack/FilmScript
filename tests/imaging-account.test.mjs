@@ -63,15 +63,30 @@ async function requestJson(url, cookie = "", options = {}) {
   return { response, data: await response.json().catch(() => ({})) };
 }
 
-test("account Imaging works without a project and remains private to its signed-in owner", async (t) => {
+test("account Imagine works without a project and remains private to its signed-in owner", async (t) => {
   const dataDir = await fs.mkdtemp(path.join(os.tmpdir(), "filmscript-account-imaging-"));
   const bootstrap = spawnSync(process.execPath, ["--input-type=module", "--eval", `
     import {
+      claimAccountImagingGeneration,
+      completeAccountImagingGeneration,
       connectGoogleIdentity,
       createSession,
       saveCanvasLibrary,
     } from "./database.js";
+    import { hashText } from "./analysis-model.js";
     import { __canvasTesting as canvas } from "./server.js";
+
+    const legacyFingerprint = (prompt) => hashText(JSON.stringify({
+      prompt,
+      size: "1536x1024",
+      orientation: "horizontal",
+      style: "cinematic",
+      quality: "low",
+      camera: "",
+      lens: "",
+      focalLength: "",
+      referenceAssetIds: [],
+    }));
 
     const firstSession = createSession();
     const first = connectGoogleIdentity(firstSession.session.id, {
@@ -103,23 +118,50 @@ test("account Imaging works without a project and remains private to its signed-
       updatedAt: new Date().toISOString(),
     });
     const jpeg = Buffer.from([0xff, 0xd8, 0xff, 0xd9]);
+    const generatedPrompt = "A private idempotent account image";
     const generated = await canvas.storeGeneratedAccountImagingAsset(
       first.id,
       jpeg,
-      "A private idempotent account image",
+      generatedPrompt,
       {
         size: "1536x1024",
         generation: {
           requestId: "imagine-job_deadbeef",
+          requestFingerprint: legacyFingerprint(generatedPrompt),
           quality: "low",
           style: "cinematic",
         },
       },
     );
+    const completedPrompt = "A durable legacy completed account image";
+    const completedClaim = claimAccountImagingGeneration({
+      userId: first.id,
+      requestId: "imagine-job_cafebabe",
+      fingerprint: legacyFingerprint(completedPrompt),
+    });
+    completeAccountImagingGeneration({
+      userId: first.id,
+      requestId: "imagine-job_cafebabe",
+      leaseToken: completedClaim.generation.leaseToken,
+      assetId: generated.id,
+      result: {
+        asset: generated,
+        model: "gpt-image-2",
+        quality: "low",
+      },
+    });
+    const pendingPrompt = "A durable legacy pending account image";
+    claimAccountImagingGeneration({
+      userId: first.id,
+      requestId: "imagine-job_badc0ffe",
+      fingerprint: legacyFingerprint(pendingPrompt),
+    });
     console.log(JSON.stringify({
       first: { id: first.id, token: firstSession.token },
       second: { id: second.id, token: secondSession.token },
       generated,
+      completedPrompt,
+      pendingPrompt,
     }));
   `], {
     cwd: ROOT,
@@ -133,6 +175,11 @@ test("account Imaging works without a project and remains private to its signed-
   });
   assert.equal(bootstrap.status, 0, bootstrap.stderr || bootstrap.stdout);
   const state = JSON.parse(bootstrap.stdout.trim().split("\n").at(-1));
+  assert.match(state.generated.filename, /^Imagine — /);
+  assert.equal(state.generated.mediaMode, "image");
+  assert.equal(state.generated.modelId, "imagine-image-v1");
+  assert.equal(state.generated.generation.mediaMode, "image");
+  assert.equal(state.generated.generation.modelId, "imagine-image-v1");
   const firstCookie = `filmscript_sid=${encodeURIComponent(state.first.token)}`;
   const secondCookie = `filmscript_sid=${encodeURIComponent(state.second.token)}`;
   let running = await startServer(dataDir);
@@ -158,6 +205,11 @@ test("account Imaging works without a project and remains private to its signed-
   });
   assert.equal(unauthenticatedGeneration.response.status, 401);
 
+  const legacyPage = await fetch(`${running.url}/Imaging.dc.html?from=legacy`, { redirect: "manual" });
+  assert.equal(legacyPage.status, 308);
+  assert.equal(legacyPage.headers.get("location"), "/Imagine.dc.html?from=legacy");
+  assert.equal((await fetch(`${running.url}/Imagine.dc.html`)).status, 200);
+
   const firstScripts = await requestJson(`${running.url}/api/scripts`, firstCookie);
   assert.equal(firstScripts.response.status, 200);
   assert.deepEqual(firstScripts.data.scripts, []);
@@ -165,13 +217,25 @@ test("account Imaging works without a project and remains private to its signed-
   const firstWorkspace = await requestJson(`${running.url}/api/me/imaging`, firstCookie);
   assert.equal(firstWorkspace.response.status, 200);
   assert.equal(firstWorkspace.data.workspace.accessScope, "account_imaging");
+  assert.equal(firstWorkspace.data.workspace.productName, "Imagine");
   assert.equal(firstWorkspace.data.workspace.accountScoped, true);
   assert.equal(firstWorkspace.data.workspace.ownerUserId, state.first.id);
+  assert.deepEqual(firstWorkspace.data.workspace.capabilities, {
+    mediaModes: [{ id: "image", label: "Image", enabled: true }],
+    models: [{ id: "imagine-image-v1", label: "Imagine Image", mediaMode: "image", enabled: true }],
+    imageModels: [{ id: "imagine-image-v1", label: "Imagine Image", mediaMode: "image", enabled: true }],
+    defaults: { mediaMode: "image", modelId: "imagine-image-v1" },
+  });
+  assert.doesNotMatch(JSON.stringify(firstWorkspace.data.workspace), /gpt-image/i);
   assert.equal("boards" in firstWorkspace.data.workspace, false);
   assert.equal("vaultItems" in firstWorkspace.data.workspace, false);
   assert.deepEqual(firstWorkspace.data.workspace.assets.map((asset) => asset.id), [state.generated.id]);
   assert.equal(firstWorkspace.data.workspace.assets[0].createdBy, state.first.id);
   assert.equal(firstWorkspace.data.workspace.assets[0].ownerUserId, state.first.id);
+  assert.equal(firstWorkspace.data.workspace.assets[0].mediaMode, "image");
+  assert.equal(firstWorkspace.data.workspace.assets[0].modelId, "imagine-image-v1");
+  assert.equal(firstWorkspace.data.workspace.assets[0].generation.mediaMode, "image");
+  assert.equal(firstWorkspace.data.workspace.assets[0].generation.modelId, "imagine-image-v1");
   assert.equal("key" in firstWorkspace.data.workspace.assets[0], false);
 
   const secondWorkspace = await requestJson(`${running.url}/api/me/imaging`, secondCookie);
@@ -199,6 +263,10 @@ test("account Imaging works without a project and remains private to its signed-
   assert.equal(upload.data.asset.source, "imagine_reference");
   assert.equal(upload.data.asset.createdBy, state.first.id);
   assert.equal(upload.data.asset.ownerUserId, state.first.id);
+  assert.equal(upload.data.asset.mediaMode, "image");
+  assert.equal(upload.data.asset.modelId, "");
+  assert.equal(upload.data.asset.generation.mediaMode, "image");
+  assert.equal(upload.data.asset.generation.modelId, "");
   assert.equal("key" in upload.data.asset, false);
 
   const uploadedImage = await fetch(
@@ -214,6 +282,41 @@ test("account Imaging works without a project and remains private to its signed-
   )).status, 404);
 
   const creditsBefore = await requestJson(`${running.url}/api/credits`, firstCookie);
+  const unsupportedMode = await requestJson(`${running.url}/api/me/imaging/images/generate`, firstCookie, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      requestId: "imagine-job_deadbeef",
+      prompt: "A future account-scoped video generation request",
+      mediaMode: "video",
+    }),
+  });
+  assert.equal(unsupportedMode.response.status, 422);
+  assert.deepEqual(unsupportedMode.data, {
+    error: "imaging_media_mode_unsupported",
+    message: "Imagine currently supports image generation only.",
+    mediaMode: "video",
+    supportedMediaModes: ["image"],
+  });
+  const unsupportedModel = await requestJson(`${running.url}/api/me/imaging/images/generate`, firstCookie, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      requestId: "imagine-job_deadbeef",
+      prompt: "An account-scoped image using an unavailable model",
+      mediaMode: "image",
+      modelId: "future-image-model",
+    }),
+  });
+  assert.equal(unsupportedModel.response.status, 422);
+  assert.deepEqual(unsupportedModel.data, {
+    error: "imaging_model_unsupported",
+    message: "This Imagine image model is not supported.",
+    modelId: "future-image-model",
+    supportedModelIds: ["imagine-image-v1"],
+  });
+  const creditsAfterUnsupportedRequests = await requestJson(`${running.url}/api/credits`, firstCookie);
+  assert.deepEqual(creditsAfterUnsupportedRequests.data.image, creditsBefore.data.image);
   const retry = await requestJson(`${running.url}/api/me/imaging/images/generate`, firstCookie, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
@@ -221,11 +324,46 @@ test("account Imaging works without a project and remains private to its signed-
       requestId: "imagine-job_deadbeef",
       prompt: "A private idempotent account image",
       quality: "low",
+      mediaMode: "image",
+      modelId: "imagine-image-v1",
     }),
   });
   assert.equal(retry.response.status, 200);
   assert.equal(retry.data.reused, true);
   assert.equal(retry.data.asset.id, state.generated.id);
+  assert.equal(retry.data.mediaMode, "image");
+  assert.equal(retry.data.modelId, "imagine-image-v1");
+  assert.equal("model" in retry.data, false);
+  const durableLegacyRetry = await requestJson(`${running.url}/api/me/imaging/images/generate`, firstCookie, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      requestId: "imagine-job_cafebabe",
+      prompt: state.completedPrompt,
+      quality: "low",
+      mediaMode: "image",
+      modelId: "imagine-image-v1",
+    }),
+  });
+  assert.equal(durableLegacyRetry.response.status, 200);
+  assert.equal(durableLegacyRetry.data.reused, true);
+  assert.equal(durableLegacyRetry.data.asset.id, state.generated.id);
+  assert.equal(durableLegacyRetry.data.mediaMode, "image");
+  assert.equal(durableLegacyRetry.data.modelId, "imagine-image-v1");
+  assert.equal("model" in durableLegacyRetry.data, false);
+  const durableLegacyPending = await requestJson(`${running.url}/api/me/imaging/images/generate`, firstCookie, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      requestId: "imagine-job_badc0ffe",
+      prompt: state.pendingPrompt,
+      quality: "low",
+      mediaMode: "image",
+      modelId: "imagine-image-v1",
+    }),
+  });
+  assert.equal(durableLegacyPending.response.status, 202);
+  assert.equal(durableLegacyPending.data.pending, true);
   const creditsAfter = await requestJson(`${running.url}/api/credits`, firstCookie);
   assert.deepEqual(creditsAfter.data.image, creditsBefore.data.image);
 
@@ -253,7 +391,15 @@ test("account Imaging works without a project and remains private to its signed-
     console.log(JSON.stringify({
       customMarker: library.customMarker,
       vaultItems: library.vaultItems,
-      assets: library.assets.map((asset) => ({ id: asset.id, source: asset.source, key: asset.key })),
+      assets: library.assets.map((asset) => ({
+        id: asset.id,
+        source: asset.source,
+        key: asset.key,
+        mediaMode: asset.mediaMode,
+        modelId: asset.modelId,
+        generationMediaMode: asset.generation?.mediaMode,
+        generationModelId: asset.generation?.modelId,
+      })),
     }));
   `], {
     cwd: ROOT,
@@ -272,10 +418,15 @@ test("account Imaging works without a project and remains private to its signed-
   assert.ok(persisted.assets.some((asset) => asset.id === "cas_aaaaaaaa" && asset.source === "upload"));
   for (const asset of persisted.assets.filter((entry) => [state.generated.id, upload.data.asset.id].includes(entry.id))) {
     assert.match(asset.key, new RegExp(`^imaging_${state.first.id}/`));
+    assert.equal(asset.mediaMode, "image");
+    assert.equal(asset.generationMediaMode, "image");
+    const expectedModelId = asset.id === state.generated.id ? "imagine-image-v1" : "";
+    assert.equal(asset.modelId, expectedModelId);
+    assert.equal(asset.generationModelId, expectedModelId);
   }
 });
 
-test("parallel account Imaging completions retain every generated image", async () => {
+test("parallel account Imagine completions retain every generated image", async () => {
   const dataDir = await fs.mkdtemp(path.join(os.tmpdir(), "filmscript-account-imaging-parallel-"));
   try {
     const scenario = spawnSync(process.execPath, ["--input-type=module", "--eval", `
@@ -328,7 +479,7 @@ test("parallel account Imaging completions retain every generated image", async 
   }
 });
 
-test("parallel retries share one active account Imaging generation and reject request-id collisions", async () => {
+test("parallel retries share one active account Imagine generation and reject request-id collisions", async () => {
   const dataDir = await fs.mkdtemp(path.join(os.tmpdir(), "filmscript-account-imaging-active-"));
   try {
     const scenario = spawnSync(process.execPath, ["--input-type=module", "--eval", `
@@ -376,7 +527,7 @@ test("parallel retries share one active account Imaging generation and reject re
   }
 });
 
-test("durable account Imaging claims coordinate separate server processes", async () => {
+test("durable account Imagine claims coordinate separate server processes", async () => {
   const dataDir = await fs.mkdtemp(path.join(os.tmpdir(), "filmscript-account-imaging-claim-"));
   const env = {
     ...process.env,
@@ -471,7 +622,12 @@ test("durable account Imaging claims coordinate separate server processes", asyn
         requestId: "imagine-job_dddddddd",
         leaseToken: ${JSON.stringify(claimed.generation.leaseToken)},
         assetId: "cas_dddddddd",
-        result: { asset: { id: "cas_dddddddd" }, model: "gpt-image-2", quality: "low" },
+        result: {
+          asset: { id: "cas_dddddddd", mediaMode: "image", modelId: "imagine-image-v1" },
+          mediaMode: "image",
+          modelId: "imagine-image-v1",
+          quality: "low",
+        },
       });
       console.log(JSON.stringify(generation));
     `);
@@ -494,7 +650,7 @@ test("durable account Imaging claims coordinate separate server processes", asyn
   }
 });
 
-test("standalone account Imaging assets never merge into a shared project Canvas", async () => {
+test("standalone account Imagine assets never merge into a shared project Canvas", async () => {
   const dataDir = await fs.mkdtemp(path.join(os.tmpdir(), "filmscript-account-imaging-private-"));
   try {
     const scenario = spawnSync(process.execPath, ["--input-type=module", "--eval", `

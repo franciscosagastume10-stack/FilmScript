@@ -237,7 +237,7 @@
     'Writing desk': 'Escritorio de escritura',
     'New script': 'Nuevo guion',
     'New project': 'Nuevo proyecto',
-    'Imaging': 'Imaging',
+    'Imagine': 'Imagine',
     'Import script': 'Importar guion',
     'Importing screenplay': 'Importando guion',
     'PDF or .fs, the FilmScript text format.': 'PDF o .fs, el formato de texto de FilmScript.',

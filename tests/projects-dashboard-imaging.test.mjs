@@ -34,18 +34,21 @@ test('New project is the white primary action with its plus after the label', ()
   assert.match(app, /\.fs-scripts-action--primary \{ color: #FFFEF9 !important/);
 });
 
-test('Imaging is a native third action that opens outside any project', () => {
+test('Imagine is a native third action that opens outside any project', () => {
   const dashboard = app.slice(
     app.indexOf('<!-- ============ SCRIPTS DASHBOARD'),
     app.indexOf('<!-- ============ SCRIPT EDITOR'),
   );
   const importIndex = dashboard.indexOf('onClick="{{ importScript }}"');
-  const imagingIndex = dashboard.indexOf('onClick="{{ openImaging }}"');
+  const imagineIndex = dashboard.indexOf('onClick="{{ openImagine }}"');
 
-  assert.ok(importIndex >= 0 && imagingIndex > importIndex);
-  assert.match(dashboard, /<button type="button" onClick="\{\{ openImaging \}\}"/);
-  assert.match(app, /openImaging: \(\) => \{ window\.location\.href = 'Imaging\.dc\.html'; \}/);
-  assert.doesNotMatch(app, /openImaging:[^\n]+script=/);
+  assert.ok(importIndex >= 0 && imagineIndex > importIndex);
+  assert.match(dashboard, /<button type="button" onClick="\{\{ openImagine \}\}"/);
+  assert.match(dashboard, />Imagine</);
+  assert.match(app, /openImagine: \(\) => \{ window\.location\.href = '\/Imagine\.dc\.html'; \}/);
+  assert.doesNotMatch(app, /openImagine:[^\n]+script=/);
+  const destination = app.match(/openImagine: \(\) => \{ window\.location\.href = '([^']+)'/)?.[1];
+  assert.equal(new URL(destination, 'https://filmscript.app/workspace/scripts').pathname, '/Imagine.dc.html');
   assert.match(app, /min-height: 44px !important/);
 });
 
@@ -53,7 +56,7 @@ test('Projects dashboard labels are available in English and Spanish', () => {
   const language = read('language-preference.js');
 
   assert.match(language, /'New project': 'Nuevo proyecto'/);
-  assert.match(language, /'Imaging': 'Imaging'/);
+  assert.match(language, /'Imagine': 'Imagine'/);
   assert.match(language, /'Projects': 'Proyectos'/);
   assert.match(language, /'Search projects': 'Buscar proyectos'/);
   assert.match(language, /'Loading your projects': 'Cargando tus proyectos'/);

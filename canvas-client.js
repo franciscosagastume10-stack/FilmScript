@@ -38,7 +38,7 @@
     body: JSON.stringify(body || {}),
   });
   const pathFor = (scriptId, suffix = '') => `/api/scripts/${encodeURIComponent(scriptId)}/canvas${suffix}`;
-  // Imaging is an account workspace. Its API never receives a screenplay or
+  // Imagine is an account workspace. Its API never receives a screenplay or
   // project identifier, which keeps the gallery available from the dashboard
   // without creating a hidden project or a shared sentinel script.
   const accountImagingPath = (suffix = '') => `/api/me/imaging${suffix}`;
