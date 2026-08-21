@@ -44,7 +44,12 @@ test('feature names form a touch-native continuous carousel with safe motion pre
   assert.match(html, /wheel/);
   assert.match(html, /focus-visible/);
   assert.match(html, /this\._suiteMarqueeCleanup/);
+  assert.match(html, /componentDidUpdate\(\) \{\s*this\._armSuiteMarquee\(\);/);
+  assert.match(html, /this\._suiteMarqueeCleanup && this\._suiteMarqueeNode === nav/);
+  assert.match(html, /this\._suiteMarqueeCleanup\?\.\(\);\s*this\._suiteMarqueeNode = nav;/);
   assert.match(css, /touch-action: pan-x pan-y;/);
   assert.match(css, /overscroll-behavior-inline: contain;/);
+  assert.match(css, /\.fs-suite-nav \.fs-suite-nav-track--clone \{\s*display: none;/);
+  assert.match(css, /\.fs-suite-nav\[data-carousel-ready="true"\] \.fs-suite-nav-track--clone \{\s*display: flex;/);
   assert.match(css, /@media \(prefers-reduced-motion: reduce\)[\s\S]*\.fs-suite-nav-track--clone \{[\s\S]*display: none !important;/);
 });

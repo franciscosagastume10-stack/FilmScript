@@ -801,6 +801,10 @@ textarea {
     padding: 0 10px;
   }
 
+  .fs-suite-nav .fs-suite-nav-track--clone {
+    display: none;
+  }
+
   .fs-suite-nav[data-carousel-ready="true"] .fs-suite-nav-track--clone {
     display: flex;
   }
