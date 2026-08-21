@@ -718,6 +718,96 @@ function saveCanvasLibrary(userId, library) {
   return true;
 }
 
+function rowToAccountImagingGeneration(row) {
+  if (!row) return null;
+  return {
+    userId: row.user_id,
+    requestId: row.request_id,
+    fingerprint: row.fingerprint,
+    status: row.status,
+    leaseToken: row.lease_token || null,
+    leaseExpiresAt: row.lease_expires_at || null,
+    assetId: row.asset_id || null,
+    result: parseJson(row.result_json, null),
+    errorCode: row.error_code || null,
+    createdAt: row.created_at,
+    updatedAt: row.updated_at,
+    completedAt: row.completed_at || null,
+  };
+}
+
+function claimAccountImagingGeneration({ userId, requestId, fingerprint, leaseMs = 15 * 60 * 1000 }) {
+  if (!userId || !requestId || !fingerprint) return { state: "missing", generation: null };
+  const timestamp = nowIso();
+  const leaseToken = `imaging_lease_${crypto.randomBytes(16).toString("hex")}`;
+  const leaseExpiresAt = new Date(Date.now() + Math.max(60_000, Number(leaseMs) || 0)).toISOString();
+  const claim = sqlite.transaction(() => {
+    const current = sqlite.prepare(`
+      SELECT * FROM account_imaging_generations WHERE user_id = ? AND request_id = ?
+    `).get(userId, requestId);
+    if (current?.fingerprint && current.fingerprint !== fingerprint) {
+      return { state: "conflict", generation: rowToAccountImagingGeneration(current) };
+    }
+    if (current?.status === "completed") {
+      return { state: "completed", generation: rowToAccountImagingGeneration(current) };
+    }
+    if (current?.status === "pending" && Date.parse(current.lease_expires_at || "") > Date.now()) {
+      return { state: "pending", generation: rowToAccountImagingGeneration(current) };
+    }
+    if (!current) {
+      sqlite.prepare(`
+        INSERT INTO account_imaging_generations
+          (user_id, request_id, fingerprint, status, lease_token, lease_expires_at, created_at, updated_at)
+        VALUES (?, ?, ?, 'pending', ?, ?, ?, ?)
+      `).run(userId, requestId, fingerprint, leaseToken, leaseExpiresAt, timestamp, timestamp);
+    } else {
+      sqlite.prepare(`
+        UPDATE account_imaging_generations
+        SET fingerprint = ?, status = 'pending', lease_token = ?, lease_expires_at = ?,
+          asset_id = NULL, result_json = NULL, error_code = NULL, updated_at = ?, completed_at = NULL
+        WHERE user_id = ? AND request_id = ?
+      `).run(fingerprint, leaseToken, leaseExpiresAt, timestamp, userId, requestId);
+    }
+    const generation = sqlite.prepare(`
+      SELECT * FROM account_imaging_generations WHERE user_id = ? AND request_id = ?
+    `).get(userId, requestId);
+    return { state: "claimed", generation: rowToAccountImagingGeneration(generation) };
+  });
+  // Acquire the write lock before inspecting the receipt. A deferred
+  // transaction can deadlock when two already-running ECS tasks both read and
+  // then attempt to upgrade at the same moment.
+  return claim.immediate();
+}
+
+function completeAccountImagingGeneration({ userId, requestId, leaseToken, assetId, result }) {
+  if (!userId || !requestId || !leaseToken) return null;
+  const timestamp = nowIso();
+  const update = sqlite.prepare(`
+    UPDATE account_imaging_generations
+    SET status = 'completed', lease_token = NULL, lease_expires_at = NULL,
+      asset_id = ?, result_json = ?, error_code = NULL, updated_at = ?, completed_at = ?
+    WHERE user_id = ? AND request_id = ? AND status = 'pending' AND lease_token = ?
+  `).run(assetId || null, stringify(result || null), timestamp, timestamp, userId, requestId, leaseToken);
+  if (update.changes !== 1) return null;
+  return rowToAccountImagingGeneration(sqlite.prepare(`
+    SELECT * FROM account_imaging_generations WHERE user_id = ? AND request_id = ?
+  `).get(userId, requestId));
+}
+
+function failAccountImagingGeneration({ userId, requestId, leaseToken, errorCode = "generation_failed" }) {
+  if (!userId || !requestId || !leaseToken) return null;
+  const timestamp = nowIso();
+  sqlite.prepare(`
+    UPDATE account_imaging_generations
+    SET status = 'failed', lease_token = NULL, lease_expires_at = NULL,
+      error_code = ?, updated_at = ?
+    WHERE user_id = ? AND request_id = ? AND status = 'pending' AND lease_token = ?
+  `).run(String(errorCode || "generation_failed").slice(0, 160), timestamp, userId, requestId, leaseToken);
+  return rowToAccountImagingGeneration(sqlite.prepare(`
+    SELECT * FROM account_imaging_generations WHERE user_id = ? AND request_id = ?
+  `).get(userId, requestId));
+}
+
 function loadCreditsSnapshot() {
   const row = sqlite.prepare("SELECT value_json FROM app_settings WHERE key = 'credits'").get();
   return parseJson(row?.value_json, { budget: 5, spent: 0 });
@@ -1213,9 +1303,11 @@ function databaseHealth() {
 
 export {
   DATABASE_PATH,
+  claimAccountImagingGeneration,
   claimSubscriptionSwitchPreview,
   connectGoogleIdentity,
   completeSubscriptionSwitchPreview,
+  completeAccountImagingGeneration,
   consumeAuthHandoff,
   consumeOauthState,
   createAuthHandoff,
@@ -1230,6 +1322,7 @@ export {
   getCanvasLibrary,
   getCanvasWorkspace,
   failSubscriptionSwitchPreview,
+  failAccountImagingGeneration,
   getSubscription,
   getUser,
   loadBillingSnapshot,

@@ -6,6 +6,7 @@ const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const output = path.join(root, "dist");
 const frontendFiles = [
   "App.dc.html",
+  "Imaging.dc.html",
   "auth-complete.html",
   "auth-google.html",
   "Editor v5.dc.html",
@@ -118,7 +119,7 @@ const outputFiles = fs.readdirSync(output, { recursive: true, withFileTypes: tru
   .map((entry) => path.join(entry.parentPath || entry.path, entry.name));
 const forbidden = outputFiles.filter((filename) => /(?:^|[/\\])erp(?:-shell)?\.(?:html|js|css)$/i.test(filename));
 if (forbidden.length) throw new Error(`Forbidden ERP files in FilmScript build: ${forbidden.join(", ")}`);
-for (const required of ["Features.dc.html", "App.dc.html", "Editor v5.dc.html", "SharedProject.html", "GuestAccess.html", "guest-access.js", "Invitation.html", "invitation-access.js", "seamless-navigation.js", "platform-client.js", "platform-ui.css"]) {
+for (const required of ["Features.dc.html", "App.dc.html", "Imaging.dc.html", "Editor v5.dc.html", "SharedProject.html", "GuestAccess.html", "guest-access.js", "Invitation.html", "invitation-access.js", "seamless-navigation.js", "platform-client.js", "platform-ui.css"]) {
   if (!fs.existsSync(path.join(output, required))) throw new Error(`Incomplete frontend build: ${required} is missing`);
 }
 const outputBytes = outputFiles.reduce((total, filename) => total + fs.statSync(filename).size, 0);

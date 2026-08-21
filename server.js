@@ -19,10 +19,13 @@ import {
   getBudgetReceipt,
   getCanvasLibrary,
   getCanvasWorkspace,
+  claimAccountImagingGeneration,
+  completeAccountImagingGeneration,
   createSubscriptionSwitchPreview,
   claimSubscriptionSwitchPreview,
   completeSubscriptionSwitchPreview,
   failSubscriptionSwitchPreview,
+  failAccountImagingGeneration,
   getSubscription,
   getUser,
   loadBillingSnapshot,
@@ -424,6 +427,10 @@ const activeShotListJobs = new Set();
 const activeScriptAnalysisJobs = new Set();
 const activeLumiereChats = new Set();
 const activeBudgetImports = new Set();
+// Browsers may retry the same Imaging request while the provider is still
+// working. Keep one in-flight promise per account/request so every waiter
+// receives the same frame and, critically, shares one credit reservation.
+const activeAccountImagingGenerations = new Map();
 const budgetImportProposals = new Map();
 const billingVerificationCache = new Map();
 const activeBillingVerifications = new Map();
@@ -7142,6 +7149,11 @@ function canvasContext(scriptId, userId) {
   // library, but must never merge their personal Vault or Canvas library into
   // the owner's project as a side effect of opening the page.
   const library = canReadCanvas ? getCanvasLibrary(userId) || {} : {};
+  // Standalone Imaging is an account-private surface. Its assets live in the
+  // same durable library record for backwards compatibility, but must never
+  // be merged into a project workspace where collaborators could see them.
+  const projectLibraryAssets = (Array.isArray(library.assets) ? library.assets : [])
+    .filter((asset) => !isPrivateAccountImagingAsset(asset));
   const mergeById = (shared, local, key) => {
     const seen = new Set();
     return [...(Array.isArray(shared) ? shared : []), ...(Array.isArray(local) ? local : [])].filter((entry) => {
@@ -7153,7 +7165,8 @@ function canvasContext(scriptId, userId) {
   };
   const workspace = normalizeCanvasWorkspace({
     ...stored,
-    assets: mergeById(library.assets, stored.assets, 'id'),
+    assets: mergeById(projectLibraryAssets, stored.assets, 'id')
+      .filter((asset) => !isPrivateAccountImagingAsset(asset)),
     vaultItems: mergeById(library.vaultItems, stored.vaultItems, 'id'),
     vaultCategories: [...new Set([...(Array.isArray(library.vaultCategories) ? library.vaultCategories : []), ...(Array.isArray(stored.vaultCategories) ? stored.vaultCategories : [])])],
   }, { scriptId, userId });
@@ -7162,18 +7175,435 @@ function canvasContext(scriptId, userId) {
 
 function saveCanvasContext(context) {
   context.workspace.updatedAt = new Date().toISOString();
+  const existingLibrary = getCanvasLibrary(context.script.userId) || {};
+  const privateAccountAssets = (Array.isArray(existingLibrary.assets) ? existingLibrary.assets : [])
+    .filter(isPrivateAccountImagingAsset);
+  const projectAssets = (Array.isArray(context.workspace.assets) ? context.workspace.assets : [])
+    .filter((asset) => !isPrivateAccountImagingAsset(asset));
   saveCanvasLibrary(context.script.userId, {
-    assets: context.workspace.assets,
+    ...existingLibrary,
+    assets: [...projectAssets, ...privateAccountAssets],
     vaultItems: context.workspace.vaultItems,
     vaultCategories: context.workspace.vaultCategories,
     updatedAt: context.workspace.updatedAt,
   });
-  saveCanvasWorkspace(context.script.id, context.script.userId, context.workspace);
-  return publicCanvasWorkspace(context.workspace, { scriptId: context.script.id, userId: context.script.userId });
+  const projectWorkspace = { ...context.workspace, assets: projectAssets };
+  saveCanvasWorkspace(context.script.id, context.script.userId, projectWorkspace);
+  return publicCanvasWorkspace(projectWorkspace, { scriptId: context.script.id, userId: context.script.userId });
 }
 
 function isImagineVisibleAsset(asset) {
   return ["imagine", "imagine_reference"].includes(String(asset?.source || "").toLowerCase());
+}
+
+const ACCOUNT_IMAGING_ACCESS_SCOPE = "account_imaging";
+
+function isPrivateAccountImagingAsset(asset) {
+  return String(asset?.generation?.accessScope || "") === ACCOUNT_IMAGING_ACCESS_SCOPE;
+}
+
+function accountImagingStorageNamespace(userId) {
+  const safeUserId = String(userId || "").replace(/[^a-zA-Z0-9_-]/g, "");
+  if (!safeUserId) throw Object.assign(new Error("account is required"), { status: 401 });
+  return `imaging_${safeUserId}`;
+}
+
+function accountImagingAssets(userId) {
+  const library = getCanvasLibrary(userId) || {};
+  const assets = (Array.isArray(library.assets) ? library.assets : [])
+    .filter(isImagineVisibleAsset)
+    .map((value) => normalizeAsset({
+      ...value,
+      createdBy: value?.createdBy || userId,
+      // canvas_libraries is physically keyed by user_id. Never trust a stale
+      // or imported owner field over that account boundary.
+      ownerUserId: userId,
+    }));
+  return { library, assets };
+}
+
+function publicAccountImagingAsset(asset, userId) {
+  const normalized = normalizeAsset({
+    ...asset,
+    createdBy: asset?.createdBy || userId,
+    ownerUserId: userId,
+  });
+  const { key: _key, ...publicAsset } = normalized;
+  return publicAsset;
+}
+
+function publicAccountImagingWorkspace(userId) {
+  const { library, assets } = accountImagingAssets(userId);
+  const timestamp = new Date().toISOString();
+  return {
+    version: 1,
+    accessScope: ACCOUNT_IMAGING_ACCESS_SCOPE,
+    accountScoped: true,
+    ownerUserId: userId,
+    settings: { lastTool: "home" },
+    assets: assets.map((asset) => publicAccountImagingAsset(asset, userId)),
+    createdAt: String(library.createdAt || timestamp),
+    updatedAt: String(library.updatedAt || library.createdAt || timestamp),
+  };
+}
+
+function appendAccountImagingAsset(userId, value) {
+  // Keep this read/append/write sequence synchronous. Provider calls finish
+  // independently, so re-reading here retains every other image that may have
+  // completed while the current request was in flight.
+  const library = getCanvasLibrary(userId) || {};
+  const currentAssets = Array.isArray(library.assets) ? library.assets : [];
+  const asset = normalizeAsset({
+    ...value,
+    createdBy: value?.createdBy || userId,
+    ownerUserId: userId,
+    generation: {
+      ...(value?.generation && typeof value.generation === "object" ? value.generation : {}),
+      accessScope: ACCOUNT_IMAGING_ACCESS_SCOPE,
+    },
+  });
+  const assets = currentAssets.some((entry) => entry?.id === asset.id)
+    ? currentAssets.map((entry) => entry?.id === asset.id ? asset : entry)
+    : [...currentAssets, asset];
+  const updatedAt = new Date().toISOString();
+  if (!saveCanvasLibrary(userId, { ...library, assets, updatedAt })) {
+    throw Object.assign(new Error("Imaging library is no longer available."), { status: 404 });
+  }
+  return asset;
+}
+
+async function handleAccountImagingWorkspace(req, res) {
+  const sid = sessionId(req, res);
+  if (!sid) return googleRequired(res);
+  return json(res, 200, { workspace: publicAccountImagingWorkspace(sid) });
+}
+
+async function handleAccountImagingAssetUpload(req, res) {
+  const sid = sessionId(req, res);
+  if (!sid) return googleRequired(res);
+  const mimeType = String(req.headers["content-type"] || "").split(";")[0].trim().toLowerCase();
+  if (!["image/jpeg", "image/png", "image/webp"].includes(mimeType)) {
+    return json(res, 415, { error: "Imaging accepts PNG, JPEG, or WebP images" });
+  }
+  const data = await readBodyBuffer(req, 8 * 1024 * 1024);
+  if (!data.length) return json(res, 400, { error: "image is empty" });
+  if (!validateImagePayload(data, mimeType)) {
+    return json(res, 415, { error: "image content does not match its declared type" });
+  }
+  const assetId = createCanvasId("cas");
+  const filename = safeFilename(decodedHeader(req.headers["x-filename"], "Imaging reference")).slice(0, 160) || "Imaging reference";
+  const stored = await canvasStorage.put({
+    scriptId: accountImagingStorageNamespace(sid),
+    assetId,
+    mimeType,
+    data,
+  });
+  const asset = normalizeAsset({
+    id: assetId,
+    ...stored,
+    createdBy: sid,
+    ownerUserId: sid,
+    mimeType,
+    filename,
+    size: data.length,
+    width: req.headers["x-image-width"],
+    height: req.headers["x-image-height"],
+    source: "imagine_reference",
+    createdAt: new Date().toISOString(),
+  });
+  let accountAsset;
+  try { accountAsset = appendAccountImagingAsset(sid, asset); }
+  catch (error) {
+    await canvasStorage.remove(asset).catch(() => {});
+    throw error;
+  }
+  return json(res, 201, { asset: publicAccountImagingAsset(accountAsset, sid) });
+}
+
+async function storeGeneratedAccountImagingAsset(userId, data, prompt, options = {}) {
+  const assetId = createCanvasId("cas");
+  const createdAt = new Date().toISOString();
+  const requestedSize = normalizeImageSize(options.size);
+  const verifiedDimensions = imageDimensions(data, "image/jpeg");
+  const [requestedWidth, requestedHeight] = requestedSize.split("x").map(Number);
+  const expectedDimensions = Number.isFinite(requestedWidth) && Number.isFinite(requestedHeight)
+    ? { width: requestedWidth, height: requestedHeight }
+    : { width: 1536, height: 1024 };
+  const dimensions = verifiedDimensions || expectedDimensions;
+  const generation = options.generation && typeof options.generation === "object" && !Array.isArray(options.generation)
+    ? options.generation
+    : {};
+  const stored = await canvasStorage.put({
+    scriptId: accountImagingStorageNamespace(userId),
+    assetId,
+    mimeType: "image/jpeg",
+    data,
+  });
+  const asset = normalizeAsset({
+    id: assetId,
+    ...stored,
+    createdBy: userId,
+    ownerUserId: userId,
+    mimeType: "image/jpeg",
+    filename: `Imaging — ${String(prompt || "Untitled").trim().slice(0, 72) || "Untitled"}.jpg`,
+    size: data.length,
+    width: dimensions.width,
+    height: dimensions.height,
+    source: "imagine",
+    prompt,
+    generation: {
+      ...generation,
+      requestedSize,
+      actualSize: `${dimensions.width}x${dimensions.height}`,
+      aspectRatio: Number((dimensions.width / dimensions.height).toFixed(8)),
+      dimensionsVerified: Boolean(verifiedDimensions),
+      dimensionsVerifiedAt: verifiedDimensions ? createdAt : "",
+    },
+    createdAt,
+  });
+  let accountAsset;
+  try { accountAsset = appendAccountImagingAsset(userId, asset); }
+  catch (error) {
+    await canvasStorage.remove(asset).catch(() => {});
+    throw error;
+  }
+  return publicAccountImagingAsset(accountAsset, userId);
+}
+
+function accountImagingGenerationConflict() {
+  return Object.assign(new Error("This Imaging request id is already being used for different instructions."), {
+    status: 409,
+    code: "imaging_request_id_conflict",
+  });
+}
+
+function startAccountImagingGeneration(key, fingerprint, work) {
+  const existing = activeAccountImagingGenerations.get(key);
+  if (existing) {
+    if (existing.fingerprint !== fingerprint) throw accountImagingGenerationConflict();
+    return { promise: existing.promise, reused: true };
+  }
+  // Schedule the work in a microtask so the map entry exists before any part
+  // of the provider flow can yield back to the HTTP server.
+  const promise = Promise.resolve().then(work);
+  const entry = { fingerprint, promise };
+  activeAccountImagingGenerations.set(key, entry);
+  const cleanup = () => {
+    if (activeAccountImagingGenerations.get(key) === entry) activeAccountImagingGenerations.delete(key);
+  };
+  promise.then(cleanup, cleanup);
+  return { promise, reused: false };
+}
+
+async function handleAccountImagingImageGenerate(req, res) {
+  const sid = sessionId(req, res);
+  if (!sid) return googleRequired(res);
+  const body = await canvasJsonBody(req, 24_000);
+  const { assets } = accountImagingAssets(sid);
+  const requestId = /^imagine-job_[a-f0-9]+$/.test(String(body?.requestId || "")) ? String(body.requestId) : "";
+  const prompt = String(body?.prompt || "").trim().replace(/\s+/g, " ");
+  if (prompt.length < 8) return json(res, 400, { error: "Describe the image in at least 8 characters." });
+  if (prompt.length > 3_000) return json(res, 400, { error: "Keep the visual direction under 3,000 characters." });
+  const requestedSize = normalizeImageSize(body?.size);
+  const [requestedWidth, requestedHeight] = requestedSize === "auto" ? [0, 0] : requestedSize.split("x").map(Number);
+  const orientation = requestedHeight > requestedWidth
+    ? "vertical"
+    : requestedWidth === requestedHeight ? "square" : "horizontal";
+  const size = requestedSize === "auto" ? (orientation === "vertical" ? "1024x1536" : "1536x1024") : requestedSize;
+  const visualStyle = ["cinematic", "animated", "sketch", "anime"].includes(String(body?.style || "").toLowerCase())
+    ? String(body.style).toLowerCase()
+    : "cinematic";
+  const quality = normalizeImageQuality(body?.quality);
+  const camera = String(body?.camera || "").trim().slice(0, 100);
+  const lens = String(body?.lens || "").trim().slice(0, 100);
+  const focalLength = String(body?.focalLength || "").trim().slice(0, 40);
+  const referenceIds = [...new Set((Array.isArray(body?.referenceAssetIds) ? body.referenceAssetIds : []).map(String))]
+    .filter((id) => /^cas_[a-f0-9]+$/.test(id))
+    .slice(0, 4);
+  const requestFingerprint = hashText(JSON.stringify({
+    prompt,
+    size,
+    orientation,
+    style: visualStyle,
+    quality,
+    camera,
+    lens,
+    focalLength,
+    referenceAssetIds: referenceIds,
+  }));
+  const activeKey = requestId ? `${sid}:${requestId}` : "";
+  if (activeKey) {
+    const active = activeAccountImagingGenerations.get(activeKey);
+    if (active) {
+      if (active.fingerprint !== requestFingerprint) throw accountImagingGenerationConflict();
+      const result = await active.promise;
+      return json(res, 200, { ...result, reused: true, credits: creditsSummary(sid) });
+    }
+    // A refresh may repeat the request after the provider completed. Resolve
+    // the account-owned receipt before rate limiting or reserving credits.
+    const existing = assets.find((asset) => asset.source === "imagine"
+      && isPrivateAccountImagingAsset(asset)
+      && asset.generation?.requestId === requestId);
+    if (existing) {
+      if (existing.generation?.requestFingerprint && existing.generation.requestFingerprint !== requestFingerprint) {
+        throw accountImagingGenerationConflict();
+      }
+      return json(res, 200, {
+        asset: publicAccountImagingAsset(existing, sid),
+        reused: true,
+        model: OPENAI_STORYBOARD_MODEL,
+        quality: normalizeImageQuality(existing.generation?.quality),
+        credits: creditsSummary(sid),
+      });
+    }
+  }
+  if (enforceRateLimit(req, res, "storyboard-image", 6, 10 * 60 * 1000, sid)) return;
+  const durableClaim = requestId
+    ? claimAccountImagingGeneration({ userId: sid, requestId, fingerprint: requestFingerprint })
+    : null;
+  if (durableClaim?.state === "conflict") throw accountImagingGenerationConflict();
+  if (durableClaim?.state === "completed" && durableClaim.generation?.result) {
+    return json(res, 200, {
+      ...durableClaim.generation.result,
+      reused: true,
+      credits: creditsSummary(sid),
+    });
+  }
+  if (durableClaim?.state === "pending") {
+    return json(res, 202, {
+      pending: true,
+      requestId,
+      retryAfterMs: 4000,
+    });
+  }
+  const reservation = reserveImageCredits(sid, imageCreditCostForQuality(quality));
+  if (!reservation.allowed) {
+    if (durableClaim?.state === "claimed") {
+      failAccountImagingGeneration({
+        userId: sid,
+        requestId,
+        leaseToken: durableClaim.generation?.leaseToken,
+        errorCode: reservation.reason || "image_credits_unavailable",
+      });
+    }
+    return imageGenerationRequired(res, sid, reservation);
+  }
+  const generation = startAccountImagingGeneration(activeKey || `anonymous:${crypto.randomUUID()}`, requestFingerprint, async () => {
+    try {
+    const referenceImages = [];
+    for (const assetId of referenceIds) {
+      const asset = assets.find((entry) => entry.id === assetId && isImagineVisibleAsset(entry));
+      if (!asset) continue;
+      try {
+        referenceImages.push({
+          data: await canvasStorage.get(asset),
+          mimeType: asset.mimeType,
+          filename: asset.filename,
+        });
+      } catch {}
+    }
+    const cameraDirection = [
+      camera && `camera ${camera}`,
+      lens && `lens ${lens}`,
+      focalLength && `${focalLength} focal length`,
+    ].filter(Boolean).join(", ") || "Choose camera and lens treatment only from the explicit direction and attached references. Do not derive visual subject matter from any other source.";
+    const styleDirection = {
+      cinematic: "cinematic photographic image with grounded, intentional lighting and realistic detail",
+      animated: "stylized animated film frame: expressive, polished, dimensional animation",
+      sketch: "filmmaking concept sketch: refined hand-drawn line work, tonal shading, clear composition",
+      anime: "cinematic anime frame: deliberate composition, expressive lighting, high-end animation detail",
+    }[visualStyle];
+    const referenceDirection = referenceImages.length
+      ? "REFERENCE SUBJECT LOCK: The attached reference image or images are the ground truth. Preserve their visible subject, environment, objects, composition, and identity unless the visual direction explicitly requests a change. Do not replace them with unrelated subject matter."
+      : "NO-HISTORY LOCK: Start from a blank visual canvas and use the explicit visual direction only. Do not reuse, continue, or infer any project, screenplay, or prior context.";
+    const result = await requestStoryboardImage({
+      prompt: `Create one polished ${styleDirection} image. Allow typography only when the user explicitly requests it. STANDALONE MODE. The visual direction below is the complete and only creative brief. Use no project or screenplay information. ${referenceDirection} Visual direction: ${prompt}. Camera direction: ${cameraDirection}.`,
+      userId: sid,
+      size,
+      quality,
+      referenceImages,
+    });
+    const asset = await storeGeneratedAccountImagingAsset(sid, result.data, prompt, {
+      size,
+      generation: {
+        orientation,
+        size,
+        style: visualStyle,
+        quality,
+        camera,
+        lens,
+        focalLength,
+        referenceAssetIds: referenceIds,
+        requestId,
+        requestFingerprint,
+      },
+    });
+    const generationResult = {
+      asset,
+      model: OPENAI_STORYBOARD_MODEL,
+      quality,
+      revisedPrompt: result.revisedPrompt,
+    };
+    if (durableClaim?.state === "claimed") {
+      const completed = completeAccountImagingGeneration({
+        userId: sid,
+        requestId,
+        leaseToken: durableClaim.generation?.leaseToken,
+        assetId: asset.id,
+        result: generationResult,
+      });
+      if (!completed) {
+        throw Object.assign(new Error("Imaging could not confirm this generation safely."), {
+          status: 409,
+          code: "imaging_generation_claim_lost",
+        });
+      }
+    }
+    // Persist the idempotency receipt before settling. If the process stops in
+    // this tiny interval, a retry reuses the frame instead of charging twice.
+    settleImageCreditReservation(sid, reservation.reservationId);
+    return generationResult;
+    } catch (error) {
+      refundImageCreditReservation(sid, reservation.reservationId);
+      if (durableClaim?.state === "claimed") {
+        failAccountImagingGeneration({
+          userId: sid,
+          requestId,
+          leaseToken: durableClaim.generation?.leaseToken,
+          errorCode: error?.code || error?.message || "generation_failed",
+        });
+      }
+      throw error;
+    }
+  });
+  const result = await generation.promise;
+  return json(res, generation.reused ? 200 : 201, {
+    ...result,
+    ...(generation.reused ? { reused: true } : {}),
+    credits: creditsSummary(sid),
+  });
+}
+
+async function handleAccountImagingAsset(req, res, assetId) {
+  const sid = sessionId(req, res);
+  if (!sid) return googleRequired(res);
+  const { assets } = accountImagingAssets(sid);
+  const asset = assets.find((entry) => entry.id === assetId);
+  if (!asset) return json(res, 404, { error: "Imaging image not found" });
+  let data;
+  try { data = await canvasStorage.get(asset); }
+  catch (error) {
+    if (error?.code === "ENOENT") return json(res, 404, { error: "Imaging image not found" });
+    throw error;
+  }
+  const filename = safeFilename(asset.filename).replace(/[^a-zA-Z0-9._ -]/g, "") || "Imaging image";
+  res.writeHead(200, {
+    "Content-Type": asset.mimeType,
+    "Content-Length": data.length,
+    "Content-Disposition": `inline; filename="${filename}"`,
+    "Cache-Control": "private, max-age=3600",
+  });
+  res.end(data);
 }
 
 function authorizedCanvasAsset(asset, access) {
@@ -7375,6 +7805,8 @@ async function handleCanvasAssetUpload(req, res, scriptId) {
   const asset = normalizeAsset({
     id: assetId,
     ...stored,
+    createdBy: sid,
+    ownerUserId: context.script.userId,
     mimeType,
     filename,
     size: data.length,
@@ -7414,6 +7846,8 @@ async function storeGeneratedCanvasAsset(context, scriptId, data, prompt, option
   const asset = normalizeAsset({
     id: assetId,
     ...stored,
+    createdBy: options.createdBy || context?.workspace?.userId || context?.script?.userId,
+    ownerUserId: context?.script?.userId,
     mimeType: 'image/jpeg',
     filename: `Storyboard frame — ${String(prompt || 'Untitled').trim().slice(0, 72) || 'Untitled'}.jpg`,
     size: data.length,
@@ -7778,6 +8212,7 @@ const MIME = {
 
 const PUBLIC_STATIC_FILES = new Set([
   "App.dc.html",
+  "Imaging.dc.html",
   "Editor v5.dc.html",
   "Features.dc.html",
   "Pricing.dc.html",
@@ -8633,6 +9068,14 @@ export function requestHandler(req, res) {
       handleGuestProject(req, res, pathname.split("/").pop()).catch((err) => json(res, err.status || 500, { error: err.code || err.message }));
     } else if ((req.method === "GET" || req.method === "PATCH") && pathname === "/api/me/platform-profile") {
       handlePlatformProfile(req, res).catch((err) => json(res, err.status || 500, { error: err.code || err.message }));
+    } else if (req.method === "GET" && pathname === "/api/me/imaging") {
+      handleAccountImagingWorkspace(req, res).catch((err) => json(res, err.status || 500, { error: err.code || err.message }));
+    } else if (req.method === "POST" && pathname === "/api/me/imaging/assets") {
+      handleAccountImagingAssetUpload(req, res).catch((err) => json(res, err.status || 500, { error: err.code || err.message }));
+    } else if (req.method === "POST" && pathname === "/api/me/imaging/images/generate") {
+      handleAccountImagingImageGenerate(req, res).catch((err) => json(res, err.status || 500, { error: err.code || err.message }));
+    } else if (req.method === "GET" && /^\/api\/me\/imaging\/assets\/cas_[a-f0-9]+$/.test(pathname)) {
+      handleAccountImagingAsset(req, res, pathname.split("/").pop()).catch((err) => json(res, err.status || 500, { error: err.code || err.message }));
     } else if ((req.method === "GET" || req.method === "POST" || req.method === "DELETE") && pathname === "/api/me/avatar") {
       handleProfileAvatar(req, res).catch((err) => json(res, err.status || 500, { error: err.code || err.message }));
     } else if ((req.method === "GET" || req.method === "HEAD") && /^\/api\/users\/usr_[A-Za-z0-9_-]{1,80}\/avatar$/.test(pathname)) {
@@ -8848,7 +9291,11 @@ export const __entitlementTesting = Object.freeze({
 // parallel image generations without contacting an image provider.
 export const __canvasTesting = Object.freeze({
   canvasContext,
+  saveCanvasContext,
   storeGeneratedCanvasAsset,
+  publicAccountImagingWorkspace,
+  storeGeneratedAccountImagingAsset,
+  startAccountImagingGeneration,
 });
 
 // Vercel imports the handler as a serverless function. Local development still

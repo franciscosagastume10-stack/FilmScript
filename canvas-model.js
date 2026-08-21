@@ -57,6 +57,8 @@ function normalizeAsset(value = {}) {
     : "image/jpeg";
   return {
     id: assetId,
+    createdBy: text(value.createdBy, 80),
+    ownerUserId: text(value.ownerUserId, 80),
     provider: text(value.provider || "local", 32).toLowerCase(),
     key: text(value.key, 500),
     mimeType,

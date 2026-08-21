@@ -208,8 +208,15 @@
   .fs-scripts-actions .fs-scripts-action::before,
   .fs-scripts-actions .fs-scripts-action::after { display: none !important; }
   .fs-scripts-actions .fs-scripts-action:hover { transform: translateY(-2px) !important; border-color: color-mix(in srgb, var(--accent, #BA7517) 58%, transparent) !important; background: color-mix(in srgb, var(--accent, #BA7517) 10%, var(--surface, #FFFEF9)) !important; box-shadow: inset 0 1px 0 rgba(255,255,255,.58), 0 12px 28px rgba(30,28,23,.11) !important; }
-  .fs-scripts-actions .fs-scripts-action--primary { background: color-mix(in srgb, var(--accent, #BA7517) 82%, var(--surface, #FFFEF9)) !important; border-color: color-mix(in srgb, var(--accent, #BA7517) 70%, var(--line, #2C2C2A)) !important; }
+  .fs-scripts-actions { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; }
+  .fs-scripts-actions .fs-scripts-action { position: static !important; width: 100% !important; min-width: 0; min-height: 44px !important; padding: 0 14px !important; }
+  .fs-scripts-actions .fs-scripts-action--primary { color: #FFFEF9 !important; background: color-mix(in srgb, var(--accent, #BA7517) 72%, #242321) !important; border-color: color-mix(in srgb, var(--accent, #BA7517) 62%, #242321) !important; text-shadow: 0 1px 1px rgba(0,0,0,.16); }
+  .fs-scripts-actions .fs-scripts-action--primary:hover { color: #FFFEF9 !important; background: color-mix(in srgb, var(--accent, #BA7517) 78%, #242321) !important; }
+  .fs-scripts-actions .fs-scripts-action--imaging svg { color: var(--accent, #BA7517); }
   .fs-scripts-actions .fs-scripts-action:focus-visible { outline: 3px solid color-mix(in srgb, var(--accent, #BA7517) 48%, transparent); outline-offset: 4px; }
+  .fs-scripts-list-head { justify-content: flex-end; }
+  .fs-scripts-search { min-height: 44px; border-radius: 999px !important; background: color-mix(in srgb, var(--surface, #FFFEF9) 72%, transparent) !important; box-shadow: inset 0 1px 0 rgba(255,255,255,.52), 0 8px 24px rgba(30,28,23,.055); backdrop-filter: blur(16px) saturate(1.12); -webkit-backdrop-filter: blur(16px) saturate(1.12); }
+  .fs-scripts-search:focus-within { border-color: color-mix(in srgb, var(--accent, #BA7517) 58%, transparent) !important; box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent, #BA7517) 13%, transparent), inset 0 1px 0 rgba(255,255,255,.55); }
   .fs-script-card { min-height: 232px !important; padding: 19px !important; border-radius: 22px !important; background: color-mix(in srgb, var(--surface, #FFFEF9) 62%, transparent) !important; border: 1px solid color-mix(in srgb, var(--line, #2C2C2A) 18%, transparent) !important; box-shadow: inset 0 1px 0 rgba(255,255,255,.45), 0 12px 32px rgba(30,28,23,.065) !important; backdrop-filter: blur(16px) saturate(1.12); -webkit-backdrop-filter: blur(16px) saturate(1.12); transition: transform .18s cubic-bezier(.2,.8,.2,1), border-color .18s ease, box-shadow .18s ease, background-color .18s ease !important; }
   .fs-script-card::before { background: transparent !important; border: 0 !important; filter: none !important; }
   .fs-script-card:hover { transform: translateY(-4px) !important; border-color: color-mix(in srgb, var(--accent, #BA7517) 46%, transparent) !important; background: color-mix(in srgb, var(--surface, #FFFEF9) 76%, transparent) !important; box-shadow: inset 0 1px 0 rgba(255,255,255,.55), 0 18px 40px rgba(30,28,23,.11) !important; }
@@ -233,8 +240,13 @@
   .fs-script-import-dots i { width: 3px; height: 3px; border-radius: 50%; background: currentColor; animation: fs-import-dot .9s ease-in-out infinite; }
   .fs-script-import-dots i:nth-child(2) { animation-delay: .12s; } .fs-script-import-dots i:nth-child(3) { animation-delay: .24s; }
   @keyframes fs-import-dot { 0%,100% { transform: translateY(0); opacity: .35; } 50% { transform: translateY(-2px); opacity: 1; } }
-  @media (prefers-reduced-transparency: reduce) { .fs-scripts-actions .fs-scripts-action, .fs-script-card, .fs-script-card-menu { background: var(--surface, #FFFEF9) !important; backdrop-filter: none; -webkit-backdrop-filter: none; } }
+  @media (prefers-reduced-transparency: reduce) { .fs-scripts-actions .fs-scripts-action, .fs-script-card, .fs-script-card-menu, .fs-scripts-search { background: var(--surface, #FFFEF9) !important; backdrop-filter: none; -webkit-backdrop-filter: none; } .fs-scripts-actions .fs-scripts-action--primary { color: #FFFEF9 !important; background: color-mix(in srgb, var(--accent, #BA7517) 72%, #242321) !important; } }
   @media (prefers-reduced-motion: reduce) { .fs-script-import-dots i { animation: none; } .fs-scripts-actions .fs-scripts-action, .fs-script-card, .fs-script-thumb { transition: none !important; } .fs-script-card.is-new-shared { animation: none !important; } }
+  @media (max-width: 980px) {
+    .fs-scripts-hero { padding-right: 0 !important; }
+    .fs-scripts-actions { position: static !important; width: 100% !important; margin-top: 22px; }
+    .fs-scripts-import-note { position: static !important; width: 100% !important; margin-top: 9px; text-align: left !important; }
+  }
   @media (max-width: 700px) {
     .fs-scripts-dashboard { position: relative; isolation: isolate; padding: 30px 20px 44px !important; background-size: cover !important; background-position: center !important; background-attachment: scroll !important; }
     .fs-scripts-dashboard::before { content: ""; position: absolute; inset: 0; z-index: 0; pointer-events: none; background: color-mix(in srgb, var(--bg, #F5F0E8) 87%, transparent); }
@@ -242,9 +254,10 @@
     .fs-scripts-hero { min-height: 0 !important; padding-right: 0 !important; }
     .fs-scripts-hero [aria-label] { font-size: clamp(31px, 10vw, 39px) !important; max-width: 290px; }
     .fs-scripts-hero > div[style*="font-size: 14px"] { max-width: 300px !important; font-size: 14px !important; }
-    .fs-scripts-actions { position: static !important; display: flex; flex-wrap: wrap; gap: 9px; margin-top: 23px; }
-    .fs-scripts-actions .fs-scripts-action { position: static !important; width: auto !important; height: 42px !important; min-height: 42px !important; flex: 1 1 142px; padding: 0 14px !important; }
-    .fs-scripts-actions .fs-scripts-action > div { height: 42px !important; }
+    .fs-scripts-actions { position: static !important; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 9px; margin-top: 23px; }
+    .fs-scripts-actions .fs-scripts-action { width: 100% !important; height: 44px !important; min-height: 44px !important; padding: 0 12px !important; }
+    .fs-scripts-actions .fs-scripts-action > div { height: 44px !important; }
+    .fs-scripts-actions .fs-scripts-action--imaging { grid-column: 1 / -1; }
     .fs-scripts-import-note { position: static !important; width: 100% !important; margin-top: 2px; text-align: left !important; }
     .fs-scripts-list-head { align-items: flex-start !important; flex-direction: column; gap: 12px !important; margin-bottom: 16px !important; }
     .fs-scripts-search { width: 100% !important; }
@@ -379,51 +392,55 @@
   <sc-if value="{{ isScripts }}" hint-placeholder-val="{{ true }}">
   <div class="fs-scripts-background fs-scripts-dashboard" onMouseMove="{{ onScriptsPointer }}" onMouseLeave="{{ onScriptsPointerLeave }}" style="--fs-parallax-x: {{ parallaxX }}px; --fs-parallax-y: {{ parallaxY }}px; flex: 1; min-height: 0; display: flex; flex-direction: column; overflow-y: auto; padding: 48px 56px 64px; background-color: var(--bg, #F5F0E8); background-image: {{ scriptsBackgroundImage }}; background-size: cover; background-position: center; background-attachment: fixed; transition: background-color .3s ease, background-image .3s ease;">
 
-    <!-- left pane: handwritten greeting + new script -->
-    <div class="fs-scripts-hero" style="position: relative; width: min(100%, 1220px); margin: 0 auto; min-height: 155px; padding-right: 386px;">
-      <div style="font-size: 10px; letter-spacing: 1.8px; text-transform: uppercase; color: var(--accent, #BA7517); font-weight: 700; margin-bottom: 13px;">Writing desk</div>
+    <!-- personalized greeting + project actions -->
+    <div class="fs-scripts-hero" style="position: relative; width: min(100%, 1220px); margin: 0 auto; min-height: 155px; padding-right: 580px;">
       <div aria-label="{{ greeting }}" style="font-family: var(--fs-font-display); font-weight: 900; font-size: clamp(31px, 3.25vw, 46px); line-height: 1.12; letter-spacing: -.75px; color: var(--ink, #2C2C2A); animation: fs-rise .32s ease both;"><span>{{ greetingTyped }}</span><span class="fs-type-caret" aria-hidden="true">|</span></div>
       <div style="font-size: 14px; color: var(--muted, #888780); margin-top: 13px; max-width: 490px; line-height: 1.55; animation: fs-rise .5s ease both .09s;">{{ homeSub }}</div>
-      <div class="fs-scripts-actions" style="position: absolute; right: 0; top: 28px; width: 366px;">
-      <button type="button" onClick="{{ newScript }}" class="fs-double-outline fs-outline-control fs-outline-control--primary fs-scripts-action fs-scripts-action--primary" style="position: absolute; right: 0; top: 0; width: 176px; height: 44px; animation: fs-rise .5s ease both .16s;">
-        <div style="position: relative; height: 100%; display: flex; align-items: center; justify-content: center; gap: 9px; color: #1A1A1A;">
-          <span style="position: relative; width: 15px; height: 15px;">
+      <div class="fs-scripts-actions" style="position: absolute; right: 0; top: 6px; width: 560px;">
+      <button type="button" onClick="{{ newScript }}" class="fs-double-outline fs-outline-control fs-outline-control--primary fs-scripts-action fs-scripts-action--primary" style="height: 44px; animation: fs-rise .5s ease both .16s;">
+        <div style="position: relative; height: 100%; display: flex; align-items: center; justify-content: center; gap: 9px; color: inherit;">
+          <span style="font-size: 13.5px; font-weight: 650;">New project</span>
+          <span aria-hidden="true" style="position: relative; width: 15px; height: 15px;">
             <span style="position: absolute; top: 50%; left: 0; width: 15px; height: 1.6px; background: currentColor; transform: translateY(-50%);"></span>
             <span style="position: absolute; left: 50%; top: 0; height: 15px; width: 1.6px; background: currentColor; transform: translateX(-50%);"></span>
           </span>
-          <span style="font-size: 13.5px; font-weight: 600;">New script</span>
         </div>
       </button>
-      <button type="button" onClick="{{ importScript }}" disabled="{{ importingScriptOn }}" aria-busy="{{ importingScriptOn }}" class="fs-double-outline fs-outline-control fs-outline-control--secondary fs-scripts-action" style="--fs-frame-bg: {{ importButtonBackground }}; position: absolute; left: 0; top: 0; width: 176px; height: 44px; animation: fs-rise .5s ease both .22s;">
+      <button type="button" onClick="{{ importScript }}" disabled="{{ importingScriptOn }}" aria-busy="{{ importingScriptOn }}" class="fs-double-outline fs-outline-control fs-outline-control--secondary fs-scripts-action" style="--fs-frame-bg: {{ importButtonBackground }}; height: 44px; animation: fs-rise .5s ease both .22s;">
         <div style="position: relative; height: 100%; display: flex; align-items: center; justify-content: center; gap: 9px; color: var(--ink, #2C2C2A);">
           <svg viewBox="0 0 20 20" style="width: 16px; height: 16px;" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M10 3.4 Q10.2 7.5 10 12.2 M6.8 9.2 Q9 12.3 10 12.4 Q11 12.3 13.2 9.2 M4 13.6 L4 15.8 Q4 16.6 4.8 16.6 L15.2 16.6 Q16 16.6 16 15.8 L16 13.6"></path></svg>
           <span style="font-size: 13.5px; font-weight: 600;">Import script</span>
         </div>
       </button>
+      <button type="button" onClick="{{ openImaging }}" class="fs-double-outline fs-outline-control fs-outline-control--secondary fs-scripts-action fs-scripts-action--imaging" style="height: 44px; animation: fs-rise .5s ease both .28s;">
+        <div style="position: relative; height: 100%; display: flex; align-items: center; justify-content: center; gap: 9px; color: var(--ink, #2C2C2A);">
+          <svg aria-hidden="true" viewBox="0 0 20 20" style="width: 17px; height: 17px;" fill="none" stroke="currentColor" stroke-width="1.45" stroke-linecap="round" stroke-linejoin="round"><rect x="2.8" y="3.2" width="14.4" height="13.6" rx="3.2"></rect><path d="m5.4 13.6 3.2-3.4 2.3 2.2 1.8-1.8 2 2.1"></path><circle cx="12.9" cy="7.4" r="1.35"></circle></svg>
+          <span style="font-size: 13.5px; font-weight: 600;">Imaging</span>
+        </div>
+      </button>
       </div>
       <sc-if value="{{ importNoteOn }}" hint-placeholder-val="false">
-        <div role="status" aria-live="polite" class="fs-scripts-import-note" style="position: absolute; right: 0; top: 86px; width: 366px; font-size: 11.5px; color: var(--muted, #888780); line-height: 1.45; text-align: right; animation: fs-rise .5s ease both .28s;">{{ importNote }}</div>
+        <div role="status" aria-live="polite" class="fs-scripts-import-note" style="position: absolute; right: 0; top: 66px; width: 560px; font-size: 11.5px; color: var(--muted, #888780); line-height: 1.45; text-align: right; animation: fs-rise .5s ease both .3s;">{{ importNote }}</div>
       </sc-if>
     </div>
 
     <!-- hand-drawn vertical divider -->
     <svg viewBox="0 0 1200 8" preserveAspectRatio="none" style="width: min(100%, 1220px); height: 8px; display: block; margin: 22px auto 30px;"><path d="{{ stripDivPath }}" style="fill: none; stroke: var(--soft, #e4e2d8);" stroke-width="1.4" stroke-linecap="round"></path></svg>
 
-    <!-- right pane: scripts list -->
-    <div style="width: min(100%, 1220px); margin: 0 auto;">
+    <!-- searchable project list -->
+    <section aria-label="Projects" style="width: min(100%, 1220px); margin: 0 auto;">
       <div class="fs-scripts-list-head" style="display: flex; align-items: center; gap: 16px; margin-bottom: 18px; animation: fs-rise .5s ease both .1s;">
-        <div style="flex: 1;"><div style="font-size: 24px; letter-spacing: -.55px; color: var(--ink, #2C2C2A); font-weight: 700;">Your scripts</div><div style="font-size: 12px; color: var(--muted, #888780); margin-top: 5px;">{{ scriptSummary }}</div></div>
-        <div class="fs-scripts-search" style="width: 196px; display: flex; align-items: center; gap: 7px; padding: 7px 10px; border: 1.2px solid var(--soft, #e4e2d8); border-radius: 10px; background: var(--surface, #FFFEF9);">
+        <div class="fs-scripts-search" style="width: 232px; display: flex; align-items: center; gap: 7px; padding: 9px 12px; border: 1.2px solid var(--soft, #e4e2d8);">
           <span style="font-size: 15px; color: var(--muted, #888780); line-height: 1;">⌕</span>
-          <input value="{{ scriptsSearch }}" onInput="{{ onScriptsSearch }}" placeholder="Search scripts" aria-label="Search scripts" style="width: 100%; min-width: 0; border: none; outline: none; background: transparent; color: var(--ink, #2C2C2A); font: inherit; font-size: 12px;">
+          <input value="{{ scriptsSearch }}" onInput="{{ onScriptsSearch }}" placeholder="Search projects" aria-label="Search projects" style="width: 100%; min-width: 0; border: none; outline: none; background: transparent; color: var(--ink, #2C2C2A); font: inherit; font-size: 12px;">
         </div>
       </div>
   <div class="fs-scripts-grid" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)); gap: 16px;">
     <sc-if value="{{ showScriptsLoading }}" hint-placeholder-val="false">
       <div class="fs-scripts-loading" style="grid-column: 1 / -1;" role="status" aria-live="polite">
         <div class="fs-scripts-loading-pages" aria-hidden="true"><span></span><span></span><span></span></div>
-        <div class="fs-scripts-loading-title">Opening your writing desk</div>
-        <div class="fs-scripts-loading-copy">Syncing your scripts securely.</div>
+        <div class="fs-scripts-loading-title">Loading your projects</div>
+        <div class="fs-scripts-loading-copy">Syncing your projects securely.</div>
       </div>
     </sc-if>
     <sc-for list="{{ cards }}" as="card" hint-placeholder-count="5">
@@ -453,12 +470,12 @@
               </sc-if>
             </div>
             <sc-if value="{{ card.hasMenu }}" hint-placeholder-val="false">
-              <div onClick="{{ card.toggleMenu }}" title="Script options" style="position: absolute; right: 13px; top: 13px; width: 30px; height: 30px; display: flex; align-items: center; justify-content: center; color: var(--muted, #888780); font-size: 18px; border-radius: 8px; cursor: pointer; letter-spacing: 1px;">•••
+              <div onClick="{{ card.toggleMenu }}" title="Project options" style="position: absolute; right: 13px; top: 13px; width: 30px; height: 30px; display: flex; align-items: center; justify-content: center; color: var(--muted, #888780); font-size: 18px; border-radius: 8px; cursor: pointer; letter-spacing: 1px;">•••
                 <sc-if value="{{ card.menuOpen }}" hint-placeholder-val="false">
                   <div class="fs-script-card-menu" style="position: absolute; z-index: 10; right: 0; top: 30px; width: 126px; padding: 6px; background: var(--surface, #FFFEF9); border: 1.3px solid var(--line, #2C2C2A); border-radius: 10px 9px 11px 8px; color: var(--ink, #2C2C2A); font-size: 12px; font-weight: 600; letter-spacing: 0; white-space: nowrap;">
                     <sc-if value="{{ card.canRename }}" hint-placeholder-val="false"><button type="button" onClick="{{ card.rename }}" style="display:block; width:100%; padding: 8px 7px; border:0; border-radius: 6px; background:transparent; color:inherit; font:inherit; text-align:left; cursor:pointer;">Rename</button></sc-if>
                     <sc-if value="{{ card.canTranslate }}" hint-placeholder-val="false"><button type="button" onClick="{{ card.translate }}" style="display:block; width:100%; padding: 8px 7px; border:0; border-radius: 6px; background:transparent; color:inherit; font:inherit; text-align:left; cursor:pointer;">Translate Script</button></sc-if>
-                    <sc-if value="{{ card.canDelete }}" hint-placeholder-val="false"><button type="button" onClick="{{ card.remove }}" style="display:block; width:100%; padding: 8px 7px; border:0; border-radius: 6px; background:transparent; color:#B33B32; font:inherit; text-align:left; cursor:pointer;">Delete script</button></sc-if>
+                    <sc-if value="{{ card.canDelete }}" hint-placeholder-val="false"><button type="button" onClick="{{ card.remove }}" style="display:block; width:100%; padding: 8px 7px; border:0; border-radius: 6px; background:transparent; color:#B33B32; font:inherit; text-align:left; cursor:pointer;">Delete project</button></sc-if>
                   </div>
                 </sc-if>
               </div>
@@ -472,13 +489,13 @@
       </div>
     </sc-if>
     <sc-if value="{{ noSearchResults }}" hint-placeholder-val="false">
-      <div style="padding: 30px 6px; color: var(--muted, #888780); font-size: 13px;">No scripts match “{{ scriptsSearch }}”.</div>
+      <div style="padding: 30px 6px; color: var(--muted, #888780); font-size: 13px;">No projects match “{{ scriptsSearch }}”.</div>
     </sc-if>
     <sc-if value="{{ noScriptsYet }}" hint-placeholder-val="false">
-      <div style="grid-column: 1 / -1; padding: 30px 6px; color: var(--muted, #888780); font-size: 13px;">No scripts yet. Start a new page when you’re ready.</div>
+      <div style="grid-column: 1 / -1; padding: 30px 6px; color: var(--muted, #888780); font-size: 13px;">No projects yet. Create one when you’re ready.</div>
     </sc-if>
   </div>
-    </div>
+    </section>
   </div>
   </sc-if>
 
@@ -941,7 +958,7 @@ class Component extends DCLogic {
       this.setState({
         scriptsLoading: false,
         scriptsLoaded: true,
-        scriptsLoadError: 'Sign in to sync your scripts.'
+        scriptsLoadError: 'Sign in to sync your projects.'
       });
       return;
     }
@@ -1073,7 +1090,7 @@ class Component extends DCLogic {
       this.setState({
         scriptsLoading: false,
         scriptsLoaded: true,
-        scriptsLoadError: 'Your scripts are taking longer than expected. Please try again.'
+        scriptsLoadError: 'Your projects are taking longer than expected. Please try again.'
       });
       return false;
     }
@@ -1109,7 +1126,7 @@ class Component extends DCLogic {
           scriptsLoaded: true,
           scriptsLoadError: requiresLogin
             ? 'Your session has ended. Please sign in again.'
-            : 'We could not sync your scripts. Please try again.'
+            : 'We could not sync your projects. Please try again.'
         }, () => { if (requiresLogin) this._typeGreeting(''); });
         return false;
       }
@@ -1117,7 +1134,7 @@ class Component extends DCLogic {
     this.setState({
       scriptsLoading: false,
       scriptsLoaded: true,
-      scriptsLoadError: 'We could not sync your scripts. Please try again.'
+      scriptsLoadError: 'We could not sync your projects. Please try again.'
     });
     return false;
   }
@@ -1619,7 +1636,7 @@ class Component extends DCLogic {
     window.filmscriptSounds?.play('createNewScript');
     if (this._scriptOpening) return;
     if (!window.filmscriptScripts?.create) {
-      this._toast('Could not create a new screenplay.');
+      this._toast('Could not create a new project.');
       return;
     }
     try {
@@ -1628,7 +1645,7 @@ class Component extends DCLogic {
       if (!script?.id) throw new Error('missing script id');
       this._enterScript(`Editor v5.dc.html?script=${encodeURIComponent(script.id)}`, script.title, script.id);
     } catch (error) {
-      this._toast('Could not create a new screenplay.');
+      this._toast('Could not create a new project.');
     }
   }
 
@@ -1682,7 +1699,7 @@ class Component extends DCLogic {
   async renameStoredScript(event, script) {
     event.stopPropagation();
     const currentTitle = String(script.title || 'Untitled screenplay');
-    const nextTitle = window.prompt('Rename screenplay', currentTitle);
+    const nextTitle = window.prompt('Rename project', currentTitle);
     if (nextTitle === null) return;
     const title = nextTitle.trim().slice(0, 160);
     if (!title) return;
@@ -1693,7 +1710,7 @@ class Component extends DCLogic {
         scriptMenuId: null,
       }));
     } catch (error) {
-      this.setState({ scriptMenuId: null, importNote: error?.message || 'Could not rename that script. Please try again.' });
+      this.setState({ scriptMenuId: null, importNote: error?.message || 'Could not rename that project. Please try again.' });
     }
   }
 
@@ -2235,7 +2252,7 @@ Write Lumiere's next reply only:`;
       showScriptsLoading: Boolean(this.state.scriptsLoading) && cards.length === 0,
       noSearchResults: Boolean(this.state.scriptsLoaded) && !this.state.scriptsLoading && Boolean((this.state.scriptsSearch || '').trim()) && cards.length === 0,
       noScriptsYet: Boolean(this.state.scriptsLoaded) && !this.state.scriptsLoading && !this.state.scriptsLoadError && !String(this.state.scriptsSearch || '').trim() && cards.length === 0,
-      scriptCount: cardData.length, scriptPlural: cardData.length === 1 ? '' : 's', scriptSummary: window.filmscriptLanguage?.get() === 'es' ? `${cardData.length} ${cardData.length === 1 ? 'guion listo' : 'guiones listos'} para trabajar.` : `${cardData.length} screenplay${cardData.length === 1 ? '' : 's'} ready to shape.`, scriptIndex, noIndex: scriptIndex.length === 0,
+      scriptIndex, noIndex: scriptIndex.length === 0,
       tools: ['Character analysis', 'Cliché detector', 'Scene suggestions', 'Narrative arc', 'Format checker'].map(label => ({ label, title: 'Run ' + label, onClick: () => this.runTool(label) })),
       check: '✓',
       pages,
@@ -2269,6 +2286,7 @@ Write Lumiere's next reply only:`;
       goEditor: () => this._enterScript('Editor v5.dc.html', 'Untitled screenplay'),
       newScript: () => this.createNewScript(),
       importScript: () => this.importScript(),
+      openImaging: () => { window.location.href = 'Imaging.dc.html'; },
       openPreproduction: () => this.openPreproduction(), closePreproduction: () => this.closePreproduction(), analyzeScript: () => this.analyzePreproduction(), showBreakdown: () => this.setState({ preproTab: 'breakdown' }), showStripboard: () => this.setState({ preproTab: 'stripboard' }), showShots: () => this.setState({ preproTab: 'shots' }),
       onScriptsSearch: (e) => this.setState({ scriptsSearch: e.target.value }),
       importBtnPath: this._roughPath(176, 48, 2.2, 891, 14),

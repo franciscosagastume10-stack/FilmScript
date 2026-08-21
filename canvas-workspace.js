@@ -92,6 +92,7 @@
     .cv-imagine-tile.is-image-loading:before{content:"";position:absolute;z-index:1;inset:0;background:linear-gradient(105deg,color-mix(in srgb,var(--cv-soft) 88%,var(--cv-surface)) 20%,color-mix(in srgb,#fff 44%,transparent) 46%,color-mix(in srgb,var(--cv-soft) 88%,var(--cv-surface)) 72%);background-size:240% 100%;animation:cvImageTileShimmer 1.35s ease-in-out infinite}.cv-imagine-tile.is-image-loading:after{display:none}.cv-imagine-tile.is-image-loading img{opacity:0!important;filter:none!important}.cv-imagine-tile img{opacity:1;transition:opacity .18s ease,filter .18s ease}.cv-imagine-tile.is-image-error img{opacity:.08;filter:grayscale(1)}
     @keyframes cvModuleLoaderIn{from{opacity:0;transform:translateY(9px) scale(.985)}to{opacity:1;transform:none}}@keyframes cvModuleLoaderDrift{to{transform:translate(32px,18px) rotate(8deg)}}@keyframes cvModuleOrbit{to{transform:rotate(360deg)}}@keyframes cvCanvasFrame{0%,100%{transform:translate(4px,3px) rotate(4deg)}50%{transform:translate(2px,0) rotate(1deg)}}@keyframes cvModuleCell{0%,100%{transform:translateY(0)}50%{transform:translateY(-3px);border-color:color-mix(in srgb,var(--cv-accent) 34%,transparent)}}@keyframes cvModuleShimmer{45%,100%{transform:translateX(120%)}}@keyframes cvModulePulse{70%,100%{box-shadow:0 0 0 8px color-mix(in srgb,var(--cv-accent) 0%,transparent)}}@keyframes cvImagineSkeletonFloat{0%,100%{transform:translateY(0)}50%{transform:translateY(-2px)}}@keyframes cvImagineSkeletonShimmer{45%,100%{transform:translateX(120%)}}@keyframes cvImageTileShimmer{0%{background-position:120% 0}100%{background-position:-120% 0}}
     @media(max-width:760px){.cv-module-loader{padding:24px 20px}.cv-module-loader-head{grid-template-columns:50px minmax(0,1fr);gap:13px}.cv-module-loader-mark{width:50px;height:50px}.cv-module-loader-grid{gap:8px}.cv-module-loader-cell{min-height:92px}.cv-module-loader-cell:nth-child(3){display:none}.cv-imagine-skeleton-gallery{grid-template-columns:repeat(6,minmax(0,1fr));grid-auto-rows:72px;gap:5px}.cv-imagine-skeleton{grid-column:span 3}.cv-imagine-skeleton.wide{grid-column:span 4}.cv-imagine-skeleton.portrait{grid-column:span 2;grid-row:span 3}}
+    :host([scope="account"]){height:calc(100dvh - 56px);min-height:0;overflow:hidden}:host([scope="account"]) .cv-root,:host([scope="account"]) .cv-imagine-page,:host([scope="account"]) .cv-imagine-stage{height:100%;min-height:0}:host([scope="account"]) .cv-imagine-gallery{min-height:100%;overflow:auto;overscroll-behavior:contain;padding-bottom:190px;scrollbar-color:color-mix(in srgb,var(--cv-muted) 52%,transparent) transparent}:host([scope="account"]) .cv-imagine-empty{min-height:100%}:host([scope="account"]) .cv-imagine-loading-stage{height:100%;min-height:0}:host([scope="account"]) .cv-imagine-tile:after{display:none}
     @media(prefers-reduced-motion:reduce){.cv-module-loader,.cv-module-loader:before,.cv-module-loader-mark:before,.cv-module-loader-mark span,.cv-module-loader-cell,.cv-module-loader-cell:before,.cv-module-loader-status:before,.cv-imagine-skeleton,.cv-imagine-skeleton:before,.cv-imagine-tile.is-image-loading:before{animation:none!important}}
     @media(prefers-reduced-transparency:reduce){.cv-module-loader,.cv-module-loader-mark,.cv-module-loader-cell,.cv-imagine-skeleton{background:var(--cv-surface);backdrop-filter:none;-webkit-backdrop-filter:none}}
   `;
@@ -103,6 +104,7 @@
       ? (window.filmscriptLanguage?.t?.(text, 'es') || text)
       : text;
   };
+  const localize = (english, spanish) => window.filmscriptLanguage?.get?.() === 'es' ? spanish : english;
   const num = (value, fallback = 0) => Number.isFinite(Number(value)) ? Number(value) : fallback;
   const money = (value) => `$${num(value).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
   const today = () => new Date().toISOString().slice(0, 10);
@@ -142,7 +144,7 @@
   };
 
   class FilmScriptCanvasWorkspace extends HTMLElement {
-    static get observedAttributes() { return ['script-id', 'project-title', 'initial-view']; }
+    static get observedAttributes() { return ['script-id', 'project-title', 'initial-view', 'scope']; }
 
     constructor() {
       super();
@@ -183,6 +185,9 @@
       this._imagineLayoutTimer = 0;
       this._loadRetryTimer = 0;
       this._loadRetryCount = 0;
+      this._onLanguageChange = () => {
+        if (this.isConnected) this.render();
+      };
       this._onImagineViewportResize = () => {
         clearTimeout(this._imagineLayoutTimer);
         this._imagineLayoutTimer = setTimeout(() => {
@@ -193,6 +198,24 @@
 
     get scriptId() { return this.getAttribute('script-id') || ''; }
     get projectTitle() { return this.getAttribute('project-title') || 'Untitled screenplay'; }
+    get accountScoped() { return this.getAttribute('scope') === 'account'; }
+
+    _isImagineOnlyWorkspace() {
+      return this.accountScoped
+        || ['imagine', 'account_imaging', 'standalone_imaging'].includes(this.state.workspace?.accessScope);
+    }
+
+    _getWorkspace() {
+      return this.accountScoped
+        ? window.filmscriptCanvas.getAccountImaging()
+        : window.filmscriptCanvas.get(this.scriptId);
+    }
+
+    _generateImage(options) {
+      return this.accountScoped
+        ? window.filmscriptCanvas.generateAccountImagingImage(options)
+        : window.filmscriptCanvas.generateStoryboardImage(this.scriptId, options);
+    }
 
     connectedCallback() {
       if (!this._bound) {
@@ -224,6 +247,7 @@
       if (!this._canvasOperationHandler) this._canvasOperationHandler = (event) => this._applyRemoteCanvasOperation(event.detail);
       window.addEventListener('filmscript:canvas.drag', this._canvasDragHandler);
       window.addEventListener('filmscript:content.operation', this._canvasOperationHandler);
+      window.addEventListener('filmscript:language-change', this._onLanguageChange);
       this.load();
     }
 
@@ -237,11 +261,17 @@
       window.removeEventListener('resize', this._onImagineViewportResize);
       window.removeEventListener('filmscript:canvas.drag', this._canvasDragHandler);
       window.removeEventListener('filmscript:content.operation', this._canvasOperationHandler);
+      window.removeEventListener('filmscript:language-change', this._onLanguageChange);
       this._clearImagineRecoveryTimers();
       this._stopPointerInteraction();
     }
 
     attributeChangedCallback(name, oldValue, newValue) {
+      if (name === 'scope' && oldValue !== newValue && this.isConnected) {
+        this.state.imaginePendingJobs = [];
+        this.load();
+        return;
+      }
       if (name === 'script-id' && newValue && oldValue !== newValue && this.isConnected) {
         // A request belongs to the screenplay that started it. Do not let an
         // in-flight frame leave a visual placeholder in the next screenplay.
@@ -249,7 +279,7 @@
         this.load();
       }
       if (name === 'initial-view' && oldValue !== newValue && this.isConnected && this.state.workspace) {
-        if (this.state.workspace.accessScope === 'imagine') {
+        if (this._isImagineOnlyWorkspace()) {
           this.state.view = 'imagine';
           this.render();
           return;
@@ -271,7 +301,8 @@
       if (this._loadRetryCount >= 20) {
         this._loadRetryTimer = 0;
         this.state.loading = false;
-        this.state.error = 'Canvas is not available right now.';
+        if (this.accountScoped) this.state.error = localize('Imaging is not available right now.', 'Imaging no está disponible en este momento.');
+        else this.state.error = 'Canvas is not available right now.';
         this.render();
         return;
       }
@@ -284,13 +315,26 @@
 
     async load({ preserveClientRetry = false } = {}) {
       if (!preserveClientRetry) this._resetLoadRetry();
-      if (!this.scriptId) {
+      if (!this.accountScoped && !this.scriptId) {
         this.state.loading = false;
         this.state.error = 'Canvas is not available for this screenplay.';
         this.render();
         return;
       }
+      const accountClientReady = !this.accountScoped || (
+        typeof window.filmscriptCanvas?.getAccountImaging === 'function'
+        && typeof window.filmscriptCanvas?.generateAccountImagingImage === 'function'
+        && typeof window.filmscriptCanvas?.uploadAccountImagingAsset === 'function'
+        && typeof window.filmscriptCanvas?.accountImagingAssetUrl === 'function'
+      );
       if (!window.filmscriptCanvas) {
+        this.state.loading = true;
+        this.state.error = '';
+        this.render();
+        this._retryLoadWhenClientReady();
+        return;
+      }
+      if (!accountClientReady) {
         this.state.loading = true;
         this.state.error = '';
         this.render();
@@ -302,7 +346,7 @@
       this.render();
       try {
         const [result, account] = await Promise.all([
-          window.filmscriptCanvas.get(this.scriptId),
+          this._getWorkspace(),
           this.getAccountEntitlements(),
         ]);
         this.state.workspace = result.workspace;
@@ -316,36 +360,62 @@
         this.state.error = '';
         const requested = this.getAttribute('initial-view');
         if (requested === 'imagine') this._imagineEntrancePending = true;
-        this.state.view = result.workspace?.accessScope === 'imagine' || requested === 'imagine' ? 'imagine' : ['home', 'vault', 'boards'].includes(result.workspace?.settings?.lastTool)
+        this.state.view = this.accountScoped || ['imagine', 'account_imaging', 'standalone_imaging'].includes(result.workspace?.accessScope) || requested === 'imagine' ? 'imagine' : ['home', 'vault', 'boards'].includes(result.workspace?.settings?.lastTool)
           ? result.workspace.settings.lastTool
           : 'home';
       } catch (error) {
         this.state.loading = false;
-        this.state.error = error.message || 'Canvas could not be loaded.';
+        this.state.error = error.message || (this.accountScoped
+          ? localize('Imaging could not be loaded.', 'No se pudo cargar Imaging.')
+          : 'Canvas could not be loaded.');
       }
       this.render();
     }
 
-    assetUrl(assetId) { return assetId ? window.filmscriptCanvas.assetUrl(this.scriptId, assetId) : ''; }
+    assetUrl(assetId) {
+      if (!assetId) return '';
+      return this.accountScoped
+        ? window.filmscriptCanvas.accountImagingAssetUrl(assetId)
+        : window.filmscriptCanvas.assetUrl(this.scriptId, assetId);
+    }
     asset(assetId) { return this.state.workspace?.assets?.find((entry) => entry.id === assetId) || null; }
     activeBoard() { return this.state.workspace?.boards?.find((board) => board.id === this.state.activeBoardId) || null; }
 
-    _imagineJobsStorageKey() { return `filmscript_imagine_jobs_${this.scriptId}`; }
+    _imagineJobsOwnerId() {
+      return this.accountScoped ? String(this.state.workspace?.ownerUserId || '') : '';
+    }
+
+    _imagineJobsStorageKey() {
+      if (!this.accountScoped) return `filmscript_imagine_jobs_${this.scriptId}`;
+      const ownerUserId = this._imagineJobsOwnerId();
+      return /^usr_[a-zA-Z0-9_-]+$/.test(ownerUserId) ? `filmscript_imaging_jobs_account_${ownerUserId}` : '';
+    }
+
+    _imagineJobsStorage() { return this.accountScoped ? window.sessionStorage : window.localStorage; }
 
     _readSavedImagineJobs() {
       try {
-        const saved = JSON.parse(window.localStorage.getItem(this._imagineJobsStorageKey()) || '[]');
+        const storageKey = this._imagineJobsStorageKey();
+        if (!storageKey) return [];
+        if (this.accountScoped) this._imagineJobsStorage().removeItem('filmscript_imaging_jobs_account');
+        const saved = JSON.parse(this._imagineJobsStorage().getItem(storageKey) || '[]');
         const oldestAllowed = Date.now() - (30 * 60 * 1000);
+        const ownerUserId = this._imagineJobsOwnerId();
         return (Array.isArray(saved) ? saved : []).filter((job) => (
           /^imagine-job_[a-f0-9]+$/.test(String(job?.id || ''))
           && Number(job?.createdAtMs || 0) >= oldestAllowed
           && String(job?.prompt || '').trim().length >= 8
+          && (!this.accountScoped || String(job?.ownerUserId || '') === ownerUserId)
         )).slice(-8);
       } catch { return []; }
     }
 
     _saveImagineJobs(jobs = this.state.imaginePendingJobs) {
-      try { window.localStorage.setItem(this._imagineJobsStorageKey(), JSON.stringify((jobs || []).slice(-8))); } catch { /* A live request still completes normally. */ }
+      try {
+        const storageKey = this._imagineJobsStorageKey();
+        if (!storageKey) return;
+        this._imagineJobsStorage().setItem(storageKey, JSON.stringify((jobs || []).slice(-8)));
+      } catch { /* A live request still completes normally. */ }
     }
 
     _clearImagineRecoveryTimers(jobId = '') {
@@ -385,7 +455,7 @@
         this._imagineRecoveryTimers.delete(job.id);
         if (!this.state.imaginePendingJobs.some((entry) => entry.id === job.id)) return;
         try {
-          const result = await window.filmscriptCanvas.get(this.scriptId);
+          const result = await this._getWorkspace();
           if (result?.workspace) this.state.workspace = result.workspace;
           const completed = this._assetForImagineJob(job.id, result?.workspace);
           if (completed) {
@@ -408,7 +478,7 @@
       if (!job?.id || !this.state.imaginePendingJobs.some((entry) => entry.id === job.id)) return;
       this._clearImagineRecoveryTimers(job.id);
       try {
-        const result = await window.filmscriptCanvas.generateStoryboardImage(this.scriptId, {
+        const result = await this._generateImage({
           prompt: job.prompt,
           orientation: job.orientation,
           size: job.size,
@@ -418,10 +488,18 @@
           referenceAssetIds: job.referenceAssetIds,
           requestId: job.id,
         });
+        if (result?.pending) {
+          this._watchImagineJob(job);
+          return;
+        }
         if (!result?.asset?.id) throw new Error('The image was not returned.');
         this._finishImagineJob(job, result.asset);
         this._imagineAnimateNextRender = true;
-        this.toast(isRecovery ? 'Your image finished after reload.' : 'Image ready to reuse across FilmScript.');
+        this.toast(isRecovery
+          ? localize('Your image finished after reload.', 'Tu imagen terminó después de recargar.')
+          : this.accountScoped
+            ? localize('Image ready in your Imaging gallery.', 'Imagen lista en tu galería de Imaging.')
+            : 'Image ready to reuse across FilmScript.');
       } catch (error) {
         if (isRecovery && (!error?.status || error.status >= 500)) {
           // Retain the job for one more passive check rather than spending a
@@ -461,6 +539,25 @@
     imagineSizeOption(value) {
       return this.imagineSizeOptions().find((entry) => entry.value === value) || this.imagineSizeOptions()[0];
     }
+
+    imagineStyleLabel(value) {
+      return ({
+        cinematic: localize('Cinematic', 'Cinematográfico'),
+        animated: localize('Animated', 'Animado'),
+        sketch: localize('Sketch', 'Boceto'),
+        anime: 'Anime',
+      })[value] || value;
+    }
+
+    imagineQualityLabel(value) {
+      return ({
+        low: localize('Low', 'Baja'),
+        medium: localize('Medium', 'Media'),
+        high: localize('High', 'Alta'),
+      })[value] || value;
+    }
+
+    imagineCreditLabel(count) { return localize(`${count} credits`, `${count} créditos`); }
 
     imagineFormatLabel(asset) {
       const generation = asset?.generation || {};
@@ -540,11 +637,15 @@
       const vertical = entry.ratio < 1;
       const style = `--cv-imagine-ratio:${entry.ratio.toFixed(4)};--cv-imagine-stagger:${Math.min(index, 15)}`;
       if (entry.type === 'pending') {
-        return `<div class="cv-imagine-tile cv-imagine-pending ${vertical ? 'vertical' : 'horizontal'}" style="${style}" data-imagine-entry="pending:${esc(entry.id)}" aria-busy="true" aria-label="Imagine is creating a ${vertical ? 'vertical' : 'horizontal'} frame"><span class="cv-imagine-pending-content"><i aria-hidden="true"></i><strong>Imagine</strong><span>Creating your frame</span></span></div>`;
+        const product = this.accountScoped ? 'Imaging' : 'Imagine';
+        const productMarkup = this.accountScoped ? '<strong>Imaging</strong>' : '<strong>Imagine</strong>';
+        const direction = vertical ? localize('vertical', 'vertical') : localize('horizontal', 'horizontal');
+        return `<div class="cv-imagine-tile cv-imagine-pending ${vertical ? 'vertical' : 'horizontal'}" style="${style}" data-imagine-entry="pending:${esc(entry.id)}" aria-busy="true" aria-label="${product} ${esc(localize(`is creating a ${direction} frame`, `está creando una imagen ${direction}`))}"><span class="cv-imagine-pending-content"><i aria-hidden="true"></i>${productMarkup}<span>${esc(localize('Creating your frame', 'Creando tu imagen'))}</span></span></div>`;
       }
       const asset = entry.asset;
       const dimensions = num(asset.width) > 0 && num(asset.height) > 0 ? `${Math.round(num(asset.width))} × ${Math.round(num(asset.height))}` : '';
-      return `<button class="cv-imagine-tile is-image-loading ${vertical ? 'vertical' : 'horizontal'}" style="${style}" data-imagine-entry="asset:${esc(asset.id)}" data-action="imagine-preview" data-id="${asset.id}" title="${esc(dimensions ? `View generated image, ${dimensions}` : 'View generated image')}"><img loading="lazy" decoding="async" src="${esc(this.assetUrl(asset.id))}" alt="${esc(asset.prompt || 'Generated visual')}"></button>`;
+      const viewLabel = localize('View generated image', 'Ver imagen generada');
+      return `<button class="cv-imagine-tile is-image-loading ${vertical ? 'vertical' : 'horizontal'}" style="${style}" data-imagine-entry="asset:${esc(asset.id)}" data-action="imagine-preview" data-id="${asset.id}" title="${esc(dimensions ? `${viewLabel}, ${dimensions}` : viewLabel)}"><img loading="lazy" decoding="async" src="${esc(this.assetUrl(asset.id))}" alt="${esc(asset.prompt || localize('Generated visual', 'Imagen generada'))}"></button>`;
     }
 
     entitlementEnabled(value) { return value === true || value?.allowed === true; }
@@ -561,8 +662,8 @@
 
     imageGenerationMessage({ exhausted = false } = {}) {
       return exhausted
-        ? 'Your image credits are used for this cycle. They renew automatically; each image uses 3 credits.'
-        : 'Image generation is included with FilmScript Creator and Full. Creator includes 100 image credits each month; Full includes 1,000; each image uses 3 credits.';
+        ? localize('Your image credits are used for this cycle. They renew automatically; each image uses 3 credits.', 'Tus créditos de imagen se agotaron para este ciclo. Se renuevan automáticamente; cada imagen usa 3 créditos.')
+        : localize('Image generation is included with FilmScript Creator and Full. Creator includes 100 image credits each month; Full includes 1,000; each image uses 3 credits.', 'La generación de imágenes está incluida con FilmScript Creator y Full. Creator incluye 100 créditos de imagen al mes; Full incluye 1,000; cada imagen usa 3 créditos.');
     }
 
     presentImageGenerationUpgrade({ exhausted = false, error = 'image_generation_plan_required', message = '', requiredTier = 'creator', checkoutPlan = '', source = '' } = {}) {
@@ -669,7 +770,7 @@
     }
 
     setView(view) {
-      if (this.state.workspace?.accessScope === 'imagine' && view !== 'imagine') view = 'imagine';
+      if (this._isImagineOnlyWorkspace() && view !== 'imagine') view = 'imagine';
       if (view === 'shotlist') {
         this.dispatchEvent(new CustomEvent('filmscript:canvas-shotlist', { bubbles: true, composed: true }));
         return;
@@ -685,7 +786,7 @@
       this.state.selected.clear();
       this.state.vaultMenu = null;
       this.state.boardMenu = null;
-      if (this.state.workspace && this.state.workspace.accessScope !== 'imagine') {
+      if (this.state.workspace && !this._isImagineOnlyWorkspace()) {
         this.state.workspace.settings.lastTool = view === 'board' || view === 'quote' ? 'boards' : view === 'imagine' ? 'home' : view;
         window.filmscriptCanvas.update(this.scriptId, { settings: this.state.workspace.settings }).catch(() => {});
       }
@@ -700,9 +801,10 @@
     }
 
     _isImagineLoadingTarget() {
-      return this.getAttribute('initial-view') === 'imagine'
+      return this.accountScoped
+        || this.getAttribute('initial-view') === 'imagine'
         || this.state.view === 'imagine'
-        || this.state.workspace?.accessScope === 'imagine';
+        || ['imagine', 'account_imaging', 'standalone_imaging'].includes(this.state.workspace?.accessScope);
     }
 
     _renderCanvasLoading() {
@@ -712,7 +814,9 @@
     }
 
     _renderImagineLoading() {
-      const label = esc(tr('Loading your Imagine gallery'));
+      const label = esc(this.accountScoped
+        ? localize('Loading your Imaging gallery', 'Cargando tu galería de Imaging')
+        : tr('Loading your Imagine gallery'));
       const tiles = [
         'wide', 'square', 'portrait', 'wide', 'portrait', 'square',
         'wide', 'square', 'portrait', 'wide', 'square', 'portrait',
@@ -731,7 +835,7 @@
       const content = this.state.loading
         ? (this._isImagineLoadingTarget() ? this._renderImagineLoading() : this._renderCanvasLoading())
         : this.state.error
-          ? `<div class="cv-empty"><div><h3>Canvas could not open</h3><p>${esc(this.state.error)}</p><button class="cv-btn" data-action="retry">Try again</button></div></div>`
+          ? `<div class="cv-empty"><div><h3>${esc(this.accountScoped ? localize('Imaging could not open', 'No se pudo abrir Imaging') : 'Canvas could not open')}</h3><p>${esc(this.state.error)}</p><button class="cv-btn" data-action="retry">${esc(localize('Try again', 'Intentar de nuevo'))}</button></div></div>`
           : this._renderView();
       const overlays = this.state.loading ? '' : this._renderOverlays();
       this.shadowRoot.innerHTML = `<style>${STYLE}</style><div class="cv-root">${content}</div>${overlays}${this.state.toast ? `<div class="cv-toast" role="status">${esc(this.state.toast)}</div>` : ''}`;
@@ -890,17 +994,17 @@
       const references = (this.state.workspace?.assets || []).filter((asset) => this.state.imagineReferenceIds.includes(asset.id));
       const imageLocked = this.state.accountAuthenticated === true && !this.hasImageGenerationAccess();
       const disabled = imageLocked ? 'disabled' : '';
-      const imageActionTitle = imageLocked ? this.imageGenerationMessage({ exhausted: this.state.accountTier === 'full' }) : 'Generate image';
+      const imageActionTitle = imageLocked ? this.imageGenerationMessage({ exhausted: this.state.accountTier === 'full' }) : localize('Generate image', 'Generar imagen');
       const style = ['cinematic', 'animated', 'sketch', 'anime'].includes(this.state.imagineStyle) ? this.state.imagineStyle : 'cinematic';
-      const styleLabel = style[0].toUpperCase() + style.slice(1);
+      const styleLabel = this.imagineStyleLabel(style);
       const sizeOption = this.imagineSizeOption(this.state.imagineSize);
       const orientation = sizeOption.orientation;
       const quality = ['low', 'medium', 'high'].includes(this.state.imagineQuality) ? this.state.imagineQuality : 'low';
       const qualityCredits = { low: 3, medium: 5, high: 10 };
-      const qualityLabel = quality[0].toUpperCase() + quality.slice(1);
+      const qualityLabel = this.imagineQualityLabel(quality);
       const imageActionLabel = imageLocked
-        ? (this.state.accountTier === 'full' ? 'Credits used' : 'Unlock Full')
-        : `${qualityCredits[quality]} credits`;
+        ? (this.state.accountTier === 'full' ? localize('Credits used', 'Créditos agotados') : localize('Unlock Full', 'Desbloquear Full'))
+        : this.imagineCreditLabel(qualityCredits[quality]);
       // Build true justified rows rather than letting flex leave a ragged
       // final line. Every row calculates one shared height from its combined
       // aspect ratios, so both its left and right edges land exactly on the
@@ -913,18 +1017,23 @@
           const height = Math.round(row.height);
           return `<div class="cv-imagine-gallery-row" style="--cv-imagine-row-height:${height}px">${row.entries.map((entry) => this.renderImagineTile(entry, tileIndex++)).join('')}</div>`;
         }).join('')
-        : `<div class="cv-imagine-empty"><div>${icon('image')}<strong>Make your first frame</strong><span>It will live here, ready for Boards and Shot List.</span></div></div>`;
-      const referencePreview = references.length ? `<div class="cv-imagine-reference-list"><img src="${esc(this.assetUrl(references[0].id))}" alt="${esc(references[0].prompt || 'Reference image')}">${references.length > 1 ? `<span>+${references.length - 1}</span>` : ''}</div>` : '';
+        : `<div class="cv-imagine-empty"><div>${icon('image')}<strong>${esc(localize('Make your first frame', 'Crea tu primera imagen'))}</strong><span>${esc(this.accountScoped ? localize('Every image you create will stay in your personal gallery.', 'Cada imagen que crees quedará en tu galería personal.') : 'It will live here, ready for Boards and Shot List.')}</span></div></div>`;
+      const referencePreview = references.length ? `<div class="cv-imagine-reference-list"><img src="${esc(this.assetUrl(references[0].id))}" alt="${esc(references[0].prompt || localize('Reference image', 'Imagen de referencia'))}">${references.length > 1 ? `<span>+${references.length - 1}</span>` : ''}</div>` : '';
       const referenceControl = references.length
-        ? `<div class="cv-imagine-reference-row"><div class="cv-imagine-reference-wrap"><span class="cv-imagine-reference has-references" title="Current visual references">${referencePreview}</span><button class="cv-imagine-reference-remove" type="button" data-action="imagine-remove-reference" data-id="${esc(references[0].id)}" aria-label="Remove reference" title="Remove reference" ${disabled}>×</button></div><label class="cv-imagine-reference cv-imagine-reference-add" title="Add another visual reference">${icon('image')}<input data-file="imagine-references" type="file" accept="image/png,image/jpeg,image/webp" multiple ${disabled}></label></div>`
-        : `<label class="cv-imagine-reference" title="Add visual references">${icon('image')}<input data-file="imagine-references" type="file" accept="image/png,image/jpeg,image/webp" multiple ${disabled}></label>`;
-      const styleOptions = ['cinematic', 'animated', 'sketch', 'anime'].map((value) => `<button type="button" role="menuitemradio" aria-checked="${style === value}" class="${style === value ? 'active' : ''}" data-action="imagine-style-select" data-style="${value}">${value[0].toUpperCase() + value.slice(1)}</button>`).join('');
+        ? `<div class="cv-imagine-reference-row"><div class="cv-imagine-reference-wrap"><span class="cv-imagine-reference has-references" title="${esc(localize('Current visual references', 'Referencias visuales actuales'))}">${referencePreview}</span><button class="cv-imagine-reference-remove" type="button" data-action="imagine-remove-reference" data-id="${esc(references[0].id)}" aria-label="${esc(localize('Remove reference', 'Quitar referencia'))}" title="${esc(localize('Remove reference', 'Quitar referencia'))}" ${disabled}>×</button></div><label class="cv-imagine-reference cv-imagine-reference-add" title="${esc(localize('Add another visual reference', 'Agregar otra referencia visual'))}">${icon('image')}<input data-file="imagine-references" type="file" accept="image/png,image/jpeg,image/webp" multiple ${disabled}></label></div>`
+        : `<label class="cv-imagine-reference" title="${esc(localize('Add visual references', 'Agregar referencias visuales'))}">${icon('image')}<input data-file="imagine-references" type="file" accept="image/png,image/jpeg,image/webp" multiple ${disabled}></label>`;
+      const styleOptions = ['cinematic', 'animated', 'sketch', 'anime'].map((value) => `<button type="button" role="menuitemradio" aria-checked="${style === value}" class="${style === value ? 'active' : ''}" data-action="imagine-style-select" data-style="${value}">${esc(this.imagineStyleLabel(value))}</button>`).join('');
       const sizeOptions = this.imagineSizeOptions().map((entry) => `<button type="button" role="menuitemradio" aria-checked="${sizeOption.value === entry.value}" class="${sizeOption.value === entry.value ? 'active' : ''}" data-action="imagine-size-select" data-size="${entry.value}" aria-label="${entry.compact}"><i class="cv-aspect-preview ${entry.orientation}" aria-hidden="true"></i><span>${entry.compact}</span></button>`).join('');
-      const qualityOptions = ['low', 'medium', 'high'].map((value) => `<button type="button" role="menuitemradio" aria-checked="${quality === value}" class="${quality === value ? 'active' : ''}" data-action="imagine-quality-select" data-quality="${value}"><span>${value[0].toUpperCase() + value.slice(1)}</span><b>${qualityCredits[value]} credits</b></button>`).join('');
+      const qualityOptions = ['low', 'medium', 'high'].map((value) => `<button type="button" role="menuitemradio" aria-checked="${quality === value}" class="${quality === value ? 'active' : ''}" data-action="imagine-quality-select" data-quality="${value}"><span>${esc(this.imagineQualityLabel(value))}</span><b>${esc(this.imagineCreditLabel(qualityCredits[value]))}</b></button>`).join('');
       const imageAction = imageLocked
         ? `<button class="cv-imagine-generate" type="button" data-action="imagine-unlock-full" title="${esc(imageActionTitle)}">${imageActionLabel}</button>`
         : `<button class="cv-imagine-generate" type="submit" title="${esc(imageActionTitle)}">${imageActionLabel}</button>`;
-      return `<section class="cv-imagine-stage"><div class="cv-imagine-gallery${animateEntrance ? ' is-entering' : ''}">${tiles}</div><form class="cv-imagine-console ${this.state.imagineDragging ? 'is-dragging' : ''}" data-form="imagine-image"><span class="cv-imagine-drop-hint">Drop to add as reference</span><div class="cv-imagine-console-top">${referenceControl}<textarea data-imagine-prompt name="prompt" required minlength="8" maxlength="3000" placeholder="Describe the frame you want to create…" ${disabled}>${esc(this.state.imaginePrompt)}</textarea></div><div class="cv-imagine-controls"><div class="cv-imagine-aspect-picker cv-imagine-size-picker"><input type="hidden" name="size" value="${sizeOption.value}"><input type="hidden" name="orientation" value="${orientation}"><button class="cv-imagine-aspect-trigger" type="button" data-action="imagine-size-menu" aria-label="Aspect ratio: ${sizeOption.compact}" aria-haspopup="menu" aria-expanded="${this.state.imagineSizeMenu}" ${disabled}><i class="cv-aspect-preview ${orientation}" aria-hidden="true"></i><strong>${sizeOption.compact}</strong></button>${this.state.imagineSizeMenu ? `<div class="cv-imagine-aspect-menu cv-imagine-size-menu" role="menu">${sizeOptions}</div>` : ''}</div><div class="cv-imagine-style-picker"><input type="hidden" name="style" value="${style}"><button class="cv-imagine-style-trigger" type="button" data-action="imagine-style-menu" aria-label="Style: ${styleLabel}" aria-haspopup="menu" aria-expanded="${this.state.imagineStyleMenu}" ${disabled}><span>Style</span><strong>${styleLabel}</strong></button>${this.state.imagineStyleMenu ? `<div class="cv-imagine-style-menu" role="menu">${styleOptions}</div>` : ''}</div><div class="cv-imagine-style-picker cv-imagine-quality-picker"><input type="hidden" name="quality" value="${quality}"><button class="cv-imagine-style-trigger" type="button" data-action="imagine-quality-menu" aria-label="Quality: ${qualityLabel}, ${qualityCredits[quality]} credits" aria-haspopup="menu" aria-expanded="${this.state.imagineQualityMenu}" ${disabled}><span>Quality</span><strong>${qualityLabel}</strong></button>${this.state.imagineQualityMenu ? `<div class="cv-imagine-style-menu cv-imagine-quality-menu" role="menu">${qualityOptions}</div>` : ''}</div>${imageAction}</div></form></section>`;
+      const dropHint = esc(localize('Drop to add as reference', 'Suelta para agregar como referencia'));
+      const promptPlaceholder = esc(localize('Describe the frame you want to create…', 'Describe la imagen que quieres crear…'));
+      const aspectLabel = esc(localize('Aspect ratio', 'Relación de aspecto'));
+      const styleControlLabel = esc(localize('Style', 'Estilo'));
+      const qualityControlLabel = esc(localize('Quality', 'Calidad'));
+      return `<section class="cv-imagine-stage"><div class="cv-imagine-gallery${animateEntrance ? ' is-entering' : ''}">${tiles}</div><form class="cv-imagine-console ${this.state.imagineDragging ? 'is-dragging' : ''}" data-form="imagine-image"><span class="cv-imagine-drop-hint">${dropHint}</span><div class="cv-imagine-console-top">${referenceControl}<textarea data-imagine-prompt name="prompt" required minlength="8" maxlength="3000" placeholder="${promptPlaceholder}" ${disabled}>${esc(this.state.imaginePrompt)}</textarea></div><div class="cv-imagine-controls"><div class="cv-imagine-aspect-picker cv-imagine-size-picker"><input type="hidden" name="size" value="${sizeOption.value}"><input type="hidden" name="orientation" value="${orientation}"><button class="cv-imagine-aspect-trigger" type="button" data-action="imagine-size-menu" aria-label="${aspectLabel}: ${sizeOption.compact}" aria-haspopup="menu" aria-expanded="${this.state.imagineSizeMenu}" ${disabled}><i class="cv-aspect-preview ${orientation}" aria-hidden="true"></i><strong>${sizeOption.compact}</strong></button>${this.state.imagineSizeMenu ? `<div class="cv-imagine-aspect-menu cv-imagine-size-menu" role="menu">${sizeOptions}</div>` : ''}</div><div class="cv-imagine-style-picker"><input type="hidden" name="style" value="${style}"><button class="cv-imagine-style-trigger" type="button" data-action="imagine-style-menu" aria-label="${styleControlLabel}: ${esc(styleLabel)}" aria-haspopup="menu" aria-expanded="${this.state.imagineStyleMenu}" ${disabled}><span>${styleControlLabel}</span><strong>${styleLabel}</strong></button>${this.state.imagineStyleMenu ? `<div class="cv-imagine-style-menu" role="menu">${styleOptions}</div>` : ''}</div><div class="cv-imagine-style-picker cv-imagine-quality-picker"><input type="hidden" name="quality" value="${quality}"><button class="cv-imagine-style-trigger" type="button" data-action="imagine-quality-menu" aria-label="${qualityControlLabel}: ${esc(qualityLabel)}, ${esc(this.imagineCreditLabel(qualityCredits[quality]))}" aria-haspopup="menu" aria-expanded="${this.state.imagineQualityMenu}" ${disabled}><span>${qualityControlLabel}</span><strong>${esc(qualityLabel)}</strong></button>${this.state.imagineQualityMenu ? `<div class="cv-imagine-style-menu cv-imagine-quality-menu" role="menu">${qualityOptions}</div>` : ''}</div>${imageAction}</div></form></section>`;
     }
 
     // Imagine's pickers are intentionally patched in place. Re-rendering the
@@ -936,14 +1045,14 @@
 
       const imageLocked = this.state.accountAuthenticated === true && !this.hasImageGenerationAccess();
       const style = ['cinematic', 'animated', 'sketch', 'anime'].includes(this.state.imagineStyle) ? this.state.imagineStyle : 'cinematic';
-      const styleLabel = style[0].toUpperCase() + style.slice(1);
+      const styleLabel = this.imagineStyleLabel(style);
       const sizeOption = this.imagineSizeOption(this.state.imagineSize);
       const quality = ['low', 'medium', 'high'].includes(this.state.imagineQuality) ? this.state.imagineQuality : 'low';
       const qualityCredits = { low: 3, medium: 5, high: 10 };
-      const qualityLabel = quality[0].toUpperCase() + quality.slice(1);
+      const qualityLabel = this.imagineQualityLabel(quality);
       const sizeOptions = this.imagineSizeOptions().map((entry) => `<button type="button" role="menuitemradio" aria-checked="${sizeOption.value === entry.value}" class="${sizeOption.value === entry.value ? 'active' : ''}" data-action="imagine-size-select" data-size="${entry.value}" aria-label="${entry.compact}"><i class="cv-aspect-preview ${entry.orientation}" aria-hidden="true"></i><span>${entry.compact}</span></button>`).join('');
-      const styleOptions = ['cinematic', 'animated', 'sketch', 'anime'].map((value) => `<button type="button" role="menuitemradio" aria-checked="${style === value}" class="${style === value ? 'active' : ''}" data-action="imagine-style-select" data-style="${value}">${value[0].toUpperCase() + value.slice(1)}</button>`).join('');
-      const qualityOptions = ['low', 'medium', 'high'].map((value) => `<button type="button" role="menuitemradio" aria-checked="${quality === value}" class="${quality === value ? 'active' : ''}" data-action="imagine-quality-select" data-quality="${value}"><span>${value[0].toUpperCase() + value.slice(1)}</span><b>${qualityCredits[value]} credits</b></button>`).join('');
+      const styleOptions = ['cinematic', 'animated', 'sketch', 'anime'].map((value) => `<button type="button" role="menuitemradio" aria-checked="${style === value}" class="${style === value ? 'active' : ''}" data-action="imagine-style-select" data-style="${value}">${esc(this.imagineStyleLabel(value))}</button>`).join('');
+      const qualityOptions = ['low', 'medium', 'high'].map((value) => `<button type="button" role="menuitemradio" aria-checked="${quality === value}" class="${quality === value ? 'active' : ''}" data-action="imagine-quality-select" data-quality="${value}"><span>${esc(this.imagineQualityLabel(value))}</span><b>${esc(this.imagineCreditLabel(qualityCredits[value]))}</b></button>`).join('');
 
       const sizePicker = form.querySelector('.cv-imagine-size-picker');
       const stylePicker = form.querySelector('.cv-imagine-style-picker:not(.cv-imagine-quality-picker)');
@@ -957,7 +1066,7 @@
       if (orientationInput) orientationInput.value = sizeOption.orientation;
       const sizeTrigger = sizePicker.querySelector('[data-action="imagine-size-menu"]');
       if (sizeTrigger) {
-        sizeTrigger.setAttribute('aria-label', `Aspect ratio: ${sizeOption.compact}`);
+        sizeTrigger.setAttribute('aria-label', `${localize('Aspect ratio', 'Relación de aspecto')}: ${sizeOption.compact}`);
         sizeTrigger.setAttribute('aria-expanded', String(Boolean(this.state.imagineSizeMenu)));
         sizeTrigger.querySelector('strong').textContent = sizeOption.compact;
         const preview = sizeTrigger.querySelector('.cv-aspect-preview');
@@ -967,7 +1076,7 @@
       if (styleInput) styleInput.value = style;
       const styleTrigger = stylePicker.querySelector('[data-action="imagine-style-menu"]');
       if (styleTrigger) {
-        styleTrigger.setAttribute('aria-label', `Style: ${styleLabel}`);
+        styleTrigger.setAttribute('aria-label', `${localize('Style', 'Estilo')}: ${styleLabel}`);
         styleTrigger.setAttribute('aria-expanded', String(Boolean(this.state.imagineStyleMenu)));
         styleTrigger.querySelector('strong').textContent = styleLabel;
       }
@@ -975,12 +1084,12 @@
       if (qualityInput) qualityInput.value = quality;
       const qualityTrigger = qualityPicker.querySelector('[data-action="imagine-quality-menu"]');
       if (qualityTrigger) {
-        qualityTrigger.setAttribute('aria-label', `Quality: ${qualityLabel}, ${qualityCredits[quality]} credits`);
+        qualityTrigger.setAttribute('aria-label', `${localize('Quality', 'Calidad')}: ${qualityLabel}, ${this.imagineCreditLabel(qualityCredits[quality])}`);
         qualityTrigger.setAttribute('aria-expanded', String(Boolean(this.state.imagineQualityMenu)));
         qualityTrigger.querySelector('strong').textContent = qualityLabel;
       }
       const generate = form.querySelector('.cv-imagine-generate');
-      if (generate && !imageLocked) generate.textContent = `${qualityCredits[quality]} credits`;
+      if (generate && !imageLocked) generate.textContent = this.imagineCreditLabel(qualityCredits[quality]);
       if (this.state.imagineSizeMenu) sizePicker.insertAdjacentHTML('beforeend', `<div class="cv-imagine-aspect-menu cv-imagine-size-menu" role="menu">${sizeOptions}</div>`);
       if (this.state.imagineStyleMenu) stylePicker.insertAdjacentHTML('beforeend', `<div class="cv-imagine-style-menu" role="menu">${styleOptions}</div>`);
       if (this.state.imagineQualityMenu) qualityPicker.insertAdjacentHTML('beforeend', `<div class="cv-imagine-style-menu cv-imagine-quality-menu" role="menu">${qualityOptions}</div>`);
@@ -1214,8 +1323,10 @@
       const style = String(generation.style || 'cinematic').replace(/^./, (letter) => letter.toUpperCase());
       const quality = ['low', 'medium', 'high'].includes(String(generation.quality || '')) ? String(generation.quality).replace(/^./, (letter) => letter.toUpperCase()) : 'Low';
       const referenceAssets = (Array.isArray(generation.referenceAssetIds) ? generation.referenceAssetIds : []).map((id) => this.asset(id)).filter(Boolean);
-      const referenceThumbs = referenceAssets.length ? `<div class="cv-imagine-preview-references">${referenceAssets.slice(0, 4).map((reference) => `<button type="button" class="cv-imagine-preview-reference" data-action="imagine-copy-reference" data-id="${esc(reference.id)}" title="Copy reference to Imagine"><img src="${esc(this.assetUrl(reference.id))}" alt="Reference image"><span>Copy</span></button>`).join('')}${referenceAssets.length > 4 ? `<span>+${referenceAssets.length - 4}</span>` : ''}</div>` : '<span class="cv-imagine-preview-none">No references</span>';
-      return `<div class="cv-modal-backdrop cv-imagine-preview-backdrop" data-action="close-imagine-preview"><section class="cv-modal cv-imagine-preview cv-imagine-preview-solo" data-stop aria-label="Generated image preview"><div class="cv-imagine-preview-solo-image"><img src="${esc(this.assetUrl(asset.id))}" alt="${esc(asset.prompt || 'Generated visual')}"></div><aside class="cv-imagine-inspector"><header class="cv-imagine-inspector-head"><div><div class="cv-eyebrow">Imagine frame</div><h3>Generated visual</h3><p>${esc(created)}</p></div></header><section class="cv-imagine-inspector-card"><span class="cv-imagine-inspector-label">Prompt</span><p>${esc(asset.prompt || 'No prompt stored.')}</p></section><section class="cv-imagine-inspector-card cv-imagine-inspector-details"><span class="cv-imagine-inspector-label">Details</span><dl><div><dt>Format</dt><dd>${esc(orientation)}</dd></div><div><dt>Style</dt><dd>${esc(style)}</dd></div><div><dt>Quality</dt><dd>${esc(quality)}</dd></div><div><dt>Size</dt><dd>${esc(dimensions)}</dd></div><div><dt>Created</dt><dd>${esc(created)}</dd></div></dl></section><section class="cv-imagine-inspector-card"><span class="cv-imagine-inspector-label">References</span>${referenceThumbs}</section></aside><button class="cv-icon-btn cv-close" data-action="close-imagine-preview" aria-label="Close preview">×</button></section></div>`;
+      const product = this.accountScoped ? 'Imaging' : 'Imagine';
+      const copyTitle = localize(`Copy reference to ${product}`, `Copiar referencia a ${product}`);
+      const referenceThumbs = referenceAssets.length ? `<div class="cv-imagine-preview-references">${referenceAssets.slice(0, 4).map((reference) => `<button type="button" class="cv-imagine-preview-reference" data-action="imagine-copy-reference" data-id="${esc(reference.id)}" title="${esc(copyTitle)}"><img src="${esc(this.assetUrl(reference.id))}" alt="${esc(localize('Reference image', 'Imagen de referencia'))}"><span>${esc(localize('Copy', 'Copiar'))}</span></button>`).join('')}${referenceAssets.length > 4 ? `<span>+${referenceAssets.length - 4}</span>` : ''}</div>` : `<span class="cv-imagine-preview-none">${esc(localize('No references', 'Sin referencias'))}</span>`;
+      return `<div class="cv-modal-backdrop cv-imagine-preview-backdrop" data-action="close-imagine-preview"><section class="cv-modal cv-imagine-preview cv-imagine-preview-solo" data-stop aria-label="${esc(localize('Generated image preview', 'Vista previa de imagen generada'))}"><div class="cv-imagine-preview-solo-image"><img src="${esc(this.assetUrl(asset.id))}" alt="${esc(asset.prompt || localize('Generated visual', 'Imagen generada'))}"></div><aside class="cv-imagine-inspector"><header class="cv-imagine-inspector-head"><div><div class="cv-eyebrow">${product} ${esc(localize('frame', 'imagen'))}</div><h3>${esc(localize('Generated visual', 'Imagen generada'))}</h3><p>${esc(created)}</p></div></header><section class="cv-imagine-inspector-card"><span class="cv-imagine-inspector-label">Prompt</span><p>${esc(asset.prompt || localize('No prompt stored.', 'No se guardó el prompt.'))}</p></section><section class="cv-imagine-inspector-card cv-imagine-inspector-details"><span class="cv-imagine-inspector-label">${esc(localize('Details', 'Detalles'))}</span><dl><div><dt>${esc(localize('Format', 'Formato'))}</dt><dd>${esc(orientation)}</dd></div><div><dt>${esc(localize('Style', 'Estilo'))}</dt><dd>${esc(style)}</dd></div><div><dt>${esc(localize('Quality', 'Calidad'))}</dt><dd>${esc(quality)}</dd></div><div><dt>${esc(localize('Size', 'Tamaño'))}</dt><dd>${esc(dimensions)}</dd></div><div><dt>${esc(localize('Created', 'Creada'))}</dt><dd>${esc(created)}</dd></div></dl></section><section class="cv-imagine-inspector-card"><span class="cv-imagine-inspector-label">${esc(localize('References', 'Referencias'))}</span>${referenceThumbs}</section></aside><button class="cv-icon-btn cv-close" data-action="close-imagine-preview" aria-label="${esc(localize('Close preview', 'Cerrar vista previa'))}">×</button></section></div>`;
     }
 
     _renderBoardPicker() {
@@ -1722,7 +1833,9 @@
       const assets = [];
       for (const original of files || []) {
         const compressed = await this.compressImage(original);
-        const result = await window.filmscriptCanvas.uploadAsset(this.scriptId, compressed.file, { ...compressed, scope });
+        const result = this.accountScoped
+          ? await window.filmscriptCanvas.uploadAccountImagingAsset(compressed.file, compressed)
+          : await window.filmscriptCanvas.uploadAsset(this.scriptId, compressed.file, { ...compressed, scope });
         assets.push(result.asset);
         this.state.workspace.assets = Array.isArray(this.state.workspace.assets) ? this.state.workspace.assets : [];
         this.state.workspace.assets.push(result.asset);
@@ -1978,7 +2091,7 @@
       if(this.state.storyboardImageGenerating)return;
       this.state.storyboardImageGenerating=true;this.render();
       try{
-        const result=await window.filmscriptCanvas.generateStoryboardImage(this.scriptId,{prompt,orientation,referenceAssetIds});
+        const result=await this._generateImage({prompt,orientation,referenceAssetIds});
         if(!result?.asset?.id)throw new Error('The storyboard frame was not returned.');
         this.state.workspace.assets=Array.isArray(this.state.workspace.assets)?this.state.workspace.assets:[];
         this.state.workspace.assets.push(result.asset);
@@ -2016,6 +2129,7 @@
       const createdAtMs = Date.now();
       const job = {
         id: uid('imagine-job'),
+        ownerUserId: this.accountScoped ? this._imagineJobsOwnerId() : '',
         createdAt: new Date(createdAtMs).toISOString(),
         createdAtMs,
         sequence: ++this._imagineJobSequence,

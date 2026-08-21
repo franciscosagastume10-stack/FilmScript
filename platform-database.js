@@ -155,6 +155,7 @@ export function runPlatformMigrations() {
     [16, "016_release_notice.sql"],
     [17, "017_user_interface_language.sql"],
     [18, "018_account_person_name.sql"],
+    [19, "019_account_imaging_idempotency.sql"],
   ];
   for (const [version, filename] of migrations) {
     if (current >= version

@@ -40,6 +40,12 @@
     if (firstPartyApi && (path === '/api/invitations' || path.startsWith('/api/invitations/'))) {
       return `${apiUrl}/film-data/access-list${path.slice('/api/invitations'.length)}`;
     }
+    // Account Imaging is independent from projects. Give it a neutral public
+    // browser route, then let Vercel translate it back to the authenticated
+    // account API without ever inventing a script identifier.
+    if (firstPartyApi && (path === '/api/me/imaging' || path.startsWith('/api/me/imaging/'))) {
+      return `${apiUrl}/visual-library${path.slice('/api/me/imaging'.length)}`;
+    }
     // Embedded-browser privacy lists can block nested routes under both
     // `/scripts` and `/workspace`. Use a neutral first-party data route and
     // translate it back to the unchanged AWS API path at Vercel's edge.

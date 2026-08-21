@@ -21,6 +21,14 @@
       "destination": "/api/scripts-proxy?path=:path*"
     },
     {
+      "source": "/visual-library",
+      "destination": "https://api.filmscript.app/api/me/imaging"
+    },
+    {
+      "source": "/visual-library/:path*",
+      "destination": "https://api.filmscript.app/api/me/imaging/:path*"
+    },
+    {
       "source": "/workspace/projects",
       "destination": "/api/scripts-proxy"
     },
