@@ -617,13 +617,16 @@ class FilmScriptAnalysis extends HTMLElement {
   sceneReference(item) {
     const sceneMap = new Map((this.analysis?.sceneIndex || []).map((scene) => [scene.id, scene]));
     const scenes = Array.from(new Set([item?.sceneId, ...(item?.sceneIds || [])])).map((id) => sceneMap.get(id)).filter(Boolean);
-    if (!scenes.length) return { id: '', label: 'Screenplay evidence', scenes: [] };
+    const spanish = typeof window !== 'undefined' && window.filmscriptLanguage?.get?.() === 'es';
+    if (!scenes.length) return { id: '', label: spanish ? 'Evidencia del guion' : 'Screenplay evidence', scenes: [] };
     const numbers = scenes.map((scene) => scene.sceneNumber);
     const pages = Array.from(new Set(scenes.map((scene) => scene.page)));
+    const sceneLabel = scenes.length === 1 ? (spanish ? 'Escena' : 'Scene') : (spanish ? 'Escenas' : 'Scenes');
+    const pageLabel = pages.length === 1 ? (spanish ? 'Página' : 'Page') : (spanish ? 'Páginas' : 'Pages');
     return {
       id: scenes[0].id,
       scenes,
-      label: `${scenes.length === 1 ? 'Scene' : 'Scenes'} ${numbers.join(', ')} · ${pages.length === 1 ? 'Page' : 'Pages'} ${pages.join(', ')}`,
+      label: `${sceneLabel} ${numbers.join(', ')} · ${pageLabel} ${pages.join(', ')}`,
     };
   }
 
@@ -677,6 +680,10 @@ class FilmScriptAnalysis extends HTMLElement {
     const explanation = primary?.explanation || data.status.reason || 'The screenplay needs more evidence before Lumiere can identify a useful next step.';
     const generatedFocus = Boolean(primary);
     const scenes = this.analysis?.sceneIndex?.length || 0;
+    const spanish = typeof window !== 'undefined' && window.filmscriptLanguage?.get?.() === 'es';
+    const strengthsLabel = strengths.length === 1 ? (spanish ? 'fortaleza' : 'strength') : (spanish ? 'fortalezas' : 'strengths');
+    const prioritiesLabel = priorities.length === 1 ? (spanish ? 'prioridad' : 'priority') : (spanish ? 'prioridades' : 'priorities');
+    const scenesReadLabel = scenes === 1 ? (spanish ? 'escena leída' : 'scene read') : (spanish ? 'escenas leídas' : 'scenes read');
     const focusPrompt = 'Help me understand the most important change I should consider next, using evidence from this screenplay.';
     return `<section class="analysis-focus-grid ${stale ? 'is-previous' : ''}" aria-labelledby="analysis-focus-heading">
       <article class="analysis-focus-card">
@@ -684,7 +691,7 @@ class FilmScriptAnalysis extends HTMLElement {
         <h2 id="analysis-focus-heading"${generatedFocus ? ' data-lumiere-generated' : ''}>${escapeHtml(title)}</h2>
         <p class="focus-preview"${generatedFocus ? ' data-lumiere-generated' : ''}>${escapeHtml(explanation)}</p>
         <div class="focus-actions">${reference.id ? `<button type="button" class="primary" data-scene-id="${escapeHtml(reference.id)}">Open priority scene${icon('arrow')}</button>` : ''}<button type="button" class="focus-ask" data-action="ask-context" data-context="Draft focus" data-prompt="${escapeHtml(focusPrompt)}">${icon('sparkle')}Ask Lumiere</button></div>
-        <div class="focus-stats" aria-label="Analysis summary"><span><strong>${strengths.length}</strong><small>strengths</small></span><span><strong>${priorities.length}</strong><small>priorities</small></span><span><strong>${scenes}</strong><small>scenes read</small></span></div>
+        <div class="focus-stats" aria-label="${spanish ? 'Resumen del análisis' : 'Analysis summary'}"><span><strong>${strengths.length}</strong><small>${strengthsLabel}</small></span><span><strong>${priorities.length}</strong><small>${prioritiesLabel}</small></span><span><strong>${scenes}</strong><small>${scenesReadLabel}</small></span></div>
       </article>
       <div class="signal-stack" aria-label="Screenplay signals">
         ${this.signalCard('What’s working', strengths, 'working', 'No clear strength has enough evidence yet.', deepReady)}
@@ -732,11 +739,13 @@ class FilmScriptAnalysis extends HTMLElement {
 
   storyClarityPanel(data, stale) {
     const points = data.storyClarity.points || [];
+    const spanish = typeof window !== 'undefined' && window.filmscriptLanguage?.get?.() === 'es';
+    const fallbackStages = spanish ? ['Inicio', 'Conflicto', 'Pico', 'Desenlace'] : ['Start', 'Conflict', 'Peak', 'Ending'];
     return `<section class="analysis-section story-section ${stale ? 'is-previous' : ''}" aria-labelledby="story-heading">
       <div class="section-heading"><div><span class="section-kicker">Story</span><h2 id="story-heading">Story clarity</h2><p${data.storyClarity.summary ? ' data-lumiere-generated' : ''}>${escapeHtml(data.storyClarity.summary || 'Where the screenplay begins, turns, peaks, and lands.')}</p></div>${this.contextualAssistant('Story', data.contextualQuestions.story)}</div>
       ${points.length ? `<ol class="clarity-track" aria-label="Story clarity timeline">${points.slice(0, 4).map((point, index) => {
         const reference = this.sceneReference(point);
-        return `<li><button type="button" data-scene-id="${escapeHtml(reference.id)}"><span class="clarity-dot">${index + 1}</span><small${point.stage ? ' data-lumiere-generated' : ''}>${escapeHtml(point.stage || ['Start', 'Conflict', 'Peak', 'Ending'][index])}</small><strong data-lumiere-generated>${escapeHtml(point.title)}</strong><em>${escapeHtml(reference.label)}</em></button>${this.evidenceDetails(point)}</li>`;
+        return `<li><button type="button" data-scene-id="${escapeHtml(reference.id)}"><span class="clarity-dot">${index + 1}</span><small${point.stage ? ' data-lumiere-generated' : ''}>${escapeHtml(point.stage || fallbackStages[index])}</small><strong data-lumiere-generated>${escapeHtml(point.title)}</strong><em>${escapeHtml(reference.label)}</em></button>${this.evidenceDetails(point)}</li>`;
       }).join('')}</ol>` : this.waitingBlock('story clarity')}
     </section>`;
   }
@@ -762,19 +771,21 @@ class FilmScriptAnalysis extends HTMLElement {
     const area = `${left},${plotBottom} ${polyline} ${width - right},${plotBottom}`;
     const markers = coords.filter((point) => point.marker).slice(0, 4);
     const takeaway = data.storyFlow.takeaway;
+    const spanish = typeof window !== 'undefined' && window.filmscriptLanguage?.get?.() === 'es';
+    const sceneLabel = spanish ? 'Escena' : 'Scene';
     const description = data.storyFlow.preview
       ? 'A live draft signal from scene rhythm. Lumiere refines it when the full reading is ready.'
       : 'Momentum, emotion, and dramatic pressure—combined into one readable arc.';
     return `<section class="analysis-section flow-section ${stale ? 'is-previous' : ''}" aria-labelledby="story-flow-heading">
-      <div class="section-heading"><div><span class="section-kicker">Story</span><h2 id="story-flow-heading">Story flow</h2><p>${description}</p></div><span class="flow-key">${data.storyFlow.preview ? 'Live preview' : 'Quiet'} <i></i> ${data.storyFlow.preview ? 'Updating' : 'Peak'}</span></div>
-      <div class="flow-frame"><div class="flow-scroll"><svg class="flow-chart" viewBox="0 0 ${width} ${height}" role="img" aria-label="Story flow across ${points.length} scenes">
+      <div class="section-heading"><div><span class="section-kicker">Story</span><h2 id="story-flow-heading">Story flow</h2><p>${description}</p></div><span class="flow-key">${data.storyFlow.preview ? (spanish ? 'Vista previa en vivo' : 'Live preview') : (spanish ? 'Calma' : 'Quiet')} <i></i> ${data.storyFlow.preview ? (spanish ? 'Actualizando' : 'Updating') : (spanish ? 'Pico' : 'Peak')}</span></div>
+      <div class="flow-frame"><div class="flow-scroll"><svg class="flow-chart" viewBox="0 0 ${width} ${height}" role="img" aria-label="${spanish ? `Flujo de la historia a lo largo de ${points.length} escenas` : `Story flow across ${points.length} scenes`}">
         <defs><linearGradient id="story-flow-fill" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="var(--an-accent)" stop-opacity=".18"/><stop offset="1" stop-color="var(--an-accent)" stop-opacity="0"/></linearGradient><filter id="story-flow-handdrawn" x="-2%" y="-8%" width="104%" height="116%"><feTurbulence type="fractalNoise" baseFrequency=".018" numOctaves="1" seed="17" result="paperNoise"/><feDisplacementMap in="SourceGraphic" in2="paperNoise" scale=".75" xChannelSelector="R" yChannelSelector="G"/></filter></defs>
         <line class="flow-guide" x1="${left}" y1="${top + plotHeight * .25}" x2="${width - right}" y2="${top + plotHeight * .25}"/><line class="flow-guide" x1="${left}" y1="${top + plotHeight * .5}" x2="${width - right}" y2="${top + plotHeight * .5}"/><line class="flow-guide" x1="${left}" y1="${top + plotHeight * .75}" x2="${width - right}" y2="${top + plotHeight * .75}"/>
         <polygon class="flow-area" points="${area}"/><polyline class="story-line" points="${polyline}"/>
-        ${coords.map((point) => `<g class="chart-point" tabindex="0" role="button" data-scene-id="${escapeHtml(point.sceneId)}" aria-label="Scene ${point.sceneNumber}: ${escapeHtml(point.label)}. ${escapeHtml(point.explanation)}" data-lumiere-generated><circle cx="${point.x}" cy="${point.y}" r="4.5"/><title>Scene ${point.sceneNumber} · ${escapeHtml(point.heading || '')}\n${escapeHtml(point.label)}\n${escapeHtml(point.explanation)}</title></g>`).join('')}
-        <text x="${left}" y="${height - 8}">Start</text><text x="${left + usable / 2}" y="${height - 8}" text-anchor="middle">Middle</text><text x="${width - right}" y="${height - 8}" text-anchor="end">End</text>
+        ${coords.map((point) => `<g class="chart-point" tabindex="0" role="button" data-scene-id="${escapeHtml(point.sceneId)}" aria-label="${sceneLabel} ${point.sceneNumber}: ${escapeHtml(point.label)}. ${escapeHtml(point.explanation)}" data-lumiere-generated><circle cx="${point.x}" cy="${point.y}" r="4.5"/><title>${sceneLabel} ${point.sceneNumber} · ${escapeHtml(point.heading || '')}\n${escapeHtml(point.label)}\n${escapeHtml(point.explanation)}</title></g>`).join('')}
+        <text x="${left}" y="${height - 8}">${spanish ? 'Inicio' : 'Start'}</text><text x="${left + usable / 2}" y="${height - 8}" text-anchor="middle">${spanish ? 'Mitad' : 'Middle'}</text><text x="${width - right}" y="${height - 8}" text-anchor="end">${spanish ? 'Fin' : 'End'}</text>
       </svg></div></div>
-      ${markers.length ? `<div class="flow-markers">${markers.map((point) => `<button type="button" data-scene-id="${escapeHtml(point.sceneId)}"><i></i><span>Scene ${point.sceneNumber}</span><strong data-lumiere-generated>${escapeHtml(point.marker)}</strong></button>`).join('')}</div>` : ''}
+      ${markers.length ? `<div class="flow-markers">${markers.map((point) => `<button type="button" data-scene-id="${escapeHtml(point.sceneId)}"><i></i><span>${sceneLabel} ${point.sceneNumber}</span><strong data-lumiere-generated>${escapeHtml(point.marker)}</strong></button>`).join('')}</div>` : ''}
       ${takeaway ? `<details class="flow-takeaway"><summary><span>${icon('insight')}</span><span><small>Lumiere’s read</small><strong data-lumiere-generated>${escapeHtml(takeaway.title)}</strong></span><em>Read note</em>${icon('chevron')}</summary><div class="flow-takeaway-body"><p data-lumiere-generated>${escapeHtml(takeaway.explanation)}</p><div class="insight-foot"><span>${escapeHtml(this.sceneReference(takeaway).label)}</span><button type="button" data-scene-id="${escapeHtml(this.sceneReference(takeaway).id)}">View in Script${icon('arrow')}</button></div></div></details>` : ''}
     </section>`;
   }
