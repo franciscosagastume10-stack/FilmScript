@@ -60,6 +60,7 @@ import {
 } from "./canvas-model.js";
 import { canvasStorage } from "./canvas-storage.js";
 import {
+  acceptAccountInvitation,
   acceptInvitation,
   backfillOwners,
   authorizeSharedProject,
@@ -75,12 +76,14 @@ import {
   createGuestSession,
   createNotification,
   createSharedProject,
+  declineAccountInvitation,
   deleteNotifications,
   financialAccess,
   guestProjectAccess,
   getAIJob,
   getSharedProject,
   listAccessibleProjectIds,
+  listAccountInvitations,
   listActivity,
   listComments,
   listProjectMessages,
@@ -1894,23 +1897,69 @@ function syncProject(script, project) {
   }
   return assignProjectCastNumbers(syncedProject);
 }
-function summarizeProject(project) {
-  return {
+function copyProjectFields(target, source, fields) {
+  for (const field of fields) if (Object.prototype.hasOwnProperty.call(source || {}, field)) target[field] = source[field];
+  return target;
+}
+
+function removeScriptEvidence(value) {
+  if (Array.isArray(value)) return value.map(removeScriptEvidence);
+  if (!value || typeof value !== "object") return value;
+  const filtered = {};
+  for (const [key, item] of Object.entries(value)) {
+    if (["sourceExcerpt", "scriptExcerpt", "evidenceText"].includes(key)) continue;
+    filtered[key] = removeScriptEvidence(item);
+  }
+  return filtered;
+}
+
+function authorizedPreproductionScene(scene, access) {
+  const canReadScript = canAccessModule(access, "script", "view");
+  const canReadBreakdown = canAccessModule(access, "breakdown", "view");
+  const canReadStripboard = canAccessModule(access, "stripboard", "view");
+  const canReadShotList = canAccessModule(access, "shot_list", "view");
+  const payload = copyProjectFields({}, scene, ["id", "title", "heading", "sceneNumber", "page", "status", "createdAt", "updatedAt"]);
+  if (canReadScript) copyProjectFields(payload, scene, ["text", "blocks", "knownCastNames", "contentHash", "previousText"]);
+  if (canReadBreakdown) {
+    copyProjectFields(payload, scene, ["breakdown", "breakdownForm", "reviewRequired", "description", "estimatedTime", "pageCount", "sequence"]);
+    if (!canReadScript && payload.breakdown) payload.breakdown = removeScriptEvidence(payload.breakdown);
+  }
+  if (canReadStripboard) copyProjectFields(payload, scene, ["strip"]);
+  if (canReadShotList) {
+    const shotListScene = publicShotListScene(scene);
+    copyProjectFields(payload, shotListScene, ["shots", "shotsUpdatedAt", "referenceAsset", "manual"]);
+    if (!canReadScript && Array.isArray(payload.shots)) payload.shots = payload.shots.map(removeScriptEvidence);
+  }
+  return payload;
+}
+
+function summarizeProject(project, access) {
+  const canReadBreakdown = canAccessModule(access, "breakdown", "view");
+  const canReadStripboard = canAccessModule(access, "stripboard", "view");
+  const canReadShotList = canAccessModule(access, "shot_list", "view");
+  const sceneIds = Object.keys(project.scenes || {});
+  const payload = {
     scriptVersion: project.scriptVersion,
-    analysis: project.analysis || { status: "idle" },
-    shotAnalysis: project.shotAnalysis || { status: "idle" },
-    stripboardOrder: project.stripboardOrder || Object.keys(project.scenes || {}),
-    stripboardSettings: cleanStripboardSettings(project.stripboardSettings),
-    stripboardEvents: cleanStripboardEvents(project.stripboardEvents, Object.keys(project.scenes || {})),
-    shootLocations: cleanShootLocations(project.shootLocations),
-    castOrder: project.castOrder || [],
-    scenes: Object.values(project.scenes || {}).map(publicShotListScene),
-    manualShotScenes: cleanManualShotScenes(project.manualShotScenes).map(publicShotListScene),
+    scenes: Object.values(project.scenes || {}).map((scene) => authorizedPreproductionScene(scene, access)),
   };
+  if (canReadBreakdown) payload.analysis = project.analysis || { status: "idle" };
+  if (canReadShotList) {
+    payload.shotAnalysis = project.shotAnalysis || { status: "idle" };
+    payload.manualShotScenes = cleanManualShotScenes(project.manualShotScenes).map((scene) => authorizedPreproductionScene(scene, access));
+  }
+  if (canReadStripboard) {
+    payload.stripboardOrder = project.stripboardOrder || sceneIds;
+    payload.stripboardSettings = cleanStripboardSettings(project.stripboardSettings);
+    payload.stripboardEvents = cleanStripboardEvents(project.stripboardEvents, sceneIds);
+    payload.shootLocations = cleanShootLocations(project.shootLocations);
+  }
+  if (canReadBreakdown || canReadStripboard) payload.castOrder = project.castOrder || [];
+  return payload;
 }
 
 function authorizedProjectPayload(project, userId, projectId) {
-  return filterDepartmentFinancialData(summarizeProject(project), projectAccess(userId, projectId));
+  const access = projectAccess(userId, projectId);
+  return filterDepartmentFinancialData(summarizeProject(project, access), access);
 }
 
 function extractStructuredJson(raw) {
@@ -4124,7 +4173,13 @@ async function handleManualBreakdown(req, res, scriptId) {
 async function handlePreproduction(req, res, scriptId) {
   const sid = sessionId(req, res);
   if (!sid) return googleRequired(res);
-  const script = loadScripts().scripts[scriptId]; if (!script || !projectPermission(sid, scriptId, "breakdown", req.method === "POST" ? "edit" : "view")) return json(res, 404, { error: "script not found" });
+  const script = loadScripts().scripts[scriptId];
+  const access = script ? projectAccess(sid, scriptId) : null;
+  const mayReadPreproduction = ["breakdown", "stripboard", "shot_list"].some((module) => canAccessModule(access, module, "view"));
+  const authorized = req.method === "POST"
+    ? canAccessModule(access, "breakdown", "edit")
+    : mayReadPreproduction;
+  if (!script || !authorized) return json(res, 404, { error: "script not found" });
   const db = loadPreproduction(); let project = db.projects[scriptId] = syncProject(script, db.projects[scriptId]);
   let repairedInterruptedJob = false;
   if ((project.analysis?.status === "queued" || project.analysis?.status === "running") && !activePreproductionJobs.has(scriptId)) {
@@ -5216,7 +5271,7 @@ function applyCors(req, res) {
   // Browser uploads use headers to describe the image and its target. Every
   // one must be allowed here: otherwise a cross-origin browser rejects the
   // preflight and Canvas silently falls back to a browser-only image.
-  res.setHeader("Access-Control-Allow-Headers", "Content-Type,X-Filename,X-Scene-Id,X-Shot-Id,X-Image-Width,X-Image-Height");
+  res.setHeader("Access-Control-Allow-Headers", "Content-Type,X-Filename,X-Scene-Id,X-Shot-Id,X-Image-Width,X-Image-Height,X-Canvas-Scope");
   res.writeHead(204);
   res.end();
   return true;
@@ -6961,13 +7016,28 @@ async function handleProjectLifecycle(req, res, projectId, action) {
   } catch (error) { return permissionRequired(res, error); }
 }
 
+const PROJECT_MODULE_VIEWS = Object.freeze([["script", "editor"], ["analysis", "analysis"], ["breakdown", "breakdown"], ["stripboard", "stripboard"], ["shot_list", "shotlist"], ["canvas", "canvas"], ["location_plan", "location_plan"], ["imagine", "imagine"], ["budget", "budget"], ["calendar", "calendar"]]);
+
+function projectOpeningAccess(access) {
+  const financialPermissions = new Set(access?.financialPermissions || []);
+  const hasFinancialAccess = financialPermissions.has("financial.view_all")
+    || financialPermissions.has("financial.edit_all")
+    || ((financialPermissions.has("financial.view_department") || financialPermissions.has("financial.edit_department")) && (access?.financialDepartmentIds || []).length > 0);
+  const preferredView = PROJECT_MODULE_VIEWS.find(([module]) => canAccessModule(access, module, "view") && (module !== "budget" || hasFinancialAccess))?.[1] || null;
+  return { preferredView, canOpenScript: canAccessModule(access, "script", "view"), canOpenProject: Boolean(preferredView) };
+}
+
 function handleScriptsList(req, res) {
   const sid = sessionId(req, res);
   if (!sid) return googleRequired(res);
   const accessible = new Set(listAccessibleProjectIds(sid));
   const scripts = Object.values(loadScripts().scripts).filter((script) => accessible.has(script.id)).sort((a, b) => b.updatedAt.localeCompare(a.updatedAt)).map((script) => {
     const access = projectAccess(sid, script.id);
-    return { id: script.id, title: script.title, source: script.source, createdAt: script.createdAt, updatedAt: script.updatedAt, pages: script.blocks?.length ? script.blocks.filter((block) => block.type === "pagebreak").length + 1 : null, state: projectState(script.id), access: access ? { projectRole: access.projectRole, cinematicRole: access.cinematicRole, modulePermissions: access.modulePermissions } : null };
+    const owner = getUser(script.userId);
+    const canOpenScript = canAccessModule(access, "script", "view");
+    const publicAccess = access ? { projectRole: access.projectRole, cinematicRole: access.cinematicRole, modulePermissions: access.modulePermissions } : null;
+    const screenplaySummary = canOpenScript ? { source: script.source, pages: script.blocks?.length ? script.blocks.filter((block) => block.type === "pagebreak").length + 1 : null } : {};
+    return { id: script.id, title: script.title, ...screenplaySummary, createdAt: script.createdAt, updatedAt: script.updatedAt, state: projectState(script.id), owner: { id: script.userId, name: owner?.name || "FilmScript collaborator" }, ownerName: owner?.name || "FilmScript collaborator", role: access?.projectRole || null, ...projectOpeningAccess(access), access: publicAccess };
   });
   json(res, 200, { scripts });
 }
@@ -7044,9 +7114,15 @@ async function handleScript(req, res, id) {
 
 function canvasContext(scriptId, userId) {
   const script = loadScripts().scripts[scriptId];
-  if (!script || !projectPermission(userId, scriptId, "canvas", "view")) return null;
+  const access = script ? projectAccess(userId, scriptId) : null;
+  const canReadCanvas = canAccessModule(access, "canvas", "view");
+  const canReadImagine = canAccessModule(access, "imagine", "view");
+  if (!script || (!canReadCanvas && !canReadImagine)) return null;
   const stored = getCanvasWorkspace(scriptId, userId) || createCanvasWorkspace({ scriptId, userId });
-  const library = getCanvasLibrary(userId) || {};
+  // A collaborator with only Imagine access may use this project's Imagine
+  // library, but must never merge their personal Vault or Canvas library into
+  // the owner's project as a side effect of opening the page.
+  const library = canReadCanvas ? getCanvasLibrary(userId) || {} : {};
   const mergeById = (shared, local, key) => {
     const seen = new Set();
     return [...(Array.isArray(shared) ? shared : []), ...(Array.isArray(local) ? local : [])].filter((entry) => {
@@ -7062,7 +7138,7 @@ function canvasContext(scriptId, userId) {
     vaultItems: mergeById(library.vaultItems, stored.vaultItems, 'id'),
     vaultCategories: [...new Set([...(Array.isArray(library.vaultCategories) ? library.vaultCategories : []), ...(Array.isArray(stored.vaultCategories) ? stored.vaultCategories : [])])],
   }, { scriptId, userId });
-  return { script, workspace };
+  return { script, workspace, access, canReadCanvas, canReadImagine };
 }
 
 function saveCanvasContext(context) {
@@ -7077,13 +7153,52 @@ function saveCanvasContext(context) {
   return publicCanvasWorkspace(context.workspace, { scriptId: context.script.id, userId: context.script.userId });
 }
 
+function isImagineVisibleAsset(asset) {
+  return ["imagine", "imagine_reference"].includes(String(asset?.source || "").toLowerCase());
+}
+
+function authorizedCanvasAsset(asset, access) {
+  const publicAsset = { ...asset, generation: { ...(asset?.generation || {}) } };
+  if (publicAsset.generation.origin !== "shotlist") return publicAsset;
+  // Shot List frames live in the shared visual library, but their provider
+  // prompt may contain the full screenplay context. Sharing Imagine or Canvas
+  // alone grants the frame, never the hidden screenplay/Shot List metadata.
+  if (!canAccessModule(access, "script", "view")) delete publicAsset.generation.revisedPrompt;
+  if (canAccessModule(access, "shot_list", "view")) return publicAsset;
+  publicAsset.filename = "Shot List frame.jpg";
+  publicAsset.prompt = "";
+  const technicalGeneration = {};
+  for (const field of ["origin", "requestedSize", "actualSize", "aspectRatio", "dimensionsVerified", "dimensionsVerifiedAt"]) {
+    if (Object.prototype.hasOwnProperty.call(publicAsset.generation, field)) technicalGeneration[field] = publicAsset.generation[field];
+  }
+  publicAsset.generation = technicalGeneration;
+  return publicAsset;
+}
+
 function authorizedCanvasWorkspace(workspace, scriptId, userId) {
   const script = loadScripts().scripts[scriptId];
   if (!script) return null;
-  return filterDepartmentFinancialData(
-    publicCanvasWorkspace(workspace, { scriptId, userId: script.user_id }),
-    projectAccess(userId, scriptId),
-  );
+  const access = projectAccess(userId, scriptId);
+  const normalizedWorkspace = publicCanvasWorkspace(workspace, { scriptId, userId: script.userId });
+  const publicWorkspace = {
+    ...normalizedWorkspace,
+    assets: (normalizedWorkspace.assets || []).map((asset) => authorizedCanvasAsset(asset, access)),
+  };
+  if (canAccessModule(access, "canvas", "view")) {
+    return filterDepartmentFinancialData(publicWorkspace, access);
+  }
+  if (!canAccessModule(access, "imagine", "view")) return null;
+  // Imagine is a first-class module, not a back door into Boards, Vault,
+  // quotes, selections, presentations, or account-level Canvas metadata.
+  return filterDepartmentFinancialData({
+    version: publicWorkspace.version,
+    scriptId: publicWorkspace.scriptId,
+    accessScope: "imagine",
+    settings: { lastTool: "home" },
+    assets: (publicWorkspace.assets || []).filter(isImagineVisibleAsset),
+    createdAt: publicWorkspace.createdAt,
+    updatedAt: publicWorkspace.updatedAt,
+  }, access);
 }
 
 async function canvasJsonBody(req, limit = 2_000_000) {
@@ -7098,7 +7213,9 @@ async function handleCanvasWorkspace(req, res, scriptId) {
   let context = canvasContext(scriptId, sid);
   if (!context) return json(res, 404, { error: "script not found" });
   if (req.method === "GET") {
-    if (!getCanvasWorkspace(scriptId, sid)) saveCanvasContext(context);
+    // Canvas owners keep the historical eager workspace creation. Imagine-only
+    // reads remain side-effect free until an image is actually uploaded or made.
+    if (context.canReadCanvas && !getCanvasWorkspace(scriptId, sid)) saveCanvasContext(context);
     return json(res, 200, { workspace: authorizedCanvasWorkspace(context.workspace, scriptId, sid) });
   }
   if (!projectPermission(sid, scriptId, "canvas", "edit")) return permissionRequired(res);
@@ -7223,7 +7340,9 @@ async function handleCanvasQuotes(req, res, scriptId, quoteId = "") {
 async function handleCanvasAssetUpload(req, res, scriptId) {
   const sid = sessionId(req, res);
   if (!sid) return googleRequired(res);
-  if (!projectPermission(sid, scriptId, "canvas", "edit")) return permissionRequired(res);
+  const imagineReference = String(req.headers["x-canvas-scope"] || "").trim().toLowerCase() === "imagine";
+  const module = imagineReference ? "imagine" : "canvas";
+  if (!projectPermission(sid, scriptId, module, "edit")) return permissionRequired(res);
   const context = canvasContext(scriptId, sid);
   if (!context) return json(res, 404, { error: "script not found" });
   const mimeType = String(req.headers["content-type"] || "").split(";")[0].trim().toLowerCase();
@@ -7242,6 +7361,7 @@ async function handleCanvasAssetUpload(req, res, scriptId) {
     size: data.length,
     width: req.headers["x-image-width"],
     height: req.headers["x-image-height"],
+    source: imagineReference ? "imagine_reference" : "upload",
     createdAt: new Date().toISOString(),
   });
   context.workspace.assets.push(asset);
@@ -7330,10 +7450,14 @@ async function handleCanvasStoryboardImageGenerate(req, res, scriptId) {
   const sid = sessionId(req, res);
   if (!sid) return googleRequired(res);
   const access = projectAccess(sid, scriptId);
-  if (!access || !canUseLumiereAction(access, "chat") || !projectPermission(sid, scriptId, "canvas", "edit")) return permissionRequired(res);
+  const body = await canvasJsonBody(req, 24_000);
+  const isFreeformImagine = body?.mode === 'imagine-freeform';
+  const mayGenerate = isFreeformImagine
+    ? canAccessModule(access, "imagine", "edit")
+    : canUseLumiereAction(access, "chat") && canAccessModule(access, "canvas", "edit");
+  if (!access || !mayGenerate) return permissionRequired(res);
   const context = canvasContext(scriptId, sid);
   if (!context) return json(res, 404, { error: 'script not found' });
-  const body = await canvasJsonBody(req, 24_000);
   // A browser refresh can interrupt the client response after OpenAI has
   // already finished. Keep the client request ID with the saved asset so a
   // recovery attempt returns that exact frame rather than charging twice.
@@ -7356,7 +7480,6 @@ async function handleCanvasStoryboardImageGenerate(req, res, scriptId) {
     : requestedWidth === requestedHeight
       ? 'square'
       : 'horizontal';
-  const isFreeformImagine = body?.mode === 'imagine-freeform';
   const size = requestedSize === 'auto' ? (orientation === 'vertical' ? '1024x1536' : '1536x1024') : requestedSize;
   const visualStyle = ['cinematic', 'animated', 'sketch', 'anime'].includes(String(body?.style || '').toLowerCase())
     ? String(body.style).toLowerCase()
@@ -7387,7 +7510,7 @@ async function handleCanvasStoryboardImageGenerate(req, res, scriptId) {
   const referenceImages = [];
   for (const assetId of referenceIds) {
     const asset = context.workspace.assets.find((entry) => entry.id === assetId);
-    if (!asset) continue;
+    if (!asset || (isFreeformImagine && !context.canReadCanvas && !isImagineVisibleAsset(asset))) continue;
     try { referenceImages.push({ data: await canvasStorage.get(asset), mimeType: asset.mimeType, filename: asset.filename }); } catch {}
   }
   const cameraDirection = [camera && `camera ${camera}`, lens && `lens ${lens}`, focalLength && `${focalLength} focal length`].filter(Boolean).join(', ') || (isFreeformImagine
@@ -7450,7 +7573,8 @@ async function handleCanvasAsset(req, res, scriptId, assetId) {
   const context = canvasContext(scriptId, sid);
   if (!context) return json(res, 404, { error: "script not found" });
   const asset = context.workspace.assets.find((entry) => entry.id === assetId);
-  if (!asset) return json(res, 404, { error: "Canvas image not found" });
+  const mayReadAsset = context.canReadCanvas || (context.canReadImagine && isImagineVisibleAsset(asset));
+  if (!asset || !mayReadAsset) return json(res, 404, { error: "Canvas image not found" });
   let data;
   try { data = await canvasStorage.get(asset); }
   catch (error) {
@@ -7966,6 +8090,75 @@ async function handleInvitationAccept(req, res) {
   catch (error) { return permissionRequired(res, error); }
 }
 
+function accountInvitationPayload(invitation) {
+  if (!invitation) return null;
+  return {
+    id: invitation.id,
+    status: invitation.status,
+    projectId: invitation.projectId,
+    projectTitle: invitation.projectTitle,
+    projectRole: invitation.projectRole,
+    cinematicRole: invitation.cinematicRole,
+    expiresAt: invitation.expiresAt,
+    ownerName: invitation.ownerName,
+    project: invitation.project ? {
+      id: invitation.project.id,
+      title: invitation.project.title,
+      owner: invitation.project.owner ? { id: invitation.project.owner.id, name: invitation.project.owner.name } : null,
+    } : null,
+  };
+}
+
+function acceptedProjectPayload(projectId, membership) {
+  const script = loadScripts().scripts[projectId];
+  const owner = script ? getUser(script.userId) : null;
+  return {
+    id: projectId,
+    title: script?.title || "FilmScript project",
+    owner: script ? { id: script.userId, name: owner?.name || "FilmScript collaborator" } : null,
+    access: membership ? {
+      projectRole: membership.projectRole,
+      cinematicRole: membership.cinematicRole,
+      modulePermissions: membership.modulePermissions,
+    } : null,
+    ...projectOpeningAccess(membership),
+  };
+}
+
+function publicMembership(membership) {
+  if (!membership) return null;
+  return {
+    id: membership.id,
+    projectId: membership.projectId,
+    userId: membership.userId,
+    projectRole: membership.projectRole,
+    cinematicRole: membership.cinematicRole,
+    modulePermissions: membership.modulePermissions,
+    status: membership.status,
+    version: membership.version,
+  };
+}
+
+async function handleAccountInvitations(req, res, invitationId = null, action = null) {
+  const sid = sessionId(req, res); if (!sid) return googleRequired(res);
+  try {
+    if (req.method === "GET" && !invitationId) {
+      return json(res, 200, { invitations: listAccountInvitations(sid).map(accountInvitationPayload) });
+    }
+    if (req.method !== "POST" || !invitationId || !["accept", "decline", "reject"].includes(action)) return json(res, 404, { error: "not_found" });
+    if (action === "decline" || action === "reject") {
+      const invitation = declineAccountInvitation(invitationId, sid);
+      return json(res, 200, { invitation: accountInvitationPayload(invitation) });
+    }
+    const accepted = acceptAccountInvitation(invitationId, sid);
+    return json(res, 200, {
+      membership: publicMembership(accepted.membership),
+      invitation: accountInvitationPayload(accepted.invitation),
+      project: acceptedProjectPayload(accepted.membership.projectId, accepted.membership),
+    });
+  } catch (error) { return permissionRequired(res, error); }
+}
+
 async function handleOwnershipTransfer(req, res, projectId) {
   const sid = sessionId(req, res); if (!sid) return googleRequired(res);
   let body; try { body = JSON.parse(await readBody(req, 32 * 1024)); } catch { return json(res, 400, { error: "invalid_request_body" }); }
@@ -8408,6 +8601,12 @@ export function requestHandler(req, res) {
     } else if (req.method === "POST" && pathname === "/api/invitations/accept") {
       if (enforceRateLimit(req, res, "invitation-accept", 20, 10 * 60 * 1000)) return;
       handleInvitationAccept(req, res).catch((err) => json(res, err.status || 500, { error: err.code || err.message }));
+    } else if (req.method === "GET" && pathname === "/api/invitations") {
+      handleAccountInvitations(req, res).catch((err) => json(res, err.status || 500, { error: err.code || err.message }));
+    } else if (req.method === "POST" && /^\/api\/invitations\/inv_[a-f0-9]+\/(?:accept|decline|reject)$/.test(pathname)) {
+      if (enforceRateLimit(req, res, "invitation-response", 30, 10 * 60 * 1000)) return;
+      const parts = pathname.split("/");
+      handleAccountInvitations(req, res, parts[3], parts[4]).catch((err) => json(res, err.status || 500, { error: err.code || err.message }));
     } else if (req.method === "POST" && pathname === "/api/invitations/guest") {
       if (enforceRateLimit(req, res, "guest-invitation", 20, 10 * 60 * 1000)) return;
       handleGuestInvitation(req, res).catch((err) => json(res, err.status || 500, { error: err.code || err.message }));

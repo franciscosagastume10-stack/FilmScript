@@ -228,6 +228,11 @@
         this.load();
       }
       if (name === 'initial-view' && oldValue !== newValue && this.isConnected && this.state.workspace) {
+        if (this.state.workspace.accessScope === 'imagine') {
+          this.state.view = 'imagine';
+          this.render();
+          return;
+        }
         if (newValue === 'imagine') this._imagineEntrancePending = true;
         this.state.view = newValue === 'imagine' ? 'imagine' : (['home', 'vault', 'boards'].includes(this.state.workspace.settings?.lastTool) ? this.state.workspace.settings.lastTool : 'home');
         this.render();
@@ -254,7 +259,7 @@
         this.state.error = '';
         const requested = this.getAttribute('initial-view');
         if (requested === 'imagine') this._imagineEntrancePending = true;
-        this.state.view = requested === 'imagine' ? 'imagine' : ['home', 'vault', 'boards'].includes(result.workspace?.settings?.lastTool)
+        this.state.view = result.workspace?.accessScope === 'imagine' || requested === 'imagine' ? 'imagine' : ['home', 'vault', 'boards'].includes(result.workspace?.settings?.lastTool)
           ? result.workspace.settings.lastTool
           : 'home';
       } catch (error) {
@@ -607,6 +612,7 @@
     }
 
     setView(view) {
+      if (this.state.workspace?.accessScope === 'imagine' && view !== 'imagine') view = 'imagine';
       if (view === 'shotlist') {
         this.dispatchEvent(new CustomEvent('filmscript:canvas-shotlist', { bubbles: true, composed: true }));
         return;
@@ -622,7 +628,7 @@
       this.state.selected.clear();
       this.state.vaultMenu = null;
       this.state.boardMenu = null;
-      if (this.state.workspace) {
+      if (this.state.workspace && this.state.workspace.accessScope !== 'imagine') {
         this.state.workspace.settings.lastTool = view === 'board' || view === 'quote' ? 'boards' : view === 'imagine' ? 'home' : view;
         window.filmscriptCanvas.update(this.scriptId, { settings: this.state.workspace.settings }).catch(() => {});
       }
@@ -1625,11 +1631,11 @@
       }
     }
 
-    async uploadFiles(files) {
+    async uploadFiles(files, scope = 'canvas') {
       const assets = [];
       for (const original of files || []) {
         const compressed = await this.compressImage(original);
-        const result = await window.filmscriptCanvas.uploadAsset(this.scriptId, compressed.file, compressed);
+        const result = await window.filmscriptCanvas.uploadAsset(this.scriptId, compressed.file, { ...compressed, scope });
         assets.push(result.asset);
         this.state.workspace.assets = Array.isArray(this.state.workspace.assets) ? this.state.workspace.assets : [];
         this.state.workspace.assets.push(result.asset);
@@ -1904,7 +1910,7 @@
       if (!files.length) return;
       try {
         this.toast('Preparing references…');
-        const assets = await this.uploadFiles(files);
+        const assets = await this.uploadFiles(files, 'imagine');
         this.state.workspace.assets.push(...assets);
         this.state.imagineReferenceIds = [...new Set([...this.state.imagineReferenceIds, ...assets.map((asset) => asset.id)])].slice(-4);
         this.render();

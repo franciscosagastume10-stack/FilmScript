@@ -84,6 +84,7 @@
     reader.readAsDataURL(file);
   });
   const uploadRemoteAsset = async (scriptId, file, dimensions = {}) => {
+    const scope = dimensions?.scope === 'imagine' ? 'imagine' : '';
     const response = await fetch(resolve(pathFor(scriptId, '/assets')), {
       method: 'POST', credentials: 'include',
       headers: {
@@ -91,6 +92,7 @@
         'X-Filename': encodeURIComponent(file.name || 'Canvas image'),
         'X-Image-Width': String(dimensions.width || ''),
         'X-Image-Height': String(dimensions.height || ''),
+        ...(scope ? { 'X-Canvas-Scope': scope } : {}),
       },
       body: file,
     });
@@ -160,7 +162,13 @@
   };
 
   window.filmscriptCanvas = {
-    get: async (scriptId) => mergeCompatibility(scriptId, await promoteCompatibilityAssets(scriptId, await request(pathFor(scriptId)))),
+    get: async (scriptId) => {
+      const result = await request(pathFor(scriptId));
+      // A browser-side legacy Vault cache must never repopulate a response
+      // which the server intentionally limited to Imagine.
+      if (result?.workspace?.accessScope === 'imagine') return result;
+      return mergeCompatibility(scriptId, await promoteCompatibilityAssets(scriptId, result));
+    },
     update: (scriptId, patch) => request(pathFor(scriptId), jsonOptions('PATCH', patch)),
     createVaultItem: async (scriptId, item) => {
       try { return await request(pathFor(scriptId, '/vault'), jsonOptions('POST', item)); }
@@ -212,7 +220,7 @@
         if (!compatibilityFailure(error)) throw error;
         const local = readCompat(scriptId);
         const localDataUrl = await dataUrlFor(file);
-        const savedAsset = { id: randomId('cas'), provider: 'local', key: '', mimeType: file.type || 'image/jpeg', filename: file.name || 'Canvas image', size: file.size || 0, width: Number(dimensions.width) || 0, height: Number(dimensions.height) || 0, createdAt: new Date().toISOString(), localDataUrl };
+        const savedAsset = { id: randomId('cas'), provider: 'local', key: '', mimeType: file.type || 'image/jpeg', filename: file.name || 'Canvas image', size: file.size || 0, width: Number(dimensions.width) || 0, height: Number(dimensions.height) || 0, source: dimensions?.scope === 'imagine' ? 'imagine_reference' : 'upload', createdAt: new Date().toISOString(), localDataUrl };
         local.assets.push(savedAsset);
         writeCompat(scriptId, local);
         const { localDataUrl: _localDataUrl, ...asset } = savedAsset;

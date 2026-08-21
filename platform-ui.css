@@ -171,17 +171,30 @@ html[data-filmscript-theme="dark"] .v5-screenplay-stage, html[data-filmscript-th
 .fs-notification-icon[data-tone="people"] { background:linear-gradient(145deg,#de9a58,#b96d27); color:#fff; }
 .fs-notification-icon[data-tone="access"] { background:linear-gradient(145deg,#a88bd2,#7255a5); color:#fff; }
 .fs-notification-icon[data-tone="lumiere"] { background:linear-gradient(145deg,#e2b74d,#b87a18); color:#21180a; }
-.fs-notification-copy { min-width:0; display:grid; gap:3px; }
+.fs-notification-copy { min-width:0; display:grid; gap:3px; box-sizing:border-box; transition:transform .16s cubic-bezier(.2,.8,.2,1),padding-right .16s cubic-bezier(.2,.8,.2,1),opacity .16s ease; }
 .fs-notification-title { min-width:0; display:flex; align-items:baseline; justify-content:space-between; gap:9px; }
 .fs-notification-title strong { min-width:0; overflow:hidden; color:var(--text-primary); font-size:13px; font-weight:760; letter-spacing:-.012em; text-overflow:ellipsis; white-space:nowrap; }
 .fs-notification-title time { flex:0 0 auto; color:var(--text-tertiary); font-size:10px; font-weight:600; }
 .fs-notification-message { display:-webkit-box; overflow:hidden; color:var(--text-secondary); font-size:11.5px; line-height:1.42; overflow-wrap:anywhere; -webkit-box-orient:vertical; -webkit-line-clamp:3; }
 .fs-notification-unread { width:7px; height:7px; border-radius:50%; background:var(--accent); box-shadow:0 0 0 3px color-mix(in srgb,var(--accent) 12%,transparent); }
-.fs-notification-delete { position:absolute; z-index:2; top:50%; right:7px; width:42px; height:42px; display:grid; place-items:center; padding:0; border:1px solid color-mix(in srgb,var(--glass-border) 62%,transparent); border-radius:50%; background:color-mix(in srgb,var(--surface-primary) 76%,transparent); color:var(--text-secondary); cursor:pointer; opacity:.58; transform:translateY(-50%) scale(.96); transition:opacity .15s ease,transform .15s ease,background-color .15s ease,color .15s ease; }
-.fs-notification-card:hover .fs-notification-delete,.fs-notification-delete:focus-visible { opacity:1; transform:translateY(-50%) scale(1); }
-.fs-notification-delete:hover { background:color-mix(in srgb,var(--semantic-danger) 12%,var(--surface-primary)); color:var(--semantic-danger); }
-.fs-notification-delete:disabled { opacity:.38; cursor:default; }
-.fs-notification-delete svg { width:21px; height:21px; fill:none; stroke:currentColor; stroke-width:1.8; stroke-linecap:round; stroke-linejoin:round; }
+.fs-notification-action { width:40px; height:40px; display:grid; place-items:center; flex:0 0 40px; padding:0; border:1px solid color-mix(in srgb,var(--glass-border) 70%,rgba(255,255,255,.28)); border-radius:50%; background:color-mix(in srgb,var(--surface-primary) 78%,transparent); color:var(--text-secondary); box-shadow:inset 0 1px 0 rgba(255,255,255,.38),0 3px 10px rgba(20,20,18,.08); cursor:pointer; transition:transform .14s cubic-bezier(.2,.8,.2,1),background-color .14s ease,color .14s ease,border-color .14s ease,opacity .14s ease; }
+.fs-notification-action:hover,.fs-notification-action:focus-visible { outline:none; transform:scale(1.06); }
+.fs-notification-action:focus-visible { box-shadow:inset 0 1px 0 rgba(255,255,255,.38),0 0 0 3px color-mix(in srgb,var(--focus-ring) 35%,transparent); }
+.fs-notification-action[data-kind="accept"]:hover,.fs-notification-action[data-kind="accept"]:focus-visible { border-color:color-mix(in srgb,var(--semantic-success) 42%,var(--glass-border)); background:color-mix(in srgb,var(--semantic-success) 15%,var(--surface-primary)); color:var(--semantic-success); }
+.fs-notification-action[data-kind="decline"]:hover,.fs-notification-action[data-kind="decline"]:focus-visible,.fs-notification-action[data-kind="delete"]:hover,.fs-notification-action[data-kind="delete"]:focus-visible { border-color:color-mix(in srgb,var(--semantic-danger) 38%,var(--glass-border)); background:color-mix(in srgb,var(--semantic-danger) 12%,var(--surface-primary)); color:var(--semantic-danger); }
+.fs-notification-action:disabled { opacity:.38; cursor:wait; transform:none; }
+.fs-notification-action svg { width:20px; height:20px; fill:none; stroke:currentColor; stroke-width:1.8; stroke-linecap:round; stroke-linejoin:round; }
+.fs-notification-delete { position:absolute; z-index:2; top:50%; right:7px; width:42px; height:42px; opacity:.58; transform:translateY(-50%) scale(.96); }
+.fs-notification-card:hover > .fs-notification-delete,.fs-notification-delete:focus-visible { opacity:1; transform:translateY(-50%) scale(1); }
+.fs-notification-actions { position:absolute; z-index:4; top:50%; right:7px; display:flex; align-items:center; gap:4px; padding:4px; border:1px solid color-mix(in srgb,var(--glass-border) 74%,rgba(255,255,255,.32)); border-radius:999px; background:linear-gradient(145deg,color-mix(in srgb,var(--surface-primary) 84%,transparent),color-mix(in srgb,var(--surface-secondary) 72%,transparent)); box-shadow:inset 0 1px 0 rgba(255,255,255,.42),-9px 0 24px color-mix(in srgb,var(--surface-primary) 94%,transparent),0 8px 20px rgba(22,22,20,.12); backdrop-filter:blur(24px) saturate(1.2); -webkit-backdrop-filter:blur(24px) saturate(1.2); opacity:0; pointer-events:none; transform:translate(10px,-50%) scale(.96); transition:opacity .15s ease,transform .16s cubic-bezier(.2,.8,.2,1); }
+.fs-notification-actions .fs-notification-action,.fs-notification-actions .fs-notification-delete { position:static; top:auto; right:auto; width:44px; height:44px; flex-basis:44px; opacity:1; transform:none; }
+.fs-notification-actions .fs-notification-action:hover,.fs-notification-actions .fs-notification-action:focus-visible { transform:scale(1.06); }
+.fs-notification-card.has-invitation-actions:hover .fs-notification-actions,.fs-notification-card.has-invitation-actions:focus-within .fs-notification-actions,.fs-notification-card.has-invitation-actions.is-actions-visible .fs-notification-actions { opacity:1; pointer-events:auto; transform:translate(0,-50%) scale(1); }
+.fs-notification-card.has-invitation-actions:hover .fs-notification-copy,.fs-notification-card.has-invitation-actions:focus-within .fs-notification-copy,.fs-notification-card.has-invitation-actions.is-actions-visible .fs-notification-copy { padding-right:148px; transform:translateX(-3px); }
+.fs-notification-card.is-processing .fs-notification-copy { opacity:.3; }
+.fs-notification-card.is-accepted { border-color:color-mix(in srgb,var(--semantic-success) 42%,var(--glass-border)); }
+.fs-notification-action-status { position:absolute; z-index:5; left:68px; right:160px; bottom:7px; overflow:hidden; color:var(--text-primary); font-size:10px; font-weight:700; line-height:1.3; text-overflow:ellipsis; white-space:nowrap; pointer-events:none; }
+.fs-notification-action-status:empty { display:none; }
 .fs-notification-empty { display:grid; justify-items:center; padding:42px 24px 38px; text-align:center; }
 .fs-notification-empty > span { width:54px; height:54px; display:grid; place-items:center; margin-bottom:14px; border:1px solid color-mix(in srgb,var(--accent) 26%,var(--glass-border)); border-radius:50%; background:color-mix(in srgb,var(--accent) 9%,var(--surface-primary)); color:var(--accent); font-size:22px; font-weight:800; box-shadow:inset 0 1px 0 rgba(255,255,255,.4); }
 .fs-notification-empty strong { font-size:14px; }
@@ -401,6 +414,11 @@ html[data-filmscript-theme="dark"] .v5-screenplay-stage, html[data-filmscript-th
   .fs-release-notice-actions .fs-action { width:100%; }
   .fs-notification-delete { opacity:.72; transform:translateY(-50%) scale(1); }
   .fs-notification-open { min-height:82px; padding-right:50px; }
+  .fs-notification-card.has-invitation-actions .fs-notification-open { padding-right:160px; }
+  .fs-notification-card.has-invitation-actions .fs-notification-copy { padding-right:0; transform:none; }
+  .fs-notification-actions { opacity:1; pointer-events:auto; transform:translate(0,-50%) scale(1); }
+  .fs-notification-actions .fs-notification-delete { opacity:1; transform:none; }
+  .fs-notification-action-status { right:160px; }
   .fs-avatar-preview { width:150px; height:150px; margin:auto; }
   .fs-location-dialog { width:100%; }
   .fs-location-stage { display:block; min-height:58dvh; }
@@ -422,7 +440,7 @@ html[data-filmscript-theme="dark"] .v5-screenplay-stage, html[data-filmscript-th
 @media (prefers-reduced-transparency:reduce) {
   :root { --glass-background:var(--surface-primary); --glass-blur:0px; }
   .fs-platform-dialog,.fs-platform-button,.fs-mobile-nav { backdrop-filter:none; -webkit-backdrop-filter:none; }
-  .fs-notifications-dialog,.fs-notification-card,.fs-notification-toolbar { background:var(--surface-primary); backdrop-filter:none; -webkit-backdrop-filter:none; }
+  .fs-notifications-dialog,.fs-notification-card,.fs-notification-toolbar,.fs-notification-actions,.fs-notification-action { background:var(--surface-primary); backdrop-filter:none; -webkit-backdrop-filter:none; }
   .fs-platform-scrim:has(.fs-release-notice-dialog) { background:rgba(20,20,18,.54); backdrop-filter:none; -webkit-backdrop-filter:none; }
   .fs-release-notice-dialog,.fs-release-notice-item,.fs-release-notice-icon { background:var(--surface-primary); backdrop-filter:none; -webkit-backdrop-filter:none; }
   .fs-account-dialog,.fs-account-hero,.fs-account-section,.fs-account-dialog .fs-action { background:var(--surface-primary); backdrop-filter:none; -webkit-backdrop-filter:none; }
@@ -430,7 +448,7 @@ html[data-filmscript-theme="dark"] .v5-screenplay-stage, html[data-filmscript-th
 }
 
 @media (prefers-reduced-motion:reduce) {
-  .fs-notification-card,.fs-notification-delete,.fs-avatar-preset,.fs-avatar-color-grid button,.fs-account-dialog .fs-action { transition:none!important; }
+  .fs-notification-card,.fs-notification-copy,.fs-notification-actions,.fs-notification-action,.fs-notification-delete,.fs-avatar-preset,.fs-avatar-color-grid button,.fs-account-dialog .fs-action { transition:none!important; }
   .fs-notification-card:hover,.fs-notification-card.is-removing { transform:none; }
   .fs-release-notice-orbit span,.fs-release-notice-orbit i,.fs-release-notice-orbit b { animation:none!important; }
   .fs-release-notice-actions .fs-action,.fs-release-notice-dialog .fs-platform-close { transition:none!important; }

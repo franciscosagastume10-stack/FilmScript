@@ -41,6 +41,8 @@
     updateMe: (body) => request('/api/me', { method:'PATCH', body:JSON.stringify(body) }),
     updateProfile: (body) => request('/api/me/platform-profile', { method:'PATCH', body:JSON.stringify(body) }),
     notifications: () => request('/api/notifications'), markRead: (id) => request(`/api/notifications${id ? `/${id}` : ''}`, { method:'PATCH' }), deleteNotification: (id) => request(`/api/notifications${id ? `/${id}` : ''}`, { method:'DELETE' }),
+    acceptInvitation: (id) => request(`/api/invitations/${encodeURIComponent(id)}/accept`, { method:'POST' }),
+    declineInvitation: (id) => request(`/api/invitations/${encodeURIComponent(id)}/decline`, { method:'POST' }),
     releaseNotice: () => request('/api/release-notice'), acknowledgeReleaseNotice: () => request('/api/release-notice', { method:'POST', keepalive:true }),
     members: () => request(`/api/projects/${projectId}/members`), invite: (body) => request(`/api/projects/${projectId}/members`, { method:'POST', body:JSON.stringify(body) }),
     updateMember: (id, body) => request(`/api/projects/${projectId}/members/${id}`, { method:'PATCH', body:JSON.stringify(body) }),
@@ -194,9 +196,17 @@
     const content = localizeNotification(item);
     const notificationType = String(item.type || '').toLowerCase();
     const userAuthored = notificationType === 'message' || notificationType === 'mention' || notificationType.includes('comment') || notificationType.includes('reply');
+    const invitationCandidate = item.invitation?.id ? item.invitation : item.invitationId ? { id:item.invitationId, status:item.invitationStatus || 'pending' } : null;
+    const invitation = notificationType === 'project_invitation' && invitationCandidate && (!invitationCandidate.status || invitationCandidate.status === 'pending') ? invitationCandidate : null;
     const unreadLabel = localize('Unread', 'No leída');
     const deleteLabel = localize('Delete notification', 'Eliminar notificación');
-    return `<article class="fs-notification-card${item.read ? '' : ' is-unread'}" data-notification-row data-id="${escapeHtml(item.id)}"><button type="button" class="fs-notification-open" data-notification-open data-link="${escapeHtml(item.deepLink || '')}" aria-label="${escapeHtml(`${content.title}. ${content.message}`)}"><span class="fs-notification-icon" data-tone="${visual.tone}" aria-hidden="true">${visual.glyph}</span><span class="fs-notification-copy"><span class="fs-notification-title"><strong>${escapeHtml(content.title)}</strong><time datetime="${escapeHtml(item.updatedAt || item.createdAt || '')}">${escapeHtml(notificationTime(item.updatedAt || item.createdAt))}</time></span><span class="fs-notification-message"${userAuthored ? ' data-i18n-skip' : ''}>${escapeHtml(content.message)}</span></span>${item.read ? '' : `<span class="fs-notification-unread" aria-label="${escapeHtml(unreadLabel)}"></span>`}</button><button type="button" class="fs-notification-delete" data-notification-delete aria-label="${escapeHtml(deleteLabel)}" title="${escapeHtml(deleteLabel)}"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h16M9 7V4h6v3m-8 0 1 13h8l1-13M10 11v5m4-5v5"></path></svg></button></article>`;
+    const acceptLabel = localize('Accept project invitation', 'Aceptar invitación al proyecto');
+    const declineLabel = localize('Decline project invitation', 'Rechazar invitación al proyecto');
+    const openLabel = invitation ? `${content.title}. ${content.message}. ${localize('Show project invitation actions', 'Mostrar acciones de invitación al proyecto')}` : `${content.title}. ${content.message}`;
+    const deleteButton = `<button type="button" class="fs-notification-action fs-notification-delete" data-kind="delete" data-notification-delete aria-label="${escapeHtml(deleteLabel)}" title="${escapeHtml(deleteLabel)}"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h16M9 7V4h6v3m-8 0 1 13h8l1-13M10 11v5m4-5v5"></path></svg></button>`;
+    const invitationActions = invitation ? `<div class="fs-notification-actions" role="group" aria-label="${escapeHtml(localize('Project invitation actions', 'Acciones de invitación al proyecto'))}"><button type="button" class="fs-notification-action" data-kind="accept" data-invitation-accept data-invitation-id="${escapeHtml(invitation.id)}" aria-label="${escapeHtml(acceptLabel)}" title="${escapeHtml(acceptLabel)}"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m5 12.5 4.2 4.2L19 7"></path></svg></button><button type="button" class="fs-notification-action" data-kind="decline" data-invitation-decline data-invitation-id="${escapeHtml(invitation.id)}" aria-label="${escapeHtml(declineLabel)}" title="${escapeHtml(declineLabel)}"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 7l10 10M17 7 7 17"></path></svg></button>${deleteButton}</div>` : deleteButton;
+    const invitationData = invitation ? ' data-invitation-card' : '';
+    return `<article class="fs-notification-card${item.read ? '' : ' is-unread'}${invitation ? ' has-invitation-actions' : ''}" data-notification-row data-id="${escapeHtml(item.id)}"${invitationData}><button type="button" class="fs-notification-open" data-notification-open data-link="${escapeHtml(invitation ? '' : item.deepLink || '')}" aria-label="${escapeHtml(openLabel)}"><span class="fs-notification-icon" data-tone="${visual.tone}" aria-hidden="true">${visual.glyph}</span><span class="fs-notification-copy"><span class="fs-notification-title"><strong>${escapeHtml(content.title)}</strong><time datetime="${escapeHtml(item.updatedAt || item.createdAt || '')}">${escapeHtml(notificationTime(item.updatedAt || item.createdAt))}</time></span><span class="fs-notification-message"${userAuthored ? ' data-i18n-skip' : ''}>${escapeHtml(content.message)}</span></span>${item.read ? '' : `<span class="fs-notification-unread" aria-label="${escapeHtml(unreadLabel)}"></span>`}</button>${invitationActions}<span class="fs-notification-action-status" data-notification-action-status role="status" aria-live="polite"></span></article>`;
   }
 
   async function openNotifications() {
@@ -215,7 +225,52 @@
       ? (interfaceLocale() === 'es' ? `${unreadCount} ${unreadCount === 1 ? 'novedad' : 'novedades'}` : `${unreadCount} new ${unreadCount === 1 ? 'update' : 'updates'}`)
       : localize('Everything important, without the noise.', 'Todo lo importante, sin ruido.');
     const root = dialog(localize('Notifications', 'Notificaciones'), summary, `<div class="fs-notification-center">${toolbar}${list || empty}</div>`, 'fs-notifications-dialog');
-    root.querySelectorAll('[data-notification-open]').forEach((button) => button.addEventListener('click', async () => { const row = button.closest('[data-notification-row]'); if (row?.classList.contains('is-unread')) await api.markRead(row.dataset.id); if (button.dataset.link) location.href = button.dataset.link; else { openNotifications(); refreshNotifications(); } }));
+    root.querySelectorAll('[data-notification-open]').forEach((button) => button.addEventListener('click', async () => {
+      const row = button.closest('[data-notification-row]');
+      if (row?.classList.contains('is-unread')) { await api.markRead(row.dataset.id).catch(() => {}); row.classList.remove('is-unread'); }
+      if (row?.hasAttribute('data-invitation-card')) {
+        row.classList.add('is-actions-visible');
+        row.querySelector('[data-invitation-accept]')?.focus();
+        return;
+      }
+      if (button.dataset.link) location.href = button.dataset.link;
+      else { openNotifications(); refreshNotifications(); }
+    }));
+    root.querySelectorAll('[data-invitation-accept],[data-invitation-decline]').forEach((button) => button.addEventListener('click', async () => {
+      const row = button.closest('[data-notification-row]'); if (!row || !button.dataset.invitationId) return;
+      const accepting = button.hasAttribute('data-invitation-accept');
+      const status = row.querySelector('[data-notification-action-status]');
+      const notification = state.notifications.find((item) => String(item.id) === String(row.dataset.id));
+      row.classList.add('is-processing','is-actions-visible'); row.setAttribute('aria-busy','true');
+      row.querySelectorAll('.fs-notification-action').forEach((action) => { action.disabled = true; });
+      if (status) status.textContent = accepting ? localize('Accepting invitation…', 'Aceptando invitación…') : localize('Declining invitation…', 'Rechazando invitación…');
+      try {
+        const result = accepting ? await api.acceptInvitation(button.dataset.invitationId) : await api.declineInvitation(button.dataset.invitationId);
+        await api.markRead(row.dataset.id).catch(() => {});
+        await api.deleteNotification(row.dataset.id).catch(() => {});
+        if (accepting) {
+          row.classList.add('is-accepted');
+          if (status) status.textContent = localize('Invitation accepted. Opening your scripts…', 'Invitación aceptada. Abriendo tus guiones…');
+          const acceptedProjectId = result?.membership?.projectId || result?.project?.id || notification?.invitation?.projectId || notification?.projectId;
+          window.dispatchEvent(new CustomEvent('filmscript:project-membership-changed', { detail:{ projectId:acceptedProjectId || null, membership:result?.membership || null, project:result?.project || null } }));
+          if (/\/(?:App\.dc\.html|workspace\/scripts)\/?$/i.test(location.pathname)) {
+            window.setTimeout(() => { closeDialog(); refreshNotifications(); }, 360);
+            return;
+          }
+          const destination = new URL('App.dc.html', location.href);
+          if (acceptedProjectId) destination.searchParams.set('acceptedProject', acceptedProjectId);
+          window.setTimeout(() => location.assign(destination.href), 260);
+          return;
+        }
+        if (status) status.textContent = localize('Invitation declined.', 'Invitación rechazada.');
+        row.classList.add('is-removing');
+        window.setTimeout(() => { openNotifications(); refreshNotifications(); }, 190);
+      } catch (error) {
+        row.classList.remove('is-processing'); row.removeAttribute('aria-busy');
+        row.querySelectorAll('.fs-notification-action').forEach((action) => { action.disabled = false; });
+        if (status) status.textContent = localizedError(error, 'The invitation could not be updated.', 'No se pudo actualizar la invitación.');
+      }
+    }));
     root.querySelectorAll('[data-notification-delete]').forEach((button) => button.addEventListener('click', async () => { const row = button.closest('[data-notification-row]'); if (!row) return; button.disabled = true; try { await api.deleteNotification(row.dataset.id); row.classList.add('is-removing'); window.setTimeout(() => { openNotifications(); refreshNotifications(); }, 190); } catch { button.disabled = false; } }));
     root.querySelector('[data-mark-all]')?.addEventListener('click', async (event) => { event.currentTarget.disabled = true; await api.markRead(); root.querySelectorAll('.is-unread').forEach((row) => row.classList.remove('is-unread')); openNotifications(); refreshNotifications(); });
     root.querySelector('[data-clear-all]')?.addEventListener('click', async (event) => { if (!confirm(localize('Delete all notifications?', '¿Eliminar todas las notificaciones?'))) return; event.currentTarget.disabled = true; await api.deleteNotification(); root.querySelectorAll('[data-notification-row]').forEach((row) => row.classList.add('is-removing')); window.setTimeout(() => { openNotifications(); refreshNotifications(); }, 190); });
@@ -957,6 +1012,12 @@
     const invitation = params.get('invitation');
     if (invitation) request('/api/invitations/accept', { method:'POST', body:JSON.stringify({ token:invitation }) }).then((result) => location.replace(`Editor%20v5.dc.html?script=${encodeURIComponent(result.membership.projectId)}`)).catch((error) => dialog('Invitation unavailable', error.message, '<div class="fs-dialog-actions"><button class="fs-action" onclick="location.href=\'App.dc.html\'">Back to projects</button></div>'));
     else if (params.get('chat')) openChatFromDeepLink();
+    else if (params.get('openLocationPlan') === '1' && projectId) {
+      params.delete('openLocationPlan');
+      const cleanQuery = params.toString();
+      history.replaceState(history.state, '', `${location.pathname}${cleanQuery ? `?${cleanQuery}` : ''}${location.hash || ''}`);
+      openLocationPlan().catch((error) => dialog(localize('Location Plan unavailable', 'Plan de locaciones no disponible'), localizedError(error, 'The Location Plan could not be opened.', 'No se pudo abrir el Plan de locaciones.'), `<div class="fs-dialog-actions"><button type="button" class="fs-action" onclick="location.href='App.dc.html'">${escapeHtml(localize('Back to projects', 'Volver a proyectos'))}</button></div>`));
+    }
     else scheduleReleaseNotice();
   }
 

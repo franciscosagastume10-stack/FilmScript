@@ -26,10 +26,10 @@
 <script defer src="./pdf-import.js"></script>
 <script defer src="./project-client.js?v=20260820-browser-safe1"></script>
 <script defer src="./preproduction-client.js?v=20260819-collab2"></script>
-<script defer src="./platform-client.js?v=20260820-i18n2"></script>
+<script defer src="./platform-client.js?v=20260821-invitations1"></script>
 <link rel="stylesheet" href="./auth-modal.css?v=20260712-auth2">
 <link rel="stylesheet" href="./filmscript-controls.css?v=20260716-typography1">
-<link rel="stylesheet" href="./platform-ui.css?v=20260820-i18n2">
+<link rel="stylesheet" href="./platform-ui.css?v=20260821-invitations1">
 </head>
 <body>
 <x-dc>
@@ -186,6 +186,11 @@
     font-weight: 400;
     letter-spacing: 0;
   }
+  .fs-script-access { display: flex; align-items: center; flex-wrap: wrap; gap: 6px; margin-top: 10px; min-width: 0; }
+  .fs-script-access-pill { display: inline-flex; align-items: center; min-height: 24px; padding: 3px 8px; border: 1px solid color-mix(in srgb, var(--accent, #BA7517) 34%, transparent); border-radius: 999px; background: color-mix(in srgb, var(--accent, #BA7517) 9%, transparent); color: var(--ink, #2C2C2A); font-size: 9.5px; font-weight: 750; letter-spacing: .04em; text-transform: uppercase; }
+  .fs-script-access-owner { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--muted, #888780); font-size: 10.5px; }
+  .fs-script-card.is-new-shared { animation: fs-shared-project-arrival .48s cubic-bezier(.2,.85,.2,1) both !important; border-color: color-mix(in srgb, var(--accent, #BA7517) 62%, transparent) !important; }
+  @keyframes fs-shared-project-arrival { 0% { opacity: 0; transform: translateY(10px) scale(.975); box-shadow: 0 0 0 0 color-mix(in srgb, var(--accent, #BA7517) 0%, transparent); } 55% { opacity: 1; transform: translateY(-2px) scale(1.012); box-shadow: 0 0 0 7px color-mix(in srgb, var(--accent, #BA7517) 10%, transparent); } 100% { opacity: 1; transform: none; box-shadow: inset 0 1px 0 rgba(255,255,255,.45), 0 12px 32px rgba(30,28,23,.065); } }
   .fs-script-card-menu {
     font-family: "Helvetica Neue", Helvetica, Arial, sans-serif;
     filter: none !important;
@@ -229,7 +234,7 @@
   .fs-script-import-dots i:nth-child(2) { animation-delay: .12s; } .fs-script-import-dots i:nth-child(3) { animation-delay: .24s; }
   @keyframes fs-import-dot { 0%,100% { transform: translateY(0); opacity: .35; } 50% { transform: translateY(-2px); opacity: 1; } }
   @media (prefers-reduced-transparency: reduce) { .fs-scripts-actions .fs-scripts-action, .fs-script-card, .fs-script-card-menu { background: var(--surface, #FFFEF9) !important; backdrop-filter: none; -webkit-backdrop-filter: none; } }
-  @media (prefers-reduced-motion: reduce) { .fs-script-import-dots i { animation: none; } .fs-scripts-actions .fs-scripts-action, .fs-script-card, .fs-script-thumb { transition: none !important; } }
+  @media (prefers-reduced-motion: reduce) { .fs-script-import-dots i { animation: none; } .fs-scripts-actions .fs-scripts-action, .fs-script-card, .fs-script-thumb { transition: none !important; } .fs-script-card.is-new-shared { animation: none !important; } }
   @media (max-width: 700px) {
     .fs-scripts-dashboard { position: relative; isolation: isolate; padding: 30px 20px 44px !important; background-size: cover !important; background-position: center !important; background-attachment: scroll !important; }
     .fs-scripts-dashboard::before { content: ""; position: absolute; inset: 0; z-index: 0; pointer-events: none; background: color-mix(in srgb, var(--bg, #F5F0E8) 87%, transparent); }
@@ -422,7 +427,7 @@
       </div>
     </sc-if>
     <sc-for list="{{ cards }}" as="card" hint-placeholder-count="5">
-          <div onClick="{{ card.open }}" onKeyDown="{{ card.onKey }}" role="button" tabindex="0" aria-label="{{ card.openLabel }}" class="fsx-lift fs-script-card" style="position: relative; min-height: 224px; padding: 18px; cursor: pointer; border-radius: 15px; animation: fs-rise .35s ease both {{ card.delay }}; display: flex; flex-direction: column;">
+          <div onClick="{{ card.open }}" onKeyDown="{{ card.onKey }}" role="button" tabindex="0" aria-label="{{ card.openLabel }}" class="fsx-lift fs-script-card {{ card.highlightClass }}" style="position: relative; min-height: 224px; padding: 18px; cursor: pointer; border-radius: 15px; animation: fs-rise .35s ease both {{ card.delay }}; display: flex; flex-direction: column;">
             <sc-if value="{{ card.importing }}" hint-placeholder-val="false">
               <div class="fs-script-thumb" aria-hidden="true"><svg viewBox="0 0 30 38" fill="none"><path d="M6 2.5h12l6 6v27H6z" stroke="currentColor" stroke-width="1.2" stroke-linejoin="round"/><path d="M18 2.5v7h6" stroke="currentColor" stroke-width="1.2" stroke-linejoin="round"/><path class="fs-script-thumb-line" d="M10 16h10M10 21h8M10 26h10" stroke-width="1.3"/></svg></div>
             </sc-if>
@@ -443,14 +448,17 @@
             <div style="margin-top: auto; padding-top: 18px; min-width: 0;">
               <div class="fs-script-card-title" data-i18n-skip style="font-size: 18px; color: var(--ink, #2C2C2A);">{{ card.title }}</div>
               <div class="fs-script-card-meta" style="font-size: 12px; color: var(--muted, #888780); margin-top: 4px;">{{ card.meta }}</div>
+              <sc-if value="{{ card.sharedAccess }}" hint-placeholder-val="false">
+                <div class="fs-script-access"><span class="fs-script-access-pill">{{ card.roleLabel }}</span><span class="fs-script-access-owner" data-i18n-skip>{{ card.ownerLabel }}</span></div>
+              </sc-if>
             </div>
-            <sc-if value="{{ card.canDelete }}" hint-placeholder-val="false">
+            <sc-if value="{{ card.hasMenu }}" hint-placeholder-val="false">
               <div onClick="{{ card.toggleMenu }}" title="Script options" style="position: absolute; right: 13px; top: 13px; width: 30px; height: 30px; display: flex; align-items: center; justify-content: center; color: var(--muted, #888780); font-size: 18px; border-radius: 8px; cursor: pointer; letter-spacing: 1px;">•••
                 <sc-if value="{{ card.menuOpen }}" hint-placeholder-val="false">
                   <div class="fs-script-card-menu" style="position: absolute; z-index: 10; right: 0; top: 30px; width: 126px; padding: 6px; background: var(--surface, #FFFEF9); border: 1.3px solid var(--line, #2C2C2A); border-radius: 10px 9px 11px 8px; color: var(--ink, #2C2C2A); font-size: 12px; font-weight: 600; letter-spacing: 0; white-space: nowrap;">
-                    <button type="button" onClick="{{ card.rename }}" style="display:block; width:100%; padding: 8px 7px; border:0; border-radius: 6px; background:transparent; color:inherit; font:inherit; text-align:left; cursor:pointer;">Rename</button>
-                    <button type="button" onClick="{{ card.translate }}" style="display:block; width:100%; padding: 8px 7px; border:0; border-radius: 6px; background:transparent; color:inherit; font:inherit; text-align:left; cursor:pointer;">Translate Script</button>
-                    <button type="button" onClick="{{ card.remove }}" style="display:block; width:100%; padding: 8px 7px; border:0; border-radius: 6px; background:transparent; color:#B33B32; font:inherit; text-align:left; cursor:pointer;">Delete script</button>
+                    <sc-if value="{{ card.canRename }}" hint-placeholder-val="false"><button type="button" onClick="{{ card.rename }}" style="display:block; width:100%; padding: 8px 7px; border:0; border-radius: 6px; background:transparent; color:inherit; font:inherit; text-align:left; cursor:pointer;">Rename</button></sc-if>
+                    <sc-if value="{{ card.canTranslate }}" hint-placeholder-val="false"><button type="button" onClick="{{ card.translate }}" style="display:block; width:100%; padding: 8px 7px; border:0; border-radius: 6px; background:transparent; color:inherit; font:inherit; text-align:left; cursor:pointer;">Translate Script</button></sc-if>
+                    <sc-if value="{{ card.canDelete }}" hint-placeholder-val="false"><button type="button" onClick="{{ card.remove }}" style="display:block; width:100%; padding: 8px 7px; border:0; border-radius: 6px; background:transparent; color:#B33B32; font:inherit; text-align:left; cursor:pointer;">Delete script</button></sc-if>
                   </div>
                 </sc-if>
               </div>
@@ -860,6 +868,7 @@ class Component extends DCLogic {
   scriptsLoaded: false,
   scriptsLoadError: '',
   importingScript: null,
+  highlightedScriptId: null,
     parallaxX: 0,
     parallaxY: 0,
     scriptMenuId: null,
@@ -896,9 +905,18 @@ class Component extends DCLogic {
     };
     this._languageHandler = () => this._typeGreeting();
     this._themeHandler = (event) => this.setState({ darkMode: event?.detail?.theme === 'dark' });
+    this._membershipHandler = async (event) => {
+      const projectId = String(event?.detail?.projectId || event?.detail?.membership?.projectId || '');
+      if (!/^scr_[a-f0-9]+$/.test(projectId)) return;
+      this.setState({ highlightedScriptId: projectId });
+      await this._loadScripts({ retries: 3 });
+      if (this._sharedArrivalTimer) window.clearTimeout(this._sharedArrivalTimer);
+      this._sharedArrivalTimer = window.setTimeout(() => this.setState({ highlightedScriptId: null }), 3200);
+    };
     window.addEventListener('filmscript:pro-required', this._proRequiredHandler);
     window.addEventListener('filmscript:language-change', this._languageHandler);
     window.addEventListener('filmscript:theme-change', this._themeHandler);
+    window.addEventListener('filmscript:project-membership-changed', this._membershipHandler);
     const scriptsAccessGranted = await window.filmscriptScriptsAccess?.ready;
     if (scriptsAccessGranted === false) {
       this.setState({
@@ -913,21 +931,31 @@ class Component extends DCLogic {
     window.filmscriptSounds?.preload('darkModeOn');
     window.filmscriptSounds?.preload('lightModeOn');
     const params = new URLSearchParams(window.location.search);
+    const acceptedProjectId = String(params.get('acceptedProject') || '');
+    if (/^scr_[a-f0-9]+$/.test(acceptedProjectId)) this.setState({ highlightedScriptId: acceptedProjectId });
     this._accountReturnTo = params.get('returnTo') || '';
     // Complete the account refresh before querying user-owned scripts.  On an OAuth
     // return this avoids racing the new session cookie / identity hydration.
     const me = await this._refreshBilling(params.get('payment') === 'success', params.get('checkout_id'));
     if (me?.authenticated && params.get('profile') === '1') window.filmscriptPlatform?.openAccount?.();
     await this._loadScripts({ retries: 5 });
+    if (acceptedProjectId) {
+      params.delete('acceptedProject');
+      const cleanQuery = params.toString();
+      window.history.replaceState({}, '', `${window.location.pathname}${cleanQuery ? `?${cleanQuery}` : ''}${window.location.hash || ''}`);
+      this._sharedArrivalTimer = window.setTimeout(() => this.setState({ highlightedScriptId: null }), 3200);
+    }
   }
 
   componentWillUnmount() {
     if (this._greetingTimer) window.clearInterval(this._greetingTimer);
     if (this._scriptTransitionTimer) window.clearTimeout(this._scriptTransitionTimer);
     if (this._parallaxFrame) cancelAnimationFrame(this._parallaxFrame);
+    if (this._sharedArrivalTimer) window.clearTimeout(this._sharedArrivalTimer);
     if (this._proRequiredHandler) window.removeEventListener('filmscript:pro-required', this._proRequiredHandler);
     if (this._languageHandler) window.removeEventListener('filmscript:language-change', this._languageHandler);
     if (this._themeHandler) window.removeEventListener('filmscript:theme-change', this._themeHandler);
+    if (this._membershipHandler) window.removeEventListener('filmscript:project-membership-changed', this._membershipHandler);
     this._flushChatSave();
   }
 
@@ -1431,6 +1459,21 @@ class Component extends DCLogic {
 
   async openStoredScript(script) {
     if (!this._startScriptTransition(script.title, script.id)) return;
+    const hasServerPreferredView = Object.prototype.hasOwnProperty.call(script, 'preferredView');
+    const preferredView = String((hasServerPreferredView ? script.preferredView : this._preferredProjectView(script.access)) || '');
+    if (preferredView === 'location_plan') {
+      this._finishScriptTransition(`App.dc.html?project=${encodeURIComponent(script.id)}&openLocationPlan=1`);
+      return;
+    }
+    if (preferredView && preferredView !== 'editor') {
+      this._finishScriptTransition(`Editor v5.dc.html?script=${encodeURIComponent(script.id)}&view=${encodeURIComponent(preferredView)}`);
+      return;
+    }
+    if (!preferredView) {
+      this._cancelScriptTransition();
+      this.setState({ importNote: window.filmscriptLanguage?.get?.() === 'es' ? 'Este proyecto no tiene ningún módulo disponible para tu rol.' : 'This project has no module available for your role.' });
+      return;
+    }
     try {
       this._flushChatSave();
       const stored = (await window.filmscriptScripts.get(script.id)).script;
@@ -1439,6 +1482,16 @@ class Component extends DCLogic {
       this._cancelScriptTransition();
       this.setState({ importNote: 'Could not open that imported script.' });
     }
+  }
+
+  _preferredProjectView(access) {
+    const permissions = access?.modulePermissions || {};
+    const visible = (module) => !['', 'no_access', 'none'].includes(String(permissions[module] || ''));
+    const order = [
+      ['script', 'editor'], ['analysis', 'analysis'], ['breakdown', 'breakdown'], ['stripboard', 'stripboard'],
+      ['shot_list', 'shotlist'], ['imagine', 'imagine'], ['canvas', 'canvas'], ['location_plan', 'location_plan'], ['budget', 'budget'], ['calendar', 'calendar'],
+    ];
+    return order.find(([module]) => visible(module))?.[1] || null;
   }
 
   _startScriptTransition(title, scriptId = null) {
@@ -1972,6 +2025,12 @@ Write Lumiere's next reply only:`;
       };
       return timeOf(b) - timeOf(a);
     });
+    const scriptsSpanish = window.filmscriptLanguage?.get?.() === 'es';
+    const sharedRoleLabels = scriptsSpanish ? {
+      owner: 'Propietario', co_owner: 'Copropietario', admin: 'Administrador', editor: 'Editor', commenter: 'Comentarista', viewer: 'Lector', temporary_guest: 'Invitado temporal',
+    } : {
+      owner: 'Owner', co_owner: 'Co-owner', admin: 'Admin', editor: 'Editor', commenter: 'Commenter', viewer: 'Viewer', temporary_guest: 'Temporary guest',
+    };
     const importingCard = this.state.importingScript ? [{
       id: this.state.importingScript.id,
       title: this.state.importingScript.title,
@@ -1985,21 +2044,35 @@ Write Lumiere's next reply only:`;
     }] : [];
     const cardData = [
       ...importingCard,
-      ...orderedImportedScripts.map((s) => ({
-        id: s.id, title: s.title, updatedAt: s.updatedAt, meta: typeof s.pages === 'number' ? `${s.pages} pages · imported` : 'Imported screenplay',
-        canDelete: true, menuOpen: this.state.scriptMenuId === s.id,
-        open: () => this.openStoredScript(s),
-        toggleMenu: (event) => this.toggleScriptMenu(event, s.id),
-        rename: (event) => this.renameStoredScript(event, s),
-        translate: (event) => { event.stopPropagation(); this.setState({ scriptMenuId: null }); window.filmscriptPlatform?.openTranslation(s); },
-        remove: (event) => this.deleteStoredScript(event, s),
-      })),
+      ...orderedImportedScripts.map((s) => {
+        const role = String(s.access?.projectRole || 'owner');
+        const scriptLevel = String(s.access?.modulePermissions?.script || (role === 'owner' ? 'manage' : 'no_access'));
+        const sharedAccess = role !== 'owner';
+        const roleLabel = sharedRoleLabels[role] || role.replaceAll('_', ' ');
+        const ownerName = String(s.owner?.name || (scriptsSpanish ? 'otro miembro de FilmScript' : 'another FilmScript member'));
+        const ownerLabel = scriptsSpanish ? `Pertenece a ${ownerName}` : `Owned by ${ownerName}`;
+        const canRename = ['edit', 'manage'].includes(scriptLevel);
+        const canTranslate = ['edit', 'manage'].includes(scriptLevel);
+        const canDelete = role === 'owner';
+        return {
+          id: s.id, title: s.title, updatedAt: s.updatedAt,
+          meta: typeof s.pages === 'number' ? `${s.pages} ${scriptsSpanish ? 'páginas · importado' : 'pages · imported'}` : sharedAccess ? (scriptsSpanish ? 'Proyecto compartido' : 'Shared project') : (scriptsSpanish ? 'Guion importado' : 'Imported screenplay'),
+          sharedAccess, roleLabel, ownerLabel, canRename, canTranslate, canDelete,
+          hasMenu: canRename || canTranslate || canDelete,
+          menuOpen: this.state.scriptMenuId === s.id,
+          open: () => this.openStoredScript(s),
+          toggleMenu: (event) => this.toggleScriptMenu(event, s.id),
+          rename: (event) => this.renameStoredScript(event, s),
+          translate: (event) => { event.stopPropagation(); this.setState({ scriptMenuId: null }); window.filmscriptPlatform?.openTranslation(s); },
+          remove: (event) => this.deleteStoredScript(event, s),
+        };
+      }),
     ];
     // Keep the field exactly as the writer typed it. Trimming is only for
     // matching, otherwise a trailing space is removed on every render.
     const scriptsSearch = this.state.scriptsSearch || '';
     const searchNeedle = scriptsSearch.trim().toLocaleLowerCase();
-    const visibleCardData = searchNeedle ? cardData.filter((c) => `${c.title} ${c.meta}`.toLocaleLowerCase().includes(searchNeedle)) : cardData;
+    const visibleCardData = searchNeedle ? cardData.filter((c) => `${c.title} ${c.meta} ${c.roleLabel || ''} ${c.ownerLabel || ''}`.toLocaleLowerCase().includes(searchNeedle)) : cardData;
     const cards = visibleCardData.map((c, i) => {
       const open = c.open || (() => this._enterScript('Editor v5.dc.html', c.title, c.id));
       return {
@@ -2007,7 +2080,8 @@ Write Lumiere's next reply only:`;
         thumbPath: this._roughPath(62, 84, 1.5, (i + 1) * 8123 + 17, 8),
         delay: (0.14 + i * 0.06).toFixed(2) + 's',
         open,
-        openLabel: `Open ${c.title} in the screenplay editor`,
+        highlightClass: this.state.highlightedScriptId === c.id ? 'is-new-shared' : '',
+        openLabel: scriptsSpanish ? `Abrir ${c.title}${c.sharedAccess ? `. ${c.roleLabel}. ${c.ownerLabel}` : ' en el editor de guion'}` : `Open ${c.title}${c.sharedAccess ? `. ${c.roleLabel}. ${c.ownerLabel}` : ' in the screenplay editor'}`,
         onKey: (event) => {
           if (event.key !== 'Enter' && event.key !== ' ') return;
           event.preventDefault();

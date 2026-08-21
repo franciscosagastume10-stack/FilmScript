@@ -261,6 +261,81 @@ function rowToInvitation(row) {
   };
 }
 
+function invitationTargetMatchesUser(row, user) {
+  if (!row || !user) return false;
+  if (row.invited_user_id) return row.invited_user_id === user.id;
+  return Boolean(
+    row.invited_email
+    && user.email_verified
+    && user.email
+    && normalizedEmail(row.invited_email) === normalizedEmail(user.email)
+  );
+}
+
+function invitationProjectFromRow(row) {
+  const owner = row?.owner_user_id ? {
+    id: row.owner_user_id,
+    name: row.owner_name || "FilmScript collaborator",
+    ...avatarPresentationFromRow(row, { userIdKey: "owner_user_id", pictureKey: "owner_picture_url" }),
+  } : null;
+  return {
+    id: row.project_id,
+    title: row.project_title || "FilmScript project",
+    owner,
+    ownerName: owner?.name || null,
+  };
+}
+
+function rowToAccountInvitation(row) {
+  if (!row) return null;
+  const project = invitationProjectFromRow(row);
+  return {
+    ...rowToInvitation(row),
+    projectId: row.project_id,
+    projectTitle: project.title,
+    ownerName: project.ownerName,
+    project,
+  };
+}
+
+const accountInvitationSelect = `SELECT project_invitations.*, scripts.title AS project_title,
+  scripts.user_id AS owner_user_id, owners.name AS owner_name,
+  owners.picture_url AS owner_picture_url, owners.avatar_key AS avatar_key,
+  owners.avatar_crop_json AS avatar_crop_json
+  FROM project_invitations
+  JOIN scripts ON scripts.id=project_invitations.project_id
+  LEFT JOIN users owners ON owners.id=scripts.user_id`;
+
+function accountUser(userId) {
+  return db.prepare("SELECT id,email,email_verified FROM users WHERE id=?").get(userId) || null;
+}
+
+function accountInvitationById(invitationId, userId) {
+  const user = accountUser(userId);
+  if (!user) return null;
+  const row = db.prepare(`${accountInvitationSelect} WHERE project_invitations.id=?`).get(invitationId);
+  return invitationTargetMatchesUser(row, user) ? row : null;
+}
+
+export function listAccountInvitations(userId, { includeResolved = false } = {}) {
+  const user = accountUser(userId);
+  if (!user) throw Object.assign(new Error("Sign in to view project invitations."), { status: 401, code: "authentication_required" });
+  const rows = db.prepare(`${accountInvitationSelect}
+    WHERE (project_invitations.invited_user_id=@userId
+      OR (project_invitations.invited_user_id IS NULL AND @emailVerified=1
+        AND lower(project_invitations.invited_email)=@email))
+      AND (@includeResolved=1 OR (project_invitations.status='pending'
+        AND (project_invitations.expires_at IS NULL OR project_invitations.expires_at>@now)))
+    ORDER BY project_invitations.updated_at DESC`).all({
+    userId,
+    email: normalizedEmail(user.email),
+    emailVerified: user.email_verified ? 1 : 0,
+    includeResolved: includeResolved ? 1 : 0,
+    now: nowIso(),
+  });
+  return rows.map(rowToAccountInvitation);
+}
+
 export function listInvitations(projectId, actorUserId) {
   requireProjectPermission(actorUserId, projectId, "members", "view");
   return db.prepare("SELECT * FROM project_invitations WHERE project_id=? ORDER BY created_at DESC").all(projectId).map(rowToInvitation);
@@ -281,6 +356,9 @@ export function createInvitation(projectId, actorUserId, input = {}) {
   const email = normalizedEmail(input.email);
   if (email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) throw Object.assign(new Error("Enter a valid email address."), { status: 422, code: "invalid_email" });
   const target = resolveInviteTarget({ username: input.username, email });
+  if (target?.id && projectAccess(target.id, projectId)) {
+    throw Object.assign(new Error("This person already has access to the project."), { status: 409, code: "already_project_member" });
+  }
   const token = crypto.randomBytes(32).toString("base64url");
   const timestamp = nowIso(); const invitationId = id("inv");
   const cinematicRole = validateCinematicRole(input.cinematicRole);
@@ -294,7 +372,7 @@ export function createInvitation(projectId, actorUserId, input = {}) {
     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'pending', ?, ?, ?, ?)`)
     .run(invitationId, projectId, target?.id || null, input.username || target?.username || null, email || target?.email || null, hash(token), role, cinematicRole, JSON.stringify(snapshot), expiresAt, actorUserId, timestamp, timestamp);
   recordActivity({ projectId, module: "members", actorUserId, entityType: "invitation", entityId: invitationId, action: "project.member.invited", summary: `Invitation created for ${email || input.username || "a collaborator"}.`, containsFinancialData: financialPermissions[0] !== "financial.no_access" });
-  if (target?.id) createNotification({ userId: target.id, projectId, type: "project_invitation", title: "Project invitation", message: "You were invited to collaborate in FilmScript.", actorUserId, deepLink: `/App.dc.html?project=${encodeURIComponent(projectId)}` });
+  if (target?.id) createNotification({ userId: target.id, projectId, type: "project_invitation", title: "Project invitation", message: "You were invited to collaborate in FilmScript.", actorUserId, deepLink: "/App.dc.html", metadata: { invitationId } });
   return { id: invitationId, token, projectId, projectRole: role, cinematicRole, invitedEmail: email || target?.email || null, invitedUsername: input.username || target?.username || null, permissions: snapshot, status: "pending", expiresAt };
 }
 
@@ -336,24 +414,106 @@ export function rotateInvitationToken(projectId, invitationId, actorUserId) {
   return { token, invitation: rowToInvitation(db.prepare("SELECT * FROM project_invitations WHERE id=?").get(invitationId)) };
 }
 
-export function acceptInvitation(token, userId) {
-  const row = db.prepare("SELECT * FROM project_invitations WHERE token_hash = ?").get(hash(token));
-  if (!row || row.status !== "pending" || (row.expires_at && Date.parse(row.expires_at) <= Date.now())) throw Object.assign(new Error("This invitation is no longer available."), { status: 410, code: "invitation_unavailable" });
-  const user = db.prepare("SELECT id, email, username FROM users WHERE id = ?").get(userId);
-  if (!user) throw Object.assign(new Error("Sign in before accepting this invitation."), { status: 401 });
-  if (row.invited_user_id && row.invited_user_id !== userId) throw Object.assign(new Error("This invitation belongs to another account."), { status: 403 });
-  if (row.invited_email && (!user.email || row.invited_email.toLowerCase() !== user.email.toLowerCase()) && !row.invited_user_id) throw Object.assign(new Error("Sign in with the invited email address."), { status: 403 });
-  const snapshot = jsonParse(row.permission_snapshot_json, {}); const timestamp = nowIso();
+function updateInvitationNotificationState(userId, invitationId, projectId, status, timestamp) {
+  const rows = db.prepare("SELECT id,metadata_json FROM notifications WHERE user_id=? AND project_id=? AND type='project_invitation'").all(userId, projectId);
+  let matchedLegacyNotification = false;
+  for (const notification of rows) {
+    const metadata = jsonParse(notification.metadata_json, {});
+    if (metadata.invitationId && metadata.invitationId !== invitationId) continue;
+    if (!metadata.invitationId && matchedLegacyNotification) continue;
+    if (!metadata.invitationId) matchedLegacyNotification = true;
+    const nextMetadata = { ...metadata, invitationId, invitationStatus: status };
+    const deepLink = status === "accepted"
+      ? `/App.dc.html?acceptedProject=${encodeURIComponent(projectId)}`
+      : "/App.dc.html";
+    db.prepare("UPDATE notifications SET metadata_json=?, deep_link=?, read_at=COALESCE(read_at,?), updated_at=? WHERE id=?")
+      .run(JSON.stringify(nextMetadata), deepLink, timestamp, timestamp, notification.id);
+  }
+}
+
+function completeInvitationAcceptance(row, userId) {
+  const user = db.prepare("SELECT id,email,email_verified,username FROM users WHERE id=?").get(userId);
+  if (!user) throw Object.assign(new Error("Sign in before accepting this invitation."), { status: 401, code: "authentication_required" });
+  if (row.status === "accepted") {
+    if (!invitationTargetMatchesUser(row, user)) throw Object.assign(new Error("This invitation belongs to another account."), { status: 403, code: "invitation_account_mismatch" });
+    const existing = projectAccess(userId, row.project_id);
+    if (existing) return existing;
+    throw Object.assign(new Error("This invitation could not be reconciled with project access."), { status: 409, code: "invitation_membership_missing" });
+  }
+  if (row.status !== "pending") throw Object.assign(new Error("This invitation is no longer available."), { status: 410, code: "invitation_unavailable" });
+  if (row.expires_at && Date.parse(row.expires_at) <= Date.now()) throw Object.assign(new Error("This invitation is no longer available."), { status: 410, code: "invitation_unavailable" });
+  if (!invitationTargetMatchesUser(row, user)) throw Object.assign(new Error("This invitation belongs to another account."), { status: 403, code: "invitation_account_mismatch" });
+  const snapshot = jsonParse(row.permission_snapshot_json, {});
+  const timestamp = nowIso();
+  let changed = false;
+  let membershipCreated = false;
   db.transaction(() => {
-    db.prepare(`INSERT INTO project_memberships
-      (id, project_id, user_id, project_role, cinematic_role, module_permissions_json, financial_permissions_json, financial_department_ids_json, department_ids_json, status, invited_by_user_id, version, created_at, updated_at)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'active', ?, 1, ?, ?)
-      ON CONFLICT(project_id, user_id) DO UPDATE SET project_role=excluded.project_role, cinematic_role=excluded.cinematic_role, module_permissions_json=excluded.module_permissions_json, financial_permissions_json=excluded.financial_permissions_json, financial_department_ids_json=excluded.financial_department_ids_json, department_ids_json=excluded.department_ids_json, status='active', version=project_memberships.version+1, updated_at=excluded.updated_at`)
-      .run(id("mem"), row.project_id, userId, row.project_role, row.cinematic_role, JSON.stringify(snapshot.modulePermissions || {}), JSON.stringify(snapshot.financialPermissions || ["financial.no_access"]), JSON.stringify(snapshot.financialDepartmentIds || []), JSON.stringify(snapshot.departmentIds || []), row.created_by_user_id, timestamp, timestamp);
-    db.prepare("UPDATE project_invitations SET status='accepted', updated_at=? WHERE id=?").run(timestamp, row.id);
+    const current = db.prepare("SELECT status,expires_at FROM project_invitations WHERE id=?").get(row.id);
+    if (current?.status === "accepted") return;
+    if (current?.status !== "pending" || (current.expires_at && Date.parse(current.expires_at) <= Date.now())) throw Object.assign(new Error("This invitation is no longer available."), { status: 410, code: "invitation_unavailable" });
+    const billingOwner = db.prepare("SELECT user_id FROM scripts WHERE id=?").get(row.project_id)?.user_id === userId;
+    const activeMembership = db.prepare("SELECT id FROM project_memberships WHERE project_id=? AND user_id=? AND status='active'").get(row.project_id, userId);
+    // A stale or duplicate invitation must never rewrite access that is already
+    // active. In particular, the billing owner's canonical owner permissions
+    // cannot be downgraded through an invitation created by another member.
+    if (!billingOwner && !activeMembership) {
+      db.prepare(`INSERT INTO project_memberships
+        (id, project_id, user_id, project_role, cinematic_role, module_permissions_json, financial_permissions_json, financial_department_ids_json, department_ids_json, status, invited_by_user_id, version, created_at, updated_at)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'active', ?, 1, ?, ?)
+        ON CONFLICT(project_id, user_id) DO UPDATE SET project_role=excluded.project_role, cinematic_role=excluded.cinematic_role, module_permissions_json=excluded.module_permissions_json, financial_permissions_json=excluded.financial_permissions_json, financial_department_ids_json=excluded.financial_department_ids_json, department_ids_json=excluded.department_ids_json, status='active', version=project_memberships.version+1, updated_at=excluded.updated_at`)
+        .run(id("mem"), row.project_id, userId, row.project_role, row.cinematic_role, JSON.stringify(snapshot.modulePermissions || {}), JSON.stringify(snapshot.financialPermissions || ["financial.no_access"]), JSON.stringify(snapshot.financialDepartmentIds || []), JSON.stringify(snapshot.departmentIds || []), row.created_by_user_id, timestamp, timestamp);
+      membershipCreated = true;
+    }
+    db.prepare("UPDATE project_invitations SET invited_user_id=COALESCE(invited_user_id,?), status='accepted', updated_at=? WHERE id=?")
+      .run(userId, timestamp, row.id);
+    db.prepare(`UPDATE project_invitations SET status='revoked', revoked_at=?, updated_at=?
+      WHERE project_id=? AND id!=? AND status='pending'
+        AND (invited_user_id=? OR (invited_user_id IS NULL AND lower(invited_email)=?))`)
+      .run(timestamp, timestamp, row.project_id, row.id, userId, normalizedEmail(user.email));
+    updateInvitationNotificationState(userId, row.id, row.project_id, "accepted", timestamp);
+    changed = true;
   })();
-  recordActivity({ projectId: row.project_id, module: "members", actorUserId: userId, entityType: "membership", action: "project.member.joined", summary: `${user.username || user.email || "A collaborator"} joined the project.` });
-  return projectAccess(userId, row.project_id);
+  const membership = projectAccess(userId, row.project_id);
+  if (!membership) throw Object.assign(new Error("Project access could not be created."), { status: 409, code: "membership_creation_failed" });
+  if (changed && membershipCreated) recordActivity({ projectId: row.project_id, module: "members", actorUserId: userId, entityType: "membership", entityId: membership.id, action: "project.member.joined", summary: `${user.username || user.email || "A collaborator"} joined the project.` });
+  return membership;
+}
+
+export function acceptInvitation(token, userId) {
+  const row = db.prepare("SELECT * FROM project_invitations WHERE token_hash=?").get(hash(token));
+  if (!row) throw Object.assign(new Error("This invitation is no longer available."), { status: 410, code: "invitation_unavailable" });
+  return completeInvitationAcceptance(row, userId);
+}
+
+export function acceptAccountInvitation(invitationId, userId) {
+  const row = accountInvitationById(invitationId, userId);
+  if (!row) throw Object.assign(new Error("Invitation was not found."), { status: 404, code: "invitation_not_found" });
+  const membership = completeInvitationAcceptance(row, userId);
+  const invitation = rowToAccountInvitation(accountInvitationById(invitationId, userId));
+  return { membership, invitation, project: invitation.project };
+}
+
+export function declineAccountInvitation(invitationId, userId) {
+  const row = accountInvitationById(invitationId, userId);
+  if (!row) throw Object.assign(new Error("Invitation was not found."), { status: 404, code: "invitation_not_found" });
+  if (row.status === "declined") return rowToAccountInvitation(row);
+  if (row.status !== "pending" || (row.expires_at && Date.parse(row.expires_at) <= Date.now())) throw Object.assign(new Error("This invitation is no longer available."), { status: 410, code: "invitation_unavailable" });
+  const timestamp = nowIso();
+  let changed = false;
+  const updated = db.transaction(() => {
+    const result = db.prepare("UPDATE project_invitations SET invited_user_id=COALESCE(invited_user_id,?), status='declined', declined_at=?, updated_at=? WHERE id=? AND status='pending'")
+      .run(userId, timestamp, timestamp, invitationId);
+    if (!result.changes) {
+      const current = accountInvitationById(invitationId, userId);
+      if (current?.status === "declined") return current;
+      throw Object.assign(new Error("This invitation is no longer available."), { status: 410, code: "invitation_unavailable" });
+    }
+    changed = true;
+    updateInvitationNotificationState(userId, invitationId, row.project_id, "declined", timestamp);
+    return accountInvitationById(invitationId, userId);
+  })();
+  if (changed) recordActivity({ projectId: row.project_id, module: "members", actorUserId: userId, entityType: "invitation", entityId: invitationId, action: "project.invitation.declined", summary: "Project invitation was declined." });
+  return rowToAccountInvitation(updated);
 }
 
 export function createGuestSession(invitationToken) {
@@ -460,22 +620,41 @@ export function listActivity(projectId, actorUserId, module = null, limit = 50, 
 export function createNotification(input) {
   if (!input.userId) return null;
   const timestamp = nowIso();
+  const metadata = input.metadata && typeof input.metadata === "object" && !Array.isArray(input.metadata) ? input.metadata : {};
   if (input.aggregationKey) {
     const existing = db.prepare("SELECT id FROM notifications WHERE user_id=? AND aggregation_key=? AND read_at IS NULL AND updated_at > ?").get(input.userId, input.aggregationKey, new Date(Date.now() - 10 * 60_000).toISOString());
     if (existing) {
-      db.prepare("UPDATE notifications SET title=?, message=?, updated_at=? WHERE id=?").run(input.title, input.message, timestamp, existing.id);
+      db.prepare("UPDATE notifications SET title=?, message=?, metadata_json=?, updated_at=? WHERE id=?").run(input.title, input.message, JSON.stringify(metadata), timestamp, existing.id);
       return existing.id;
     }
   }
   const notificationId = id("not");
-  db.prepare(`INSERT INTO notifications (id,user_id,project_id,type,title,message,actor_user_id,deep_link,contains_financial_data,financial_department_id,aggregation_key,created_at,updated_at)
-    VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)`).run(notificationId, input.userId, input.projectId || null, input.type, input.title, input.message, input.actorUserId || null, input.deepLink || null, input.containsFinancialData ? 1 : 0, input.financialDepartmentId || null, input.aggregationKey || null, timestamp, timestamp);
+  db.prepare(`INSERT INTO notifications (id,user_id,project_id,type,title,message,actor_user_id,deep_link,contains_financial_data,financial_department_id,aggregation_key,metadata_json,created_at,updated_at)
+    VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)`).run(notificationId, input.userId, input.projectId || null, input.type, input.title, input.message, input.actorUserId || null, input.deepLink || null, input.containsFinancialData ? 1 : 0, input.financialDepartmentId || null, input.aggregationKey || null, JSON.stringify(metadata), timestamp, timestamp);
   return notificationId;
 }
 
 export function listNotifications(userId, { limit = 40 } = {}) {
   const rows = db.prepare(`SELECT notifications.*, users.name AS actor_name, users.picture_url, users.avatar_key, users.avatar_crop_json FROM notifications LEFT JOIN users ON users.id=notifications.actor_user_id WHERE notifications.user_id=? ORDER BY notifications.updated_at DESC LIMIT ?`).all(userId, Math.min(100, Math.max(1, Number(limit) || 40)));
-  return rows.map((row) => ({ id: row.id, projectId: row.project_id, type: row.type, title: row.title, message: row.message, actor: row.actor_user_id ? { id: row.actor_user_id, name: row.actor_name, ...avatarPresentationFromRow(row, { userIdKey: "actor_user_id" }) } : null, deepLink: row.deep_link, read: !!row.read_at, createdAt: row.created_at, updatedAt: row.updated_at }));
+  const allInvitations = rows.some((row) => row.type === "project_invitation") ? listAccountInvitations(userId, { includeResolved: true }) : [];
+  return rows.map((row) => {
+    const metadata = jsonParse(row.metadata_json, {});
+    let invitation = null;
+    if (row.type === "project_invitation") {
+      const matched = (metadata.invitationId ? allInvitations.find((item) => item.id === metadata.invitationId) : null)
+        || allInvitations.find((item) => item.projectId === row.project_id);
+      if (matched) invitation = {
+        id: matched.id,
+        status: matched.status,
+        projectId: matched.projectId,
+        projectTitle: matched.projectTitle,
+        projectRole: matched.projectRole,
+        cinematicRole: matched.cinematicRole,
+        ownerName: matched.ownerName,
+      };
+    }
+    return { id: row.id, projectId: row.project_id, type: row.type, title: row.title, message: row.message, actor: row.actor_user_id ? { id: row.actor_user_id, name: row.actor_name, ...avatarPresentationFromRow(row, { userIdKey: "actor_user_id" }) } : null, deepLink: row.deep_link, read: !!row.read_at, invitation, createdAt: row.created_at, updatedAt: row.updated_at };
+  });
 }
 
 export function markNotificationsRead(userId, notificationId = null) {
