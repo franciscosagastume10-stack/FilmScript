@@ -12,11 +12,11 @@ test('screenplay module APIs use the neutral first-party route', async () => {
     fs.readFile(path.join(ROOT, 'vercel.json'), 'utf8').then(JSON.parse),
   ]);
 
-  assert.match(runtime, /project-data/);
+  assert.match(runtime, /film-data\/document/);
   assert.doesNotMatch(runtime, /return `\$\{apiUrl\}\/workspace\/projects/);
 
-  const exact = vercel.rewrites.find((entry) => entry.source === '/project-data');
-  const nested = vercel.rewrites.find((entry) => entry.source === '/project-data/:path*');
+  const exact = vercel.rewrites.find((entry) => entry.source === '/film-data/document');
+  const nested = vercel.rewrites.find((entry) => entry.source === '/film-data/document/:path*');
   assert.equal(exact?.destination, '/api/scripts-proxy');
   assert.equal(nested?.destination, 'https://api.filmscript.app/api/scripts/:path*');
 });
@@ -50,7 +50,7 @@ test('Canvas and Imagine use the same neutral screenplay API resolver', async ()
 
   assert.match(client, /window\.filmscriptApiUrl \? window\.filmscriptApiUrl\(path\) : path/);
   assert.doesNotMatch(client, /FILMSCRIPT_CONFIG\?\.apiUrl/);
-  assert.match(editor, /canvas-client\.js\?v=20260820-module-routes1/);
+  assert.match(editor, /canvas-client\.js\?v=20260820-module-routes2/);
 });
 
 test('production stack preserves the shared OAuth session cookie domain', async () => {
@@ -70,6 +70,6 @@ test('primary production pages request the cache-busted route resolver', async (
   ].map((name) => fs.readFile(path.join(ROOT, name), 'utf8')));
 
   for (const page of pages) {
-    assert.match(page, /runtime-config\.js\?v=20260820-module-routes1/);
+    assert.match(page, /runtime-config\.js\?v=20260820-module-routes2/);
   }
 });

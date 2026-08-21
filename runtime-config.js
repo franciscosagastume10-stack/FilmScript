@@ -38,7 +38,7 @@
     // `/scripts` and `/workspace`. Use a neutral first-party data route and
     // translate it back to the unchanged AWS API path at Vercel's edge.
     if (firstPartyApi && (path === '/api/scripts' || path.startsWith('/api/scripts/'))) {
-      return `${apiUrl}/project-data${path.slice('/api/scripts'.length)}`;
+      return `${apiUrl}/film-data/document${path.slice('/api/scripts'.length)}`;
     }
     const firstPartyPath = firstPartyApi && (path === '/api' || path.startsWith('/api/'))
       ? `/workspace${path.slice(4)}`

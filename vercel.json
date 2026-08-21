@@ -5,11 +5,11 @@
   "outputDirectory": "dist",
   "rewrites": [
     {
-      "source": "/project-data",
+      "source": "/film-data/document",
       "destination": "/api/scripts-proxy"
     },
     {
-      "source": "/project-data/:path*",
+      "source": "/film-data/document/:path*",
       "destination": "https://api.filmscript.app/api/scripts/:path*"
     },
     {
