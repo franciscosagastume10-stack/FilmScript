@@ -83,9 +83,26 @@
     .cv-imagine-preview-solo-image{overflow:hidden;max-height:calc(100dvh - 40px)}.cv-imagine-preview-solo-image>img{max-inline-size:100%;max-block-size:calc(100dvh - 92px);width:auto!important;height:auto!important;object-fit:contain;object-position:center}@media(max-width:800px){.cv-imagine-preview-solo-image{max-height:none;overflow:visible}.cv-imagine-preview-solo-image>img{max-block-size:calc(100dvh - 300px)}}
     /* One shared, glassy reference browser powers Boards and generated frames. */
     .cv-storyboard-image-modal{width:min(920px,100%)}.cv-visual-reference-modal{width:min(1080px,100%)}.cv-visual-reference-picker{margin-top:17px;padding:13px;border:1px solid color-mix(in srgb,var(--cv-hair) 82%,transparent);border-radius:17px 14px 18px 15px;background:color-mix(in srgb,var(--cv-surface) 72%,transparent);box-shadow:inset 0 1px 0 color-mix(in srgb,var(--cv-surface) 78%,transparent),0 12px 30px color-mix(in srgb,var(--cv-ink) 8%,transparent);backdrop-filter:blur(20px) saturate(150%);-webkit-backdrop-filter:blur(20px) saturate(150%);transition:border-color .18s ease,box-shadow .18s ease,background .18s ease}.cv-visual-reference-picker.is-dragging{border-color:var(--cv-accent);background:color-mix(in srgb,var(--cv-accent-soft) 42%,var(--cv-surface));box-shadow:0 0 0 4px var(--cv-accent-soft),0 16px 34px color-mix(in srgb,var(--cv-ink) 12%,transparent)}.cv-visual-reference-head{display:flex;align-items:flex-start;justify-content:space-between;gap:14px;margin-bottom:12px}.cv-visual-reference-head h4{margin:5px 0 0;font-size:14px;letter-spacing:-.18px}.cv-visual-reference-head p{max-width:440px;margin:4px 0 0;color:var(--cv-muted);font-size:10.5px;line-height:1.42}.cv-visual-reference-tabs{display:flex;flex:0 0 auto;gap:3px;padding:3px;border:1px solid color-mix(in srgb,var(--cv-hair) 80%,transparent);border-radius:10px;background:color-mix(in srgb,var(--cv-soft) 74%,transparent)}.cv-visual-reference-tabs button{height:29px;border:0;border-radius:7px;background:transparent;color:var(--cv-muted);padding:0 8px;font-size:9.5px;font-weight:750;white-space:nowrap;cursor:pointer;transition:color .15s ease,background .15s ease}.cv-visual-reference-tabs button:hover,.cv-visual-reference-tabs button.active{background:var(--cv-surface);color:var(--cv-accent);box-shadow:0 1px 4px color-mix(in srgb,var(--cv-ink) 9%,transparent)}.cv-visual-reference-layout{display:grid;grid-template-columns:108px minmax(0,1fr);gap:11px;min-height:176px}.cv-visual-reference-upload-wrap{display:grid;align-content:start;gap:7px}.cv-visual-reference-upload-wrap>span{color:var(--cv-muted);font-size:8.5px;font-weight:650;line-height:1.25;text-align:center}.cv-visual-reference-upload{display:grid;align-content:center;justify-items:center;gap:5px;min-height:132px;width:100%;padding:12px 7px;border:1px dashed color-mix(in srgb,var(--cv-accent) 66%,var(--cv-hair));border-radius:13px 11px 14px 10px;background:linear-gradient(135deg,color-mix(in srgb,var(--cv-accent-soft) 45%,transparent),color-mix(in srgb,var(--cv-surface) 68%,transparent));color:var(--cv-accent);cursor:pointer;transition:transform .16s cubic-bezier(.2,.8,.2,1),border-color .16s ease,background .16s ease,box-shadow .16s ease}.cv-visual-reference-upload:hover{transform:translateY(-2px);border-style:solid;border-color:var(--cv-accent);background:var(--cv-accent-soft);box-shadow:0 8px 18px color-mix(in srgb,var(--cv-ink) 10%,transparent)}.cv-visual-reference-upload svg{width:34px;height:24px}.cv-visual-reference-upload strong{font-size:10px}.cv-visual-reference-upload small{color:var(--cv-muted);font-size:8.5px}.cv-visual-reference-gallery{display:grid;grid-auto-flow:row dense;grid-template-columns:repeat(12,minmax(0,1fr));grid-auto-rows:8px;align-content:start;gap:7px;max-height:264px;min-height:176px;overflow:auto;padding:1px 2px 5px}.cv-visual-reference-card{position:relative;grid-column:span var(--vr-cols);grid-row:span var(--vr-rows);display:block;min-width:0;overflow:hidden;padding:0;border:1px solid color-mix(in srgb,var(--cv-ink) 26%,var(--cv-hair));border-radius:11px 9px 12px 10px;background:var(--cv-soft);cursor:pointer;box-shadow:0 2px 7px color-mix(in srgb,var(--cv-ink) 8%,transparent);transition:transform .16s cubic-bezier(.2,.8,.2,1),border-color .16s ease,box-shadow .16s ease}.cv-visual-reference-card:hover{z-index:1;transform:translateY(-2px);border-color:var(--cv-accent);box-shadow:0 9px 22px color-mix(in srgb,var(--cv-ink) 16%,transparent)}.cv-visual-reference-card.is-selected{border-color:var(--cv-accent);box-shadow:0 0 0 3px var(--cv-accent-soft),0 9px 22px color-mix(in srgb,var(--cv-ink) 16%,transparent)}.cv-visual-reference-card img{display:block;width:100%;height:100%;object-fit:cover}.cv-visual-reference-card-copy{position:absolute;z-index:1;right:0;bottom:0;left:0;display:grid;gap:2px;padding:18px 7px 6px;background:linear-gradient(transparent,rgba(18,18,17,.75));color:#fff;text-align:left;opacity:0;transform:translateY(4px);transition:opacity .15s ease,transform .16s ease}.cv-visual-reference-card:hover .cv-visual-reference-card-copy,.cv-visual-reference-card:focus-visible .cv-visual-reference-card-copy{opacity:1;transform:none}.cv-visual-reference-card-copy strong{overflow:hidden;font-size:9.5px;line-height:1.15;text-overflow:ellipsis;white-space:nowrap}.cv-visual-reference-card-copy small{font-size:8px;opacity:.78}.cv-visual-reference-check{position:absolute;z-index:2;top:6px;right:6px;display:grid;width:20px;height:20px;place-items:center;border:1px solid color-mix(in srgb,var(--cv-surface) 80%,transparent);border-radius:7px 6px 8px 6px;background:var(--cv-accent);color:#fff;font-size:11px;font-weight:900;box-shadow:0 3px 9px rgba(0,0,0,.18)}.cv-visual-reference-empty{grid-column:1/-1;display:grid;place-content:center;justify-items:center;gap:7px;min-height:165px;padding:16px;text-align:center;color:var(--cv-muted)}.cv-visual-reference-empty strong{color:var(--cv-ink);font-size:12px}.cv-visual-reference-empty span{max-width:250px;font-size:10px;line-height:1.45}.cv-visual-reference-empty .cv-btn{margin-top:3px;min-height:31px;font-size:10px}@media(max-width:680px){.cv-visual-reference-head{display:grid;gap:10px}.cv-visual-reference-tabs{width:100%;overflow:auto}.cv-visual-reference-tabs button{flex:0 0 auto}.cv-visual-reference-layout{grid-template-columns:86px minmax(0,1fr);gap:9px}.cv-visual-reference-upload{min-height:116px}.cv-visual-reference-gallery{grid-template-columns:repeat(8,minmax(0,1fr));max-height:245px}.cv-visual-reference-card{grid-column:span max(2,calc(var(--vr-cols) - 1));grid-row:span var(--vr-rows)}}
+    .cv-visually-hidden{position:absolute!important;width:1px!important;height:1px!important;padding:0!important;margin:-1px!important;overflow:hidden!important;clip:rect(0,0,0,0)!important;white-space:nowrap!important;border:0!important}
+    .cv-module-loading-shell{display:grid;min-height:clamp(500px,72dvh,780px);padding:clamp(28px,6vw,72px) 18px;place-items:center;background:radial-gradient(circle at 50% 44%,color-mix(in srgb,var(--cv-accent) 9%,transparent),transparent 48%)}
+    .cv-module-loader{position:relative;isolation:isolate;width:min(680px,100%);overflow:hidden;padding:clamp(25px,4.5vw,42px);border:1px solid color-mix(in srgb,var(--cv-ink) 25%,transparent);border-radius:26px 22px 29px 20px / 22px 28px 21px 26px;background:linear-gradient(145deg,color-mix(in srgb,var(--cv-surface) 76%,transparent),color-mix(in srgb,var(--cv-soft) 52%,transparent));box-shadow:0 26px 72px color-mix(in srgb,var(--cv-ink) 14%,transparent),inset 0 1px 0 color-mix(in srgb,#fff 72%,transparent);backdrop-filter:blur(28px) saturate(145%);-webkit-backdrop-filter:blur(28px) saturate(145%);animation:cvModuleLoaderIn .28s cubic-bezier(.2,.8,.2,1) both}.cv-module-loader:before{content:"";position:absolute;z-index:-1;width:390px;height:390px;top:-270px;left:-110px;border-radius:45% 55% 48% 52%;background:radial-gradient(circle at 58% 64%,color-mix(in srgb,var(--cv-accent) 24%,transparent),transparent 64%);animation:cvModuleLoaderDrift 4.2s ease-in-out infinite alternate}.cv-module-loader:after{content:"";position:absolute;inset:4px;pointer-events:none;border:1px solid color-mix(in srgb,var(--cv-ink) 15%,transparent);border-radius:22px 20px 25px 18px;opacity:.48}
+    .cv-module-loader-head{display:grid;grid-template-columns:58px minmax(0,1fr);align-items:center;gap:18px}.cv-module-loader-mark{position:relative;display:grid;width:58px;height:58px;place-items:center;border:1px solid color-mix(in srgb,var(--cv-accent) 38%,transparent);border-radius:19px 16px 21px 15px;background:color-mix(in srgb,var(--cv-surface) 62%,transparent);box-shadow:0 12px 25px color-mix(in srgb,var(--cv-accent) 15%,transparent),inset 0 1px 0 color-mix(in srgb,#fff 70%,transparent);backdrop-filter:blur(18px);-webkit-backdrop-filter:blur(18px)}.cv-module-loader-mark:before{content:"";position:absolute;inset:7px;border:1px solid color-mix(in srgb,var(--cv-accent) 35%,transparent);border-radius:50%;animation:cvModuleOrbit 1.8s linear infinite}.cv-module-loader-mark:after{content:"";position:absolute;top:5px;left:26px;width:6px;height:6px;border-radius:50%;background:var(--cv-accent);box-shadow:0 0 0 4px color-mix(in srgb,var(--cv-accent) 14%,transparent)}.cv-module-loader-mark span{position:absolute;display:block;border:1.5px solid var(--cv-accent);border-radius:7px 6px 8px 5px}.cv-module-loader-mark span:nth-child(1){width:27px;height:20px;transform:translate(-4px,-3px) rotate(-5deg);opacity:.46}.cv-module-loader-mark span:nth-child(2){width:28px;height:21px;transform:translate(4px,3px) rotate(4deg);animation:cvCanvasFrame 1.45s ease-in-out infinite}.cv-module-loader-mark span:nth-child(3){width:6px;height:6px;border:0;border-radius:50%;background:var(--cv-accent);transform:translate(8px,-5px)}
+    .cv-module-loader-kicker{display:block;color:var(--cv-accent);font-size:9.5px;font-weight:820;letter-spacing:1.55px;text-transform:uppercase}.cv-module-loader h2{margin:6px 0 0;color:var(--cv-ink);font-size:clamp(22px,3vw,31px);font-weight:790;letter-spacing:-.9px;line-height:1.05}.cv-module-loader p{margin:8px 0 0;color:var(--cv-muted);font-size:12px;line-height:1.52}.cv-module-loader-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;margin-top:30px}.cv-module-loader-cell{position:relative;min-height:112px;overflow:hidden;border:1px solid color-mix(in srgb,var(--cv-ink) 18%,transparent);border-radius:17px 14px 19px 13px;background:color-mix(in srgb,var(--cv-surface) 55%,transparent);box-shadow:0 12px 25px color-mix(in srgb,var(--cv-ink) 6%,transparent),inset 0 1px 0 color-mix(in srgb,#fff 65%,transparent);backdrop-filter:blur(20px) saturate(120%);-webkit-backdrop-filter:blur(20px) saturate(120%);animation:cvModuleCell 1.65s ease-in-out infinite;animation-delay:calc(var(--loader-cell) * 90ms)}.cv-module-loader-cell:before{content:"";position:absolute;inset:0;background:linear-gradient(108deg,transparent 20%,color-mix(in srgb,#fff 52%,transparent) 43%,transparent 66%);transform:translateX(-120%);animation:cvModuleShimmer 1.65s ease-in-out infinite;animation-delay:calc(var(--loader-cell) * 90ms)}.cv-module-loader-cell i,.cv-module-loader-cell b,.cv-module-loader-cell span{position:absolute;left:15px;display:block;border-radius:999px;background:color-mix(in srgb,var(--cv-muted) 16%,transparent)}.cv-module-loader-cell i{top:15px;width:7px;height:7px;background:var(--cv-accent);box-shadow:0 0 0 4px color-mix(in srgb,var(--cv-accent) 13%,transparent)}.cv-module-loader-cell b{top:35px;width:43%;height:7px}.cv-module-loader-cell span{top:56px;width:calc(100% - 30px);height:6px;box-shadow:0 15px 0 color-mix(in srgb,var(--cv-muted) 11%,transparent),0 30px 0 color-mix(in srgb,var(--cv-muted) 8%,transparent)}.cv-module-loader-status{display:flex;align-items:center;gap:9px;margin-top:18px;color:var(--cv-muted);font-size:10.5px;font-weight:650}.cv-module-loader-status:before{content:"";width:8px;height:8px;border-radius:50%;background:var(--cv-accent);animation:cvModulePulse 1.25s ease-out infinite}
+    .cv-imagine-loading-stage{min-height:calc(100dvh - 44px);padding:8px;overflow:hidden;background:color-mix(in srgb,var(--cv-soft) 86%,var(--cv-bg))}.cv-imagine-skeleton-gallery{display:grid;grid-template-columns:repeat(12,minmax(0,1fr));grid-auto-rows:88px;gap:8px;min-height:100%;align-content:start}.cv-imagine-skeleton{position:relative;grid-column:span 3;grid-row:span 2;overflow:hidden;border:1px solid color-mix(in srgb,var(--cv-hair) 78%,transparent);border-radius:13px 11px 14px 10px;background:linear-gradient(145deg,color-mix(in srgb,var(--cv-surface) 60%,transparent),color-mix(in srgb,var(--cv-soft) 78%,transparent));box-shadow:0 7px 18px color-mix(in srgb,var(--cv-ink) 8%,transparent),inset 0 1px 0 color-mix(in srgb,#fff 45%,transparent);backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px);animation:cvImagineSkeletonFloat 1.75s ease-in-out infinite;animation-delay:calc(var(--skeleton-index) * 55ms)}.cv-imagine-skeleton.wide{grid-column:span 5}.cv-imagine-skeleton.portrait{grid-column:span 2;grid-row:span 3}.cv-imagine-skeleton:before{content:"";position:absolute;inset:0;background:linear-gradient(105deg,transparent 22%,color-mix(in srgb,#fff 50%,transparent) 45%,transparent 68%);transform:translateX(-120%);animation:cvImagineSkeletonShimmer 1.7s ease-in-out infinite;animation-delay:calc(var(--skeleton-index) * 55ms)}.cv-imagine-skeleton:after{content:"";position:absolute;left:14px;bottom:14px;width:42%;height:7px;border-radius:999px;background:color-mix(in srgb,var(--cv-muted) 14%,transparent);box-shadow:0 -18px 0 -1px color-mix(in srgb,var(--cv-accent) 16%,transparent)}
+    .cv-imagine-tile.is-image-loading:before{content:"";position:absolute;z-index:1;inset:0;background:linear-gradient(105deg,color-mix(in srgb,var(--cv-soft) 88%,var(--cv-surface)) 20%,color-mix(in srgb,#fff 44%,transparent) 46%,color-mix(in srgb,var(--cv-soft) 88%,var(--cv-surface)) 72%);background-size:240% 100%;animation:cvImageTileShimmer 1.35s ease-in-out infinite}.cv-imagine-tile.is-image-loading:after{display:none}.cv-imagine-tile.is-image-loading img{opacity:0!important;filter:none!important}.cv-imagine-tile img{opacity:1;transition:opacity .18s ease,filter .18s ease}.cv-imagine-tile.is-image-error img{opacity:.08;filter:grayscale(1)}
+    @keyframes cvModuleLoaderIn{from{opacity:0;transform:translateY(9px) scale(.985)}to{opacity:1;transform:none}}@keyframes cvModuleLoaderDrift{to{transform:translate(32px,18px) rotate(8deg)}}@keyframes cvModuleOrbit{to{transform:rotate(360deg)}}@keyframes cvCanvasFrame{0%,100%{transform:translate(4px,3px) rotate(4deg)}50%{transform:translate(2px,0) rotate(1deg)}}@keyframes cvModuleCell{0%,100%{transform:translateY(0)}50%{transform:translateY(-3px);border-color:color-mix(in srgb,var(--cv-accent) 34%,transparent)}}@keyframes cvModuleShimmer{45%,100%{transform:translateX(120%)}}@keyframes cvModulePulse{70%,100%{box-shadow:0 0 0 8px color-mix(in srgb,var(--cv-accent) 0%,transparent)}}@keyframes cvImagineSkeletonFloat{0%,100%{transform:translateY(0)}50%{transform:translateY(-2px)}}@keyframes cvImagineSkeletonShimmer{45%,100%{transform:translateX(120%)}}@keyframes cvImageTileShimmer{0%{background-position:120% 0}100%{background-position:-120% 0}}
+    @media(max-width:760px){.cv-module-loader{padding:24px 20px}.cv-module-loader-head{grid-template-columns:50px minmax(0,1fr);gap:13px}.cv-module-loader-mark{width:50px;height:50px}.cv-module-loader-grid{gap:8px}.cv-module-loader-cell{min-height:92px}.cv-module-loader-cell:nth-child(3){display:none}.cv-imagine-skeleton-gallery{grid-template-columns:repeat(6,minmax(0,1fr));grid-auto-rows:72px;gap:5px}.cv-imagine-skeleton{grid-column:span 3}.cv-imagine-skeleton.wide{grid-column:span 4}.cv-imagine-skeleton.portrait{grid-column:span 2;grid-row:span 3}}
+    @media(prefers-reduced-motion:reduce){.cv-module-loader,.cv-module-loader:before,.cv-module-loader-mark:before,.cv-module-loader-mark span,.cv-module-loader-cell,.cv-module-loader-cell:before,.cv-module-loader-status:before,.cv-imagine-skeleton,.cv-imagine-skeleton:before,.cv-imagine-tile.is-image-loading:before{animation:none!important}}
+    @media(prefers-reduced-transparency:reduce){.cv-module-loader,.cv-module-loader-mark,.cv-module-loader-cell,.cv-imagine-skeleton{background:var(--cv-surface);backdrop-filter:none;-webkit-backdrop-filter:none}}
   `;
 
   const esc = (value) => String(value ?? '').replace(/[&<>"']/g, (char) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[char]));
+  const tr = (value) => {
+    const text = String(value ?? '');
+    return window.filmscriptLanguage?.get?.() === 'es'
+      ? (window.filmscriptLanguage?.t?.(text, 'es') || text)
+      : text;
+  };
   const num = (value, fallback = 0) => Number.isFinite(Number(value)) ? Number(value) : fallback;
   const money = (value) => `$${num(value).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
   const today = () => new Date().toISOString().slice(0, 10);
@@ -164,6 +181,8 @@
       this._imagineEntrancePending = true;
       this._imagineRecoveryTimers = new Map();
       this._imagineLayoutTimer = 0;
+      this._loadRetryTimer = 0;
+      this._loadRetryCount = 0;
       this._onImagineViewportResize = () => {
         clearTimeout(this._imagineLayoutTimer);
         this._imagineLayoutTimer = setTimeout(() => {
@@ -213,6 +232,8 @@
       clearTimeout(this._toastTimer);
       clearTimeout(this._textHistoryTimer);
       clearTimeout(this._imagineLayoutTimer);
+      clearTimeout(this._loadRetryTimer);
+      this._loadRetryTimer = 0;
       window.removeEventListener('resize', this._onImagineViewportResize);
       window.removeEventListener('filmscript:canvas.drag', this._canvasDragHandler);
       window.removeEventListener('filmscript:content.operation', this._canvasOperationHandler);
@@ -221,7 +242,7 @@
     }
 
     attributeChangedCallback(name, oldValue, newValue) {
-      if (name === 'script-id' && oldValue && newValue && oldValue !== newValue && this.isConnected) {
+      if (name === 'script-id' && newValue && oldValue !== newValue && this.isConnected) {
         // A request belongs to the screenplay that started it. Do not let an
         // in-flight frame leave a visual placeholder in the next screenplay.
         this.state.imaginePendingJobs = [];
@@ -239,8 +260,44 @@
       }
     }
 
-    async load() {
-      if (!this.scriptId || !window.filmscriptCanvas) return;
+    _resetLoadRetry() {
+      clearTimeout(this._loadRetryTimer);
+      this._loadRetryTimer = 0;
+      this._loadRetryCount = 0;
+    }
+
+    _retryLoadWhenClientReady() {
+      clearTimeout(this._loadRetryTimer);
+      if (this._loadRetryCount >= 20) {
+        this._loadRetryTimer = 0;
+        this.state.loading = false;
+        this.state.error = 'Canvas is not available right now.';
+        this.render();
+        return;
+      }
+      this._loadRetryCount += 1;
+      this._loadRetryTimer = window.setTimeout(() => {
+        this._loadRetryTimer = 0;
+        if (this.isConnected) this.load({ preserveClientRetry: true });
+      }, 250);
+    }
+
+    async load({ preserveClientRetry = false } = {}) {
+      if (!preserveClientRetry) this._resetLoadRetry();
+      if (!this.scriptId) {
+        this.state.loading = false;
+        this.state.error = 'Canvas is not available for this screenplay.';
+        this.render();
+        return;
+      }
+      if (!window.filmscriptCanvas) {
+        this.state.loading = true;
+        this.state.error = '';
+        this.render();
+        this._retryLoadWhenClientReady();
+        return;
+      }
+      this._resetLoadRetry();
       this.state.loading = true;
       this.render();
       try {
@@ -487,7 +544,7 @@
       }
       const asset = entry.asset;
       const dimensions = num(asset.width) > 0 && num(asset.height) > 0 ? `${Math.round(num(asset.width))} × ${Math.round(num(asset.height))}` : '';
-      return `<button class="cv-imagine-tile ${vertical ? 'vertical' : 'horizontal'}" style="${style}" data-imagine-entry="asset:${esc(asset.id)}" data-action="imagine-preview" data-id="${asset.id}" title="${esc(dimensions ? `View generated image, ${dimensions}` : 'View generated image')}"><img loading="lazy" decoding="async" src="${esc(this.assetUrl(asset.id))}" alt="${esc(asset.prompt || 'Generated visual')}"></button>`;
+      return `<button class="cv-imagine-tile is-image-loading ${vertical ? 'vertical' : 'horizontal'}" style="${style}" data-imagine-entry="asset:${esc(asset.id)}" data-action="imagine-preview" data-id="${asset.id}" title="${esc(dimensions ? `View generated image, ${dimensions}` : 'View generated image')}"><img loading="lazy" decoding="async" src="${esc(this.assetUrl(asset.id))}" alt="${esc(asset.prompt || 'Generated visual')}"></button>`;
     }
 
     entitlementEnabled(value) { return value === true || value?.allowed === true; }
@@ -642,8 +699,29 @@
       this.render();
     }
 
+    _isImagineLoadingTarget() {
+      return this.getAttribute('initial-view') === 'imagine'
+        || this.state.view === 'imagine'
+        || this.state.workspace?.accessScope === 'imagine';
+    }
+
+    _renderCanvasLoading() {
+      const title = esc(tr('Loading Canvas'));
+      const copy = esc(tr('Connecting your visual references and boards.'));
+      return `<div class="cv-module-loading-shell" aria-busy="true"><section class="cv-module-loader cv-module-loader--canvas" role="status" aria-live="polite" aria-atomic="true"><div class="cv-module-loader-head"><div class="cv-module-loader-mark" aria-hidden="true"><span></span><span></span><span></span></div><div><span class="cv-module-loader-kicker">FilmScript · ${esc(tr('Canvas'))}</span><h2>${title}</h2><p>${copy}</p></div></div><div class="cv-module-loader-grid" aria-hidden="true"><div class="cv-module-loader-cell" style="--loader-cell:0"><i></i><b></b><span></span></div><div class="cv-module-loader-cell" style="--loader-cell:1"><i></i><b></b><span></span></div><div class="cv-module-loader-cell" style="--loader-cell:2"><i></i><b></b><span></span></div></div><div class="cv-module-loader-status">${title}</div></section></div>`;
+    }
+
+    _renderImagineLoading() {
+      const label = esc(tr('Loading your Imagine gallery'));
+      const tiles = [
+        'wide', 'square', 'portrait', 'wide', 'portrait', 'square',
+        'wide', 'square', 'portrait', 'wide', 'square', 'portrait',
+      ].map((shape, index) => `<div class="cv-imagine-skeleton ${shape}" style="--skeleton-index:${index}" aria-hidden="true"></div>`).join('');
+      return `<section class="cv-imagine-loading-stage" role="status" aria-live="polite" aria-atomic="true" aria-busy="true" aria-label="${label}"><span class="cv-visually-hidden">${label}. ${esc(tr('Frames will appear as soon as they are ready.'))}</span><div class="cv-imagine-skeleton-gallery">${tiles}</div></section>`;
+    }
+
     render() {
-      if (this._canPatchBoard()) {
+      if (!this.state.loading && this._canPatchBoard()) {
         this._patchBoard();
         return;
       }
@@ -651,11 +729,12 @@
       const previousImagineTiles = animateImagineReflow ? this._captureImagineTileRects() : null;
       this._imagineAnimateNextRender = false;
       const content = this.state.loading
-        ? `<div class="cv-loading"><div class="cv-load-stack"><span></span>Loading Canvas…</div></div>`
+        ? (this._isImagineLoadingTarget() ? this._renderImagineLoading() : this._renderCanvasLoading())
         : this.state.error
           ? `<div class="cv-empty"><div><h3>Canvas could not open</h3><p>${esc(this.state.error)}</p><button class="cv-btn" data-action="retry">Try again</button></div></div>`
           : this._renderView();
-      this.shadowRoot.innerHTML = `<style>${STYLE}</style><div class="cv-root">${content}</div>${this._renderOverlays()}${this.state.toast ? `<div class="cv-toast" role="status">${esc(this.state.toast)}</div>` : ''}`;
+      const overlays = this.state.loading ? '' : this._renderOverlays();
+      this.shadowRoot.innerHTML = `<style>${STYLE}</style><div class="cv-root">${content}</div>${overlays}${this.state.toast ? `<div class="cv-toast" role="status">${esc(this.state.toast)}</div>` : ''}`;
       if (this.state.view === 'board') requestAnimationFrame(() => this._positionBoardLayer());
       if (animateImagineReflow) requestAnimationFrame(() => this._animateImagineReflow(previousImagineTiles));
     }
@@ -945,6 +1024,12 @@
 
     _onImageError(event) {
       const image = event.target;
+      if (image instanceof HTMLImageElement && image.matches('.cv-imagine-tile img')) {
+        const tile = image.closest('.cv-imagine-tile');
+        tile?.classList.remove('is-image-loading');
+        tile?.classList.add('is-image-error');
+        return;
+      }
       if (!(image instanceof HTMLImageElement) || !image.matches('img[data-vault-image]')) return;
       const wrapper = image.closest('.cv-item-image');
       if (!image.dataset.retried) {
@@ -963,9 +1048,11 @@
       const image = event.target;
       if (!(image instanceof HTMLImageElement) || !image.matches('.cv-imagine-tile img')) return;
       const tile = image.closest('.cv-imagine-tile');
+      if (!tile) return;
+      tile.classList.remove('is-image-loading', 'is-image-error');
       const width = Number(image.naturalWidth);
       const height = Number(image.naturalHeight);
-      if (!tile || !Number.isFinite(width) || !Number.isFinite(height) || width <= 0 || height <= 0) return;
+      if (!Number.isFinite(width) || !Number.isFinite(height) || width <= 0 || height <= 0) return;
       // The asset metadata is authoritative for newly generated images, but
       // this makes legacy or externally generated files truthful as soon as
       // the browser knows their intrinsic dimensions, without a full rerender.

@@ -154,12 +154,14 @@ export function runPlatformMigrations() {
     [15, "015_project_messages.sql"],
     [16, "016_release_notice.sql"],
     [17, "017_user_interface_language.sql"],
+    [18, "018_account_person_name.sql"],
   ];
   for (const [version, filename] of migrations) {
     if (current >= version
       && (version !== 10 || hasColumn("users", "theme"))
       && (version !== 11 || hasColumn("project_memberships", "department_ids_json"))
-      && (version !== 17 || hasColumn("users", "interface_language"))) continue;
+      && (version !== 17 || hasColumn("users", "interface_language"))
+      && (version !== 18 || (hasColumn("users", "first_name") && hasColumn("users", "last_name")))) continue;
     const sql = fs.readFileSync(path.join(ROOT, "migrations", filename), "utf8");
     const statements = sql.split(/;\s*(?:\n|$)/).map((statement) => statement.trim()).filter(Boolean);
     db.transaction(() => {

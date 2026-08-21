@@ -55,6 +55,8 @@ sqlite.exec(`
     google_sub TEXT UNIQUE,
     email TEXT,
     name TEXT,
+    first_name TEXT,
+    last_name TEXT,
     picture_url TEXT,
     lumiere_preferences_json TEXT NOT NULL DEFAULT '{}',
     gender TEXT,
@@ -218,6 +220,12 @@ if (!userColumns.has("birth_date")) {
 if (!userColumns.has("profile_completed_at")) {
   sqlite.exec("ALTER TABLE users ADD COLUMN profile_completed_at TEXT");
 }
+if (!userColumns.has("first_name")) {
+  sqlite.exec("ALTER TABLE users ADD COLUMN first_name TEXT");
+}
+if (!userColumns.has("last_name")) {
+  sqlite.exec("ALTER TABLE users ADD COLUMN last_name TEXT");
+}
 const checkoutColumns = new Set(sqlite.prepare("PRAGMA table_info(checkouts)").all().map((column) => column.name));
 if (!checkoutColumns.has("product_id")) {
   sqlite.exec("ALTER TABLE checkouts ADD COLUMN product_id TEXT");
@@ -242,6 +250,20 @@ const parseJson = (value, fallback) => {
 const stringify = (value) => JSON.stringify(value ?? null);
 const randomId = (prefix, bytes = 16) => `${prefix}_${crypto.randomBytes(bytes).toString("hex")}`;
 
+function splitPersonName(value) {
+  const parts = String(value || "").replace(/\s+/g, " ").trim().split(" ").filter(Boolean);
+  return {
+    firstName: parts[0] || null,
+    lastName: parts.length >= 2 ? parts.slice(1).join(" ") : null,
+  };
+}
+
+function isEmailDerivedName(name, email) {
+  const normalizedName = String(name || "").replace(/\s+/g, " ").trim().toLowerCase();
+  const emailPrefix = String(email || "").trim().split("@")[0]?.toLowerCase() || "";
+  return Boolean(normalizedName && emailPrefix && normalizedName === emailPrefix);
+}
+
 function legacyJson(filename, fallback) {
   try { return JSON.parse(fs.readFileSync(path.join(ROOT, filename), "utf8")); }
   catch { return fallback; }
@@ -250,13 +272,16 @@ function legacyJson(filename, fallback) {
 function ensureUserRow(id, user = {}) {
   if (!id) return null;
   const timestamp = user.updatedAt || user.createdAt || nowIso();
+  const parsedName = splitPersonName(user.name);
   sqlite.prepare(`
-    INSERT INTO users (id, google_sub, email, name, picture_url, lumiere_preferences_json, gender, birth_date, profile_completed_at, email_verified, created_at, updated_at)
-    VALUES (@id, @googleSub, @email, @name, @picture, @lumierePreferences, @gender, @birthDate, @profileCompletedAt, @emailVerified, @createdAt, @updatedAt)
+    INSERT INTO users (id, google_sub, email, name, first_name, last_name, picture_url, lumiere_preferences_json, gender, birth_date, profile_completed_at, email_verified, created_at, updated_at)
+    VALUES (@id, @googleSub, @email, @name, @firstName, @lastName, @picture, @lumierePreferences, @gender, @birthDate, @profileCompletedAt, @emailVerified, @createdAt, @updatedAt)
     ON CONFLICT(id) DO UPDATE SET
       google_sub = COALESCE(excluded.google_sub, users.google_sub),
       email = COALESCE(excluded.email, users.email),
       name = COALESCE(excluded.name, users.name),
+      first_name = COALESCE(excluded.first_name, users.first_name),
+      last_name = COALESCE(excluded.last_name, users.last_name),
       picture_url = COALESCE(excluded.picture_url, users.picture_url),
       lumiere_preferences_json = CASE WHEN excluded.lumiere_preferences_json = '{}' THEN users.lumiere_preferences_json ELSE excluded.lumiere_preferences_json END,
       gender = COALESCE(excluded.gender, users.gender),
@@ -269,6 +294,8 @@ function ensureUserRow(id, user = {}) {
     googleSub: user.googleSub || null,
     email: user.email || null,
     name: user.name || null,
+    firstName: user.firstName || parsedName.firstName,
+    lastName: user.lastName || parsedName.lastName,
     picture: user.picture || user.pictureUrl || null,
     lumierePreferences: user.lumierePreferences ? stringify(user.lumierePreferences) : "{}",
     gender: user.gender || null,
@@ -451,17 +478,28 @@ function rowToUser(row) {
   const interfaceLanguage = row.interface_language === "en" || row.interface_language === "es"
     ? row.interface_language
     : null;
+  const storedName = String(row.name || "").replace(/\s+/g, " ").trim() || null;
+  const emailDerivedName = isEmailDerivedName(storedName, row.email);
+  const safeStoredName = emailDerivedName ? null : storedName;
+  const parsedName = splitPersonName(safeStoredName);
+  const firstName = String((emailDerivedName ? null : row.first_name) || parsedName.firstName || "").trim() || null;
+  const lastName = String((emailDerivedName ? null : row.last_name) || parsedName.lastName || "").trim() || null;
+  const fullName = firstName && lastName ? `${firstName} ${lastName}` : safeStoredName;
   return {
     id: row.id,
     googleSub: row.google_sub || null,
     email: row.email || null,
-    name: row.name || null,
+    // Keep the long-standing `name` response for older clients, but derive it
+    // from the authoritative person fields whenever they are complete.
+    name: fullName || null,
+    firstName,
+    lastName,
     picture: row.picture_url || null,
     lumierePreferences: parseJson(row.lumiere_preferences_json, {}),
     gender,
     birthDate,
     profileCompletedAt: row.profile_completed_at || null,
-    profileComplete: Boolean(row.profile_completed_at || (gender && birthDate)),
+    profileComplete: Boolean(firstName && lastName && (row.profile_completed_at || (gender && birthDate))),
     interfaceLanguage,
     emailVerified: !!row.email_verified,
     createdAt: row.created_at,
@@ -895,10 +933,31 @@ function connectGoogleIdentity(sessionId, profile) {
       userId = randomId("usr", 16);
       ensureUserRow(userId, { createdAt: nowIso() });
     }
+    const googleName = String(profile.name || "").replace(/\s+/g, " ").trim() || null;
+    const parsedGoogleName = splitPersonName(googleName);
+    const googleFirstName = String(profile.given_name || parsedGoogleName.firstName || "").trim() || null;
+    const googleLastName = String(profile.family_name || parsedGoogleName.lastName || "").trim() || null;
+    const emailPrefix = String(profile.email || "").trim().split("@")[0]?.toLowerCase() || null;
     sqlite.prepare(`
-      UPDATE users SET google_sub = ?, email = ?, name = ?, picture_url = ?,
-        email_verified = ?, updated_at = ? WHERE id = ?
-    `).run(googleSub, profile.email || null, profile.name || profile.email?.split("@")[0] || "Writer",
+      UPDATE users SET google_sub = ?, email = ?,
+        name = CASE
+          WHEN name IS NULL OR TRIM(name) = '' OR LOWER(TRIM(name)) = ?
+          THEN COALESCE(?, name)
+          ELSE name
+        END,
+        first_name = CASE
+          WHEN first_name IS NULL OR TRIM(first_name) = '' OR LOWER(TRIM(name)) = ?
+          THEN COALESCE(?, first_name)
+          ELSE first_name
+        END,
+        last_name = CASE
+          WHEN last_name IS NULL OR TRIM(last_name) = '' OR LOWER(TRIM(name)) = ?
+          THEN COALESCE(?, last_name)
+          ELSE last_name
+        END,
+        picture_url = ?, email_verified = ?, updated_at = ? WHERE id = ?
+    `).run(googleSub, profile.email || null, emailPrefix, googleName,
+      emailPrefix, googleFirstName, emailPrefix, googleLastName,
       profile.picture || null, profile.email_verified === false ? 0 : 1, nowIso(), userId);
     sqlite.prepare("UPDATE sessions SET user_id = ?, auth_method = 'google', expires_at = ?, last_seen_at = ? WHERE id = ?")
       .run(userId, futureIso(30), nowIso(), sessionId);
@@ -906,8 +965,12 @@ function connectGoogleIdentity(sessionId, profile) {
   })();
 }
 
-function updateUserName(userId, name) {
-  sqlite.prepare("UPDATE users SET name = ?, updated_at = ? WHERE id = ?").run(name, nowIso(), userId);
+function updateUserName(userId, name, identity = {}) {
+  const parsedName = splitPersonName(name);
+  const firstName = String(identity.firstName || parsedName.firstName || "").replace(/\s+/g, " ").trim() || null;
+  const lastName = String(identity.lastName || parsedName.lastName || "").replace(/\s+/g, " ").trim() || null;
+  sqlite.prepare("UPDATE users SET name = ?, first_name = ?, last_name = ?, updated_at = ? WHERE id = ?")
+    .run(name, firstName, lastName, nowIso(), userId);
   return getUser(userId);
 }
 

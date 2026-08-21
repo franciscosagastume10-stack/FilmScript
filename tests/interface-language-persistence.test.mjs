@@ -58,7 +58,7 @@ async function stopServer(child) {
   await exited;
 }
 
-test("migration 017 restores the account language column on an older database", async (t) => {
+test("account migrations restore language and person-name columns on an older database", async (t) => {
   const dataDir = await fs.mkdtemp(path.join(os.tmpdir(), "filmscript-language-migration-"));
   const databasePath = path.join(dataDir, "filmscript.sqlite");
   t.after(() => fs.rm(dataDir, { recursive: true, force: true }));
@@ -86,8 +86,11 @@ test("migration 017 restores the account language column on an older database", 
 
   const db = new Database(databasePath, { readonly: true });
   t.after(() => db.close());
-  assert.ok(db.prepare("PRAGMA table_info(users)").all().some((column) => column.name === "interface_language"));
-  assert.equal(db.prepare("SELECT value FROM schema_meta WHERE key = 'schema_version'").get().value, "17");
+  const userColumns = new Set(db.prepare("PRAGMA table_info(users)").all().map((column) => column.name));
+  assert.equal(userColumns.has("interface_language"), true);
+  assert.equal(userColumns.has("first_name"), true);
+  assert.equal(userColumns.has("last_name"), true);
+  assert.equal(db.prepare("SELECT value FROM schema_meta WHERE key = 'schema_version'").get().value, "18");
 });
 
 test("interface language is isolated per account, validated, and survives restart", async (t) => {

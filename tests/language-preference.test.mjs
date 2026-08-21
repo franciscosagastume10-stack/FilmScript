@@ -120,6 +120,13 @@ test('Spanish profile theme labels use night and day language', () => {
 
 test('Spanish Scripts chrome localizes accessible labels and slow-load recovery copy', () => {
   const spanish = languageApi('es').t;
+  const english = languageApi('en').t;
+  assert.equal(spanish('Scripts'), 'Guiones');
+  assert.equal(spanish('Imagine'), 'Imagine');
+  assert.equal(spanish('Canvas'), 'Canvas');
+  assert.equal(english('Scripts'), 'Scripts');
+  assert.equal(english('Imagine'), 'Imagine');
+  assert.equal(english('Canvas'), 'Canvas');
   assert.equal(spanish('FilmScript, go to scripts'), 'FilmScript, ir a guiones');
   assert.equal(spanish('Account menu'), 'Menú de cuenta');
   assert.equal(
@@ -128,7 +135,7 @@ test('Spanish Scripts chrome localizes accessible labels and slow-load recovery 
   );
 });
 
-test('Spanish afternoon greetings use natural, playful copy', () => {
+test('Scripts greets the account by first name without waiting for screenplay data', () => {
   const app = read('App.dc.html');
   const language = read('language-preference.js');
   for (const copy of [
@@ -140,6 +147,11 @@ test('Spanish afternoon greetings use natural, playful copy', () => {
   }
   assert.doesNotMatch(app, /Una hora perfecta para los segundos actos/);
   assert.doesNotMatch(app, /La luz se vuelve dorada\. Un buen momento/);
+  assert.match(app, /named\('Buenas tardes', 'Good afternoon'\)/);
+  assert.match(app, /filmscript_account_first_name/);
+  assert.match(app, /this\._typeGreeting\(\);/);
+  assert.doesNotMatch(app, /Buenos (?:días|tardes|noches), guionista/);
+  assert.doesNotMatch(app, /Good (?:morning|afternoon|evening), writer/);
 });
 
 test('every user-facing FilmScript page loads the shared language preference', () => {
@@ -157,7 +169,7 @@ test('Shared Project and Google authentication routes have complete Spanish UI c
   const english = languageApi('en').t;
 
   for (const page of [shared, authComplete, authGoogle]) {
-    assert.match(page, /language-preference\.js\?v=20260820-i18n3/);
+    assert.match(page, /language-preference\.js\?v=20260821-personal-loading1/);
   }
 
   for (const [source, translated] of [
@@ -233,7 +245,7 @@ test('People & Access, invitations, and guest access preserve a complete Spanish
   assert.match(client, /Invite a collaborator/);
 
   for (const page of [invitation, guest]) {
-    assert.match(page, /language-preference\.js\?v=20260820-i18n3/);
+    assert.match(page, /language-preference\.js\?v=20260821-personal-loading1/);
   }
   assert.match(invitationAccess, /document\.title = `\$\{localize\('Project invitation'\)\} \| FilmScript`/);
   assert.match(guestAccess, /document\.title = `\$\{localize\('Guest access'\)\} \| FilmScript`/);

@@ -220,7 +220,7 @@ class FilmScriptBreakdown extends HTMLElement {
       blocked: this.t('Blocked', 'Bloqueado'),
     }[status] || this.t('To do', 'Por hacer');
     const links = [
-      ['budget', this.t('Budget', 'Presupuesto')], ['calendar', this.t('Calendar', 'Calendario')], ['canvas', this.t('Canvas', 'Lienzo')],
+      ['budget', this.t('Budget', 'Presupuesto')], ['calendar', this.t('Calendar', 'Calendario')], ['canvas', this.t('Canvas', 'Canvas')],
     ].map(([view, label]) => `<a href="Editor%20v5.dc.html?script=${encodeURIComponent(this.scriptId)}&view=${view}">${label}</a>`).join('');
     if (element._note) return `<article class="element is-note" style="--tone:${tone}"><div class="element-main"><div class="element-top"><strong data-project-content>${escapeHtml(element.name)}</strong></div></div></article>`;
     if (isEditing) return `<article class="element is-editing" style="--tone:${tone}" data-element-id="${escapeHtml(element.id)}" data-scene-id="${escapeHtml(info.id)}">

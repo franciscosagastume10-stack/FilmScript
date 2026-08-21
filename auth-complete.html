@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="referrer" content="no-referrer">
   <title>Finishing sign in · FilmScript</title>
-  <script src="./language-preference.js?v=20260820-i18n3"></script>
+  <script src="./language-preference.js?v=20260821-personal-loading1"></script>
   <style>
     :root { color-scheme: light; background:#f5f0e8; color:#2c2c2a; font-family:Inter,ui-sans-serif,system-ui,sans-serif; }
     body { min-height:100vh; margin:0; display:grid; place-items:center; }
@@ -28,7 +28,15 @@
       const handoff = params.get('handoff');
       const message = document.getElementById('message');
       const retry = document.getElementById('retry');
-      const fail = () => { message.textContent = ui('We could not finish your sign in. Please try again.'); retry.hidden = false; document.querySelector('i').style.display = 'none'; };
+      const fail = () => {
+        try {
+          localStorage.removeItem('filmscript_account_first_name');
+          sessionStorage.removeItem('filmscript_auth_handoff_identity_v1');
+        } catch {}
+        message.textContent = ui('We could not finish your sign in. Please try again.');
+        retry.hidden = false;
+        document.querySelector('i').style.display = 'none';
+      };
       document.title = ui('Finishing sign in · FilmScript');
       document.querySelector('h1').textContent = ui('Opening your scripts…');
       message.textContent = ui('Securing your FilmScript session.');
@@ -40,6 +48,22 @@
         .then(async (response) => ({ response, data:await response.json().catch(() => ({})) }))
         .then(({ response, data }) => {
           if (!response.ok || !data.ok) return fail();
+          try {
+            // This is deliberately session-scoped and single-use. App.dc.html
+            // consumes it before its first paint, then verifies the user id
+            // against /api/me. A previous account name is never a global cache.
+            localStorage.removeItem('filmscript_account_first_name');
+            sessionStorage.removeItem('filmscript_auth_handoff_identity_v1');
+            const userId = String(data.userId || '').trim();
+            const firstName = String(data.firstName || '').replace(/\s+/g, ' ').trim();
+            if (userId && firstName) {
+              sessionStorage.setItem('filmscript_auth_handoff_identity_v1', JSON.stringify({
+                userId,
+                firstName,
+                issuedAt: Date.now(),
+              }));
+            }
+          } catch {}
           location.replace(data.returnTo || '/App.dc.html');
         })
         .catch(fail);

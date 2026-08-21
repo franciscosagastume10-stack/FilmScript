@@ -91,7 +91,7 @@ test('public pages load localization and billing errors cannot leak raw English 
   const subscription = read('Subscription.dc.html');
 
   for (const [name, source] of [['Features', features], ['Pricing', pricing], ['Subscription', subscription]]) {
-    assert.match(source, /language-preference\.js\?v=20260820-i18n3/, `${name} localization loader`);
+    assert.match(source, /language-preference\.js\?v=20260821-personal-loading1/, `${name} localization loader`);
   }
   assert.match(pricing, /<title>Pricing · FilmScript<\/title>/);
   assert.match(features, /FilmScript no pudo abrir el pago seguro\. Inténtalo de nuevo\./);

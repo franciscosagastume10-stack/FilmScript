@@ -58,9 +58,8 @@
     credits: () => api('/api/credits'),
     updateProfile: (nameOrPayload) => {
       const payload = typeof nameOrPayload === 'string' ? { name: nameOrPayload } : { ...(nameOrPayload || {}) };
-      // Profile onboarding only edits gender and birthday. Ignore a blank name
-      // accidentally carried by an older account form instead of surfacing a
-      // name validation error for a field the user cannot see.
+      // Ignore a blank combined name accidentally carried by an older account
+      // form. Current onboarding sends explicit first and last names.
       if (Object.prototype.hasOwnProperty.call(payload, 'name') && !String(payload.name || '').trim()) delete payload.name;
       return api('/api/me', { method: 'PATCH', body: JSON.stringify(payload) });
     },
@@ -120,7 +119,17 @@
     }),
     manageSubscription: () => api('/api/subscription/manage'),
     cancel: (mode = 'recurrente') => api('/api/subscription/cancel', { method: 'POST', body: JSON.stringify({ confirm: true, mode }) }),
-    logout: () => api('/auth/logout', { method: 'POST', body: '{}' }),
+    logout: async () => {
+      try { return await api('/auth/logout', { method: 'POST', body: '{}' }); }
+      finally {
+        // A different account must never see the previous person's greeting
+        // while its authenticated profile is being hydrated.
+        try {
+          localStorage.removeItem('filmscript_account_first_name');
+          sessionStorage.removeItem('filmscript_auth_handoff_identity_v1');
+        } catch {}
+      }
+    },
     googleSignInUrl: (returnTo = '/App.dc.html') => `${resolve('/auth/google')}?returnTo=${encodeURIComponent(returnTo)}`,
   };
 })();

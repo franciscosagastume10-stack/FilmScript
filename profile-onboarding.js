@@ -28,14 +28,28 @@
   };
   const sessionKey = (prefix, id) => `filmscript_${prefix}_${id || 'account'}`;
   const profileCompleteKey = (id) => sessionKey('profile_completed', id);
-  const accountName = () => state.account?.name || state.account?.email?.split('@')[0] || 'filmmaker';
+  const escapeHtml = (value) => String(value ?? '').replace(/[&<>"']/g, (character) => ({ '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;' })[character]);
+  const splitName = (value) => {
+    const parts = String(value || '').replace(/\s+/g, ' ').trim().split(' ').filter(Boolean);
+    return { firstName: parts[0] || '', lastName: parts.length >= 2 ? parts.slice(1).join(' ') : '' };
+  };
+  const accountIdentity = () => {
+    const fallback = splitName(state.account?.name);
+    return {
+      firstName: String(state.account?.firstName || state.account?.profile?.firstName || fallback.firstName || '').trim(),
+      lastName: String(state.account?.lastName || state.account?.profile?.lastName || fallback.lastName || '').trim(),
+    };
+  };
+  const accountName = () => accountIdentity().firstName || 'FilmScript';
   const chosenLanguage = () => window.filmscriptLanguage?.get?.() === 'es' ? 'es' : 'en';
   const hasChosenLanguage = () => Boolean(window.filmscriptLanguage?.hasStoredLanguage?.());
   const profileCopy = () => {
     if (!hasChosenLanguage()) return {
       kicker: 'WELCOME · BIENVENIDO',
       title: 'A little about you / Un poco sobre ti',
-      intro: 'These private details help FilmScript address you personally. After this, you will choose the language for the interface. / Estos datos privados ayudan a FilmScript a dirigirse a ti. Después elegirás el idioma de la interfaz.',
+      intro: 'Add your name so FilmScript can address you personally. Your email comes securely from Google. After this, you will choose the interface language. / Agrega tu nombre para que FilmScript pueda dirigirse a ti. Tu correo llega de forma segura desde Google. Después elegirás el idioma de la interfaz.',
+      firstNameLabel: 'First name / Nombre', lastNameLabel: 'Last name / Apellido', emailLabel: 'Email / Correo',
+      firstNameError: 'Add your first name. / Agrega tu nombre.', lastNameError: 'Add your last name. / Agrega tu apellido.',
       genderLabel: 'How should we refer to you? / ¿Cómo debemos referirnos a ti?',
       choose: 'Choose an option… / Elige una opción…',
       man: 'Man / Hombre',
@@ -50,13 +64,15 @@
       saveError: 'Could not save your profile. Try again. / No se pudo guardar tu perfil. Inténtalo de nuevo.',
     };
     if (chosenLanguage() === 'es') return {
-      kicker: 'HAZLO TUYO', title: 'Un poco sobre ti', intro: 'Ayúdanos a hacer FilmScript más personal. Estos datos son privados para tu cuenta y completamente opcionales.',
+      kicker: 'HAZLO TUYO', title: 'Un poco sobre ti', intro: 'Confirma tu nombre para personalizar FilmScript. Tu correo viene de Google y no se puede modificar aquí.',
+      firstNameLabel: 'Nombre', lastNameLabel: 'Apellido', emailLabel: 'Correo', firstNameError: 'Agrega tu nombre.', lastNameError: 'Agrega tu apellido.',
       genderLabel: '¿Cómo debemos referirnos a ti?', choose: 'Elige una opción…', man: 'Hombre', woman: 'Mujer', unspecified: 'Prefiero no decirlo',
       birthdayLabel: '¿Cuándo es tu cumpleaños?', birthdayHint: 'Usaremos la fecha únicamente para enviarte una pequeña felicitación dentro de FilmScript.',
       skip: 'Ahora no', submit: 'Guardar perfil', genderError: 'Elige una opción o usa “Ahora no”.', birthdayError: 'Agrega tu cumpleaños o usa “Ahora no”.', saveError: 'No se pudo guardar tu perfil. Inténtalo de nuevo.',
     };
     return {
-      kicker: 'MAKE IT YOURS', title: 'A little about you', intro: 'Help us make FilmScript feel more personal. These details stay private to your account and are completely optional.',
+      kicker: 'MAKE IT YOURS', title: 'A little about you', intro: 'Confirm your name to personalize FilmScript. Your email comes from Google and cannot be changed here.',
+      firstNameLabel: 'First name', lastNameLabel: 'Last name', emailLabel: 'Email', firstNameError: 'Add your first name.', lastNameError: 'Add your last name.',
       genderLabel: 'How should we refer to you?', choose: 'Choose an option…', man: 'Man', woman: 'Woman', unspecified: 'Prefer not to say',
       birthdayLabel: 'When is your birthday?', birthdayHint: 'We use the date only to send you a small birthday note inside FilmScript.',
       skip: 'Not now', submit: 'Save profile', genderError: 'Choose an option, or use “Not now”.', birthdayError: 'Add your birthday, or use “Not now”.', saveError: 'Could not save your profile. Try again.',
@@ -97,6 +113,7 @@
       .fs-profile-onboarding__title { margin: 8px 0 0; font-size: 26px; line-height: 1.05; letter-spacing: -.65px; }
       .fs-profile-onboarding__copy { margin: 11px 0 22px; color: var(--muted, #888780); font-size: 13px; line-height: 1.55; }
       .fs-profile-onboarding__field { display: grid; gap: 7px; margin-top: 15px; }
+      .fs-profile-onboarding__identity { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
       .fs-profile-onboarding__label { color: var(--muted, #888780); font-size: 11px; font-weight: 700; letter-spacing: .3px; }
       .fs-profile-onboarding__control { width: 100%; min-height: 46px; box-sizing: border-box; padding: 11px 13px; color: var(--ink, #2c2c2a); background: color-mix(in srgb, var(--surface, #fffef9) 62%, transparent); border: 1px solid color-mix(in srgb, var(--ink, #2c2c2a) 17%, transparent); border-radius: 14px; font: inherit; font-size: 13px; outline: none; backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px); transition: border-color .14s ease, box-shadow .14s ease, transform .14s cubic-bezier(.2,.8,.2,1), background-color .14s ease; }
       .fs-profile-onboarding__control:focus { border-color: var(--accent, #ba7517); box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent, #ba7517) 15%, transparent); transform: translateY(-1px); }
@@ -114,7 +131,7 @@
       @keyframes fs-profile-fade { from { opacity: 0 } to { opacity: 1 } }
       @keyframes fs-profile-rise { from { opacity: 0; transform: translateY(10px) scale(.985) } to { opacity: 1; transform: translateY(0) scale(1) } }
       @keyframes fs-profile-toast { from { opacity: 0; transform: translateY(12px) rotate(-.4deg) } to { opacity: 1; transform: translateY(0) rotate(0) } }
-      @media (max-width: 520px) { .fs-profile-onboarding { padding: 12px; align-items: end; } .fs-profile-onboarding__sheet { max-height: calc(100dvh - 24px); padding: 25px 20px calc(22px + env(safe-area-inset-bottom)); border-radius: 24px 24px 20px 20px; } .fs-profile-onboarding__actions { display: grid; grid-template-columns: 1fr 1fr; } .fs-profile-onboarding__button { width: 100%; } }
+      @media (max-width: 520px) { .fs-profile-onboarding { padding: 12px; align-items: end; } .fs-profile-onboarding__sheet { max-height: calc(100dvh - 24px); padding: 25px 20px calc(22px + env(safe-area-inset-bottom)); border-radius: 24px 24px 20px 20px; } .fs-profile-onboarding__identity { grid-template-columns: 1fr; gap: 0; } .fs-profile-onboarding__actions { display: grid; grid-template-columns: 1fr 1fr; } .fs-profile-onboarding__button { width: 100%; } }
       @media (prefers-reduced-transparency: reduce) { .fs-profile-onboarding { background: rgba(24,24,22,.74); backdrop-filter: none; -webkit-backdrop-filter: none; } .fs-profile-onboarding__sheet, .fs-profile-onboarding__control, .fs-profile-onboarding__button { background: var(--surface, #fffef9); backdrop-filter: none; -webkit-backdrop-filter: none; } .fs-profile-onboarding__button--primary { background: var(--accent, #ba7517); } }
       @supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) { .fs-profile-onboarding__sheet, .fs-profile-onboarding__control, .fs-profile-onboarding__button { background: var(--surface, #fffef9); } .fs-profile-onboarding__button--primary { background: var(--accent, #ba7517); } }
       @media (prefers-reduced-motion: reduce) { .fs-profile-onboarding, .fs-profile-onboarding__sheet, .fs-profile-onboarding__control, .fs-profile-onboarding__button, .fs-profile-birthday-toast { animation: none !important; transition-duration: .01ms !important; } }
@@ -182,9 +199,11 @@
   const showProfile = (force = false) => {
     if (!state.account || state.overlay) return false;
     const profile = state.account.profile || {};
+    const identity = accountIdentity();
+    const identityComplete = Boolean(identity.firstName && identity.lastName);
     const completedLocally = Boolean(safeLocal((storage) => storage.getItem(profileCompleteKey(state.account.id)), null));
-    if (!force && (profile.completed || completedLocally)) { resolveProfileOnboarding('profile-complete'); return false; }
-    if (!force && safeSession((storage) => storage.getItem(sessionKey('profile_skipped', state.account.id)), null)) { resolveProfileOnboarding('profile-skipped'); return false; }
+    if (!force && (profile.completed || (completedLocally && identityComplete))) { resolveProfileOnboarding('profile-complete'); return false; }
+    if (!force && identityComplete && safeSession((storage) => storage.getItem(sessionKey('profile_skipped', state.account.id)), null)) { resolveProfileOnboarding('profile-skipped'); return false; }
     addStyles();
     const copy = profileCopy();
     const overlay = document.createElement('div');
@@ -199,6 +218,20 @@
         <div class="fs-profile-onboarding__kicker">${copy.kicker}</div>
         <h2 class="fs-profile-onboarding__title" id="fs-profile-onboarding-title">${copy.title}</h2>
         <p class="fs-profile-onboarding__copy" id="fs-profile-onboarding-copy">${copy.intro}</p>
+        <div class="fs-profile-onboarding__identity">
+          <div class="fs-profile-onboarding__field">
+            <label class="fs-profile-onboarding__label" for="fs-profile-first-name">${copy.firstNameLabel}</label>
+            <input class="fs-profile-onboarding__control" id="fs-profile-first-name" name="firstName" type="text" minlength="1" maxlength="60" autocomplete="given-name" required />
+          </div>
+          <div class="fs-profile-onboarding__field">
+            <label class="fs-profile-onboarding__label" for="fs-profile-last-name">${copy.lastNameLabel}</label>
+            <input class="fs-profile-onboarding__control" id="fs-profile-last-name" name="lastName" type="text" minlength="1" maxlength="60" autocomplete="family-name" required />
+          </div>
+        </div>
+        <div class="fs-profile-onboarding__field">
+          <label class="fs-profile-onboarding__label" for="fs-profile-email">${copy.emailLabel}</label>
+          <input class="fs-profile-onboarding__control" id="fs-profile-email" type="email" value="${escapeHtml(state.account.email || '')}" autocomplete="email" readonly />
+        </div>
         <div class="fs-profile-onboarding__field">
           <label class="fs-profile-onboarding__label" for="fs-profile-gender">${copy.genderLabel}</label>
           <select class="fs-profile-onboarding__control" id="fs-profile-gender" name="gender">
@@ -215,7 +248,7 @@
         </div>
         <div class="fs-profile-onboarding__error" role="alert" aria-live="polite"></div>
         <div class="fs-profile-onboarding__actions">
-          <button class="fs-profile-onboarding__button" type="button" data-profile-skip>${copy.skip}</button>
+          <button class="fs-profile-onboarding__button" type="button" data-profile-skip${identityComplete ? '' : ' hidden'}>${copy.skip}</button>
           <button class="fs-profile-onboarding__button fs-profile-onboarding__button--primary" type="submit">${copy.submit}</button>
         </div>
       </form>
@@ -227,13 +260,18 @@
     state.inerted = [...document.body.children].filter((element) => element !== overlay && element instanceof HTMLElement && !element.inert);
     state.inerted.forEach((element) => { element.inert = true; });
     const form = overlay.querySelector('form');
+    const firstName = overlay.querySelector('[name="firstName"]');
+    const lastName = overlay.querySelector('[name="lastName"]');
     const gender = overlay.querySelector('[name="gender"]');
     const birthDate = overlay.querySelector('[name="birthDate"]');
     const error = overlay.querySelector('[role="alert"]');
+    firstName.value = identity.firstName;
+    lastName.value = identity.lastName;
     if (profile.gender) gender.value = profile.gender;
     if (profile.birthDate) birthDate.value = profile.birthDate;
     birthDate.max = new Date().toISOString().slice(0, 10);
     const closeForNow = () => {
+      if (!identityComplete) return;
       safeSession((storage) => storage.setItem(sessionKey('profile_skipped', state.account.id), '1'));
       removeOverlay();
       resolveProfileOnboarding('profile-skipped');
@@ -245,20 +283,19 @@
       event.preventDefault();
       if (state.busy) return;
       error.textContent = '';
+      if (!firstName.value.trim()) { error.textContent = copy.firstNameError; firstName.focus(); return; }
+      if (!lastName.value.trim()) { error.textContent = copy.lastNameError; lastName.focus(); return; }
       if (!gender.value) { error.textContent = copy.genderError; gender.focus(); return; }
       if (!birthDate.value) { error.textContent = copy.birthdayError; birthDate.focus(); return; }
       state.busy = true;
       form.querySelector('[type="submit"]').disabled = true;
       try {
-        // Some already-deployed API versions still validate `name` whenever a
-        // profile is saved. This sheet deliberately has no name field, so use
-        // the Google account name we already have instead of ever submitting a
-        // blank value (which made a completed optional profile look broken).
-        const savedName = String(state.account?.name || state.account?.email?.split('@')[0] || 'FilmScript Writer')
-          .replace(/\s+/g, ' ')
-          .trim();
-        const name = savedName.length >= 2 && savedName.length <= 80 ? savedName : 'FilmScript Writer';
-        const account = await window.filmscriptBilling.updateProfile({ name, gender: gender.value, birthDate: birthDate.value });
+        const account = await window.filmscriptBilling.updateProfile({
+          firstName: firstName.value.trim(),
+          lastName: lastName.value.trim(),
+          gender: gender.value,
+          birthDate: birthDate.value,
+        });
         state.account = account;
         // The profile endpoint was added after some API releases. Persist the
         // completed optional prompt on this device too, so an older response
@@ -287,7 +324,7 @@
       if (event.shiftKey && document.activeElement === first) { event.preventDefault(); last.focus(); }
       else if (!event.shiftKey && document.activeElement === last) { event.preventDefault(); first.focus(); }
     });
-    requestAnimationFrame(() => gender.focus());
+    requestAnimationFrame(() => (identity.firstName ? identity.lastName ? gender : lastName : firstName).focus());
     return true;
   };
 

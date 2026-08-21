@@ -78,12 +78,19 @@
 
   function profileIcon(id) { return profileIcons.find((item) => item.id === id) || null; }
   function avatarBackground(id) { return avatarBackgrounds.find((item) => item[0] === id) || avatarBackgrounds[0]; }
+  function accountNameParts(account = state.me) {
+    const parts = String(account?.name || '').replace(/\s+/g, ' ').trim().split(' ').filter(Boolean);
+    return {
+      firstName:String(account?.firstName || account?.profile?.firstName || parts[0] || '').trim(),
+      lastName:String(account?.lastName || account?.profile?.lastName || (parts.length >= 2 ? parts.slice(1).join(' ') : '')).trim(),
+    };
+  }
   function accountIdentity() {
     const preset = profileIcon(state.profile?.avatarCrop?.presetIcon);
     const background = avatarBackground(state.profile?.avatarCrop?.presetBackground);
     const uploaded = state.profile?.avatarUrl || null;
     const fallback = state.me?.picture || state.me?.avatar || null;
-    return { preset, background, imageUrl:preset ? null : uploaded || fallback, initial:String(state.me?.name || state.me?.email || 'F').trim().charAt(0).toUpperCase() || 'F' };
+    return { preset, background, imageUrl:preset ? null : uploaded || fallback, initial:String(accountNameParts().firstName || state.me?.name || 'F').trim().charAt(0).toUpperCase() || 'F' };
   }
 
   function renderIdentity(target, identity = accountIdentity()) {
@@ -629,6 +636,7 @@
     const selectedTheme = document.documentElement.dataset.filmscriptTheme || state.profile?.theme || 'filmscript';
     let selectedIcon = profileIcon(state.profile?.avatarCrop?.presetIcon)?.id || null;
     let selectedBackground = avatarBackground(state.profile?.avatarCrop?.presetBackground)[0];
+    const accountNames = accountNameParts();
     const maxBirthDate = new Date().toISOString().slice(0,10);
     const root = dialog('Account', 'Your identity, preferences and private details in one place.', `
       <div class="fs-account-layout">
@@ -655,7 +663,8 @@
         <form class="fs-account-section" data-account-form>
           <div class="fs-account-section-head"><div><h3>Account details</h3><p>Your email stays on one clean line and is never cropped into a broken address.</p></div></div>
           <div class="fs-account-form-grid">
-            <label class="fs-form-field"><span>Name</span><input name="name" value="${escapeHtml(state.me?.name || '')}" minlength="2" maxlength="80" autocomplete="name" required></label>
+            <label class="fs-form-field"><span>First name</span><input name="firstName" value="${escapeHtml(accountNames.firstName)}" minlength="1" maxlength="60" autocomplete="given-name" required></label>
+            <label class="fs-form-field"><span>Last name</span><input name="lastName" value="${escapeHtml(accountNames.lastName)}" minlength="1" maxlength="60" autocomplete="family-name" required></label>
             <label class="fs-form-field"><span>FilmScript username</span><input name="username" value="${escapeHtml(state.profile?.username || '')}" maxlength="30" pattern="[A-Za-z0-9_]{2,30}" placeholder="your_username" autocomplete="username"></label>
             <div class="fs-account-email-field"><span>Email</span><strong title="${escapeHtml(state.me?.email || '')}">${escapeHtml(state.me?.email || 'No email available')}</strong><em>${state.me?.authenticated ? 'Verified' : 'Not signed in'}</em></div>
           </div>
@@ -730,7 +739,7 @@
         // Validate the unique username first. A username conflict must not save
         // a different name or private profile fields as an accidental partial edit.
         platform = await api.updateProfile({ username:String(data.get('username') || '').trim() || null });
-        const account = await api.updateMe({ name:String(data.get('name') || '').trim(), gender:data.get('gender') || null, birthDate:data.get('birthDate') || null });
+        const account = await api.updateMe({ firstName:String(data.get('firstName') || '').trim(), lastName:String(data.get('lastName') || '').trim(), gender:data.get('gender') || null, birthDate:data.get('birthDate') || null });
         state.me = account; state.profile = platform.profile; applyAccountIdentity();
         window.dispatchEvent(new CustomEvent('filmscript:profile-updated', { detail:account }));
         status.textContent = localize('Account details saved.', 'Se guardaron los detalles de la cuenta.'); button.textContent = localize('Saved', 'Guardado');
