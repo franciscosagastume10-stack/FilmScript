@@ -10,7 +10,7 @@
     },
     {
       "source": "/film-data/document/:path*",
-      "destination": "https://api.filmscript.app/api/scripts/:path*"
+      "destination": "/api/scripts-proxy?path=:path*"
     },
     {
       "source": "/workspace/projects",

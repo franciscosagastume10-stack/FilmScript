@@ -18,7 +18,7 @@ test('screenplay module APIs use the neutral first-party route', async () => {
   const exact = vercel.rewrites.find((entry) => entry.source === '/film-data/document');
   const nested = vercel.rewrites.find((entry) => entry.source === '/film-data/document/:path*');
   assert.equal(exact?.destination, '/api/scripts-proxy');
-  assert.equal(nested?.destination, 'https://api.filmscript.app/api/scripts/:path*');
+  assert.equal(nested?.destination, '/api/scripts-proxy?path=:path*');
 });
 
 test('Breakdown split view binds iframe readiness without an inline load handler', async () => {
