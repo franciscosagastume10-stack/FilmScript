@@ -80,6 +80,7 @@ test('the official app uses privacy-safe first-party project routes', () => {
   assert.equal(window.filmscriptApiUrl('/api/me'), '/workspace/me');
   assert.equal(window.filmscriptApiUrl('/api/scripts'), '/film-data/document');
   assert.equal(window.filmscriptApiUrl('/api/scripts/scr_123'), '/film-data/document/scr_123');
+  assert.equal(window.filmscriptApiUrl('/api/projects/scr_123/chat'), '/workspace/projects/scr_123/chat');
 });
 
 test('a successful login on a marketing page redirects to Scripts', () => {
@@ -115,6 +116,10 @@ test('Vercel completes the Google handoff through a same-origin cookie proxy', a
   assert.deepEqual(vercelConfig.rewrites.find((entry) => entry.source === '/workspace/scripts'), {
     source: '/workspace/scripts',
     destination: '/api/scripts-proxy',
+  });
+  assert.deepEqual(vercelConfig.rewrites.find((entry) => entry.source === '/workspace/projects/:path*'), {
+    source: '/workspace/projects/:path*',
+    destination: 'https://api.filmscript.app/api/projects/:path*',
   });
   assert.deepEqual(vercelConfig.rewrites.find((entry) => entry.source === '/workspace/:path*'), {
     source: '/workspace/:path*',

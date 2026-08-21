@@ -1064,6 +1064,18 @@
     'Script breakdowns': 'Desgloses de guion',
     'Stripboard schedule': 'Plan de rodaje',
 
+    // Product highlights shown in Plan and billing.
+    'Real-time collaboration': 'Colaboración en tiempo real',
+    'Comments and notifications': 'Comentarios y notificaciones',
+    'Breakdown and split view': 'Desglose y vista dividida',
+    'Editable production elements beside the live screenplay, linked to exact script evidence.': 'Elementos de producción editables junto al guion, vinculados a la evidencia exacta del texto.',
+    'Collaboration and activity': 'Colaboración y actividad',
+    'Live presence, cursors, comments, mentions, notifications and meaningful project history.': 'Presencia en vivo, cursores, comentarios, menciones, notificaciones e historial relevante del proyecto.',
+    'Shared Project': 'Proyecto compartido',
+    'A secure, read-only web view that always reflects the latest sections you choose.': 'Una vista web segura y de solo lectura que siempre refleja las secciones más recientes que elijas.',
+    'Canvas, files and exports': 'Canvas, archivos y exportaciones',
+    'Canvas, Imagine, selected files and professional PDF exports across production modules.': 'Canvas, Imagine, archivos seleccionados y exportaciones PDF profesionales en los módulos de producción.',
+
     // Plan and billing.
     'Checking your subscription': 'Verificando tu suscripción',
     'FilmScript is securely checking your subscription with Recurrente.': 'FilmScript está verificando de forma segura tu suscripción con Recurrente.',
@@ -1753,7 +1765,120 @@
     'Director / Producer': 'Director / Productor',
     'Post Supervisor': 'Supervisor de postproducción',
     'Sound': 'Sonido',
-    'Music': 'Música'
+    'Music': 'Música',
+
+    // People, collaboration, invitations and guest access. These strings are
+    // intentionally shared by the project dialog and the secure entry pages,
+    // so a collaborator keeps the same language from an invite through to
+    // their project permissions.
+    'People & Access': 'Personas y acceso',
+    'People and access': 'Personas y acceso',
+    'People': 'Personas',
+    'Project collaboration settings': 'Configuración de colaboración del proyecto',
+    'Manage project roles, module permissions, and sensitive financial access.': 'Administra los roles del proyecto, los permisos por módulo y el acceso a información financiera sensible.',
+    'People and access could not be loaded.': 'No se pudo cargar Personas y acceso.',
+    'PROJECT SETTINGS': 'AJUSTES DEL PROYECTO',
+    'Invite people': 'Invitar personas',
+    'Invite a collaborator': 'Invitar a un colaborador',
+    'No collaborators yet': 'Aún no hay colaboradores',
+    'Invite someone when you are ready to share the project.': 'Invita a alguien cuando estés listo para compartir el proyecto.',
+    'Pending Invitations': 'Invitaciones pendientes',
+    'No pending invitations': 'No hay invitaciones pendientes',
+    'New invitations will appear here until they are accepted.': 'Las nuevas invitaciones aparecerán aquí hasta que sean aceptadas.',
+    'Collaborator': 'Colaborador',
+    'FilmScript member': 'Miembro de FilmScript',
+    'Secure guest link': 'Enlace seguro para invitado',
+    'No module access': 'Sin acceso a módulos',
+    'No Access': 'Sin acceso',
+    'Script': 'Guion',
+    'Comment': 'Comentar',
+    'Manage': 'Administrar',
+    'Project Settings': 'Ajustes del proyecto',
+    'Members': 'Miembros',
+    'Exports': 'Exportaciones',
+    'Location Plan': 'Plan de locaciones',
+    'Files': 'Archivos',
+    'Cinematic role': 'Rol cinematográfico',
+    'Project role': 'Rol del proyecto',
+    'Module permissions': 'Permisos por módulo',
+    'Financial information is sensitive. Choose exactly who can access it.': 'La información financiera es sensible. Elige exactamente quién puede acceder a ella.',
+    'Financial access': 'Acceso financiero',
+    'Financial department IDs': 'Identificadores de departamentos financieros',
+    'No financial access': 'Sin acceso financiero',
+    'Full access and access management': 'Acceso total y administración de accesos',
+    'Edit all financial information': 'Editar toda la información financiera',
+    'View all financial information': 'Ver toda la información financiera',
+    'Edit all and export': 'Editar todo y exportar',
+    'View assigned departments': 'Ver departamentos asignados',
+    'Edit assigned departments': 'Editar departamentos asignados',
+    'camera, art, production': 'cámara, arte, producción',
+    'FilmScript username, email, or secure guest link': 'Usuario de FilmScript, correo electrónico o enlace seguro para invitado',
+    'name@example.com or username': 'nombre@ejemplo.com o usuario',
+    'Leave this blank only when creating a Temporary Guest link.': 'Déjalo en blanco únicamente al crear un enlace de invitado temporal.',
+    'Department Editor': 'Editor de departamento',
+    'Co owner': 'Coresponsable',
+    'Commenter': 'Comentarista',
+    'Viewer': 'Lector',
+    'Temporary Guest': 'Invitado temporal',
+    'Writer': 'Guionista',
+    'Director of Photography': 'Director de fotografía',
+    'Camera Department': 'Departamento de cámara',
+    'Gaffer': 'Gaffer',
+    'Grip': 'Grip',
+    'Production Designer': 'Diseñador de producción',
+    'Hair And Makeup': 'Maquillaje y peinado',
+    'Client': 'Cliente',
+    'Talent': 'Talento',
+    'Idle': 'Inactivo',
+    'Disconnected': 'Desconectado',
+    'Suspended': 'Suspendido',
+    'Removed': 'Eliminado',
+    'Revoked': 'Revocada',
+    'Actions for': 'Acciones para',
+    'Invitation actions': 'Acciones de la invitación',
+    'Edit role and permissions': 'Editar rol y permisos',
+    'Promote to Admin': 'Promover a administrador',
+    'Promote to Co owner': 'Promover a coresponsable',
+    'Transfer ownership': 'Transferir propiedad',
+    'Suspend access': 'Suspender acceso',
+    'Remove from project': 'Quitar del proyecto',
+    'Copy invitation link': 'Copiar enlace de invitación',
+    'Resend invitation': 'Reenviar invitación',
+    'Edit access': 'Editar acceso',
+    'Revoke invitation': 'Revocar invitación',
+    'Copied': 'Copiado',
+    'Sent': 'Enviada',
+    'Create invitation': 'Crear invitación',
+    'Save access': 'Guardar acceso',
+    'No expiration': 'Sin vencimiento',
+    'Remove this person from the project now?': '¿Quitar a esta persona del proyecto ahora?',
+    'Transfer billing ownership to this person?': '¿Transferir a esta persona la propiedad de la facturación?',
+    'Revoke this invitation now?': '¿Revocar esta invitación ahora?',
+    'Enter a FilmScript username or email.': 'Ingresa un usuario o correo electrónico de FilmScript.',
+    'You cannot grant financial access.': 'No puedes otorgar acceso financiero.',
+    'You cannot change financial access.': 'No puedes cambiar el acceso financiero.',
+    'Invitation was not found.': 'No se encontró la invitación.',
+    'Only a pending invitation can be edited.': 'Solo se puede editar una invitación pendiente.',
+    'Pending invitation was not found.': 'No se encontró la invitación pendiente.',
+    'This invitation is no longer available.': 'Esta invitación ya no está disponible.',
+    'Sign in before accepting this invitation.': 'Inicia sesión antes de aceptar esta invitación.',
+    'This invitation belongs to another account.': 'Esta invitación pertenece a otra cuenta.',
+    'Project invitation': 'Invitación al proyecto',
+    'You are invited to collaborate': 'Te invitaron a colaborar',
+    'Continue with your FilmScript account to accept the project invitation and preserve its assigned access.': 'Continúa con tu cuenta de FilmScript para aceptar la invitación al proyecto y conservar el acceso asignado.',
+    'An account is required to edit project content.': 'Se requiere una cuenta para editar el contenido del proyecto.',
+    'Invitation link unavailable': 'El enlace de invitación no está disponible',
+    'Guest access': 'Acceso de invitado',
+    'Guest project access': 'Acceso de invitado al proyecto',
+    'Opening your secure invitation': 'Abriendo tu invitación segura',
+    'Permitted project areas': 'Áreas permitidas del proyecto',
+    'Loading permitted content': 'Cargando contenido permitido',
+    'No script content is available yet.': 'Aún no hay contenido de guion disponible.',
+    'Access unavailable': 'Acceso no disponible',
+    'This invitation link is incomplete.': 'Este enlace de invitación está incompleto.',
+    'No project areas were shared.': 'No se compartió ninguna área del proyecto.',
+    'Ask the project owner for a new invitation.': 'Pídele al responsable del proyecto una nueva invitación.',
+    'This guest invitation is no longer available.': 'Esta invitación de invitado ya no está disponible.'
   });
 
   const normalize = (value) => SUPPORTED.has(String(value || '').toLowerCase())
@@ -1796,6 +1921,22 @@
 
   const translateDynamic = (value) => {
     let match;
+    if ((match = value.match(/^Access for (.+)$/))) return `Acceso para ${match[1]}`;
+    if ((match = value.match(/^Actions for (.+)$/))) return `Acciones para ${match[1]}`;
+    if ((match = value.match(/^Expires (.+)$/))) return `Vence ${match[1]}`;
+    if ((match = value.match(/^Read only access expires (.+)\.$/))) return `El acceso de solo lectura vence ${match[1]}.`;
+    if ((match = value.match(/^(\d+) areas · (.+)$/))) {
+      const labels = match[2].split(', ').map((entry) => {
+        const permission = entry.match(/^(.*) (No Access|View|Comment|Edit|Manage)$/);
+        if (!permission) return t(entry, 'es');
+        return `${t(permission[1], 'es')} ${t(permission[2], 'es')}`;
+      });
+      return `${match[1]} ${Number(match[1]) === 1 ? 'área' : 'áreas'} · ${labels.join(', ')}`;
+    }
+    if ((match = value.match(/^([a-z_ ]+): (no_access|view|comment|edit|manage)$/))) {
+      const title = (entry) => entry.replaceAll('_', ' ').replace(/\b\w/g, (character) => character.toUpperCase());
+      return `${t(title(match[1]), 'es')}: ${t(title(match[2]), 'es')}`;
+    }
     if ((match = value.match(/^Updated (just now|\d+s ago|\d+m ago)$/))) {
       const when = match[1] === 'just now' ? 'justo ahora' : match[1]
         .replace(/^(\d+)s ago$/, 'hace $1 s')

@@ -149,7 +149,10 @@ export function runPlatformMigrations() {
     [10, "010_collaboration_platform.sql"],
     [11, "011_collaboration_access_foundation.sql"],
     [12, "012_realtime_collaboration.sql"],
-    [13, "013_project_messages.sql"],
+    [13, "013_activity_comments_notifications.sql"],
+    [14, "014_lumiere_ai_infrastructure.sql"],
+    [15, "015_project_messages.sql"],
+    [16, "016_release_notice.sql"],
   ];
   for (const [version, filename] of migrations) {
     if (current >= version && (version !== 10 || hasColumn("users", "theme")) && (version !== 11 || hasColumn("project_memberships", "department_ids_json"))) continue;
@@ -486,6 +489,45 @@ export function deleteNotifications(userId, notificationId = null) {
   return { deletedCount: result.changes, unreadCount };
 }
 
+function releaseVersionKey(value) {
+  const releaseVersion = String(value || "").trim();
+  if (!/^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$/.test(releaseVersion)) {
+    throw Object.assign(new Error("Release version is invalid."), { status: 422, code: "invalid_release_version" });
+  }
+  return releaseVersion;
+}
+
+// Claiming happens before the UI opens. A unique user/release key means that
+// another tab or device cannot receive the same announcement after it has
+// already been presented once. Acknowledgement remains separately recorded
+// when the person dismisses it.
+export function claimReleaseNotice(userId, version) {
+  if (!userId) throw Object.assign(new Error("Sign in to view this update."), { status: 401, code: "google_sign_in_required" });
+  const releaseVersion = releaseVersionKey(version);
+  const timestamp = nowIso();
+  const result = db.prepare(`INSERT INTO release_notice_acknowledgements (user_id,release_version,presented_at)
+    VALUES (?,?,?) ON CONFLICT(user_id,release_version) DO NOTHING`).run(userId, releaseVersion, timestamp);
+  const row = db.prepare("SELECT presented_at,acknowledged_at FROM release_notice_acknowledgements WHERE user_id=? AND release_version=?").get(userId, releaseVersion);
+  return {
+    releaseVersion,
+    shouldPresent: result.changes === 1,
+    presentedAt: row?.presented_at || null,
+    acknowledgedAt: row?.acknowledged_at || null,
+  };
+}
+
+export function acknowledgeReleaseNotice(userId, version) {
+  if (!userId) throw Object.assign(new Error("Sign in to acknowledge this update."), { status: 401, code: "google_sign_in_required" });
+  const releaseVersion = releaseVersionKey(version);
+  const timestamp = nowIso();
+  db.prepare(`INSERT INTO release_notice_acknowledgements (user_id,release_version,presented_at,acknowledged_at)
+    VALUES (?,?,?,?)
+    ON CONFLICT(user_id,release_version) DO UPDATE SET acknowledged_at=COALESCE(release_notice_acknowledgements.acknowledged_at,excluded.acknowledged_at)`)
+    .run(userId, releaseVersion, timestamp, timestamp);
+  const row = db.prepare("SELECT presented_at,acknowledged_at FROM release_notice_acknowledgements WHERE user_id=? AND release_version=?").get(userId, releaseVersion);
+  return { releaseVersion, presentedAt: row?.presented_at || null, acknowledgedAt: row?.acknowledged_at || null };
+}
+
 function passwordRecord(password) {
   const salt = crypto.randomBytes(16).toString("hex");
   const derived = crypto.scryptSync(String(password), salt, 32).toString("hex");
@@ -651,23 +693,56 @@ export function createComment(projectId, userId, input = {}) {
   return listComments(projectId, userId, module, input.entityId || null).find((comment) => comment.id === commentId);
 }
 
-export function listProjectMessages(projectId, userId, peerUserId) {
+function messagePeerId(projectId, userId, peerUserId, { invalidStatus = 404 } = {}) {
   requireProjectPermission(userId, projectId, "script", "view");
   const peer = String(peerUserId || "").trim();
-  if (!peer || !projectAccess(peer, projectId)) throw Object.assign(new Error("That collaborator is not part of this project."), { status: 404, code: "collaborator_not_found" });
+  const peerAccess = peer ? projectAccess(peer, projectId) : null;
+  if (!peer || !peerAccess || !canAccessModule(peerAccess, "script", "view")) {
+    throw Object.assign(new Error("That collaborator is not available for this project chat."), { status: invalidStatus, code: "collaborator_not_found" });
+  }
+  return peer;
+}
+
+// Chat intentionally exposes less than People & Access. Any collaborator who
+// can see the screenplay can message another screenplay-visible collaborator,
+// without receiving roles, permissions, department assignments, or finance data.
+export function listProjectMessagePeers(projectId, userId) {
+  requireProjectPermission(userId, projectId, "script", "view");
+  const rows = db.prepare(`SELECT DISTINCT users.id, users.name, users.email, users.picture_url, users.avatar_key, users.avatar_crop_json
+    FROM users
+    WHERE users.id != ? AND users.id IN (
+      SELECT user_id FROM scripts WHERE id = ?
+      UNION
+      SELECT user_id FROM project_memberships WHERE project_id = ? AND status = 'active' AND user_id IS NOT NULL
+    )
+    ORDER BY lower(COALESCE(users.name, users.email, users.id)), users.id`).all(userId, projectId, projectId);
+  return rows
+    .filter((row) => {
+      const access = projectAccess(row.id, projectId);
+      return !!access && canAccessModule(access, "script", "view");
+    })
+    .map((row) => ({
+      userId: row.id,
+      name: row.name || row.email || "Collaborator",
+      email: row.email || null,
+      ...avatarPresentationFromRow(row),
+    }));
+}
+
+export function listProjectMessages(projectId, userId, peerUserId) {
+  const peer = messagePeerId(projectId, userId, peerUserId);
   db.prepare("UPDATE project_messages SET read_at=? WHERE project_id=? AND sender_user_id=? AND recipient_user_id=? AND read_at IS NULL").run(nowIso(), projectId, peer, userId);
   return db.prepare(`SELECT m.*, s.name AS sender_name, r.name AS recipient_name FROM project_messages m LEFT JOIN users s ON s.id=m.sender_user_id LEFT JOIN users r ON r.id=m.recipient_user_id WHERE m.project_id=? AND ((m.sender_user_id=? AND m.recipient_user_id=?) OR (m.sender_user_id=? AND m.recipient_user_id=?)) ORDER BY m.created_at ASC LIMIT 200`).all(projectId, userId, peer, peer, userId).map((row) => ({ id: row.id, projectId: row.project_id, senderId: row.sender_user_id, recipientId: row.recipient_user_id, senderName: row.sender_name || "Collaborator", recipientName: row.recipient_name || "Collaborator", body: row.body, createdAt: row.created_at, readAt: row.read_at }));
 }
 
 export function createProjectMessage(projectId, userId, input = {}) {
-  requireProjectPermission(userId, projectId, "script", "view");
-  const recipientId = String(input.recipientId || "").trim();
-  if (!recipientId || recipientId === userId || !projectAccess(recipientId, projectId)) throw Object.assign(new Error("Choose a collaborator in this project."), { status: 422, code: "invalid_recipient" });
+  const recipientId = messagePeerId(projectId, userId, input.recipientId, { invalidStatus: 422 });
+  if (recipientId === userId) throw Object.assign(new Error("Choose another collaborator in this project."), { status: 422, code: "invalid_recipient" });
   const body = String(input.body || "").replace(/[\u0000-\u001f]/g, "").trim().slice(0, 2000);
   if (!body) throw Object.assign(new Error("Write a message before sending."), { status: 422, code: "empty_message" });
   const messageId = id("msg"); const timestamp = nowIso();
   db.prepare("INSERT INTO project_messages (id,project_id,sender_user_id,recipient_user_id,body,created_at) VALUES (?,?,?,?,?,?)").run(messageId, projectId, userId, recipientId, body, timestamp);
-  createNotification({ userId: recipientId, projectId, type: "message", title: "New collaborator message", message: body.slice(0, 220), actorUserId: userId, deepLink: `/Editor%20v5.dc.html?script=${encodeURIComponent(projectId)}&view=script&chat=${encodeURIComponent(userId)}` });
+  createNotification({ userId: recipientId, projectId, type: "message", title: "New collaborator message", message: body.slice(0, 220), actorUserId: userId, deepLink: `/Editor%20v5.dc.html?script=${encodeURIComponent(projectId)}&view=editor&chat=${encodeURIComponent(userId)}` });
   return listProjectMessages(projectId, userId, recipientId).find((message) => message.id === messageId);
 }
 

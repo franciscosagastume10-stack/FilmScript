@@ -53,6 +53,7 @@
       savedHelp: 'Future Lumiere feedback will use this profile when it is relevant.',
       unsaved: 'Unsaved changes', error: 'We could not save your creative profile. Try again.',
       retry: 'Try again', remove: 'Remove', summaryEmpty: 'No references yet',
+      navLabel: 'Personalization sections', navBasics: 'Basics', navReferences: 'References', navVoice: 'Voice', navGuardrails: 'Guardrails',
       directorsCount: 'directors', filmsCount: 'films', qualitiesCount: 'qualities',
       styleCharacter: 'Character-driven', styleObservational: 'Observational', stylePoetic: 'Poetic realism',
       styleDarkComedy: 'Dark comedy', styleSlowBurn: 'Slow burn', styleSuspenseful: 'Suspenseful',
@@ -81,6 +82,7 @@
       savedHelp: 'El próximo feedback de Lumiere usará este perfil cuando sea relevante.',
       unsaved: 'Cambios sin guardar', error: 'No pudimos guardar tu perfil creativo. Inténtalo de nuevo.',
       retry: 'Intentar de nuevo', remove: 'Eliminar', summaryEmpty: 'Aún no hay referencias',
+      navLabel: 'Secciones de personalización', navBasics: 'Base', navReferences: 'Referencias', navVoice: 'Voz', navGuardrails: 'Límites',
       directorsCount: 'directores', filmsCount: 'películas', qualitiesCount: 'cualidades',
       styleCharacter: 'Centrada en personajes', styleObservational: 'Observacional', stylePoetic: 'Realismo poético',
       styleDarkComedy: 'Comedia oscura', styleSlowBurn: 'Desarrollo pausado', styleSuspenseful: 'Con suspenso',
@@ -133,10 +135,10 @@
 
   const css = `
     .fs-lp-overlay,.fs-lp-overlay *{font-family:"SF Pro Text",-apple-system,BlinkMacSystemFont,"Helvetica Neue",Arial,sans-serif!important}.fs-lp-overlay h1,.fs-lp-overlay h2,.fs-lp-overlay h3{font-family:"SF Pro Display","SF Pro Text",-apple-system,BlinkMacSystemFont,"Helvetica Neue",Arial,sans-serif!important;font-weight:800!important}
-    .fs-lp-overlay{--lp-bg:#F5F0E8;--lp-surface:#FFFEF9;--lp-soft:#EFEBE1;--lp-ink:#2C2C2A;--lp-muted:#77756F;--lp-hair:#D8D4C9;--lp-accent:#BA7517;position:fixed;inset:0;z-index:10000;display:grid;place-items:center;padding:18px;background:rgba(24,24,23,.42);backdrop-filter:blur(3px);opacity:0;visibility:hidden;transition:opacity .18s ease,visibility .18s ease;font-family:"Helvetica Neue",Helvetica,Arial,sans-serif;color:var(--lp-ink)}
+    .fs-lp-overlay{--lp-bg:#F5F0E8;--lp-surface:#FFFEF9;--lp-soft:#EFEBE1;--lp-ink:#2C2C2A;--lp-muted:#77756F;--lp-hair:#D8D4C9;--lp-accent:#BA7517;position:fixed;inset:0;z-index:10000;display:grid;place-items:center;padding:24px;background:rgba(24,24,23,.30);-webkit-backdrop-filter:blur(30px) saturate(1.18);backdrop-filter:blur(30px) saturate(1.18);opacity:0;visibility:hidden;transition:opacity .18s ease,visibility .18s ease;font-family:"Helvetica Neue",Helvetica,Arial,sans-serif;color:var(--lp-ink)}
     html[data-filmscript-theme="dark"] .fs-lp-overlay{--lp-bg:#111110;--lp-surface:#1B1B19;--lp-soft:#262522;--lp-ink:#F3EFE7;--lp-muted:#B5B0A7;--lp-hair:#45423B;--lp-accent:#D08A28;background:rgba(0,0,0,.62)}
-    .fs-lp-overlay[data-open="true"]{opacity:1;visibility:visible}.fs-lp-modal{position:relative;isolation:isolate;width:min(760px,100%);max-height:calc(100vh - 36px);display:grid;grid-template-rows:auto minmax(0,1fr) auto;background:var(--lp-surface);border:1.3px solid var(--lp-ink);border-radius:22px 20px 23px 19px;box-shadow:0 24px 70px rgba(20,20,19,.24);animation:fs-lp-in .22s cubic-bezier(.2,.8,.25,1) both}
-    .fs-lp-modal:focus{outline:none}.fs-lp-modal:after{content:"";position:absolute;inset:5px 4px 4px 5px;z-index:-1;border:1px solid color-mix(in srgb,var(--lp-ink) 34%,transparent);border-radius:18px 22px 19px 21px;pointer-events:none}.fs-lp-head{display:flex;align-items:flex-start;gap:15px;padding:24px 26px 19px;border-bottom:1px solid var(--lp-hair)}
+    .fs-lp-overlay[data-open="true"]{opacity:1;visibility:visible}.fs-lp-modal{position:relative;isolation:isolate;width:min(700px,100%);max-height:min(780px,calc(100vh - 48px));display:grid;grid-template-rows:auto auto minmax(0,1fr) auto;background:color-mix(in srgb,var(--lp-surface) 78%,transparent);-webkit-backdrop-filter:blur(22px) saturate(1.12);backdrop-filter:blur(22px) saturate(1.12);border:1.3px solid color-mix(in srgb,var(--lp-ink) 58%,transparent);border-radius:22px 20px 23px 19px;box-shadow:0 24px 70px rgba(20,20,19,.24);animation:fs-lp-in .22s cubic-bezier(.2,.8,.25,1) both}
+    .fs-lp-modal:focus{outline:none}.fs-lp-modal:after{content:"";position:absolute;inset:5px 4px 4px 5px;z-index:-1;border:1px solid color-mix(in srgb,var(--lp-ink) 34%,transparent);border-radius:18px 22px 19px 21px;pointer-events:none}.fs-lp-head{display:flex;align-items:flex-start;gap:15px;padding:22px 24px 17px;border-bottom:1px solid color-mix(in srgb,var(--lp-hair) 78%,transparent)}.fs-lp-nav{display:flex;gap:6px;overflow-x:auto;padding:10px 24px;border-bottom:1px solid color-mix(in srgb,var(--lp-hair) 68%,transparent);scrollbar-width:none}.fs-lp-nav::-webkit-scrollbar{display:none}.fs-lp-nav button{min-height:36px;flex:0 0 auto;padding:7px 11px;border:1px solid color-mix(in srgb,var(--lp-hair) 82%,transparent);border-radius:999px;background:color-mix(in srgb,var(--lp-surface) 52%,transparent);color:var(--lp-muted);font:inherit;font-size:10.5px;font-weight:700;cursor:pointer;transition:transform .14s ease,border-color .16s ease,color .16s ease,background .16s ease}.fs-lp-nav button:hover{color:var(--lp-ink);border-color:color-mix(in srgb,var(--lp-accent) 55%,var(--lp-hair));background:color-mix(in srgb,var(--lp-accent) 10%,transparent)}.fs-lp-nav button:active{transform:scale(.97)}.fs-lp-nav button:focus-visible{outline:2px solid var(--lp-accent);outline-offset:2px}
     .fs-lp-mark{width:43px;height:43px;flex:0 0 43px;display:grid;place-items:center;color:var(--lp-accent);background:color-mix(in srgb,var(--lp-accent) 10%,transparent);border:1px solid color-mix(in srgb,var(--lp-accent) 42%,transparent);border-radius:13px 15px 12px 14px}.fs-lp-mark svg{width:24px;height:24px;transition:transform .22s ease}.fs-lp-mark:hover svg{transform:rotate(12deg)}
     .fs-lp-eyebrow{font-size:10px;line-height:1.2;text-transform:uppercase;letter-spacing:1.45px;font-weight:700;color:var(--lp-accent)}.fs-lp-title{margin:5px 0 0;font-size:22px;line-height:1.18;letter-spacing:-.45px;font-weight:700}.fs-lp-intro{margin:7px 0 0;max-width:590px;color:var(--lp-muted);font-size:12.5px;line-height:1.5}
     .fs-lp-close{width:36px;height:36px;flex:0 0 36px;border:0;background:transparent;color:var(--lp-muted);border-radius:10px;font-size:22px;cursor:pointer;transition:background .15s,color .15s,transform .12s}.fs-lp-close:hover{background:var(--lp-soft);color:var(--lp-ink)}.fs-lp-close:active{transform:scale(.95)}
@@ -150,8 +152,9 @@
     .fs-lp-guard{display:flex;gap:12px;padding:15px 16px;border-radius:13px 15px 12px 14px;background:color-mix(in srgb,var(--lp-accent) 9%,var(--lp-surface));color:var(--lp-ink)}.fs-lp-spark{width:24px;height:24px;flex:0 0 24px;color:var(--lp-accent)}.fs-lp-guard strong{display:block;font-size:12.5px}.fs-lp-guard p{margin:4px 0 0;color:var(--lp-muted);font-size:11px;line-height:1.5}
     .fs-lp-foot{display:flex;align-items:center;gap:12px;padding:16px 26px 20px;border-top:1px solid var(--lp-hair);background:var(--lp-surface);border-radius:0 0 21px 19px}.fs-lp-status{flex:1;min-width:0;color:var(--lp-muted);font-size:11px;line-height:1.35}.fs-lp-status[data-mode="saved"]{color:#2E7D5B}.fs-lp-status[data-mode="error"]{color:#C74440}.fs-lp-reset,.fs-lp-save{min-height:41px;padding:9px 15px;border-radius:10px 12px 9px 11px;font:inherit;font-size:12px;font-weight:650;cursor:pointer;transition:transform .12s,filter .15s,border-color .15s}.fs-lp-reset{border:1px solid var(--lp-hair);background:transparent;color:var(--lp-muted)}.fs-lp-save{min-width:158px;border:1px solid var(--lp-accent);background:var(--lp-accent);color:#FFFEF9}.fs-lp-reset:hover{border-color:var(--lp-muted);color:var(--lp-ink)}.fs-lp-save:hover{filter:brightness(1.06)}.fs-lp-reset:active,.fs-lp-save:active{transform:scale(.98)}.fs-lp-save:disabled{opacity:.55;cursor:wait}
     .fs-lp-overlay button:focus-visible{outline:2px solid var(--lp-accent);outline-offset:2px}@keyframes fs-lp-in{from{opacity:0;transform:translateY(12px) scale(.985)}to{opacity:1;transform:none}}@keyframes fs-lp-spin{to{transform:rotate(360deg)}}
-    @media(max-width:640px){.fs-lp-overlay{padding:0;place-items:end center}.fs-lp-modal{width:100%;max-height:96vh;border-radius:20px 20px 0 0;border-bottom:0}.fs-lp-modal:after{border-radius:17px 18px 0 0}.fs-lp-head{padding:19px 18px 15px;gap:11px}.fs-lp-mark{width:38px;height:38px;flex-basis:38px}.fs-lp-title{font-size:19px}.fs-lp-intro{font-size:11.5px}.fs-lp-scroll{padding:17px 16px 22px}.fs-lp-card{padding:15px}.fs-lp-card-head{flex-direction:column;gap:5px}.fs-lp-summary{white-space:normal}.fs-lp-notes{grid-template-columns:1fr}.fs-lp-tone{grid-template-columns:1fr}.fs-lp-foot{padding:13px 16px calc(15px + env(safe-area-inset-bottom));flex-wrap:wrap}.fs-lp-status{flex-basis:100%;order:-1}.fs-lp-reset{flex:1}.fs-lp-save{flex:2;min-width:0}}
-    @media(prefers-reduced-motion:reduce){.fs-lp-modal,.fs-lp-spinner{animation:none!important}.fs-lp-overlay,.fs-lp-mark svg,.fs-lp-style,.fs-lp-save,.fs-lp-reset{transition-duration:.01ms!important}}
+    @media(max-width:640px){.fs-lp-overlay{padding:0;place-items:end center}.fs-lp-modal{width:100%;max-height:96vh;border-radius:20px 20px 0 0;border-bottom:0}.fs-lp-modal:after{border-radius:17px 18px 0 0}.fs-lp-head{padding:19px 18px 15px;gap:11px}.fs-lp-nav{padding:9px 16px}.fs-lp-mark{width:38px;height:38px;flex-basis:38px}.fs-lp-title{font-size:19px}.fs-lp-intro{font-size:11.5px}.fs-lp-scroll{padding:17px 16px 22px}.fs-lp-card{padding:15px}.fs-lp-card-head{flex-direction:column;gap:5px}.fs-lp-summary{white-space:normal}.fs-lp-notes{grid-template-columns:1fr}.fs-lp-tone{grid-template-columns:1fr}.fs-lp-foot{padding:13px 16px calc(15px + env(safe-area-inset-bottom));flex-wrap:wrap}.fs-lp-status{flex-basis:100%;order:-1}.fs-lp-reset{flex:1}.fs-lp-save{flex:2;min-width:0}}
+    @media(prefers-reduced-transparency:reduce){.fs-lp-overlay{background:rgba(24,24,23,.72);-webkit-backdrop-filter:none;backdrop-filter:none}.fs-lp-modal{background:var(--lp-surface);-webkit-backdrop-filter:none;backdrop-filter:none}.fs-lp-nav button{background:var(--lp-soft)}}
+    @media(prefers-reduced-motion:reduce){.fs-lp-modal,.fs-lp-spinner{animation:none!important}.fs-lp-overlay,.fs-lp-mark svg,.fs-lp-style,.fs-lp-save,.fs-lp-reset,.fs-lp-nav button{transition-duration:.01ms!important}}
   `;
 
   const template = `
@@ -161,15 +164,21 @@
         <div style="flex:1;min-width:0"><div class="fs-lp-eyebrow" data-lp-t="eyebrow"></div><h1 class="fs-lp-title" id="fs-lp-title" data-lp-t="title"></h1><p class="fs-lp-intro" data-lp-t="intro"></p></div>
         <button class="fs-lp-close" type="button" data-lp-close aria-label="Close">×</button>
       </header>
+      <nav class="fs-lp-nav" data-lp-nav aria-label="Personalization sections">
+        <button type="button" data-lp-jump="basics" data-lp-t="navBasics"></button>
+        <button type="button" data-lp-jump="references" data-lp-t="navReferences"></button>
+        <button type="button" data-lp-jump="voice" data-lp-t="navVoice"></button>
+        <button type="button" data-lp-jump="guardrails" data-lp-t="navGuardrails"></button>
+      </nav>
       <main class="fs-lp-scroll">
         <div class="fs-lp-loading"><span class="fs-lp-spinner"></span><span data-lp-t="loading"></span></div>
         <form class="fs-lp-form" data-lp-form>
-          <div class="fs-lp-switch-row"><div class="fs-lp-switch-copy"><div class="fs-lp-label" data-lp-t="enabled"></div><div class="fs-lp-help" data-lp-t="enabledHelp"></div></div><label class="fs-lp-switch"><input type="checkbox" data-lp-enabled><span></span></label></div>
-          <section class="fs-lp-card"><div class="fs-lp-card-head"><div><div class="fs-lp-label" data-lp-t="directors"></div><div class="fs-lp-help" data-lp-t="directorsHelp"></div></div><div class="fs-lp-summary" data-lp-summary></div></div><div class="fs-lp-entry"><input class="fs-lp-input" data-lp-director-input maxlength="240"><button class="fs-lp-add" type="button" data-lp-add="directors" data-lp-t="add"></button></div><div class="fs-lp-chips" data-lp-directors></div></section>
+          <div class="fs-lp-switch-row" id="fs-lp-basics"><div class="fs-lp-switch-copy"><div class="fs-lp-label" data-lp-t="enabled"></div><div class="fs-lp-help" data-lp-t="enabledHelp"></div></div><label class="fs-lp-switch"><input type="checkbox" data-lp-enabled><span></span></label></div>
+          <section class="fs-lp-card" id="fs-lp-references"><div class="fs-lp-card-head"><div><div class="fs-lp-label" data-lp-t="directors"></div><div class="fs-lp-help" data-lp-t="directorsHelp"></div></div><div class="fs-lp-summary" data-lp-summary></div></div><div class="fs-lp-entry"><input class="fs-lp-input" data-lp-director-input maxlength="240"><button class="fs-lp-add" type="button" data-lp-add="directors" data-lp-t="add"></button></div><div class="fs-lp-chips" data-lp-directors></div></section>
           <section class="fs-lp-card"><div class="fs-lp-label" data-lp-t="films"></div><div class="fs-lp-help" data-lp-t="filmsHelp"></div><div class="fs-lp-entry"><input class="fs-lp-input" data-lp-film-input maxlength="240"><button class="fs-lp-add" type="button" data-lp-add="films" data-lp-t="add"></button></div><div class="fs-lp-chips" data-lp-films></div></section>
           <section class="fs-lp-card"><div class="fs-lp-label" data-lp-t="qualities"></div><div class="fs-lp-help" data-lp-t="qualitiesHelp"></div><div class="fs-lp-style-grid" data-lp-style-grid></div><div class="fs-lp-entry"><input class="fs-lp-input" data-lp-style-input maxlength="120"><button class="fs-lp-add" type="button" data-lp-add="styles" data-lp-t="add"></button></div><div class="fs-lp-chips" data-lp-custom-styles></div></section>
-          <section class="fs-lp-card"><div class="fs-lp-label" data-lp-t="feedback"></div><div class="fs-lp-tone"><button type="button" data-lp-tone="direct" data-lp-t="direct"></button><button type="button" data-lp-tone="balanced" data-lp-t="balanced"></button><button type="button" data-lp-tone="gentle" data-lp-t="gentle"></button></div></section>
-          <div class="fs-lp-notes"><section class="fs-lp-card"><label class="fs-lp-label" for="fs-lp-protect" data-lp-t="protect"></label><div class="fs-lp-help" data-lp-t="protectHelp"></div><textarea id="fs-lp-protect" class="fs-lp-textarea" data-lp-protect maxlength="800"></textarea></section><section class="fs-lp-card"><label class="fs-lp-label" for="fs-lp-avoid" data-lp-t="avoid"></label><div class="fs-lp-help" data-lp-t="avoidHelp"></div><textarea id="fs-lp-avoid" class="fs-lp-textarea" data-lp-avoid maxlength="800"></textarea></section></div>
+          <section class="fs-lp-card" id="fs-lp-voice"><div class="fs-lp-label" data-lp-t="feedback"></div><div class="fs-lp-tone"><button type="button" data-lp-tone="direct" data-lp-t="direct"></button><button type="button" data-lp-tone="balanced" data-lp-t="balanced"></button><button type="button" data-lp-tone="gentle" data-lp-t="gentle"></button></div></section>
+          <div class="fs-lp-notes" id="fs-lp-guardrails"><section class="fs-lp-card"><label class="fs-lp-label" for="fs-lp-protect" data-lp-t="protect"></label><div class="fs-lp-help" data-lp-t="protectHelp"></div><textarea id="fs-lp-protect" class="fs-lp-textarea" data-lp-protect maxlength="800"></textarea></section><section class="fs-lp-card"><label class="fs-lp-label" for="fs-lp-avoid" data-lp-t="avoid"></label><div class="fs-lp-help" data-lp-t="avoidHelp"></div><textarea id="fs-lp-avoid" class="fs-lp-textarea" data-lp-avoid maxlength="800"></textarea></section></div>
           <div class="fs-lp-switch-row"><div class="fs-lp-switch-copy"><div class="fs-lp-label" data-lp-t="surprise"></div><div class="fs-lp-help" data-lp-t="surpriseHelp"></div></div><label class="fs-lp-switch"><input type="checkbox" data-lp-surprise><span></span></label></div>
           <aside class="fs-lp-guard"><svg class="fs-lp-spark" viewBox="0 0 28 28" fill="none" stroke="currentColor" stroke-width="1.45" stroke-linecap="round"><path d="M14 4.2c.6 5.3 2.8 7.5 8.1 8.1-5.3.6-7.5 2.8-8.1 8.1-.6-5.3-2.8-7.5-8.1-8.1 5.3-.6 7.5-2.8 8.1-8.1z"></path><path d="M22.4 4.8v4.1M20.4 6.9h4"></path></svg><div><strong data-lp-t="guardTitle"></strong><p data-lp-t="guardCopy"></p></div></aside>
         </form>
@@ -193,6 +202,14 @@
 
     root.addEventListener('click', (event) => {
       if (event.target === root || event.target.closest('[data-lp-close]')) close();
+      const jump = event.target.closest('[data-lp-jump]');
+      if (jump) {
+        const target = q(`#fs-lp-${jump.dataset.lpJump}`);
+        if (target) {
+          if (window.matchMedia?.('(prefers-reduced-motion: reduce)').matches) target.scrollIntoView({ behavior: 'auto', block: 'start' });
+          else target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }
+      }
       const add = event.target.closest('[data-lp-add]');
       if (add) addFromInput(add.dataset.lpAdd);
       const remove = event.target.closest('[data-lp-remove]');
@@ -227,6 +244,7 @@
   function applyCopy() {
     root.querySelectorAll('[data-lp-t]').forEach((node) => { node.textContent = t(node.dataset.lpT); });
     q('[data-lp-close]').setAttribute('aria-label', t('close'));
+    q('[data-lp-nav]').setAttribute('aria-label', t('navLabel'));
     q('[data-lp-director-input]').placeholder = t('directorsPlaceholder');
     q('[data-lp-film-input]').placeholder = t('filmsPlaceholder');
     q('[data-lp-style-input]').placeholder = t('qualitiesPlaceholder');

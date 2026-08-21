@@ -21,6 +21,16 @@ test('screenplay module APIs use the neutral first-party route', async () => {
   assert.equal(nested?.destination, '/api/scripts-proxy?path=:path*');
 });
 
+test('project collaboration APIs retain their project namespace at the Vercel edge', async () => {
+  const vercel = JSON.parse(await fs.readFile(path.join(ROOT, 'vercel.json'), 'utf8'));
+  const projectRoute = vercel.rewrites.find((entry) => entry.source === '/workspace/projects/:path*');
+
+  assert.deepEqual(projectRoute, {
+    source: '/workspace/projects/:path*',
+    destination: 'https://api.filmscript.app/api/projects/:path*',
+  });
+});
+
 test('Breakdown split view binds iframe readiness without an inline load handler', async () => {
   const editor = await fs.readFile(path.join(ROOT, 'Editor v5.dc.html'), 'utf8');
 

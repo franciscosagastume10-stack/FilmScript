@@ -1,4 +1,7 @@
 (() => {
+  const localize = (value) => window.filmscriptLanguage?.t?.(value) || value;
+  const interfaceLocale = () => window.filmscriptLanguage?.get?.() === 'es' ? 'es' : 'en';
+  document.title = `${localize('Guest access')} | FilmScript`;
   const resolve = (path) => window.filmscriptApiUrl ? window.filmscriptApiUrl(path) : path;
   const request = async (path, options = {}) => {
     const response = await fetch(resolve(path), { credentials: 'include', cache: 'no-store', ...options, headers:{ ...(options.body ? { 'Content-Type':'application/json' } : {}), ...(options.headers || {}) } });
@@ -30,7 +33,7 @@
       history.replaceState({}, '', 'GuestAccess.html');
       const permissions = result.invitation?.permissions?.modulePermissions || {};
       const modules = Object.keys(labels).filter((module) => ['view','comment','edit','manage'].includes(permissions[module]));
-      status.textContent = `Read only access expires ${new Date(result.expiresAt).toLocaleString()}.`;
+      status.textContent = `Read only access expires ${new Date(result.expiresAt).toLocaleString(interfaceLocale())}.`;
       navigation.hidden = false;
       navigation.innerHTML = modules.map((module) => `<button type="button" data-module="${module}">${labels[module]}</button>`).join('');
       navigation.querySelectorAll('button').forEach((button) => button.onclick = () => openModule(button.dataset.module));

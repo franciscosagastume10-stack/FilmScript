@@ -65,6 +65,7 @@ import {
   authorizeSharedProject,
   canReadUserAvatar,
   collaborationDelta,
+  claimReleaseNotice,
   getCollaborationDocument,
   getCollaborationEntity,
   createAIJob,
@@ -83,6 +84,7 @@ import {
   listActivity,
   listComments,
   listProjectMessages,
+  listProjectMessagePeers,
   listLocationPlans,
   listMembers,
   listInvitations,
@@ -97,6 +99,7 @@ import {
   revokeSharedProject,
   revokeInvitation,
   rotateInvitationToken,
+  acknowledgeReleaseNotice,
   saveCollaborationOperation,
   saveCollaborationDocument,
   saveCollaborationEntity,
@@ -126,6 +129,10 @@ import {
 
 const ROOT = path.dirname(fileURLToPath(import.meta.url));
 const PORT = Number(process.env.PORT || 4173);
+// Bump this value for a future customer-facing update. The database keeps a
+// separate acknowledgement per account and version, so a new release can be
+// welcomed once without bringing back an older notice.
+const FILMSCRIPT_RELEASE_NOTICE_VERSION = "2.0";
 const OPENAI_RESPONSES_API_URL = "https://api.openai.com/v1/responses";
 const OPENAI_IMAGE_API_URL = "https://api.openai.com/v1/images/generations";
 const OPENAI_IMAGE_EDITS_API_URL = "https://api.openai.com/v1/images/edits";
@@ -7847,11 +7854,13 @@ function roomSubscribers(projectId) {
   return collaborationSubscribers.get(projectId);
 }
 
-function broadcastCollaboration(projectId, type, payload, exceptClientId = null) {
+function broadcastCollaboration(projectId, type, payload, exceptClientId = null, audienceUserIds = null) {
   const subscribers = roomSubscribers(projectId);
   const module = String(payload?.module || payload?.entity?.module || (type === "script.crdt" ? "script" : ""));
+  const audience = audienceUserIds ? new Set(audienceUserIds.map((userId) => String(userId))) : null;
   for (const [clientId, subscriber] of subscribers) {
     if (clientId === exceptClientId) continue;
+    if (audience && !audience.has(String(subscriber.userId || ""))) continue;
     if (module && !canAccessModule(subscriber.access, module, "view")) continue;
     const safePayload = filterFinancialData(payload, subscriber.access);
     const event = `event: ${type}\ndata: ${JSON.stringify(safePayload)}\n\n`;
@@ -7987,9 +7996,18 @@ async function handleProjectMessages(req, res, projectId) {
     if (req.method === "GET") return json(res, 200, { messages: listProjectMessages(projectId, sid, peer) });
     const body = JSON.parse(await readBody(req, 32 * 1024) || "{}");
     const message = createProjectMessage(projectId, sid, { ...body, recipientId: body.recipientId || peer });
-    broadcastCollaboration(projectId, "message.created", message, String(req.headers["x-filmscript-client-id"] || ""));
+    // Bodies stay in the authorized chat API. The collaboration event is only
+    // a private refresh signal for the two people in this conversation.
+    const messageEvent = { id: message.id, projectId, senderId: message.senderId, recipientId: message.recipientId, createdAt: message.createdAt };
+    broadcastCollaboration(projectId, "message.created", messageEvent, String(req.headers["x-filmscript-client-id"] || ""), [message.senderId, message.recipientId]);
     return json(res, 201, { message });
   } catch (error) { return permissionRequired(res, error); }
+}
+
+async function handleProjectMessagePeers(req, res, projectId) {
+  const sid = sessionId(req, res); if (!sid) return googleRequired(res);
+  try { return json(res, 200, { peers: listProjectMessagePeers(projectId, sid) }); }
+  catch (error) { return permissionRequired(res, error); }
 }
 
 async function handleNotifications(req, res, notificationId = null) {
@@ -8000,6 +8018,21 @@ async function handleNotifications(req, res, notificationId = null) {
   }
   if (req.method === "DELETE") return json(res, 200, deleteNotifications(sid, notificationId));
   return json(res, 200, { unreadCount: markNotificationsRead(sid, notificationId) });
+}
+
+async function handleReleaseNotice(req, res) {
+  const sid = sessionId(req, res);
+  if (!sid) return googleRequired(res);
+  if (req.method === "GET") {
+    const release = claimReleaseNotice(sid, FILMSCRIPT_RELEASE_NOTICE_VERSION);
+    return json(res, 200, {
+      notice: release.shouldPresent ? { version: release.releaseVersion } : null,
+      releaseVersion: release.releaseVersion,
+      acknowledgedAt: release.acknowledgedAt,
+    });
+  }
+  const acknowledgement = acknowledgeReleaseNotice(sid, FILMSCRIPT_RELEASE_NOTICE_VERSION);
+  return json(res, 200, { ok: true, acknowledgement });
 }
 
 async function handleSharedProjects(req, res, projectId, sharedId = null) {
@@ -8069,7 +8102,7 @@ async function handleCollaborationEvents(req, res, projectId) {
   const identity = collaborationIdentity(req, sid);
   res.writeHead(200, { "Content-Type": "text/event-stream", "Cache-Control": "no-cache, no-transform", Connection: "keep-alive", "X-Accel-Buffering": "no" });
   const access = projectAccess(sid, projectId);
-  const subscribers = roomSubscribers(projectId); subscribers.set(identity.clientId, { response: res, access });
+  const subscribers = roomSubscribers(projectId); subscribers.set(identity.clientId, { response: res, access, userId: sid });
   const presence = collaborationRooms.join(projectId, { ...identity, module: String(new URL(req.url, "http://localhost").searchParams.get("module") || "script"), selection: null });
   res.write(`retry: 2000\nevent: connected\ndata: ${JSON.stringify({ clientId: identity.clientId, presence: collaborationRooms.presence(projectId) })}\n\n`);
   broadcastCollaboration(projectId, "presence.joined", presence, identity.clientId);
@@ -8383,6 +8416,9 @@ export function requestHandler(req, res) {
       handleUserAvatar(req, res, pathname.split("/")[3]).catch((err) => json(res, err.status || 500, { error: err.code || err.message }));
     } else if ((req.method === "GET" || req.method === "PATCH" || req.method === "DELETE") && /^\/api\/notifications(?:\/not_[a-f0-9]+)?$/.test(pathname)) {
       handleNotifications(req, res, pathname.split("/")[3] || null).catch((err) => json(res, err.status || 500, { error: err.code || err.message }));
+    } else if ((req.method === "GET" || req.method === "POST") && pathname === "/api/release-notice") {
+      if (req.method === "POST" && enforceRateLimit(req, res, "release-notice-acknowledge", 30, 10 * 60 * 1000, sessionId(req, res))) return;
+      handleReleaseNotice(req, res).catch((err) => json(res, err.status || 500, { error: err.code || err.message }));
     } else if ((req.method === "GET" || req.method === "POST") && /^\/api\/projects\/scr_[a-f0-9]+\/members$/.test(pathname)) {
       if (req.method === "POST" && enforceRateLimit(req, res, "project-invitation", 30, 10 * 60 * 1000, sessionId(req, res))) return;
       handleProjectMembers(req, res, pathname.split("/")[3]).catch((err) => json(res, err.status || 500, { error: err.code || err.message }));
@@ -8398,6 +8434,8 @@ export function requestHandler(req, res) {
       handleProjectActivity(req, res, pathname.split("/")[3]).catch((err) => json(res, err.status || 500, { error: err.code || err.message }));
     } else if ((req.method === "GET" || req.method === "POST") && /^\/api\/projects\/scr_[a-f0-9]+\/comments$/.test(pathname)) {
       handleProjectComments(req, res, pathname.split("/")[3]).catch((err) => json(res, err.status || 500, { error: err.code || err.message }));
+    } else if (req.method === "GET" && /^\/api\/projects\/scr_[a-f0-9]+\/chat\/peers$/.test(pathname)) {
+      handleProjectMessagePeers(req, res, pathname.split("/")[3]).catch((err) => json(res, err.status || 500, { error: err.code || err.message }));
     } else if ((req.method === "GET" || req.method === "POST") && /^\/api\/projects\/scr_[a-f0-9]+\/chat$/.test(pathname)) {
       handleProjectMessages(req, res, pathname.split("/")[3]).catch((err) => json(res, err.status || 500, { error: err.code || err.message }));
     } else if (req.method === "PATCH" && /^\/api\/projects\/scr_[a-f0-9]+\/comments\/cmt_[a-f0-9]+$/.test(pathname)) {

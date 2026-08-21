@@ -126,6 +126,15 @@ test("Analysis workspace keeps generation explicit and exposes real job stages w
   assert.doesNotMatch(source, /gpt-5\.6-(?:sol|terra|luna)/i);
 });
 
+test("Opened analysis signal cards keep evidence contiguous and scroll only their inner content", async () => {
+  const source = await fs.readFile(path.join(ROOT, "analysis-workspace.js"), "utf8");
+
+  assert.match(source, /\.signal-stack:has\(\.signal-card\[open\]\)\{grid-template-rows:auto;align-content:start;align-self:start\}/);
+  assert.match(source, /\.signal-stack:has\(\.signal-card\[open\]\) \.signal-card\[open\]\{height:auto;overflow:hidden\}/);
+  assert.match(source, /\.signal-stack:has\(\.signal-card\[open\]\) \.signal-card-body\{max-height:min\(216px,42vh\);overscroll-behavior:contain\}/);
+  assert.doesNotMatch(source, /\.signal-stack:has\(\.signal-card\[open\]\) \.signal-card\[open\]\{height:100%/);
+});
+
 test("Emotional Arc detects valence-shaped data and restores dramatic intensity", () => {
   const corrected = normalizeEmotionalArc([
     { sceneNumber: 1, value: 65, label: "Content / Playful", explanation: "A tender father-son moment.", marker: "" },
