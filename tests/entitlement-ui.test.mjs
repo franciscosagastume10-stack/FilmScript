@@ -91,7 +91,7 @@ test("Plan and billing uses a concise section heading without repeating the plan
 
 test("Plan and billing initializes its account client before reading the signed-in member", async () => {
   const subscription = await fs.readFile(path.join(ROOT, "Subscription.dc.html"), "utf8");
-  assert.match(subscription, /<script src="\.\/billing-client\.js\?v=20260820-proration1"><\/script>/);
+  assert.match(subscription, /<script src="\.\/billing-client\.js\?v=20260821-personal-name1"><\/script>/);
   assert.doesNotMatch(subscription, /<script defer src="\.\/billing-client\.js/);
   assert.match(subscription, /const billingReady = async \(\) => \{/);
   assert.match(subscription, /const billing = await billingReady\(\);\s*account = await billing\.me\(\)/);
@@ -508,7 +508,11 @@ test("the centralized Account includes editable identity and Personal profile fi
   assert.match(platform, /<h4>Personal profile<\/h4>/);
   assert.match(platform, /name="birthDate" type="date"/);
   assert.match(platform, /name="gender"/);
-  assert.match(platform, /api\.updateMe\(\{ name:/);
+  assert.match(platform, /name="firstName"[^>]*autocomplete="given-name"[^>]*required/);
+  assert.match(platform, /name="lastName"[^>]*autocomplete="family-name"[^>]*required/);
+  assert.match(platform, /api\.updateMe\(\{ firstName:/);
+  assert.match(platform, /class="fs-account-email-field"/);
+  assert.doesNotMatch(platform, /<input[^>]*name="email"/);
 });
 
 test("Opening Lumiere refits the screenplay to the remaining editor width", async () => {
@@ -1068,7 +1072,7 @@ test("a saved photo or preset avatar is restored after reload and reactive remou
   assert.match(platform, /hasNewAvatar[\s\S]*?requestAnimationFrame\(\(\) => \{ identityFrame = 0; applyAccountIdentity\(\); \}\)/);
   assert.match(platform, /backgroundSize = 'cover'/);
   assert.match(platform, /state\.profile\?\.avatarCrop\?\.presetIcon/);
-  for (const page of [scripts, editor]) assert.match(page, /platform-client\.js\?v=20260821-invitations1/);
+  for (const page of [scripts, editor]) assert.match(page, /platform-client\.js\?v=20260821-personal-name1/);
 });
 
 test("Account offers ten original film icons, fixed backgrounds, and never lists the current session as a collaborator", async () => {

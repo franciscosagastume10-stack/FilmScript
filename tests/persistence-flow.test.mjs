@@ -93,9 +93,9 @@ test("account-owned screenplay interactions survive reloads and a server restart
   const bootstrap = spawnSync(process.execPath, ["--input-type=module", "-e", `
     import { connectGoogleIdentity, createSession } from "./database.js";
     const first = createSession();
-    connectGoogleIdentity(first.session.id, { sub: "google_persistence_owner", email: "owner@example.com", name: "Owner", email_verified: true });
+    connectGoogleIdentity(first.session.id, { sub: "google_persistence_owner", email: "owner@example.com", name: "Project Owner", given_name: "Project", family_name: "Owner", email_verified: true });
     const second = createSession();
-    connectGoogleIdentity(second.session.id, { sub: "google_persistence_other", email: "other@example.com", name: "Other", email_verified: true });
+    connectGoogleIdentity(second.session.id, { sub: "google_persistence_other", email: "other@example.com", name: "Project Other", given_name: "Project", family_name: "Other", email_verified: true });
     console.log(JSON.stringify({ ownerToken: first.token, otherToken: second.token }));
   `], {
     cwd: ROOT,
@@ -192,17 +192,23 @@ test("account-owned screenplay interactions survive reloads and a server restart
   assert.equal(accountResponse.status, 200);
   const account = await accountResponse.json();
   assert.deepEqual(account.lumierePreferences.films, lumierePreferences.films);
+  assert.equal(account.name, "Project Owner");
+  assert.equal(account.firstName, "Project");
+  assert.equal(account.lastName, "Owner");
   assert.equal(account.profile.completed, false);
 
   const profileResponse = await fetch(`${running.url}/api/me`, {
     method: "PATCH",
     headers: { "Content-Type": "application/json", Cookie: ownerCookie },
-    body: JSON.stringify({ gender: "woman", birthDate: "1990-07-14" }),
+    body: JSON.stringify({ firstName: "Francisca", lastName: "Owner", gender: "woman", birthDate: "1990-07-14" }),
   });
   assert.equal(profileResponse.status, 200);
   const savedProfile = await profileResponse.json();
   assert.equal(savedProfile.profile.gender, "woman");
   assert.equal(savedProfile.profile.birthDate, "1990-07-14");
+  assert.equal(savedProfile.name, "Francisca Owner");
+  assert.equal(savedProfile.firstName, "Francisca");
+  assert.equal(savedProfile.lastName, "Owner");
   assert.equal(savedProfile.profile.completed, true);
 
   const invalidProfileResponse = await fetch(`${running.url}/api/me`, {

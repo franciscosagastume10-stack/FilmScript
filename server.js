@@ -6760,6 +6760,8 @@ function accountPayload(userId, verification = null) {
     preview,
     id: user?.id || null,
     name: user?.name || null,
+    firstName: user?.firstName || null,
+    lastName: user?.lastName || null,
     email: user?.email || null,
     picture: user?.picture || null,
     interfaceLanguage: user?.interfaceLanguage || null,
@@ -6767,6 +6769,8 @@ function accountPayload(userId, verification = null) {
     theme: platformProfile?.theme || "filmscript",
     avatar: ownAvatarUrl(platformProfile) || user?.picture || null,
     profile: user ? {
+      firstName: user.firstName || null,
+      lastName: user.lastName || null,
       gender: user.gender || null,
       birthDate: user.birthDate || null,
       completed: Boolean(user.profileComplete),
@@ -6837,14 +6841,23 @@ async function handleProfileUpdate(req, res) {
   let body;
   try { body = JSON.parse(await readBody(req, 32 * 1024)); } catch { return json(res, 400, { error: "invalid request body" }); }
   try {
-    if (Object.prototype.hasOwnProperty.call(body, "name")) {
+    const hasFirstName = Object.prototype.hasOwnProperty.call(body, "firstName");
+    const hasLastName = Object.prototype.hasOwnProperty.call(body, "lastName");
+    if (hasFirstName || hasLastName) {
+      const firstName = String(body.firstName || "").replace(/\s+/g, " ").trim();
+      const lastName = String(body.lastName || "").replace(/\s+/g, " ").trim();
+      if (!firstName || firstName.length > 60) return json(res, 422, { error: "First name must contain between 1 and 60 characters." });
+      if (!lastName || lastName.length > 60) return json(res, 422, { error: "Last name must contain between 1 and 60 characters." });
+      const name = `${firstName} ${lastName}`;
+      if (name.length > 120) return json(res, 422, { error: "Full name must contain no more than 120 characters." });
+      updateUserName(sid, name, { firstName, lastName });
+    } else if (Object.prototype.hasOwnProperty.call(body, "name")) {
       const name = String(body.name || "").replace(/\s+/g, " ").trim();
       const hasProfileFields = Object.prototype.hasOwnProperty.call(body, "gender")
         || Object.prototype.hasOwnProperty.call(body, "birthDate")
         || Object.prototype.hasOwnProperty.call(body, "interfaceLanguage");
-      // Older onboarding builds submitted an empty name alongside the profile
-      // fields even though the onboarding sheet does not edit a name. Treat it
-      // as unchanged; explicit name edits still use the normal validation.
+      // Older onboarding builds submitted an empty combined name. Treat it as
+      // unchanged; current identity edits send explicit first and last names.
       if (name || !hasProfileFields) {
         if (name.length < 2 || name.length > 80) return json(res, 422, { error: "Name must contain between 2 and 80 characters." });
         updateUserName(sid, name);
@@ -6943,7 +6956,13 @@ function handleAuthCompletion(req, res, requestUrl) {
   if (!session?.googleSub || !session.userId) return json(res, 401, { error: "auth_handoff_invalid", message: "Your sign-in could not be completed. Please continue with Google again." });
   const token = rotateSessionToken(handoff.sessionId);
   if (!token) return json(res, 401, { error: "auth_handoff_invalid", message: "Your sign-in could not be completed. Please continue with Google again." });
-  json(res, 200, { ok: true, returnTo: safeReturnTo(handoff.returnTo) }, {
+  const user = getUser(session.userId);
+  json(res, 200, {
+    ok: true,
+    returnTo: safeReturnTo(handoff.returnTo),
+    userId: user?.id || null,
+    firstName: user?.firstName || null,
+  }, {
     "Set-Cookie": [firstPartySessionCookie(token), sharedSessionCookie(token)],
   });
 }

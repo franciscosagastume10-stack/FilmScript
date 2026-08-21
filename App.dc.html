@@ -15,18 +15,18 @@
 <script defer src="./funnel-tracking.js?v=20260716-erp1"></script>
 <script defer src="./scripts-access-guard.js?v=20260713-auth-guard1"></script>
 <script src="./theme-preference.js?v=20260712-theme1"></script>
-<script defer src="./language-preference.js?v=20260820-i18n3"></script>
+<script defer src="./language-preference.js?v=20260821-personal-loading1"></script>
 <script defer src="./ui-sounds.js?v=20260728-calendar-complete1"></script>
-<script defer src="./billing-client.js?v=20260820-proration1"></script>
+<script defer src="./billing-client.js?v=20260821-personal-name1"></script>
 <script defer src="./credit-indicator.js?v=20260820-credit-glass1"></script>
-<script defer src="./profile-onboarding.js?v=20260820-i18n2"></script>
+<script defer src="./profile-onboarding.js?v=20260821-personal-name1"></script>
 <script defer src="./lumiere-client.js?v=20260820-credit-usage1"></script>
 <script defer src="./lumiere-access-modal.js?v=20260820-access-modal1"></script>
 <script defer src="./lumiere-preferences.js?v=20260820-navigable1"></script>
 <script defer src="./pdf-import.js"></script>
 <script defer src="./project-client.js?v=20260820-browser-safe1"></script>
 <script defer src="./preproduction-client.js?v=20260819-collab2"></script>
-<script defer src="./platform-client.js?v=20260821-invitations1"></script>
+<script defer src="./platform-client.js?v=20260821-personal-name1"></script>
 <link rel="stylesheet" href="./auth-modal.css?v=20260712-auth2">
 <link rel="stylesheet" href="./filmscript-controls.css?v=20260716-typography1">
 <link rel="stylesheet" href="./platform-ui.css?v=20260821-invitations1">
@@ -904,6 +904,22 @@ class Component extends DCLogic {
       return this._requireLumierePlan(detail.message);
     };
     this._languageHandler = () => this._typeGreeting();
+    this._profileHandler = (event) => {
+      const account = event?.detail || {};
+      const firstName = String(account.firstName || account.profile?.firstName || '').trim();
+      if (!firstName) return;
+      this._rememberFirstName(firstName);
+      this.setState((state) => ({
+        user: state.user ? {
+          ...state.user,
+          name: account.name || state.user.name,
+          firstName,
+          lastName: account.lastName || account.profile?.lastName || state.user.lastName || '',
+          initial: firstName.charAt(0).toUpperCase(),
+        } : state.user,
+      }));
+      this._typeGreeting(firstName);
+    };
     this._themeHandler = (event) => this.setState({ darkMode: event?.detail?.theme === 'dark' });
     this._membershipHandler = async (event) => {
       const projectId = String(event?.detail?.projectId || event?.detail?.membership?.projectId || '');
@@ -915,10 +931,13 @@ class Component extends DCLogic {
     };
     window.addEventListener('filmscript:pro-required', this._proRequiredHandler);
     window.addEventListener('filmscript:language-change', this._languageHandler);
+    window.addEventListener('filmscript:profile-updated', this._profileHandler);
     window.addEventListener('filmscript:theme-change', this._themeHandler);
     window.addEventListener('filmscript:project-membership-changed', this._membershipHandler);
     const scriptsAccessGranted = await window.filmscriptScriptsAccess?.ready;
     if (scriptsAccessGranted === false) {
+      this._clearGreetingIdentity();
+      this._typeGreeting('');
       this.setState({
         scriptsLoading: false,
         scriptsLoaded: true,
@@ -954,13 +973,54 @@ class Component extends DCLogic {
     if (this._sharedArrivalTimer) window.clearTimeout(this._sharedArrivalTimer);
     if (this._proRequiredHandler) window.removeEventListener('filmscript:pro-required', this._proRequiredHandler);
     if (this._languageHandler) window.removeEventListener('filmscript:language-change', this._languageHandler);
+    if (this._profileHandler) window.removeEventListener('filmscript:profile-updated', this._profileHandler);
     if (this._themeHandler) window.removeEventListener('filmscript:theme-change', this._themeHandler);
     if (this._membershipHandler) window.removeEventListener('filmscript:project-membership-changed', this._membershipHandler);
     this._flushChatSave();
   }
 
-  _typeGreeting() {
-    const phrase = this._greetingNow().hi;
+  _cachedFirstName() {
+    if (this._handoffIdentityChecked) return this._handoffIdentity?.firstName || '';
+    this._handoffIdentityChecked = true;
+    try {
+      // Remove the unsafe global key left by older FilmScript releases without
+      // ever reading it. Only the fresh, one-time OAuth handoff may prime the
+      // personalized greeting before /api/me finishes.
+      window.localStorage.removeItem('filmscript_account_first_name');
+      const raw = window.sessionStorage.getItem('filmscript_auth_handoff_identity_v1');
+      window.sessionStorage.removeItem('filmscript_auth_handoff_identity_v1');
+      if (!raw) return '';
+      const identity = JSON.parse(raw);
+      const userId = String(identity?.userId || '').trim();
+      const firstName = String(identity?.firstName || '').replace(/\s+/g, ' ').trim();
+      const issuedAt = Number(identity?.issuedAt || 0);
+      if (!userId || !firstName || firstName.length > 80 || !Number.isFinite(issuedAt) || Date.now() - issuedAt > 2 * 60 * 1000 || issuedAt > Date.now() + 30_000) return '';
+      this._handoffIdentity = { userId, firstName };
+      return firstName;
+    } catch {
+      this._handoffIdentity = null;
+      return '';
+    }
+  }
+
+  _rememberFirstName(firstName, userId = '') {
+    const value = String(firstName || '').replace(/\s+/g, ' ').trim();
+    if (!value) return;
+    this._verifiedGreetingIdentity = { userId: String(userId || '').trim(), firstName: value };
+  }
+
+  _clearGreetingIdentity() {
+    this._handoffIdentity = null;
+    this._handoffIdentityChecked = true;
+    this._verifiedGreetingIdentity = null;
+    try {
+      window.localStorage.removeItem('filmscript_account_first_name');
+      window.sessionStorage.removeItem('filmscript_auth_handoff_identity_v1');
+    } catch {}
+  }
+
+  _typeGreeting(firstName = '') {
+    const phrase = this._greetingNow(firstName).hi;
     let index = 0;
     if (this._greetingTimer) window.clearInterval(this._greetingTimer);
     this.setState({ greetingTyped: '' });
@@ -1038,15 +1098,19 @@ class Component extends DCLogic {
           continue;
         }
         const requiresLogin = e?.status === 401;
+        if (requiresLogin) this._clearGreetingIdentity();
         this.setState({
           authOpen: requiresLogin ? true : this.state.authOpen,
+          user: requiresLogin ? null : this.state.user,
+          profileName: requiresLogin ? '' : this.state.profileName,
+          profileNameDraft: requiresLogin ? '' : this.state.profileNameDraft,
           importedScripts: requiresLogin ? [] : this.state.importedScripts,
           scriptsLoading: false,
           scriptsLoaded: true,
           scriptsLoadError: requiresLogin
             ? 'Your session has ended. Please sign in again.'
             : 'We could not sync your scripts. Please try again.'
-        });
+        }, () => { if (requiresLogin) this._typeGreeting(''); });
         return false;
       }
     }
@@ -1061,10 +1125,22 @@ class Component extends DCLogic {
   async _refreshBilling(sync = false, checkoutId = null) {
     try {
       const me = await (sync ? window.filmscriptBilling.sync(checkoutId) : window.filmscriptBilling.me());
-      const user = me.authenticated && me.email ? { name: me.name || me.email.split('@')[0], email: me.email, picture: me.picture || null, initial: (me.name || me.email).charAt(0).toUpperCase() } : null;
-      this.setState({ plan: this._canonicalPlan(me.plan), billingPlan: String(me.billingPlan || me.plan || '').trim().toLowerCase() || null, entitlements: me.entitlements || null, user, profileName: user?.name || '', profileNameDraft: user?.name || '', authOpen: user ? this.state.authOpen : true });
+      const displayParts = String(me.name || '').replace(/\s+/g, ' ').trim().split(' ').filter(Boolean);
+      const firstName = String(me.firstName || me.profile?.firstName || (displayParts.length ? displayParts[0] : '')).trim();
+      const lastName = String(me.lastName || me.profile?.lastName || (displayParts.length >= 2 ? displayParts.slice(1).join(' ') : '')).trim();
+      const displayName = String(me.name || [firstName, lastName].filter(Boolean).join(' ') || 'FilmScript member').trim();
+      const user = me.authenticated && me.email ? { name: displayName, firstName, lastName, email: me.email, picture: me.picture || null, initial: (firstName || displayName || 'F').charAt(0).toUpperCase() } : null;
+      this._clearGreetingIdentity();
+      if (user?.firstName) this._rememberFirstName(user.firstName, me.id);
+      // Even a valid handoff is only a paint optimization. /api/me is the
+      // authority; a mismatched or anonymous response immediately replaces it.
+      this.setState({ plan: this._canonicalPlan(me.plan), billingPlan: String(me.billingPlan || me.plan || '').trim().toLowerCase() || null, entitlements: me.entitlements || null, user, profileName: user?.name || '', profileNameDraft: user?.name || '', authOpen: user ? this.state.authOpen : true }, () => this._typeGreeting(user?.firstName || ''));
       return me;
-    } catch (e) {}
+    } catch (e) {
+      this._clearGreetingIdentity();
+      this.setState({ user: null, profileName: '', profileNameDraft: '', authOpen: e?.status === 401 ? true : this.state.authOpen }, () => this._typeGreeting(''));
+      return null;
+    }
   }
 
   _canonicalPlan(plan) {
@@ -1896,30 +1972,32 @@ Write Lumiere's next reply only:`;
     }
   }
 
-  _greetingNow() {
+  _greetingNow(firstName = '') {
     const h = new Date().getHours();
     const es = window.filmscriptLanguage?.get() === 'es';
+    const preferredName = String(firstName || this.state.user?.firstName || this._verifiedGreetingIdentity?.firstName || this._cachedFirstName() || '').replace(/\s+/g, ' ').trim();
+    const named = (spanish, english) => `${es ? spanish : english}${preferredName ? `, ${preferredName}` : ''}.`;
     if (h < 5) return es
-      ? { hi: '¿Aún despierto, guionista?', sub: 'A esta hora la inspiración llega en la ducha, con una última película o en una espiral de TikTok que se salió de control. Escríbela antes de que escape.' }
-      : { hi: 'Still awake, writer.', sub: 'Inspiration at this hour comes from the shower, one last movie, or a TikTok spiral that got out of hand. Write it down before it escapes.' };
+      ? { hi: named('Buenas noches', 'Good evening'), sub: 'A esta hora la inspiración llega en la ducha, con una última película o en una espiral de TikTok que se salió de control. Escríbela antes de que escape.' }
+      : { hi: named('Buenas noches', 'Good evening'), sub: 'Inspiration at this hour comes from the shower, one last movie, or a TikTok spiral that got out of hand. Write it down before it escapes.' };
     if (h < 8) return es
-      ? { hi: 'Despierto antes que el sol.', sub: 'Primero café, luego páginas. En las horas tranquilas se esconden las buenas escenas.' }
-      : { hi: 'Up before the sun.', sub: 'Coffee first, then pages. Build your next scene at your own pace.' };
+      ? { hi: named('Buenos días', 'Good morning'), sub: 'Primero café, luego páginas. En las horas tranquilas se esconden las buenas escenas.' }
+      : { hi: named('Buenos días', 'Good morning'), sub: 'Coffee first, then pages. Build your next scene at your own pace.' };
     if (h < 12) return es
-      ? { hi: 'Buenos días, guionista.', sub: 'Café fresco, páginas nuevas. Tus personajes durmieron aún menos que tú.' }
-      : { hi: 'Good morning, writer.', sub: 'Fresh coffee, fresh pages. Your characters slept even less than you did.' };
+      ? { hi: named('Buenos días', 'Good morning'), sub: 'Café fresco, páginas nuevas. Tus personajes durmieron aún menos que tú.' }
+      : { hi: named('Buenos días', 'Good morning'), sub: 'Fresh coffee, fresh pages. Your characters slept even less than you did.' };
     if (h < 15) return es
-      ? { hi: 'Buenas tardes, guionista.', sub: 'El café ya hizo su parte. Ahora toca rescatar ese segundo acto antes de que pida vacaciones.' }
-      : { hi: 'Good afternoon, writer.', sub: 'A perfect hour for second acts. Lunch can wait, the midpoint cannot.' };
+      ? { hi: named('Buenas tardes', 'Good afternoon'), sub: 'El café ya hizo su parte. Ahora toca rescatar ese segundo acto antes de que pida vacaciones.' }
+      : { hi: named('Buenas tardes', 'Good afternoon'), sub: 'A perfect hour for second acts. Lunch can wait, the midpoint cannot.' };
     if (h < 19) return es
-      ? { hi: 'Buenas tardes, guionista.', sub: 'La tarde está dorada y ese tercer acto sigue pidiendo auxilio. Vamos a darle una vuelta.' }
-      : { hi: 'Good afternoon, writer.', sub: 'The light is turning golden. A fine moment to fix that third act.' };
+      ? { hi: named('Buenas tardes', 'Good afternoon'), sub: 'La tarde está dorada y ese tercer acto sigue pidiendo auxilio. Vamos a darle una vuelta.' }
+      : { hi: named('Buenas tardes', 'Good afternoon'), sub: 'The light is turning golden. A fine moment to fix that third act.' };
     if (h < 23) return es
-      ? { hi: 'Buenas noches, guionista.', sub: 'Hora estelar. Tus personajes te han esperado todo el día.' }
-      : { hi: 'Good evening, writer.', sub: 'Prime time. Your characters have been waiting for you all day.' };
+      ? { hi: named('Buenas noches', 'Good evening'), sub: 'Hora estelar. Tus personajes te han esperado todo el día.' }
+      : { hi: named('Buenas noches', 'Good evening'), sub: 'Prime time. Your characters have been waiting for you all day.' };
     return es
-      ? { hi: 'Escribiendo después de dormir.', sub: 'Una escena más, dijiste hace dos horas. Te creemos.' }
-      : { hi: 'Writing past bedtime.', sub: 'One more scene, you said, two hours ago. We believe you.' };
+      ? { hi: named('Buenas noches', 'Good evening'), sub: 'Una escena más, dijiste hace dos horas. Te creemos.' }
+      : { hi: named('Buenas noches', 'Good evening'), sub: 'One more scene, you said, two hours ago. We believe you.' };
   }
 
   renderVals() {

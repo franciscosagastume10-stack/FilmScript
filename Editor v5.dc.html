@@ -11,11 +11,11 @@
 <script defer src="./seamless-navigation.js?v=20260728-route1"></script>
 <script src="./runtime-config.js?v=20260821-invitation-route2"></script>
 <script src="./theme-preference.js?v=20260720-themefade1"></script>
-<script defer src="./language-preference.js?v=20260820-i18n3"></script>
+<script defer src="./language-preference.js?v=20260821-personal-loading1"></script>
 <script defer src="./ui-sounds.js?v=20260804-imagine-live2"></script>
-<script defer src="./billing-client.js?v=20260820-proration1"></script>
+<script defer src="./billing-client.js?v=20260821-personal-name1"></script>
 <script defer src="./credit-indicator.js?v=20260820-credit-glass1"></script>
-<script defer src="./profile-onboarding.js?v=20260820-i18n2"></script>
+<script defer src="./profile-onboarding.js?v=20260821-personal-name1"></script>
 <script defer src="./lumiere-client.js?v=20260820-credit-usage1"></script>
 <script defer src="./lumiere-access-modal.js?v=20260820-access-modal1"></script>
 <script defer src="./lumiere-preferences.js?v=20260820-navigable1"></script>
@@ -25,14 +25,14 @@
 <script defer src="./project-client.js?v=20260820-browser-safe1"></script>
 <script defer src="./preproduction-client.js?v=20260820-module-routes3"></script>
 <script defer src="./canvas-client.js?v=20260821-imagine-access1"></script>
-<script defer src="./canvas-workspace.js?v=20260821-imagine-access1"></script>
+<script defer src="./canvas-workspace.js?v=20260821-loading1"></script>
 <script defer src="./analysis-client.js?v=20260820-access-gate1"></script>
-    <script type="module" src="./analysis-workspace.js?v=20260820-i18n3"></script>
+    <script type="module" src="./analysis-workspace.js?v=20260821-loading1"></script>
 <script defer src="./budget-client.js?v=20260820-module-routes3"></script>
-<script type="module" src="./budget-workspace.js?v=20260820-dark1"></script>
+<script type="module" src="./budget-workspace.js?v=20260821-loading1"></script>
 <script defer src="./calendar-client.js?v=20260820-module-routes3"></script>
-<script type="module" src="./calendar-workspace.js?v=20260801-calendar-glass1"></script>
-<script defer src="./platform-client.js?v=20260821-invitations1"></script>
+<script type="module" src="./calendar-workspace.js?v=20260821-loading1"></script>
+<script defer src="./platform-client.js?v=20260821-personal-name1"></script>
 <script defer src="./assets/vendor/realtime-collaboration.bundle.js?v=20260819-collab2"></script>
 <link rel="stylesheet" href="./filmscript-controls.css?v=20260716-typography1">
 <link rel="stylesheet" href="./platform-ui.css?v=20260821-invitations1">
@@ -375,12 +375,28 @@
   .v5-breakdown-loader-card span { top: 56px; width: calc(100% - 30px); height: 6px; box-shadow: 0 15px 0 color-mix(in srgb, var(--muted, #888780) 11%, transparent), 0 30px 0 color-mix(in srgb, var(--muted, #888780) 8%, transparent); }
   .v5-breakdown-loader-status { display: flex; align-items: center; gap: 9px; margin-top: 18px; color: var(--muted, #888780); font-size: 10.5px; font-weight: 650; }
   .v5-breakdown-loader-status::before { content: ""; width: 8px; height: 8px; border-radius: 50%; background: var(--accent, #BA7517); box-shadow: 0 0 0 0 color-mix(in srgb, var(--accent, #BA7517) 28%, transparent); animation: v5-breakdown-loader-pulse 1.25s ease-out infinite; }
+  .v5-module-loading-stage { flex: 1; min-width: 0; min-height: 0; width: 100%; display: grid; place-items: center; padding: clamp(24px, 5vw, 68px); overflow: hidden; background: radial-gradient(circle at 50% 42%, color-mix(in srgb, var(--accent, #BA7517) 8%, transparent), transparent 38%), var(--bg, #F5F0E8); }
+  .v5-module-loading-stage.is-production { min-height: max(460px, calc(100vh - 166px)); padding-block: clamp(34px, 8vh, 84px); }
+  .v5-module-loading-stage .v5-breakdown-loader { margin: 0; }
+  .v5-breakdown-loader[data-loader-kind] .v5-breakdown-loader-mark::before,
+  .v5-breakdown-loader[data-loader-kind] .v5-breakdown-loader-mark::after { display: none; }
+  .v5-breakdown-loader-mark svg { position: relative; z-index: 1; width: 30px; height: 30px; fill: none; stroke: var(--accent, #BA7517); stroke-width: 1.55; stroke-linecap: round; stroke-linejoin: round; animation: v5-module-loader-icon 1.55s cubic-bezier(.2,.8,.2,1) infinite; }
+  .v5-breakdown-loader[data-loader-kind="stripboard"] .v5-breakdown-loader-card { min-height: 92px; }
+  .v5-breakdown-loader[data-loader-kind="stripboard"] .v5-breakdown-loader-card:nth-child(odd) { transform: rotate(-.35deg); }
+  .v5-breakdown-loader[data-loader-kind="stripboard"] .v5-breakdown-loader-card:nth-child(even) { transform: rotate(.35deg); }
+  .v5-breakdown-loader[data-loader-kind="shotlist"] .v5-breakdown-loader-card b { width: 27%; }
+  .v5-breakdown-loader[data-loader-kind="shotlist"] .v5-breakdown-loader-card span { width: calc(72% - 30px); }
+  .v5-breakdown-loader[data-loader-kind="editor"] .v5-breakdown-loader-card { min-height: 126px; }
+  .v5-module-loader-action { min-height: 38px; margin-top: 20px; padding: 0 16px; border: 1px solid var(--accent, #BA7517); border-radius: 999px; background: color-mix(in srgb, var(--accent, #BA7517) 12%, var(--surface, #FFFEF9)); color: var(--ink, #2C2C2A); font: inherit; font-size: 11px; font-weight: 760; cursor: pointer; transition: transform .16s cubic-bezier(.2,.8,.2,1), box-shadow .16s ease, background-color .16s ease; }
+  .v5-module-loader-action:hover { transform: translateY(-1px); background: color-mix(in srgb, var(--accent, #BA7517) 18%, var(--surface, #FFFEF9)); box-shadow: 0 8px 20px color-mix(in srgb, var(--accent, #BA7517) 17%, transparent); }
+  .v5-module-loader-action:focus-visible { outline: 2px solid var(--accent, #BA7517); outline-offset: 3px; }
   @keyframes v5-breakdown-loader-in { from { opacity: 0; transform: translateY(9px) scale(.985); } to { opacity: 1; transform: none; } }
   @keyframes v5-breakdown-loader-page { 0%,100% { transform: rotate(5deg) translate(3px,-1px); } 50% { transform: rotate(1deg) translate(1px,-3px); } }
   @keyframes v5-breakdown-loader-drift { to { transform: translate(32px, 18px) rotate(8deg); } }
   @keyframes v5-breakdown-loader-card { 0%,100% { transform: translateY(0); border-color: color-mix(in srgb, var(--sheet-line, #B9B3A7) 45%, transparent); } 50% { transform: translateY(-3px); border-color: color-mix(in srgb, var(--accent, #BA7517) 34%, transparent); } }
   @keyframes v5-breakdown-loader-shimmer { 45%,100% { transform: translateX(120%); } }
   @keyframes v5-breakdown-loader-pulse { 70%,100% { box-shadow: 0 0 0 8px color-mix(in srgb, var(--accent, #BA7517) 0%, transparent); } }
+  @keyframes v5-module-loader-icon { 0%,100% { transform: translateY(0) rotate(-1deg); } 50% { transform: translateY(-2px) rotate(1deg); } }
   .v5-breakdown-sheet { position: relative; min-width: 940px; overflow: visible; isolation: isolate; padding: 2px; border: 0; border-radius: 22px; background: transparent; box-shadow: none; color: var(--ink, #2C2C2A); animation: v5-rise .28s ease both; }
   .v5-breakdown-sheet::after { display: none; }
   .v5-breakdown-sheet.is-editable { cursor: text; }
@@ -467,8 +483,8 @@
   .v5-breakdown-reference-fallback { border-radius: 2px; background: var(--reference-soft, rgba(173,126,24,.20)); text-decoration-line: underline; text-decoration-color: var(--reference-color, #AD7E18); text-decoration-thickness: 2px; text-underline-offset: 3px; box-shadow: 0 2px 0 color-mix(in srgb, var(--reference-color, #AD7E18) 16%, transparent); animation: v5-reference-reveal .22s ease both; }
   @keyframes v5-reference-reveal { from { background: transparent; text-decoration-color: transparent; } to { background: var(--reference-soft, rgba(173,126,24,.20)); text-decoration-color: var(--reference-color, #AD7E18); } }
   @supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) { .v5-breakdown-loader, .v5-breakdown-sheet-header, .v5-breakdown-scene-meta, .v5-breakdown-cell { background-color: var(--surface, #FFFEF9); } }
-  @media (prefers-reduced-transparency: reduce) { .v5-breakdown-loader, .v5-breakdown-sheet-header, .v5-breakdown-scene-meta, .v5-breakdown-cell { background: var(--surface, #FFFEF9); backdrop-filter: none; -webkit-backdrop-filter: none; } }
-  @media (prefers-reduced-motion: reduce) { .v5-production-sync-dot.is-stale, .v5-breakdown-loader, .v5-breakdown-loader::before, .v5-breakdown-loader-mark::after, .v5-breakdown-loader-card, .v5-breakdown-loader-card::before, .v5-breakdown-loader-status::before, .v5-breakdown-cell, .v5-breakdown-start { animation: none; } .v5-breakdown-cell, .v5-breakdown-start-card, .v5-breakdown-start-button { transition: none; } }
+  @media (prefers-reduced-transparency: reduce) { .v5-breakdown-loader, .v5-breakdown-sheet-header, .v5-breakdown-scene-meta, .v5-breakdown-cell { background: var(--surface, #FFFEF9); backdrop-filter: none; -webkit-backdrop-filter: none; } .v5-module-loading-stage { background: var(--bg, #F5F0E8); } }
+  @media (prefers-reduced-motion: reduce) { .v5-production-sync-dot.is-stale, .v5-breakdown-loader, .v5-breakdown-loader::before, .v5-breakdown-loader-mark::after, .v5-breakdown-loader-mark svg, .v5-breakdown-loader-card, .v5-breakdown-loader-card::before, .v5-breakdown-loader-status::before, .v5-breakdown-cell, .v5-breakdown-start { animation: none; } .v5-breakdown-cell, .v5-breakdown-start-card, .v5-breakdown-start-button, .v5-module-loader-action { transition: none; } }
   @media (max-width: 860px) { .v5-production-header { align-items: flex-start; flex-direction: column; } .v5-production-header-actions { width: 100%; justify-content: flex-start; flex-wrap: wrap; } .v5-breakdown-toolbar { align-items: flex-start; flex-direction: column; } .v5-breakdown-actions { width: 100%; justify-content: flex-start; flex-wrap: wrap; } .v5-breakdown-scene-heading { max-width: 64vw; } .v5-breakdown-start-grid { grid-template-columns: 1fr; } .v5-breakdown-start-card { min-height: 250px; } .v5-breakdown-loader-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
   @media (max-width: 560px) { .v5-breakdown-generation-progress { grid-template-columns: auto minmax(0, 1fr); gap: 10px; } .v5-breakdown-generation-count { grid-column: 2; text-align: left; } .v5-breakdown-loader { padding: 22px 18px; } .v5-breakdown-loader-head { grid-template-columns: 46px minmax(0, 1fr); gap: 13px; } .v5-breakdown-loader-mark { width: 46px; height: 46px; } .v5-breakdown-loader-grid { gap: 9px; } .v5-breakdown-loader-card { min-height: 96px; } }
   .v5-stripboard-board { position: relative; animation: v5-rise .28s ease both; }
@@ -1235,6 +1251,27 @@
     </div>
   </sc-if>
 
+  <sc-if value="{{ editorLoadGate }}" hint-placeholder-val="false">
+    <div class="v5-module-loading-stage" data-testid="editor-loading-stage">
+      <section class="v5-breakdown-loader" role="status" aria-live="polite" data-loader-kind="editor" aria-atomic="true" aria-label="{{ editorLoaderAriaLabel }}">
+        <div class="v5-breakdown-loader-head">
+          <div class="v5-breakdown-loader-mark" aria-hidden="true"><svg viewBox="0 0 32 32"><path d="M8 4.5h12l4 4v19H8z"></path><path d="M20 4.5v4h4M12 14h8M12 18h8M12 22h5"></path></svg></div>
+          <div><span class="v5-breakdown-loader-kicker">{{ editorLoaderKicker }}</span><h2>{{ editorLoaderTitle }}</h2><p>{{ editorLoaderCopy }}</p></div>
+        </div>
+        <div class="v5-breakdown-loader-grid" aria-hidden="true">
+          <div class="v5-breakdown-loader-card" style="--loader-card:0"><i></i><b></b><span></span></div>
+          <div class="v5-breakdown-loader-card" style="--loader-card:1"><i></i><b></b><span></span></div>
+          <div class="v5-breakdown-loader-card" style="--loader-card:2"><i></i><b></b><span></span></div>
+          <div class="v5-breakdown-loader-card" style="--loader-card:3"><i></i><b></b><span></span></div>
+          <div class="v5-breakdown-loader-card" style="--loader-card:4"><i></i><b></b><span></span></div>
+          <div class="v5-breakdown-loader-card" style="--loader-card:5"><i></i><b></b><span></span></div>
+        </div>
+        <div class="v5-breakdown-loader-status">{{ editorLoaderStatus }}</div>
+        <sc-if value="{{ editorLoadFailed }}" hint-placeholder-val="false"><button type="button" class="v5-module-loader-action" onClick="{{ retryEditorLoad }}">{{ editorLoaderRetryLabel }}</button></sc-if>
+      </section>
+    </div>
+  </sc-if>
+
   <!-- ============ TOOLBAR ============ -->
   <div class="v5-editor-toolbar" style="position: relative; z-index: 190; flex: 0 0 auto; height: 50px; background: var(--surface, #FFFEF9); border-bottom: 1px solid var(--hair, #E7E4DA); display: {{ editorDisplay }}; align-items: center; padding: 0 14px; gap: 10px; animation: v5-rise .4s ease both; transition: background-color .3s ease, border-color .3s ease;">
 
@@ -1325,24 +1362,29 @@
       </div>
       </sc-if>
       <sc-if value="{{ productionAccessNotice }}" hint-placeholder-val="false"><div class="v5-access-note" data-testid="production-access-notice"><div style="width: 8px; height: 8px; flex: 0 0 8px; border-radius: 50%; background: var(--accent, #BA7517); box-shadow: 0 0 0 5px var(--accent-soft, rgba(186,117,23,.11));"></div><div class="v5-access-note-copy"><div style="font-size: 9.5px; font-weight: 750; letter-spacing: 1.2px; text-transform: uppercase; color: var(--accent, #BA7517);">Lumiere pass used</div><div style="font-size: 13.5px; font-weight: 700; color: var(--ink, #2C2C2A); margin-top: 4px;">Your existing production work stays yours.</div><div style="font-size: 11.5px; line-height: 1.55; color: var(--muted, #888780); margin-top: 4px;">Keep editing breakdowns, stripboards, shot lists, budgets, and calendars. Creator unlocks more Lumiere; Full also includes 1,000 image credits each month.</div></div><button type="button" class="v5-access-note-action" onClick="{{ goPricing }}">View plans</button></div></sc-if>
-      <sc-if value="{{ breakdownLoading }}" hint-placeholder-val="false">
-        <section class="v5-breakdown-loader" role="status" aria-live="polite" aria-label="Loading Breakdown">
-          <div class="v5-breakdown-loader-head">
-            <div class="v5-breakdown-loader-mark" aria-hidden="true"></div>
-            <div><span class="v5-breakdown-loader-kicker">Connected preproduction</span><h2>Preparing your Breakdown</h2><p>Opening the screenplay, organizing its scenes and connecting every production department.</p></div>
-          </div>
-          <div class="v5-breakdown-loader-grid" aria-hidden="true">
-            <div class="v5-breakdown-loader-card" style="--loader-card:0"><i></i><b></b><span></span></div>
-            <div class="v5-breakdown-loader-card" style="--loader-card:1"><i></i><b></b><span></span></div>
-            <div class="v5-breakdown-loader-card" style="--loader-card:2"><i></i><b></b><span></span></div>
-            <div class="v5-breakdown-loader-card" style="--loader-card:3"><i></i><b></b><span></span></div>
-            <div class="v5-breakdown-loader-card" style="--loader-card:4"><i></i><b></b><span></span></div>
-            <div class="v5-breakdown-loader-card" style="--loader-card:5"><i></i><b></b><span></span></div>
-          </div>
-          <div class="v5-breakdown-loader-status">Organizing scene departments…</div>
-        </section>
+      <sc-if value="{{ productionModuleLoading }}" hint-placeholder-val="false">
+        <div class="v5-module-loading-stage is-production" data-testid="production-loading-stage">
+          <section class="v5-breakdown-loader" role="status" aria-live="polite" data-loader-kind="{{ moduleLoaderKind }}" aria-atomic="true" aria-label="{{ moduleLoaderAriaLabel }}">
+            <div class="v5-breakdown-loader-head">
+              <div class="v5-breakdown-loader-mark" aria-hidden="true">
+                <sc-if value="{{ moduleLoaderBreakdown }}" hint-placeholder-val="false"><svg viewBox="0 0 32 32"><path d="M7 5h12l4 4v18H7z"></path><path d="M19 5v4h4M11 14h8M11 18h8M11 22h5"></path><circle cx="24.5" cy="22.5" r="3.5"></circle><path d="m22 20-2-2"></path></svg></sc-if>
+                <sc-if value="{{ moduleLoaderStripboard }}" hint-placeholder-val="false"><svg viewBox="0 0 32 32"><path d="M4.5 8.5h23v15h-23z"></path><path d="M4.5 13.5h23M10 8.5v5M16 8.5v5M22 8.5v5M9 18h14"></path></svg></sc-if>
+                <sc-if value="{{ moduleLoaderShotList }}" hint-placeholder-val="false"><svg viewBox="0 0 32 32"><path d="M5 10h16a3 3 0 0 1 3 3v10H5z"></path><path d="m24 15 4-3v10l-4-3M10 10l2-4h5l2 4"></path><circle cx="14.5" cy="17" r="4"></circle></svg></sc-if>
+              </div>
+              <div><span class="v5-breakdown-loader-kicker">{{ moduleLoaderKicker }}</span><h2>{{ moduleLoaderTitle }}</h2><p>{{ moduleLoaderCopy }}</p></div>
+            </div>
+            <div class="v5-breakdown-loader-grid" aria-hidden="true">
+              <div class="v5-breakdown-loader-card" style="--loader-card:0"><i></i><b></b><span></span></div>
+              <div class="v5-breakdown-loader-card" style="--loader-card:1"><i></i><b></b><span></span></div>
+              <div class="v5-breakdown-loader-card" style="--loader-card:2"><i></i><b></b><span></span></div>
+              <div class="v5-breakdown-loader-card" style="--loader-card:3"><i></i><b></b><span></span></div>
+              <div class="v5-breakdown-loader-card" style="--loader-card:4"><i></i><b></b><span></span></div>
+              <div class="v5-breakdown-loader-card" style="--loader-card:5"><i></i><b></b><span></span></div>
+            </div>
+            <div class="v5-breakdown-loader-status">{{ moduleLoaderStatus }}</div>
+          </section>
+        </div>
       </sc-if>
-      <sc-if value="{{ productionGenericLoading }}" hint-placeholder-val="false"><div style="padding: 72px; text-align: center; color: var(--muted, #888780);">Loading screenplay data…</div></sc-if>
       <sc-if value="{{ breakdownStartVisible }}" hint-placeholder-val="false">
         <section class="v5-breakdown-start" aria-labelledby="breakdown-start-title">
           <div class="v5-breakdown-start-head">
@@ -2392,7 +2434,13 @@ class Component extends DCLogic {
     accountProfileSaving: false,
     accountProfileSaved: false,
     productionProject: null,
-    productionLoading: false,
+    productionLoading: (() => {
+      const params = new URLSearchParams(window.location.search);
+      const view = params.get('view') || '';
+      const tool = params.get('tool') || '';
+      return ['breakdown', 'stripboard', 'shotlist'].includes(view)
+        || (view === 'canvas' && tool === 'shotlist');
+    })(),
     productionRefreshBusy: false,
     breakdownSceneIndex: 0,
     breakdownEditing: false,
@@ -2449,6 +2497,8 @@ class Component extends DCLogic {
     shotReferenceUploading: {},
     shotReferencePreview: null,
     shotReferenceDownloading: false,
+    scriptLoading: Boolean(new URLSearchParams(window.location.search).get('script')),
+    scriptLoadError: false,
     // A scene or shot can borrow a saved visual without duplicating it. The
     // Canvas workspace stays global to the signed-in account, so Imagine and
     // Vault references are available from every screenplay.
@@ -3177,12 +3227,15 @@ class Component extends DCLogic {
   async _loadImportedScript() {
     const scriptId = new URLSearchParams(window.location.search).get('script');
     if (!scriptId || !window.filmscriptScripts) {
-      if (this._isBreakdownEmbed && scriptId && (this._breakdownEmbedRetryCount || 0) < 8) {
+      if (scriptId && (this._breakdownEmbedRetryCount || 0) < 8) {
         clearTimeout(this._breakdownEmbedRetryTimer);
         this._breakdownEmbedRetryCount = (this._breakdownEmbedRetryCount || 0) + 1;
         this._breakdownEmbedRetryTimer = window.setTimeout(() => {
           if (!this._unmounted) this._loadImportedScript();
         }, 180);
+      } else if (scriptId && !this._unmounted) {
+        this.setState({ scriptLoading: false, scriptLoadError: true });
+        if (!this._isBreakdownEmbed) this._toast('Could not open this screenplay.');
       }
       return;
     }
@@ -3215,6 +3268,8 @@ class Component extends DCLogic {
         nameRoomPending: null,
         currentPage: 0,
         activeScene: 1,
+        scriptLoading: false,
+        scriptLoadError: false,
       });
       this._breakdownEmbedRetryCount = 0;
       if (recovery) this._toast('Recovered the latest local screenplay changes.');
@@ -3227,15 +3282,23 @@ class Component extends DCLogic {
         if (this._breakdownEmbedRetryCount <= 8) this._breakdownEmbedRetryTimer = window.setTimeout(() => {
           if (!this._unmounted) this._loadImportedScript();
         }, 700);
+        else this.setState({ scriptLoading: false, scriptLoadError: true });
       } else {
         // A collaborator may legitimately open Imagine, Breakdown, Shot List,
         // or another permitted workspace without Script access. The screenplay
         // route intentionally answers 404 in that case; let the requested
         // module render instead of showing a false screenplay failure.
         const moduleOnlyRoute = this.state.workMode !== 'editor';
+        this.setState({ scriptLoading: false, scriptLoadError: !moduleOnlyRoute });
         if (!(error?.status === 404 && moduleOnlyRoute)) this._toast('Could not open this screenplay.');
       }
     }
+  }
+
+  retryEditorLoad() {
+    if (this.state.scriptLoading) return;
+    this._breakdownEmbedRetryCount = 0;
+    this.setState({ scriptLoading: true, scriptLoadError: false }, () => this._loadImportedScript());
   }
 
   async _connectScriptRealtime(scriptId, recoveryBlocks = null) {
@@ -3314,9 +3377,47 @@ class Component extends DCLogic {
     if (allowedModes.includes(savedMode) && savedMode !== 'editor') this.switchWorkMode(savedMode, { canvasTool: savedCanvasTool, force: true });
   }
 
+  _clearWorkModeDependencyRetry() {
+    clearTimeout(this._workModeDependencyRetryTimer);
+    this._workModeDependencyRetryTimer = null;
+    this._workModeDependencyRetryKey = '';
+    this._workModeDependencyRetryCount = 0;
+  }
+
+  _retryWorkModeWhenClientReady(mode, options = {}) {
+    const canvasTool = mode === 'canvas' && options.canvasTool === 'shotlist' ? 'shotlist' : 'home';
+    const retryKey = `${mode}:${canvasTool}`;
+    if (this._workModeDependencyRetryKey !== retryKey) {
+      clearTimeout(this._workModeDependencyRetryTimer);
+      this._workModeDependencyRetryKey = retryKey;
+      this._workModeDependencyRetryCount = 0;
+    }
+    if (this._workModeDependencyRetryCount >= 20) {
+      this._clearWorkModeDependencyRetry();
+      this.setState({ productionLoading: false });
+      this._toast('Preproduction is not available right now. Please try again.');
+      return;
+    }
+    this._workModeDependencyRetryCount += 1;
+    this.setState({
+      workMode: mode,
+      canvasTool: mode === 'canvas' || mode === 'shotlist' ? 'shotlist' : this.state.canvasTool,
+      productionLoading: true,
+      stripboardEntering: false,
+      stripboardTimePopoverSceneId: null,
+      stripboardTimePopoverEventId: null,
+    });
+    clearTimeout(this._workModeDependencyRetryTimer);
+    this._workModeDependencyRetryTimer = window.setTimeout(() => {
+      this._workModeDependencyRetryTimer = null;
+      if (!this._unmounted) this.switchWorkMode(mode, { ...options, canvasTool, force: true, dependencyRetry: true });
+    }, 250);
+  }
+
   async switchWorkMode(mode, options = {}) {
     const allowedModes = ['editor', 'analysis', 'breakdown', 'stripboard', 'imagine', 'canvas', 'shotlist', 'budget', 'calendar'];
     if (!allowedModes.includes(mode)) return;
+    if (options.dependencyRetry !== true) this._clearWorkModeDependencyRetry();
     if (this.state.mobileMenuOpen) this.setState({ mobileMenuOpen: false });
     const requestedCanvasTool = mode === 'canvas' && options.canvasTool === 'shotlist' ? 'shotlist' : 'home';
     const forceReload = options.force === true;
@@ -3376,9 +3477,10 @@ class Component extends DCLogic {
       return;
     }
     if (!window.filmscriptPreproduction) {
-      this._toast('Preproduction is not available right now.');
+      this._retryWorkModeWhenClientReady(mode, { canvasTool: requestedCanvasTool });
       return;
     }
+    this._clearWorkModeDependencyRetry();
 
     const productionMode = mode === 'canvas' || mode === 'shotlist' ? 'shotlist' : mode;
     if (mode === 'canvas' || mode === 'shotlist') this._playWorkModeSound(productionMode);
@@ -3556,7 +3658,9 @@ class Component extends DCLogic {
     const scriptId = this.state.activeScriptId || this._activeScriptId;
     if (!scriptId) return;
     const mode = this.state.workMode;
-    this.setState({ productionRefreshBusy: true });
+    const showModuleLoader = ['breakdown', 'stripboard', 'shotlist'].includes(mode)
+      || (mode === 'canvas' && this.state.canvasTool === 'shotlist');
+    this.setState({ productionRefreshBusy: true, ...(showModuleLoader ? { productionLoading: true } : {}) });
     try {
       if (this.state.saving || this.state.dirty) {
         clearTimeout(this._saveT);
@@ -3566,7 +3670,7 @@ class Component extends DCLogic {
       }
       const refreshed = await window.filmscriptPreproduction.get(scriptId);
       const project = refreshed.project || null;
-      this.setState({ productionProject: project });
+      this.setState({ productionProject: project, ...(showModuleLoader ? { productionLoading: false } : {}) });
       if (mode !== 'breakdown') {
         this._toast('Production data refreshed.');
         return;
@@ -3594,7 +3698,7 @@ class Component extends DCLogic {
     } catch (error) {
       this._toast('Could not refresh the breakdown.');
     } finally {
-      this.setState({ productionRefreshBusy: false });
+      this.setState({ productionRefreshBusy: false, ...(showModuleLoader ? { productionLoading: false } : {}) });
     }
   }
 
@@ -8063,6 +8167,7 @@ Write Lumiere's next reply only:`;
     clearTimeout(this._stripboardEntryTimer);
     clearTimeout(this._analysisFocusTimer);
     clearTimeout(this._analysisBackgroundTimer);
+    clearTimeout(this._workModeDependencyRetryTimer);
     clearInterval(this._creditsRefreshTimer);
     this._clearBreakdownReferenceHighlight();
   }
@@ -9069,6 +9174,34 @@ Write Lumiere's next reply only:`;
     };
     const productionEmptyMode = shotListMode ? 'shotlist' : workMode;
     const modeTitles = { analysis: 'Analysis', breakdown: 'Script Breakdown', stripboard: 'Stripboard', imagine: 'Imagine', canvas: 'Canvas', shotlist: 'Shot List', budget: 'Budget', calendar: 'Calendar' };
+    const moduleLoaderMode = shotListMode ? 'shotlist' : workMode;
+    const moduleLoaders = {
+      breakdown: {
+        kind: 'breakdown',
+        kicker: ui('Connected preproduction', 'Preproducción conectada'),
+        title: ui('Preparing your Breakdown', 'Preparando tu desglose'),
+        copy: ui('Opening the screenplay, organizing its scenes and connecting every production department.', 'Abriendo el guion, organizando sus escenas y conectando cada departamento de producción.'),
+        status: ui('Organizing scene departments…', 'Organizando los departamentos por escena…'),
+        aria: ui('Loading Breakdown', 'Cargando el desglose'),
+      },
+      stripboard: {
+        kind: 'stripboard',
+        kicker: ui('Production schedule', 'Plan de producción'),
+        title: ui('Preparing your Stripboard', 'Preparando tu plan de rodaje'),
+        copy: ui('Reading scene order, locations and production timing before the schedule appears.', 'Leyendo el orden de escenas, las locaciones y los tiempos antes de mostrar el plan.'),
+        status: ui('Arranging the shooting day…', 'Organizando la jornada de rodaje…'),
+        aria: ui('Loading Stripboard', 'Cargando el plan de rodaje'),
+      },
+      shotlist: {
+        kind: 'shotlist',
+        kicker: ui('Camera planning', 'Planificación de cámara'),
+        title: ui('Preparing your Shot List', 'Preparando tu lista de planos'),
+        copy: ui('Connecting every planned shot with its scene, timing and visual references.', 'Conectando cada plano con su escena, duración y referencias visuales.'),
+        status: ui('Assembling camera coverage…', 'Preparando la cobertura de cámara…'),
+        aria: ui('Loading Shot List', 'Cargando la lista de planos'),
+      },
+    };
+    const moduleLoader = moduleLoaders[moduleLoaderMode] || moduleLoaders.breakdown;
     const productionScenes = productionScenesRaw.map((scene, sceneIndex) => {
       const status = scene.status === 'needs_review' ? 'Needs review' : scene.status === 'outdated' ? 'Outdated' : 'Synced';
       const sceneTitle = scene.title || `Scene ${sceneIndex + 1}`;
@@ -9349,11 +9482,20 @@ Write Lumiere's next reply only:`;
         ...mode,
         open: () => mode.id === 'shotlist' ? this.openCanvasShotList() : this.switchWorkMode(mode.id, mode.id === 'canvas' ? { canvasTool: 'home' } : {}),
       })),
-      editorDisplay: workMode === 'editor' ? 'flex' : 'none',
+      editorDisplay: workMode === 'editor' && !this.state.scriptLoading && !this.state.scriptLoadError ? 'flex' : 'none',
+      editorLoadGate: workMode === 'editor' && (this.state.scriptLoading || this.state.scriptLoadError),
+      editorLoadFailed: this.state.scriptLoadError,
+      editorLoaderKicker: ui('Screenplay workspace', 'Espacio del guion'),
+      editorLoaderTitle: this.state.scriptLoadError ? ui('The screenplay could not open', 'No se pudo abrir el guion') : ui('Opening your screenplay', 'Abriendo tu guion'),
+      editorLoaderCopy: this.state.scriptLoadError ? ui('Your screenplay is safe. Try connecting again.', 'Tu guion está seguro. Intenta conectarte de nuevo.') : ui('Restoring every page, scene and formatting detail before the editor appears.', 'Restaurando cada página, escena y detalle de formato antes de mostrar el editor.'),
+      editorLoaderStatus: this.state.scriptLoadError ? ui('Connection paused', 'Conexión en pausa') : ui('Laying out screenplay pages…', 'Preparando las páginas del guion…'),
+      editorLoaderAriaLabel: this.state.scriptLoadError ? ui('Screenplay could not load', 'No se pudo cargar el guion') : ui('Loading screenplay editor', 'Cargando el editor de guion'),
+      editorLoaderRetryLabel: ui('Try again', 'Intentar de nuevo'),
+      retryEditorLoad: () => this.retryEditorLoad(),
       analysisMode: workMode === 'analysis',
       productionMode: workMode !== 'editor' && workMode !== 'analysis',
-      productionAccessNotice: workMode !== 'editor' && workMode !== 'analysis' && !(['canvas', 'imagine'].includes(workMode) && !shotListMode) && !canUseProductionAi,
-      productionHeaderVisible: workMode !== 'budget' && workMode !== 'calendar' && !(['canvas', 'imagine'].includes(workMode) && !shotListMode),
+      productionAccessNotice: !this.state.productionLoading && workMode !== 'editor' && workMode !== 'analysis' && !(['canvas', 'imagine'].includes(workMode) && !shotListMode) && !canUseProductionAi,
+      productionHeaderVisible: workMode !== 'budget' && workMode !== 'calendar' && !(['canvas', 'imagine'].includes(workMode) && !shotListMode) && !this.state.productionLoading,
       workModeEyebrow: workMode === 'budget' || workMode === 'calendar' ? 'Connected production' : ['canvas','imagine'].includes(workMode) ? 'Canvas' : 'Connected preproduction',
       workModeTitle: modeTitles[workMode] || 'Editor',
       productionMaxWidth: workMode === 'calendar' || (['canvas','imagine'].includes(workMode) && !shotListMode) || (workMode === 'breakdown' && this.state.breakdownSplitView) ? 'none' : '1120px',
@@ -9371,12 +9513,22 @@ Write Lumiere's next reply only:`;
       productionLoading: this.state.productionLoading,
       breakdownLoading: this.state.productionLoading && workMode === 'breakdown',
       productionGenericLoading: this.state.productionLoading && workMode !== 'breakdown',
+      productionModuleLoading: this.state.productionLoading && ['breakdown', 'stripboard', 'shotlist'].includes(moduleLoaderMode),
+      moduleLoaderKind: moduleLoader.kind,
+      moduleLoaderKicker: moduleLoader.kicker,
+      moduleLoaderTitle: moduleLoader.title,
+      moduleLoaderCopy: moduleLoader.copy,
+      moduleLoaderStatus: moduleLoader.status,
+      moduleLoaderAriaLabel: moduleLoader.aria,
+      moduleLoaderBreakdown: moduleLoader.kind === 'breakdown',
+      moduleLoaderStripboard: moduleLoader.kind === 'stripboard',
+      moduleLoaderShotList: moduleLoader.kind === 'shotlist',
       productionEmpty,
       productionEmptyTitle: emptyByMode[productionEmptyMode]?.title || '',
       productionEmptyText: emptyByMode[productionEmptyMode]?.text || '',
       productionEmptyAction: canUseProductionAi ? (emptyByMode[productionEmptyMode]?.action || '') : 'View plans',
       productionEmptyActionHandler: canUseProductionAi ? () => this.analyzeProduction() : () => { window.location.href = 'Pricing.dc.html'; },
-      productionProgress,
+      productionProgress: productionProgress && !this.state.productionLoading,
       productionProgressText,
       productionHasData,
       breakdownStartVisible,
@@ -9389,10 +9541,10 @@ Write Lumiere's next reply only:`;
       canvasWorkspaceVisible: (workMode === 'canvas' && !shotListMode) || workMode === 'imagine',
       canvasInitialView: workMode === 'imagine' ? 'imagine' : 'home',
       canvasBack: () => this.openCanvasHome(),
-      breakdownHasData: workMode === 'breakdown' && productionHasData,
-      stripboardHasData: workMode === 'stripboard' && productionHasData,
+      breakdownHasData: workMode === 'breakdown' && productionHasData && !this.state.productionLoading,
+      stripboardHasData: workMode === 'stripboard' && productionHasData && !this.state.productionLoading,
       stripboardMotionClass: this.state.stripboardEntering ? 'v5-stripboard-entering' : '',
-      shotListHasData: shotListMode && productionHasData,
+      shotListHasData: shotListMode && productionHasData && !this.state.productionLoading,
       budgetHasData: workMode === 'budget',
       calendarHasData: workMode === 'calendar',
       activeScriptId: this.state.activeScriptId || this._activeScriptId || '',

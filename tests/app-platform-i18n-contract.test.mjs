@@ -56,6 +56,11 @@ test('Scripts home system copy and accessibility are complete in Spanish and unc
     ['Close Lumiere', 'Cerrar Lumiere'],
     ['Ask Lumiere anything…', 'Pregúntale lo que quieras a Lumiere…'],
     ['Send message', 'Enviar mensaje'],
+    ['Scripts', 'Guiones'],
+    ['Imagine', 'Imagine'],
+    ['Canvas', 'Canvas'],
+    ['First name', 'Nombre'],
+    ['Last name', 'Apellido'],
   ]);
 
   for (const [source, translated] of expected) {
