@@ -157,7 +157,7 @@ test('Shared Project and Google authentication routes have complete Spanish UI c
   const english = languageApi('en').t;
 
   for (const page of [shared, authComplete, authGoogle]) {
-    assert.match(page, /language-preference\.js\?v=20260820-i18n2/);
+    assert.match(page, /language-preference\.js\?v=20260820-i18n3/);
   }
 
   for (const [source, translated] of [
@@ -233,7 +233,7 @@ test('People & Access, invitations, and guest access preserve a complete Spanish
   assert.match(client, /Invite a collaborator/);
 
   for (const page of [invitation, guest]) {
-    assert.match(page, /language-preference\.js\?v=20260820-i18n2/);
+    assert.match(page, /language-preference\.js\?v=20260820-i18n3/);
   }
   assert.match(invitationAccess, /document\.title = `\$\{localize\('Project invitation'\)\} \| FilmScript`/);
   assert.match(guestAccess, /document\.title = `\$\{localize\('Guest access'\)\} \| FilmScript`/);
@@ -284,6 +284,9 @@ test('Analysis has Spanish copy for its empty state, focus cards, drawers, and d
     ['Your script has changed since this analysis was generated.', 'Tu guion ha cambiado desde que se generó este análisis.'],
     ['Lumiere focus', 'Enfoque de Lumiere'],
     ['Analysis summary', 'Resumen del análisis'],
+    ['strengths', 'fortalezas'],
+    ['priorities', 'prioridades'],
+    ['scenes read', 'escenas leídas'],
     ['Explore further', 'Explorar más'],
     ['Production lens', 'Perspectiva de producción'],
     ['Refresh', 'Actualizar'],
@@ -300,6 +303,9 @@ test('Analysis has Spanish copy for its empty state, focus cards, drawers, and d
   assert.match(analysis, /window\.filmscriptLanguage\?\.get\?\.\(\) === 'es'/);
   assert.match(analysis, /filmscript:language-change/);
   assert.match(analysis, /filmscriptLanguage\?\.t\?\.\(sourceQuestion, 'es'\)/);
+  assert.match(analysis, /const strengthsLabel = strengths\.length === 1/);
+  assert.match(analysis, /const fallbackStages = spanish \? \['Inicio', 'Conflicto', 'Pico', 'Desenlace'\]/);
+  assert.match(analysis, /const sceneLabel = spanish \? 'Escena' : 'Scene'/);
   for (const status of [
     'Reading screenplay',
     'Identifying scenes',
