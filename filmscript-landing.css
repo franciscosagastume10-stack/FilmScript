@@ -91,6 +91,7 @@ textarea {
 }
 
 .fs-home-login {
+  position: relative;
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -122,7 +123,11 @@ textarea {
   text-wrap: balance;
 }
 
-.fs-home-hero .fs-cta-row {
+.fs-hero-actions {
+  text-align: center;
+}
+
+.fs-hero-actions .fs-cta-row {
   margin-top: 34px;
 }
 
@@ -317,13 +322,21 @@ textarea {
 }
 
 .fs-suite-nav {
+  display: block;
+  max-width: 1000px;
+  margin: 34px auto 0;
+  padding: 0 28px;
+}
+
+.fs-suite-nav-track {
   display: flex;
   flex-wrap: wrap;
   gap: 8px 18px;
   justify-content: center;
-  max-width: 1000px;
-  margin: 34px auto 0;
-  padding: 0 28px;
+}
+
+.fs-suite-nav-track--clone {
+  display: none;
 }
 
 .fs-suite-nav a {
@@ -518,109 +531,6 @@ textarea {
   font-family: var(--fs-font-text) !important;
 }
 
-.fs-connection-section {
-  max-width: 1040px;
-  margin: 0 auto;
-  padding: 112px 40px 0;
-  text-align: center;
-}
-
-.fs-connection-section h2 {
-  margin: 0;
-  color: var(--ink, #2C2C2A);
-  font-size: clamp(34px, 4.6vw, 50px);
-  font-weight: 720;
-  letter-spacing: -2px;
-  line-height: 1.05;
-}
-
-.fs-connection-section p {
-  max-width: 650px;
-  margin: 16px auto 0;
-  color: var(--muted, #888780);
-  font-size: 16px;
-  line-height: 1.55;
-}
-
-.fs-connection-flow {
-  display: grid;
-  grid-template-columns: repeat(6, minmax(0, 1fr));
-  gap: 12px;
-  align-items: center;
-  margin-top: 34px;
-}
-
-.fs-flow-step {
-  position: relative;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  min-height: 72px;
-  padding: 17px 12px 14px;
-  color: var(--ink, #2C2C2A);
-  text-decoration: none;
-  cursor: pointer;
-  isolation: isolate;
-  transition: transform .3s cubic-bezier(.16,1,.3,1), color .2s ease;
-}
-
-.fs-flow-step-copy {
-  position: relative;
-  z-index: 1;
-}
-
-.fs-flow-step:hover {
-  color: var(--accent, #BA7517);
-  transform: translateY(-5px);
-}
-
-.fs-flow-step:active {
-  transform: translateY(-1px) scale(.985);
-}
-
-.fs-flow-step:focus-visible {
-  outline: 3px solid color-mix(in srgb, var(--accent, #BA7517) 28%, transparent);
-  outline-offset: 4px;
-}
-
-.fs-flow-step:hover > .fs-card-frame path,
-.fs-flow-step:focus-visible > .fs-card-frame path {
-  stroke: var(--accent, #BA7517);
-}
-
-.fs-flow-link-mark {
-  position: absolute;
-  z-index: 2;
-  top: 13px;
-  right: 13px;
-  color: var(--accent, #BA7517);
-  font-size: 12px;
-  font-weight: 800;
-  opacity: 0;
-  transform: translate(-4px, 4px);
-  transition: opacity .2s ease, transform .3s cubic-bezier(.16,1,.3,1);
-}
-
-.fs-flow-step:hover .fs-flow-link-mark,
-.fs-flow-step:focus-visible .fs-flow-link-mark {
-  opacity: 1;
-  transform: translate(0, 0);
-}
-
-.fs-flow-step strong {
-  display: block;
-  font-size: 13px;
-  font-weight: 700;
-}
-
-.fs-flow-step small {
-  display: block;
-  margin-top: 4px;
-  color: var(--muted, #888780);
-  font-size: 10.5px;
-  line-height: 1.35;
-}
-
 @keyframes fs-feature-arrival {
   0% { transform: translateY(18px) scale(.987); filter: saturate(.8); }
   56% { transform: translateY(-5px) scale(1.004); filter: saturate(1.08); }
@@ -699,18 +609,29 @@ textarea {
     padding-left: 42px;
   }
 
-  .fs-connection-flow {
-    grid-template-columns: repeat(3, minmax(0, 1fr));
-  }
 }
 
 @media (max-width: 700px) {
+  .fs-home {
+    display: flex;
+    flex-direction: column;
+  }
+
   .fs-topbar {
-    min-height: 48px;
-    height: 48px !important;
-    flex-basis: 48px !important;
+    min-height: 44px;
+    height: 44px !important;
+    flex-basis: 44px !important;
     padding: 0 12px !important;
     gap: 8px !important;
+  }
+
+  .fs-brand-mark {
+    min-width: 92px;
+    flex-basis: 92px;
+  }
+
+  .fs-brand-word {
+    font-size: 18px;
   }
 
   .fs-topnav {
@@ -722,7 +643,6 @@ textarea {
   }
 
   .fs-top-actions > div:first-child,
-  .fs-top-actions button,
   .fs-top-actions [data-testid="account-avatar"] {
     min-width: 44px;
     min-height: 44px;
@@ -733,85 +653,160 @@ textarea {
     padding: 0 !important;
   }
 
+  .fs-top-actions .fs-home-login {
+    width: auto;
+    min-width: 0;
+    height: 32px;
+    min-height: 32px;
+    padding: 0 12px;
+    border-radius: 999px;
+    font-size: 11.5px;
+    letter-spacing: -.08px;
+  }
+
+  .fs-top-actions .fs-home-login::after {
+    position: absolute;
+    inset: -6px;
+    content: "";
+  }
+
   .fs-home-hero {
-    padding: 68px 20px 0;
+    order: 1;
+    padding: 28px 18px 0;
+  }
+
+  .fs-home-eyebrow,
+  .fs-home-lede,
+  .fs-hero-plan-cta,
+  .fs-hero-audience,
+  .fs-hero-actions .fs-landing-cta--secondary {
+    display: none;
   }
 
   .fs-home-title {
-    max-width: 350px;
-    font-size: clamp(48px, 14vw, 60px);
+    max-width: 340px;
+    margin-top: 0;
+    font-size: clamp(43px, 12.8vw, 55px);
     font-weight: 800;
-    letter-spacing: -2.15px;
-    line-height: .95;
+    letter-spacing: -2px;
+    line-height: .93;
     text-wrap: initial;
   }
 
-.fs-home-title-line {
-  display: block;
-}
-
-.fs-home-login {
-  min-height: 34px;
-  padding: 0 14px;
-  font-size: 12px;
-}
-
-  .fs-home-lede {
-    font-size: 17px;
+  .fs-home-title-line {
+    display: block;
   }
 
   .fs-cta-row {
-    flex-direction: column;
-    gap: 12px !important;
+    gap: 0 !important;
   }
 
   .fs-cta-row .fs-landing-cta {
     flex: 0 0 auto;
-    width: min(100%, 280px);
+    width: auto;
+    min-width: 178px;
+    min-height: 43px;
+    padding: 0 19px;
+    border-radius: 14px;
+    font-size: 14px;
+  }
+
+  .fs-hero-actions {
+    order: 4;
+    padding: 0 18px;
+  }
+
+  .fs-hero-actions .fs-cta-row {
+    margin-top: 18px;
   }
 
   .fs-hero-stage {
-    width: calc(100% - 28px);
-    min-height: 548px;
-    margin-top: 46px;
+    order: 2;
+    width: calc(100% - 22px);
+    min-height: 350px;
+    margin-top: 22px;
   }
 
   .fs-hero-stage-content {
-    min-height: 548px;
-    padding: 42px 27px 37px;
+    min-height: 350px;
+    gap: 10px;
+    padding: 22px 18px 20px;
   }
 
   .fs-hero-script,
   .fs-hero-script > svg {
-    min-height: 250px;
-    height: 250px;
+    min-height: 218px;
+    height: 218px;
   }
 
   .fs-hero-modules {
-    grid-template-columns: 1fr;
-    gap: 9px;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 3px;
   }
 
   .fs-hero-module {
-    min-height: 56px;
-    padding: 8px 10px;
+    grid-template-columns: 1fr;
+    gap: 2px;
+    min-height: 62px;
+    padding: 5px 2px;
+    text-align: center;
+  }
+
+  .fs-hero-module-icon {
+    width: 28px;
+    height: 28px;
+    margin: 0 auto;
+  }
+
+  .fs-hero-module-icon svg {
+    width: 22px;
+    height: 22px;
+  }
+
+  .fs-hero-module strong {
+    font-size: 11px;
+  }
+
+  .fs-hero-module small {
+    display: none;
   }
 
   .fs-suite-nav {
+    order: 3;
+    display: flex;
     justify-content: flex-start;
-    flex-wrap: nowrap;
-    gap: 4px 18px;
+    gap: 0;
     width: 100%;
-    margin-top: 24px;
-    padding: 0 20px 8px;
+    max-width: none;
+    margin-top: 18px;
+    padding: 0 0 8px;
     overflow-x: auto;
-    scroll-snap-type: x proximity;
     scrollbar-width: none;
     -webkit-overflow-scrolling: touch;
+    touch-action: pan-x pan-y;
+    overscroll-behavior-inline: contain;
+    scroll-snap-type: none;
   }
 
   .fs-suite-nav::-webkit-scrollbar {
     display: none;
+  }
+
+  .fs-suite-nav-track {
+    display: flex;
+    flex: 0 0 auto;
+    flex-wrap: nowrap;
+    gap: 20px;
+    justify-content: flex-start;
+    padding: 0 10px;
+  }
+
+  .fs-suite-nav .fs-suite-nav-track--clone {
+    display: none;
+  }
+
+  .fs-suite-nav[data-carousel-ready="true"] .fs-suite-nav-track--clone {
+    display: flex;
   }
 
   .fs-suite-nav a {
@@ -819,20 +814,17 @@ textarea {
     min-height: 40px;
     display: inline-flex;
     align-items: center;
-    scroll-snap-align: start;
+    font-size: 13px;
+    white-space: nowrap;
   }
 
   .fs-suite-section {
-    padding: 104px 16px 0;
+    order: 5;
+    padding: 24px 16px 0;
   }
 
   .fs-section-heading {
-    padding: 0 8px;
-    margin-bottom: 34px;
-  }
-
-  .fs-section-heading h2 {
-    letter-spacing: -1.8px;
+    display: none;
   }
 
   .fs-feature-grid {
@@ -895,101 +887,14 @@ textarea {
     aspect-ratio: 520 / 250;
   }
 
-  .fs-connection-section {
-    padding: 94px 18px 0;
-  }
-
-  .fs-connection-flow {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 9px;
-  }
-
-  .fs-flow-step {
-    min-height: 72px;
-    padding: 15px 14px 13px;
-  }
-
   .fs-final-cta {
+    order: 6;
     padding: 104px 20px 0;
   }
 
   .fs-home-footer {
+    order: 7;
     padding-top: 64px;
-  }
-}
-
-/* Keep the production flow legible and compact on touch devices. */
-@media (max-width: 700px) {
-  .fs-connection-section {
-    padding: 84px 20px 0;
-    text-align: left;
-  }
-
-  .fs-connection-section h2 {
-    font-size: clamp(34px, 10vw, 46px);
-    line-height: .98;
-    letter-spacing: -1.6px;
-    text-wrap: balance;
-  }
-
-  .fs-connection-section p {
-    margin-top: 15px;
-    font-size: 17px;
-    line-height: 1.45;
-  }
-
-  .fs-connection-flow {
-    grid-template-columns: 1fr;
-    gap: 10px;
-    margin-top: 28px;
-  }
-
-  .fs-flow-step {
-    display: grid;
-    grid-template-columns: minmax(0, 1fr) auto;
-    align-items: center;
-    justify-content: stretch;
-    width: 100%;
-    height: 88px;
-    min-height: 88px;
-    padding: 18px 23px 16px;
-    overflow: hidden;
-    opacity: 1 !important;
-    transform: none !important;
-  }
-
-  .fs-flow-step-copy {
-    display: block;
-    min-width: 0;
-    visibility: visible;
-    opacity: 1;
-    color: var(--ink) !important;
-  }
-
-  .fs-flow-step strong {
-    color: var(--ink) !important;
-    font-size: 17px;
-    font-weight: 700;
-    line-height: 1.1;
-  }
-
-  .fs-flow-step small {
-    display: block;
-    margin-top: 4px;
-    color: var(--muted) !important;
-    font-size: 12px;
-    font-weight: 600;
-    line-height: 1.2;
-  }
-
-  .fs-flow-link-mark {
-    position: relative;
-    top: auto;
-    right: auto;
-    z-index: 1;
-    margin-left: 16px;
-    opacity: 1;
-    transform: none;
   }
 }
 
@@ -1005,5 +910,9 @@ textarea {
     animation-iteration-count: 1 !important;
     scroll-behavior: auto !important;
     transition-duration: .01ms !important;
+  }
+
+  .fs-suite-nav-track--clone {
+    display: none !important;
   }
 }

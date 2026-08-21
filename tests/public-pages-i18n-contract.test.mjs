@@ -74,8 +74,11 @@ test('critical public literals are present on the surfaces they localize', () =>
   const features = read('Features.dc.html');
   const pricing = read('Pricing.dc.html');
   const subscription = read('Subscription.dc.html');
-  for (const literal of ['From first page to final delivery', 'Compare plans', 'One connected workspace', 'Go to Script Editor']) {
+  for (const literal of ['From first page to final delivery', 'Compare plans', 'One connected workspace']) {
     assert.ok(features.includes(literal), `Features: ${literal}`);
+  }
+  for (const removed of ['One change moves through the whole production.', 'Go to Script Editor', 'FilmScript connected workflow']) {
+    assert.ok(!features.includes(removed), `Features no longer repeats: ${removed}`);
   }
   for (const literal of ['Pricing · FilmScript', 'Start free, create with 100 monthly image credits in Creator, or unlock Full with 1,000.', 'Everything in the Free workspace']) {
     assert.ok(pricing.includes(literal), `Pricing: ${literal}`);
