@@ -53,6 +53,23 @@ test('Canvas and Imagine use the same neutral screenplay API resolver', async ()
   assert.match(editor, /canvas-client\.js\?v=20260820-module-routes2/);
 });
 
+test('Breakdown, Stripboard, Shot List, Budget, and Calendar use the active screenplay API', async () => {
+  const [preproduction, budget, calendar, editor] = await Promise.all([
+    fs.readFile(path.join(ROOT, 'preproduction-client.js'), 'utf8'),
+    fs.readFile(path.join(ROOT, 'budget-client.js'), 'utf8'),
+    fs.readFile(path.join(ROOT, 'calendar-client.js'), 'utf8'),
+    fs.readFile(path.join(ROOT, 'Editor v5.dc.html'), 'utf8'),
+  ]);
+
+  for (const client of [preproduction, budget, calendar]) {
+    assert.match(client, /\/api\/scripts\/\$\{encodeURIComponent\(scriptId\)\}/);
+    assert.doesNotMatch(client, /\/api\/project-files/);
+  }
+  assert.match(editor, /preproduction-client\.js\?v=20260820-module-routes3/);
+  assert.match(editor, /budget-client\.js\?v=20260820-module-routes3/);
+  assert.match(editor, /calendar-client\.js\?v=20260820-module-routes3/);
+});
+
 test('production stack preserves the shared OAuth session cookie domain', async () => {
   const stack = await fs.readFile(path.join(ROOT, 'aws', 'filmscript-backend.yml'), 'utf8');
 

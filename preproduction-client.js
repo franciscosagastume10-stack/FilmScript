@@ -31,23 +31,23 @@
   };
   const interfaceLanguage = () => window.filmscriptLanguage?.get?.() === 'es' ? 'es' : 'en';
   window.filmscriptPreproduction = {
-    get: (scriptId) => request(`/api/project-files/${encodeURIComponent(scriptId)}/preproduction`),
-    analyze: (scriptId, options = {}) => request(`/api/project-files/${encodeURIComponent(scriptId)}/preproduction`, {
+    get: (scriptId) => request(`/api/scripts/${encodeURIComponent(scriptId)}/preproduction`),
+    analyze: (scriptId, options = {}) => request(`/api/scripts/${encodeURIComponent(scriptId)}/preproduction`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ language: interfaceLanguage(), ...(options?.includeManual === true ? { includeManual: true } : {}), ...(options?.sceneId ? { sceneId: String(options.sceneId) } : {}) }),
     }),
-    createManualBreakdown: (scriptId) => request(`/api/project-files/${encodeURIComponent(scriptId)}/preproduction/manual-breakdown`, {
+    createManualBreakdown: (scriptId) => request(`/api/scripts/${encodeURIComponent(scriptId)}/preproduction/manual-breakdown`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: '{}',
     }),
-    saveScene: (scriptId, sceneId, changes) => request(`/api/project-files/${encodeURIComponent(scriptId)}/preproduction/scenes/${encodeURIComponent(sceneId)}`, {
+    saveScene: (scriptId, sceneId, changes) => request(`/api/scripts/${encodeURIComponent(scriptId)}/preproduction/scenes/${encodeURIComponent(sceneId)}`, {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(changes || {}),
     }),
-    uploadBreakdownImage: (scriptId, { sceneId, elementId, file }) => request(`/api/project-files/${encodeURIComponent(scriptId)}/preproduction/breakdown/images`, {
+    uploadBreakdownImage: (scriptId, { sceneId, elementId, file }) => request(`/api/scripts/${encodeURIComponent(scriptId)}/preproduction/breakdown/images`, {
       method: 'POST',
       headers: {
         'Content-Type': file.type,
@@ -57,26 +57,26 @@
       },
       body: file,
     }),
-    breakdownImageUrl: (scriptId, assetId) => resolve(`/api/project-files/${encodeURIComponent(scriptId)}/preproduction/breakdown/images/${encodeURIComponent(assetId)}`),
-    saveStripboard: (scriptId, changes = {}) => request(`/api/project-files/${encodeURIComponent(scriptId)}/preproduction/stripboard`, {
+    breakdownImageUrl: (scriptId, assetId) => resolve(`/api/scripts/${encodeURIComponent(scriptId)}/preproduction/breakdown/images/${encodeURIComponent(assetId)}`),
+    saveStripboard: (scriptId, changes = {}) => request(`/api/scripts/${encodeURIComponent(scriptId)}/preproduction/stripboard`, {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(changes),
     }),
-    generateShotLists: (scriptId, sceneId = null, options = {}) => request(`/api/project-files/${encodeURIComponent(scriptId)}/preproduction/shotlists`, {
+    generateShotLists: (scriptId, sceneId = null, options = {}) => request(`/api/scripts/${encodeURIComponent(scriptId)}/preproduction/shotlists`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ ...(sceneId ? { sceneId } : {}), ...(options?.regenerate === true ? { regenerate: true } : {}), language: interfaceLanguage() }),
     }),
-    saveShots: (scriptId, sceneId, shots) => request(`/api/project-files/${encodeURIComponent(scriptId)}/preproduction/scenes/${encodeURIComponent(sceneId)}/shots`, {
+    saveShots: (scriptId, sceneId, shots) => request(`/api/scripts/${encodeURIComponent(scriptId)}/preproduction/scenes/${encodeURIComponent(sceneId)}/shots`, {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ shots }),
     }),
-    saveShotFields: (scriptId, sceneId, operations) => request(`/api/project-files/${encodeURIComponent(scriptId)}/preproduction/scenes/${encodeURIComponent(sceneId)}/shots`, {
+    saveShotFields: (scriptId, sceneId, operations) => request(`/api/scripts/${encodeURIComponent(scriptId)}/preproduction/scenes/${encodeURIComponent(sceneId)}/shots`, {
       method: 'PATCH', headers: { 'Content-Type':'application/json' }, body:JSON.stringify({ operations }),
     }),
-    uploadShotReference: (scriptId, { sceneId, shotId = '', file }) => request(`/api/project-files/${encodeURIComponent(scriptId)}/preproduction/shotlist/references`, {
+    uploadShotReference: (scriptId, { sceneId, shotId = '', file }) => request(`/api/scripts/${encodeURIComponent(scriptId)}/preproduction/shotlist/references`, {
       method: 'POST',
       headers: {
         'Content-Type': file.type,
@@ -86,30 +86,30 @@
       },
       body: file,
     }),
-    useCanvasShotReference: (scriptId, { sceneId, shotId = '', assetId }) => request(`/api/project-files/${encodeURIComponent(scriptId)}/preproduction/shotlist/references/from-canvas`, {
+    useCanvasShotReference: (scriptId, { sceneId, shotId = '', assetId }) => request(`/api/scripts/${encodeURIComponent(scriptId)}/preproduction/shotlist/references/from-canvas`, {
       method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ sceneId, shotId, assetId }),
     }),
-    generateShotReference: (scriptId, { sceneId, shotId = '', prompt = '', characterReferenceAssetIds = [] }) => request(`/api/project-files/${encodeURIComponent(scriptId)}/preproduction/shotlist/references/generate`, {
+    generateShotReference: (scriptId, { sceneId, shotId = '', prompt = '', characterReferenceAssetIds = [] }) => request(`/api/scripts/${encodeURIComponent(scriptId)}/preproduction/shotlist/references/generate`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ sceneId, ...(shotId ? { shotId } : {}), ...(prompt ? { prompt } : {}), ...(Array.isArray(characterReferenceAssetIds) && characterReferenceAssetIds.length ? { characterReferenceAssetIds } : {}) }),
     }),
-    shotReferenceUrl: (scriptId, assetId) => resolve(`/api/project-files/${encodeURIComponent(scriptId)}/preproduction/shotlist/references/${encodeURIComponent(assetId)}`),
-    addShotScene: (scriptId, title = '') => request(`/api/project-files/${encodeURIComponent(scriptId)}/preproduction/shotlist/scenes`, {
+    shotReferenceUrl: (scriptId, assetId) => resolve(`/api/scripts/${encodeURIComponent(scriptId)}/preproduction/shotlist/references/${encodeURIComponent(assetId)}`),
+    addShotScene: (scriptId, title = '') => request(`/api/scripts/${encodeURIComponent(scriptId)}/preproduction/shotlist/scenes`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(title ? { title } : {}),
     }),
-    renameShotScene: (scriptId, sceneId, title) => request(`/api/project-files/${encodeURIComponent(scriptId)}/preproduction/shotlist/scenes/${encodeURIComponent(sceneId)}`, {
+    renameShotScene: (scriptId, sceneId, title) => request(`/api/scripts/${encodeURIComponent(scriptId)}/preproduction/shotlist/scenes/${encodeURIComponent(sceneId)}`, {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ title }),
     }),
-    deleteShotScene: (scriptId, sceneId) => request(`/api/project-files/${encodeURIComponent(scriptId)}/preproduction/shotlist/scenes/${encodeURIComponent(sceneId)}`, {
+    deleteShotScene: (scriptId, sceneId) => request(`/api/scripts/${encodeURIComponent(scriptId)}/preproduction/shotlist/scenes/${encodeURIComponent(sceneId)}`, {
       method: 'DELETE',
     }),
     exportPdf: async (scriptId) => {
-      const response = await fetch(resolve(`/api/project-files/${encodeURIComponent(scriptId)}/preproduction/breakdown.pdf`), { credentials: 'include' });
+      const response = await fetch(resolve(`/api/scripts/${encodeURIComponent(scriptId)}/preproduction/breakdown.pdf`), { credentials: 'include' });
       if (!response.ok) {
         const data = await response.json().catch(() => ({}));
         throw new Error(data.error || `PDF export error ${response.status}`);
