@@ -5,11 +5,11 @@
   "outputDirectory": "dist",
   "rewrites": [
     {
-      "source": "/access-data/requests",
+      "source": "/film-data/access-list",
       "destination": "/api/access-proxy"
     },
     {
-      "source": "/access-data/requests/:path*",
+      "source": "/film-data/access-list/:path*",
       "destination": "/api/access-proxy?path=:path*"
     },
     {

@@ -27,16 +27,16 @@ test('project invitations use a neutral first-party route', async () => {
     fs.readFile(path.join(ROOT, 'vercel.json'), 'utf8').then(JSON.parse),
   ]);
 
-  assert.match(runtime, /access-data\/requests/);
+  assert.match(runtime, /film-data\/access-list/);
 
-  const exact = vercel.rewrites.find((entry) => entry.source === '/access-data/requests');
-  const nested = vercel.rewrites.find((entry) => entry.source === '/access-data/requests/:path*');
+  const exact = vercel.rewrites.find((entry) => entry.source === '/film-data/access-list');
+  const nested = vercel.rewrites.find((entry) => entry.source === '/film-data/access-list/:path*');
   assert.deepEqual(exact, {
-    source: '/access-data/requests',
+    source: '/film-data/access-list',
     destination: '/api/access-proxy',
   });
   assert.deepEqual(nested, {
-    source: '/access-data/requests/:path*',
+    source: '/film-data/access-list/:path*',
     destination: '/api/access-proxy?path=:path*',
   });
   const proxy = await fs.readFile(path.join(ROOT, 'api', 'access-proxy.js'), 'utf8');
@@ -126,6 +126,6 @@ test('primary production pages request the cache-busted route resolver', async (
   ].map((name) => fs.readFile(path.join(ROOT, name), 'utf8')));
 
   for (const page of pages) {
-    assert.match(page, /runtime-config\.js\?v=20260821-invitation-route1/);
+    assert.match(page, /runtime-config\.js\?v=20260821-invitation-route2/);
   }
 });
