@@ -144,6 +144,7 @@ test('Vercel completes the Google handoff through a same-origin cookie proxy', a
   assert.match(vercelIgnore, /^api\/\*$/m);
   assert.match(vercelIgnore, /^!api\/auth-complete\.js$/m);
   assert.match(vercelIgnore, /^!api\/scripts-proxy\.js$/m);
+  assert.match(vercelIgnore, /^!api\/access-proxy\.js$/m);
   assert.doesNotMatch(vercelIgnore, /^api$/m);
   const runtimeHeader = vercelConfig.headers.find((entry) => entry.source === '/runtime-config.js');
   assert.deepEqual(runtimeHeader?.headers, [

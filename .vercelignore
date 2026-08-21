@@ -5,6 +5,7 @@
 api/*
 !api/auth-complete.js
 !api/scripts-proxy.js
+!api/access-proxy.js
 data
 dist
 node_modules
