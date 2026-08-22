@@ -376,7 +376,7 @@ test("Breakdown categories keep distinct colors and open their exact screenplay 
   assert.match(editor, /--category-color:/);
   assert.match(editor, /v5-breakdown-entry-link/);
   assert.match(editor, /entry\.sourceExcerpt/);
-  assert.match(editor, /openBreakdownReference\(breakdownSceneIndex \+ 1, key/);
+  assert.match(editor, /openBreakdownReference\(\s*breakdownSceneIndex \+ 1,\s*key/);
   assert.match(editor, /data-breakdown-reference/);
   assert.match(editor, /v5-breakdown-reference-fallback/);
   assert.match(editor, /_breakdownReferenceColor\(categoryKey\)/);

@@ -379,6 +379,9 @@ class FilmScriptBreakdown extends HTMLElement {
     if (event.key !== 'Enter' && event.key !== ' ') return;
     const link = event.target.closest?.('[data-action="open-script-reference"]');
     if (!link) return;
+    // Buttons and form controls inside a reference card own Enter/Space. For
+    // example, opening Edit must never also jump the screenplay underneath it.
+    if (event.target !== link && event.target.closest?.('button,input,textarea,select,label,[contenteditable="true"]')) return;
     event.preventDefault();
     this.openScriptReference(link.dataset.sceneId, link.dataset.elementId, link.dataset.categoryKey);
   };

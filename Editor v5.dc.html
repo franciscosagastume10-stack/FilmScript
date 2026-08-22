@@ -1010,12 +1010,19 @@
   .v5-breakdown-script-status { flex: 0 0 auto; display: inline-flex; align-items: center; gap: 6px; color: var(--muted, #888780); font-size: 9.5px; font-weight: 700; }
   .v5-breakdown-script-status::before { content: ""; width: 6px; height: 6px; border-radius: 50%; background: var(--accent, #BA7517); box-shadow: 0 0 0 3px var(--accent-soft, rgba(186,117,23,.11)); }
   .v5-breakdown-script-frame-wrap { position: relative; height: calc(100% - 50px); min-height: 0; background: var(--bg, #F5F0E8); }
-  .v5-breakdown-script-frame { display: block; width: 100%; height: 100%; border: 0; background: var(--bg, #F5F0E8); opacity: 0; transition: opacity .22s ease; }
-  .v5-breakdown-script-frame.is-ready { opacity: 1; }
+  .v5-breakdown-script-frame { display: block; width: 100%; height: 100%; border: 0; background: var(--bg, #F5F0E8); opacity: 0; pointer-events: none; transition: opacity .22s ease; }
+  .v5-breakdown-script-frame.is-ready { opacity: 1; pointer-events: auto; }
   .v5-breakdown-script-loading { position: absolute; inset: 0; z-index: 1; display: grid; place-items: center; pointer-events: none; transition: opacity .18s ease, visibility .18s ease; }
   .v5-breakdown-script-loading.is-ready { opacity: 0; visibility: hidden; }
+  .v5-breakdown-script-loading > div { display: grid; justify-items: center; gap: 12px; padding: 22px; text-align: center; }
   .v5-breakdown-script-loading span { display: inline-flex; align-items: center; gap: 9px; color: var(--muted, #888780); font-size: 10.5px; font-weight: 650; }
   .v5-breakdown-script-loading i { width: 17px; height: 17px; border: 2px solid color-mix(in srgb, var(--accent, #BA7517) 22%, transparent); border-top-color: var(--accent, #BA7517); border-radius: 50%; animation: v5-spin .7s linear infinite; }
+  .v5-breakdown-script-loading.is-error { pointer-events: auto; }
+  .v5-breakdown-script-loading.is-error i { display: grid; place-items: center; width: 22px; height: 22px; border: 1px solid color-mix(in srgb, #C74440 48%, transparent); border-radius: 8px; color: #C74440; animation: none; font-style: normal; }
+  .v5-breakdown-script-retry { min-height: 34px; padding: 0 13px; border: 1px solid var(--accent, #BA7517); border-radius: 10px 9px 11px 8px; background: var(--accent, #BA7517); color: #fff; font: 760 10.5px/1 inherit; cursor: pointer; box-shadow: 0 8px 18px color-mix(in srgb, var(--accent, #BA7517) 18%, transparent); transition: transform .16s ease, filter .16s ease; }
+  .v5-breakdown-script-retry:hover, .v5-breakdown-script-retry:focus-visible { filter: brightness(1.06); transform: translateY(-1px); outline: 2px solid color-mix(in srgb, var(--accent, #BA7517) 40%, transparent); outline-offset: 2px; }
+  .v5-breakdown-split-target { position: relative; z-index: 1; border-radius: 4px; animation: v5-breakdown-split-target 4.6s ease both; }
+  @keyframes v5-breakdown-split-target { 0%, 100% { box-shadow: 0 0 0 0 transparent; } 8%, 82% { box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent, #BA7517) 34%, transparent), 0 7px 18px color-mix(in srgb, var(--accent, #BA7517) 13%, transparent); } }
   @keyframes v5-spin { to { transform: rotate(360deg); } }
   .v5-app-shell.is-breakdown-embed .v5-topbar,
   .v5-app-shell.is-breakdown-embed .v5-editor-toolbar,
@@ -1056,9 +1063,11 @@
     .v5-analysis-background span { display: none; }
   }
   @media (prefers-reduced-motion: reduce) {
-    .v5-editor-workspace, .v5-production-shell, .v5-screenplay-stage, .v5-stripboard-entering .v5-strip, .v5-stripboard-entering .v5-strip-divider, .v5-writing-pause, .v5-writing-pause-lens::after, .v5-writing-pause-lens svg, .v5-name-card, .v5-name-context, .v5-name-confirm, .v5-analysis-focus, .v5-analysis-focus::after, .v5-analysis-background i { animation: none !important; }
+    .v5-editor-workspace, .v5-production-shell, .v5-screenplay-stage, .v5-stripboard-entering .v5-strip, .v5-stripboard-entering .v5-strip-divider, .v5-writing-pause, .v5-writing-pause-lens::after, .v5-writing-pause-lens svg, .v5-name-card, .v5-name-context, .v5-name-confirm, .v5-analysis-focus, .v5-analysis-focus::after, .v5-analysis-background i, .v5-breakdown-script-pane, .v5-breakdown-reference-fallback { animation: none !important; }
     .v5-name-card, .v5-name-suggestion, .v5-name-action { transition-duration: .01ms !important; }
-    .v5-breakdown-script-loading i { animation-duration: 1.4s !important; }
+    .v5-breakdown-script-loading i { animation: none !important; }
+    .v5-breakdown-script-frame, .v5-breakdown-script-loading { transition: none !important; }
+    .v5-breakdown-split-target { animation: none !important; box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent, #BA7517) 34%, transparent); }
   }
 
   /* Shared Liquid Glass controls for pre-production workspaces. The layout,
@@ -1419,12 +1428,12 @@
       <sc-if value="{{ breakdownHasData }}" hint-placeholder-val="false">
         <div class="v5-breakdown-toolbar {{ breakdownWorkspaceClass }}">
           <div class="v5-breakdown-navigator">
-            <button type="button" class="v5-breakdown-nav-button" onClick="{{ breakdownPrev }}" aria-label="Previous breakdown scene" aria-disabled="{{ breakdownPrevDisabled }}" style="cursor: {{ breakdownPrevCursor }}; opacity: {{ breakdownPrevOpacity }};">‹</button>
+            <button type="button" class="v5-breakdown-nav-button" onClick="{{ breakdownPrev }}" aria-label="{{ breakdownPrevAriaLabel }}" aria-disabled="{{ breakdownPrevDisabled }}" disabled="{{ breakdownPrevDisabled }}" style="cursor: {{ breakdownPrevCursor }}; opacity: {{ breakdownPrevOpacity }};">‹</button>
             <div class="v5-breakdown-scene-copy">
-              <div class="v5-breakdown-scene-count">Scene {{ breakdownSceneNo }} of {{ breakdownSceneTotal }}</div>
+              <div class="v5-breakdown-scene-count">{{ breakdownSceneCountLabel }}</div>
               <div class="v5-breakdown-scene-heading"><sc-if value="{{ breakdownSceneHeadingProjectContent }}" hint-placeholder-val="true"><span data-project-content>{{ breakdownSceneHeading }}</span></sc-if><sc-if value="{{ breakdownSceneHeadingInterfaceContent }}" hint-placeholder-val="false"><span>{{ breakdownSceneHeading }}</span></sc-if></div>
             </div>
-            <button type="button" class="v5-breakdown-nav-button" onClick="{{ breakdownNext }}" aria-label="Next breakdown scene" aria-disabled="{{ breakdownNextDisabled }}" style="cursor: {{ breakdownNextCursor }}; opacity: {{ breakdownNextOpacity }};">›</button>
+            <button type="button" class="v5-breakdown-nav-button" onClick="{{ breakdownNext }}" aria-label="{{ breakdownNextAriaLabel }}" aria-disabled="{{ breakdownNextDisabled }}" disabled="{{ breakdownNextDisabled }}" style="cursor: {{ breakdownNextCursor }}; opacity: {{ breakdownNextOpacity }};">›</button>
           </div>
           <div class="v5-breakdown-actions">
             <div class="v5-breakdown-edit-hint" aria-live="polite"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"></path><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L8 18l-4 1 1-4Z"></path></svg><span>{{ breakdownSaveLabel }}</span></div>
@@ -1440,22 +1449,22 @@
 
         <div class="v5-breakdown-workspace {{ breakdownWorkspaceClass }}" data-testid="breakdown-workspace">
           <sc-if value="{{ breakdownSplitView }}" hint-placeholder-val="false">
-            <aside class="v5-breakdown-script-pane" data-testid="breakdown-script-pane" aria-label="Editable screenplay beside breakdown">
-              <header class="v5-breakdown-script-head"><div><strong>Script</strong><span>Edit while you break down the scene</span></div><div class="v5-breakdown-script-status">Autosave on</div></header>
+            <aside class="v5-breakdown-script-pane" data-testid="breakdown-script-pane" aria-label="{{ breakdownScriptPaneAriaLabel }}" aria-busy="{{ breakdownScriptAriaBusy }}">
+              <header class="v5-breakdown-script-head"><div><strong>{{ breakdownScriptPaneTitle }}</strong><span>{{ breakdownScriptPaneHint }}</span></div><div class="v5-breakdown-script-status" aria-live="polite" aria-atomic="true">{{ breakdownSplitStatusLabel }}</div></header>
               <div class="v5-breakdown-script-frame-wrap">
-                <div class="v5-breakdown-script-loading {{ breakdownScriptReadyClass }}" aria-live="polite"><span><i aria-hidden="true"></i>Opening screenplay…</span></div>
-                <iframe ref="{{ bindBreakdownScriptFrame }}" class="v5-breakdown-script-frame {{ breakdownScriptReadyClass }}" data-testid="breakdown-script-frame" src="{{ breakdownScriptSrc }}" title="Editable screenplay" loading="eager"></iframe>
+                <div class="v5-breakdown-script-loading {{ breakdownScriptReadyClass }} {{ breakdownScriptErrorClass }}" role="status" aria-live="polite" aria-atomic="true"><div><span><i aria-hidden="true">{{ breakdownScriptLoadingMark }}</i>{{ breakdownScriptLoadingLabel }}</span><sc-if value="{{ breakdownScriptLoadError }}" hint-placeholder-val="false"><button type="button" class="v5-breakdown-script-retry" onClick="{{ retryBreakdownScriptFrame }}">{{ breakdownScriptRetryLabel }}</button></sc-if></div></div>
+                <iframe ref="{{ bindBreakdownScriptFrame }}" class="v5-breakdown-script-frame {{ breakdownScriptReadyClass }}" data-testid="breakdown-script-frame" src="{{ breakdownScriptSrc }}" title="{{ breakdownScriptFrameTitle }}" loading="eager" aria-hidden="{{ breakdownScriptAriaHidden }}" tabindex="{{ breakdownScriptTabIndex }}"></iframe>
               </div>
             </aside>
           </sc-if>
           <div class="v5-breakdown-scroll">
-          <div class="v5-breakdown-pane-navigator" data-testid="breakdown-pane-navigator" aria-label="Breakdown scene navigation">
-            <button type="button" class="v5-breakdown-nav-button" onClick="{{ breakdownPrev }}" aria-label="Previous breakdown scene" aria-disabled="{{ breakdownPrevDisabled }}" style="cursor: {{ breakdownPrevCursor }}; opacity: {{ breakdownPrevOpacity }};">‹</button>
+          <div class="v5-breakdown-pane-navigator" data-testid="breakdown-pane-navigator" aria-label="{{ breakdownNavigatorAriaLabel }}">
+            <button type="button" class="v5-breakdown-nav-button" onClick="{{ breakdownPrev }}" aria-label="{{ breakdownPrevAriaLabel }}" aria-disabled="{{ breakdownPrevDisabled }}" disabled="{{ breakdownPrevDisabled }}" style="cursor: {{ breakdownPrevCursor }}; opacity: {{ breakdownPrevOpacity }};">‹</button>
             <div class="v5-breakdown-scene-copy">
-              <div class="v5-breakdown-scene-count">Scene {{ breakdownSceneNo }} of {{ breakdownSceneTotal }}</div>
+              <div class="v5-breakdown-scene-count">{{ breakdownSceneCountLabel }}</div>
               <div class="v5-breakdown-scene-heading"><sc-if value="{{ breakdownSceneHeadingProjectContent }}" hint-placeholder-val="true"><span data-project-content>{{ breakdownSceneHeading }}</span></sc-if><sc-if value="{{ breakdownSceneHeadingInterfaceContent }}" hint-placeholder-val="false"><span>{{ breakdownSceneHeading }}</span></sc-if></div>
             </div>
-            <button type="button" class="v5-breakdown-nav-button" onClick="{{ breakdownNext }}" aria-label="Next breakdown scene" aria-disabled="{{ breakdownNextDisabled }}" style="cursor: {{ breakdownNextCursor }}; opacity: {{ breakdownNextOpacity }};">›</button>
+            <button type="button" class="v5-breakdown-nav-button" onClick="{{ breakdownNext }}" aria-label="{{ breakdownNextAriaLabel }}" aria-disabled="{{ breakdownNextDisabled }}" disabled="{{ breakdownNextDisabled }}" style="cursor: {{ breakdownNextCursor }}; opacity: {{ breakdownNextOpacity }};">›</button>
           </div>
           <div class="v5-breakdown-sheet {{ breakdownSheetState }}" data-scene-id="{{ breakdownSceneId }}" onClick="{{ breakdownActivateEditing }}" onKeyDown="{{ breakdownSheetKeyDown }}" aria-label="Breakdown sheet. Click any field to edit.">
             <div class="v5-breakdown-sheet-header">
@@ -2453,6 +2462,9 @@ class Component extends DCLogic {
       try { return localStorage.getItem(`filmscript_breakdown_split_${scriptId}`) === '1'; } catch (error) { return false; }
     })(),
     breakdownSplitLoaded: false,
+    breakdownSplitLoadError: false,
+    breakdownSplitAnnouncement: '',
+    breakdownSplitSession: `split_${globalThis.crypto?.randomUUID?.() || `${Date.now()}_${Math.random().toString(36).slice(2)}`}`,
     breakdownManualStarting: false,
     breakdownManualGenerating: false,
     characterVisualGenerating: {},
@@ -2997,6 +3009,8 @@ class Component extends DCLogic {
     // remain protected by data-project-content/data-lumiere-generated.
     this._languageHandler = () => this.setState({});
     window.addEventListener('filmscript:language-change', this._languageHandler);
+    window.addEventListener('message', this._handleBreakdownEmbedMessage);
+    if (this._isBreakdownEmbed) this._scheduleBreakdownEmbedReady();
     this._creditsUpdatedHandler = (event) => {
       const credits = event?.detail;
       if (!credits || typeof credits !== 'object') return;
@@ -3132,12 +3146,35 @@ class Component extends DCLogic {
     this._analysisAskHandler = (event) => this.openAnalysisInLumiere(event?.detail?.prompt);
     this._analysisBackgroundHandler = (event) => this._setAnalysisBackground(event?.detail || {});
     this._canvasShotlistHandler = () => this.openCanvasShotList();
+    this._breakdownOpenReferenceHandler = (event) => {
+      if (this.state.workMode !== 'breakdown') return;
+      const detail = event?.detail;
+      const activeScriptId = this._breakdownEmbedScriptId();
+      if (!detail || typeof detail !== 'object' || String(detail.scriptId || '') !== activeScriptId) return;
+      const sceneNumber = Number(detail.sceneNumber);
+      if (!Number.isFinite(sceneNumber) || sceneNumber < 1) return;
+      const references = Array.isArray(detail.references)
+        ? detail.references.map((value) => String(value || '').trim()).filter(Boolean).slice(0, 8)
+        : [];
+      const productionScenes = Array.isArray(this.state.productionProject?.scenes)
+        ? this.state.productionProject.scenes
+        : Object.values(this.state.productionProject?.scenes || {});
+      const scene = productionScenes.find((candidate) => String(candidate?.id || '') === String(detail.sceneId || '')) || productionScenes[sceneNumber - 1] || {};
+      this.openBreakdownReference(
+        sceneNumber,
+        this._normalizeBreakdownCategoryKey(detail.categoryKey),
+        references,
+        String(detail.label || '').slice(0, 160),
+        { sceneId: String(detail.sceneId || scene?.id || ''), sceneHeading: String(scene?.title || '') },
+      );
+    };
     window.addEventListener('filmscript:analysis-open-editor', this._analysisOpenEditorHandler);
     window.addEventListener('filmscript:analysis-open-scene', this._analysisOpenSceneHandler);
     window.addEventListener('filmscript:analysis-open-mode', this._analysisOpenModeHandler);
     window.addEventListener('filmscript:analysis-ask-lumiere', this._analysisAskHandler);
     window.addEventListener('filmscript:analysis-background', this._analysisBackgroundHandler);
     window.addEventListener('filmscript:canvas-shotlist', this._canvasShotlistHandler);
+    window.addEventListener('filmscript:breakdown-open-reference', this._breakdownOpenReferenceHandler);
     setTimeout(() => { if (this._autoFit) this.fillPage(1); }, 0);
     setTimeout(() => this._snapshot('First draft'), 700);
   };
@@ -3224,6 +3261,17 @@ class Component extends DCLogic {
     return blocks;
   }
 
+  _refreshBreakdownEmbedCoverPrefix(blocks) {
+    if (!this._isBreakdownEmbed) return;
+    const list = Array.isArray(blocks) ? blocks : [];
+    const cover = this._coverMeta(list);
+    const coverTypes = new Set(['title', 'title_credit', 'title_author', 'title_date', 'title_contact', 'pagebreak']);
+    const firstContentIndex = list.findIndex((block) => !coverTypes.has(block?.type));
+    this._breakdownEmbedCoverPrefix = cover.hasCover
+      ? list.slice(0, firstContentIndex < 0 ? list.length : firstContentIndex).map((block) => ({ ...block }))
+      : [];
+  }
+
   async _loadImportedScript() {
     const scriptId = new URLSearchParams(window.location.search).get('script');
     if (!scriptId || !window.filmscriptScripts) {
@@ -3234,7 +3282,7 @@ class Component extends DCLogic {
           if (!this._unmounted) this._loadImportedScript();
         }, 180);
       } else if (scriptId && !this._unmounted) {
-        this.setState({ scriptLoading: false, scriptLoadError: true });
+        this.setState({ scriptLoading: false, scriptLoadError: true }, () => this._scheduleBreakdownEmbedReady());
         if (!this._isBreakdownEmbed) this._toast('Could not open this screenplay.');
       }
       return;
@@ -3245,13 +3293,14 @@ class Component extends DCLogic {
       const recovery = this._readScriptRecovery(stored.id);
       this._importedBlocks = recovery?.blocks || stored.blocks || [];
       const cover = this._coverMeta(this._importedBlocks);
+      this._refreshBreakdownEmbedCoverPrefix(this._importedBlocks);
       const storedChat = this._normalizeChat(stored.chat);
       this._pagesCache = null;
       this._editorNode = null;
       this.setState({
         activeScriptId: stored.id,
         docTitle: stored.source === 'pdf' ? (stored.title || this.state.docTitle || 'Screenplay') : (cover.title || stored.title || this.state.docTitle || 'Screenplay'),
-        tpEnabled: true,
+        tpEnabled: !this._isBreakdownEmbed,
         breakdownEmbedReady: true,
         breakdownEmbedLoadError: false,
         tpCredit: cover.credit || 'Written by',
@@ -3270,7 +3319,7 @@ class Component extends DCLogic {
         activeScene: 1,
         scriptLoading: false,
         scriptLoadError: false,
-      });
+      }, () => this._scheduleBreakdownEmbedReady());
       this._breakdownEmbedRetryCount = 0;
       if (recovery) this._toast('Recovered the latest local screenplay changes.');
       this._connectScriptRealtime(stored.id, recovery?.blocks || null);
@@ -3282,7 +3331,7 @@ class Component extends DCLogic {
         if (this._breakdownEmbedRetryCount <= 8) this._breakdownEmbedRetryTimer = window.setTimeout(() => {
           if (!this._unmounted) this._loadImportedScript();
         }, 700);
-        else this.setState({ scriptLoading: false, scriptLoadError: true });
+        else this.setState({ scriptLoading: false, scriptLoadError: true }, () => this._scheduleBreakdownEmbedReady());
       } else {
         // A collaborator may legitimately open Imagine, Breakdown, Shot List,
         // or another permitted workspace without Script access. The screenplay
@@ -3326,6 +3375,7 @@ class Component extends DCLogic {
       node.textContent = content[index].text; markers.forEach((marker) => node.appendChild(marker));
     });
     else { this._importedBlocks = blocks; this._pagesCache = null; this.forceUpdate(); }
+    this._refreshBreakdownEmbedCoverPrefix(blocks);
     this._importedBlocks = blocks; this._realtimeApplying = false;
   }
 
@@ -3702,14 +3752,350 @@ class Component extends DCLogic {
     }
   }
 
+  _breakdownEmbedChannel() {
+    return 'filmscript:breakdown-split:v1';
+  }
+
+  _breakdownUi(english, spanish) {
+    const language = String(window.filmscriptLanguage?.get?.() || document.documentElement.lang || 'en').toLocaleLowerCase();
+    return language.startsWith('es') ? spanish : english;
+  }
+
+  _breakdownEmbedScriptId() {
+    return String(this.state.activeScriptId || this._activeScriptId || new URLSearchParams(window.location.search).get('script') || '').trim();
+  }
+
+  _newBreakdownSplitSession() {
+    return `split_${globalThis.crypto?.randomUUID?.() || `${Date.now()}_${Math.random().toString(36).slice(2)}`}`;
+  }
+
+  _breakdownEmbedSession() {
+    return this._isBreakdownEmbed
+      ? String(new URLSearchParams(window.location.search).get('splitSession') || '')
+      : String(this.state.breakdownSplitSession || '');
+  }
+
+  _breakdownEmbedOrigin() {
+    const origin = String(window.location.origin || '');
+    return origin && origin !== 'null' ? origin : '';
+  }
+
+  _postBreakdownEmbedMessage(target, message) {
+    const origin = this._breakdownEmbedOrigin();
+    const scriptId = this._breakdownEmbedScriptId();
+    const session = this._breakdownEmbedSession();
+    if (!origin || !scriptId || !session || !target?.postMessage) return false;
+    target.postMessage({ channel: this._breakdownEmbedChannel(), scriptId, session, ...message }, origin);
+    return true;
+  }
+
+  _trustedBreakdownEmbedMessage(event, expectedSource) {
+    const data = event?.data;
+    const origin = this._breakdownEmbedOrigin();
+    const scriptId = this._breakdownEmbedScriptId();
+    const session = this._breakdownEmbedSession();
+    return Boolean(origin
+      && scriptId
+      && event.origin === origin
+      && event.source === expectedSource
+      && data
+      && typeof data === 'object'
+      && data.channel === this._breakdownEmbedChannel()
+      && String(data.scriptId || '') === scriptId
+      && String(data.session || '') === session);
+  }
+
+  _scheduleBreakdownEmbedReady(attempt = 0) {
+    if (!this._isBreakdownEmbed || this._unmounted) return;
+    clearTimeout(this._breakdownEmbedReadyTimer);
+    if (this.state.scriptLoadError) {
+      this._breakdownEmbedDomReady = false;
+      this._postBreakdownEmbedMessage(window.parent, { type: 'error' });
+      return;
+    }
+    const screenplayBlocks = Array.from(document.querySelectorAll('[data-fs-page] [data-type]'));
+    const screenplayMounted = Boolean(this._canvas && screenplayBlocks.some((block) => this._blockTextWithoutMarkers(block).trim()));
+    if (this.state.breakdownEmbedReady && !this.state.scriptLoading && screenplayMounted) {
+      this._breakdownEmbedDomReady = true;
+      this._postBreakdownEmbedMessage(window.parent, { type: 'ready' });
+      const pending = this._pendingBreakdownEmbedCommand;
+      this._pendingBreakdownEmbedCommand = null;
+      if (pending) this._performBreakdownEmbedReveal(pending);
+      return;
+    }
+    if (attempt < 120) {
+      this._breakdownEmbedReadyTimer = window.setTimeout(() => this._scheduleBreakdownEmbedReady(attempt + 1), 80);
+    } else {
+      this._breakdownEmbedDomReady = false;
+      this._postBreakdownEmbedMessage(window.parent, { type: 'error', reason: 'empty-screenplay' });
+    }
+  }
+
+  _requestBreakdownEmbedReady(attempt = 0) {
+    clearTimeout(this._breakdownEmbedHandshakeTimer);
+    if (this._unmounted || this._isBreakdownEmbed || !this.state.breakdownSplitView || this._breakdownSplitReady) return;
+    const frameWindow = this._breakdownScriptFrame?.contentWindow;
+    if (frameWindow) this._postBreakdownEmbedMessage(frameWindow, { type: 'request-ready' });
+    if (attempt < 80) {
+      this._breakdownEmbedHandshakeTimer = window.setTimeout(() => this._requestBreakdownEmbedReady(attempt + 1), 180);
+    } else if (!this._unmounted && this.state.breakdownSplitView && !this._breakdownSplitReady) {
+      this.setState({ breakdownSplitLoaded: false, breakdownSplitLoadError: true, breakdownSplitAnnouncement: this._breakdownUi('Screenplay connection paused', 'Conexión con el guion en pausa') });
+    }
+  }
+
+  _normalizeBreakdownHeadingText(value) {
+    return String(value || '')
+      .normalize('NFKD')
+      .replace(/[\u0300-\u036f]/g, '')
+      .replace(/\s+/g, ' ')
+      .trim()
+      .toLocaleLowerCase();
+  }
+
+  _findBreakdownSceneHeading(sceneNumber, expectedHeading = '') {
+    const requestedScene = Number(sceneNumber);
+    const headings = Array.from(document.querySelectorAll('[data-scene-no]'));
+    if (!headings.length) {
+      // Imported fragments can legitimately have no scene heading. Only Scene
+      // 1 may map to that single pseudo-scene; later scene numbers stay not-found.
+      return requestedScene === 1 ? document.querySelector('[data-fs-page] [data-type]') : null;
+    }
+    const direct = document.querySelector(`[data-scene-no="${requestedScene}"]`);
+    const expected = this._normalizeBreakdownHeadingText(expectedHeading);
+    if (!expected) return direct || null;
+
+    const candidates = headings.map((node) => ({
+      node,
+      text: this._normalizeBreakdownHeadingText(this._blockTextWithoutMarkers(node)),
+    }));
+    const directCandidate = candidates.find((candidate) => candidate.node === direct);
+    if (directCandidate?.text === expected) return direct;
+    const exact = candidates.filter((candidate) => candidate.text === expected);
+    if (exact.length === 1) return exact[0].node;
+    if (exact.length > 1) return null;
+
+    const fuzzy = candidates.filter((candidate) => candidate.text.length > 5
+      && expected.length > 5
+      && (candidate.text.includes(expected) || expected.includes(candidate.text)));
+    return fuzzy.length === 1 ? fuzzy[0].node : null;
+  }
+
+  _performBreakdownEmbedReveal(command, attempt = 0) {
+    if (!this._isBreakdownEmbed || this._unmounted || !this._breakdownEmbedDomReady) {
+      this._pendingBreakdownEmbedCommand = command;
+      this._scheduleBreakdownEmbedReady();
+      return;
+    }
+    const sequence = Math.max(0, Number(command?.sequence) || 0);
+    if (sequence < (this._latestBreakdownEmbedRevealSequence || 0)) return;
+    this._latestBreakdownEmbedRevealSequence = sequence;
+    if (attempt === 0) this._clearBreakdownReferenceHighlight();
+    const requestedScene = Math.max(1, Number(command?.sceneNumber) || 1);
+    const sceneHeading = this._findBreakdownSceneHeading(requestedScene, command?.sceneHeading);
+    if (!sceneHeading) {
+      this._postBreakdownEmbedMessage(window.parent, {
+        type: 'revealed',
+        requestId: String(command?.requestId || ''),
+        sequence,
+        sceneNumber: requestedScene,
+        exact: false,
+        found: false,
+        label: String(command?.label || '').slice(0, 160),
+        silent: command?.silent === true,
+      });
+      return;
+    }
+    const sceneNumber = Math.max(1, Number(sceneHeading.dataset?.sceneNo) || requestedScene);
+    const references = Array.isArray(command?.references)
+      ? command.references.map((value) => String(value || '').trim()).filter(Boolean).slice(0, 8)
+      : [];
+    if (attempt === 0) this.jumpScene(sceneNumber, { analysisFocus: references.length === 0, instant: command?.instant === true });
+    const exact = references.length > 0
+      ? this._highlightBreakdownReference(sceneNumber, command?.categoryKey, references, command?.sceneHeading, { instant: command?.instant === true })
+      : false;
+    const sceneFound = true;
+    if (!exact && references.length && attempt < 8) {
+      window.setTimeout(() => {
+        if (!this._unmounted && sequence === this._latestBreakdownEmbedRevealSequence) this._performBreakdownEmbedReveal(command, attempt + 1);
+      }, 120);
+      return;
+    }
+    if (!exact && sceneFound) {
+      this.jumpScene(sceneNumber, { analysisFocus: true, instant: command?.instant === true });
+    }
+    this._postBreakdownEmbedMessage(window.parent, {
+      type: 'revealed',
+      requestId: String(command?.requestId || ''),
+      sequence,
+      sceneNumber,
+      exact,
+      found: exact || sceneFound,
+      label: String(command?.label || '').slice(0, 160),
+      silent: command?.silent === true,
+    });
+  }
+
+  _postPendingBreakdownSplitReveal() {
+    if (!this._breakdownSplitReady || !this.state.breakdownSplitView || !this._pendingBreakdownSplitReveal) return false;
+    return this._postBreakdownEmbedMessage(this._breakdownScriptFrame?.contentWindow, this._pendingBreakdownSplitReveal);
+  }
+
+  _queueBreakdownSplitReveal(command = {}) {
+    if (this._isBreakdownEmbed || this.state.workMode !== 'breakdown' || !this.state.breakdownSplitView) return false;
+    const sceneNumber = Math.max(1, Number(command.sceneNumber) || 1);
+    this._breakdownRevealSequence = (this._breakdownRevealSequence || 0) + 1;
+    const requestId = `breakdown_reveal_${this._breakdownRevealSequence}_${Date.now()}`;
+    const payload = {
+      type: 'reveal',
+      requestId,
+      sequence: this._breakdownRevealSequence,
+      sceneId: String(command.sceneId || '').slice(0, 160),
+      sceneNumber,
+      sceneHeading: String(command.sceneHeading || '').slice(0, 500),
+      categoryKey: this._normalizeBreakdownCategoryKey(command.categoryKey),
+      references: Array.isArray(command.references)
+        ? command.references.map((value) => String(value || '').trim().slice(0, 1000)).filter(Boolean).slice(0, 8)
+        : [],
+      label: String(command.label || `Scene ${sceneNumber}`).slice(0, 160),
+      silent: command.silent === true,
+      instant: command.instant === true || !this.state.breakdownSplitLoaded,
+    };
+    this._latestBreakdownSplitRequestId = requestId;
+    this._pendingBreakdownSplitReveal = payload;
+    if (!payload.silent && !this._unmounted) this.setState({ breakdownSplitAnnouncement: this._breakdownUi(`Locating ${payload.label}…`, `Buscando ${payload.label}…`) });
+    this._postPendingBreakdownSplitReveal();
+    return true;
+  }
+
+  _syncBreakdownSplitScene(sceneNumber, scene = {}) {
+    return this._queueBreakdownSplitReveal({
+      sceneId: scene?.id,
+      sceneNumber,
+      sceneHeading: scene?.title,
+      references: [],
+      label: this._breakdownUi(`Scene ${sceneNumber}`, `Escena ${sceneNumber}`),
+      silent: true,
+      instant: !this.state.breakdownSplitLoaded,
+    });
+  }
+
+  _breakdownSceneAt(sceneNumber) {
+    const scenes = Array.isArray(this.state.productionProject?.scenes)
+      ? this.state.productionProject.scenes
+      : Object.values(this.state.productionProject?.scenes || {});
+    return scenes[Math.max(0, Number(sceneNumber) - 1)] || {};
+  }
+
+  _handleBreakdownEmbedMessage = (event) => {
+    const data = event?.data;
+    if (!data || data.channel !== this._breakdownEmbedChannel()) return;
+    if (this._isBreakdownEmbed) {
+      if (!this._trustedBreakdownEmbedMessage(event, window.parent)) return;
+      if (data.type === 'request-ready') {
+        this._scheduleBreakdownEmbedReady();
+        return;
+      }
+      if (data.type !== 'reveal') return;
+      if (!this._breakdownEmbedDomReady) {
+        this._pendingBreakdownEmbedCommand = data;
+        this._scheduleBreakdownEmbedReady();
+        return;
+      }
+      this._performBreakdownEmbedReveal(data);
+      return;
+    }
+    const frameWindow = this._breakdownScriptFrame?.contentWindow;
+    if (!frameWindow || !this._trustedBreakdownEmbedMessage(event, frameWindow) || !this.state.breakdownSplitView) return;
+    if (data.type === 'ready') {
+      const newlyReady = !this._breakdownSplitReady;
+      this._breakdownSplitReady = true;
+      clearTimeout(this._breakdownEmbedHandshakeTimer);
+      if (newlyReady) this.setState({
+        breakdownSplitLoaded: false,
+        breakdownSplitLoadError: false,
+        breakdownSplitAnnouncement: this._breakdownUi('Positioning screenplay…', 'Ubicando el guion…'),
+      });
+      if (newlyReady) {
+        if (!this._postPendingBreakdownSplitReveal()) {
+          const sceneNumber = Math.max(1, Number(this.state.breakdownSceneIndex) + 1);
+          this._syncBreakdownSplitScene(sceneNumber, this._breakdownSceneAt(sceneNumber));
+        }
+        this._breakdownEmbedHandshakeTimer = window.setTimeout(() => {
+          if (this._unmounted || !this.state.breakdownSplitView || this.state.breakdownSplitLoaded) return;
+          this.setState({
+            breakdownSplitLoadError: true,
+            breakdownSplitAnnouncement: this._breakdownUi('Screenplay positioning paused', 'La ubicación del guion está en pausa'),
+          });
+        }, 4200);
+      }
+      return;
+    }
+    if (data.type === 'error') {
+      this._breakdownSplitReady = false;
+      clearTimeout(this._breakdownEmbedHandshakeTimer);
+      this.setState({ breakdownSplitLoaded: false, breakdownSplitLoadError: true, breakdownSplitAnnouncement: this._breakdownUi('Screenplay connection paused', 'Conexión con el guion en pausa') });
+      return;
+    }
+    if (data.type !== 'revealed' || String(data.requestId || '') !== String(this._latestBreakdownSplitRequestId || '')) return;
+    clearTimeout(this._breakdownEmbedHandshakeTimer);
+    const acknowledgedReveal = this._pendingBreakdownSplitReveal;
+    const label = String(data.label || 'Selection');
+    const announcement = data.exact
+      ? this._breakdownUi(`${label} highlighted in the screenplay`, `${label} resaltado en el guion`)
+      : data.found
+        ? this._breakdownUi(`${label} opened in the screenplay`, `${label} abierto en el guion`)
+        : this._breakdownUi(`${label} could not be found in the screenplay`, `No se encontró ${label} en el guion`);
+    const positioningFailed = !this.state.breakdownSplitLoaded && data.found !== true;
+    this._pendingBreakdownSplitReveal = positioningFailed ? acknowledgedReveal : null;
+    this.setState({
+      breakdownSplitLoaded: !positioningFailed,
+      breakdownSplitLoadError: positioningFailed,
+      breakdownSplitAnnouncement: positioningFailed
+        ? this._breakdownUi('The selected screenplay source could not be positioned', 'No se pudo ubicar la fuente seleccionada en el guion')
+        : announcement,
+    });
+    if (data.silent !== true) this._toast(data.exact
+      ? this._breakdownUi(`${label} highlighted in split view.`, `${label} resaltado en la vista dividida.`)
+      : data.found
+        ? this._breakdownUi(`${label} opened in split view.`, `${label} abierto en la vista dividida.`)
+        : this._breakdownUi('The source line changed. Refresh the breakdown to reconnect it.', 'La línea de origen cambió. Actualiza el desglose para volver a conectarla.'));
+  };
+
+  _retryBreakdownScriptFrame() {
+    this._breakdownSplitReady = false;
+    clearTimeout(this._breakdownEmbedHandshakeTimer);
+    this.setState({
+      breakdownSplitSession: this._newBreakdownSplitSession(),
+      breakdownSplitLoaded: false,
+      breakdownSplitLoadError: false,
+      breakdownSplitAnnouncement: this._breakdownUi('Opening screenplay…', 'Abriendo el guion…'),
+    });
+  }
+
+  _normalizeBreakdownCategoryKey(categoryKey) {
+    const key = String(categoryKey || 'notes').trim().toLocaleLowerCase().replace(/[\s-]+/g, '_');
+    const aliases = {
+      background: 'extras', background_cast: 'extras', extras_atmosphere: 'extras',
+      vehicles: 'vehicles_animals', animals: 'vehicles_animals', vehicle: 'vehicles_animals', animal: 'vehicles_animals',
+      special_effects: 'special_fx', visual_effects: 'special_fx', vfx: 'special_fx', sfx: 'special_fx',
+      makeup: 'makeup_hair', hair: 'makeup_hair',
+      locations: 'set_dressing', location: 'set_dressing', sets: 'set_dressing',
+      production_notes: 'notes', safety_notes: 'notes', production_note: 'notes', safety_note: 'notes',
+      camera: 'equipment', lighting: 'equipment', grip: 'equipment', special_equipment: 'equipment',
+    };
+    const normalized = aliases[key] || key;
+    return ['cast', 'extras', 'props', 'stunts', 'vehicles_animals', 'special_fx', 'wardrobe', 'makeup_hair', 'set_dressing', 'greenery', 'equipment', 'notes', 'music', 'sound'].includes(normalized) ? normalized : 'notes';
+  }
+
   _breakdownHighlightNames() {
-    return ['cast', 'extras', 'props', 'stunts', 'vehicles-animals', 'special-fx', 'wardrobe', 'makeup-hair', 'set-dressing', 'greenery', 'equipment', 'notes', 'music', 'sound']
-      .map((key) => `v5-breakdown-${key}`);
+    return ['cast', 'extras', 'props', 'stunts', 'vehicles_animals', 'special_fx', 'wardrobe', 'makeup_hair', 'set_dressing', 'greenery', 'equipment', 'notes', 'music', 'sound']
+      .map((key) => `v5-breakdown-${key.replace(/_/g, '-')}`);
   }
 
   _clearBreakdownReferenceHighlight() {
     clearTimeout(this._breakdownHighlightTimer);
     if (window.CSS?.highlights) this._breakdownHighlightNames().forEach((name) => window.CSS.highlights.delete(name));
+    document.querySelectorAll('.v5-breakdown-split-target').forEach((target) => target.classList.remove('v5-breakdown-split-target'));
     document.querySelectorAll('[data-breakdown-reference]').forEach((highlight) => {
       const parent = highlight.parentNode;
       if (!parent) return;
@@ -3721,31 +4107,64 @@ class Component extends DCLogic {
 
   _breakdownReferenceColor(categoryKey) {
     const colors = { cast: '#C65B50', extras: '#D18736', props: '#AD7E18', stunts: '#B44E68', vehicles_animals: '#3F8780', special_fx: '#765F9C', wardrobe: '#93647F', makeup_hair: '#B86876', set_dressing: '#8C6B4E', greenery: '#56805A', equipment: '#4F7796', notes: '#8A6C5D', music: '#6968A1', sound: '#3E7C8F' };
-    return colors[String(categoryKey || '')] || '#BA7517';
+    return colors[this._normalizeBreakdownCategoryKey(categoryKey)] || '#BA7517';
   }
 
-  _findBreakdownTextRanges(block, reference) {
-    const query = String(reference || '').trim();
-    if (!block || !query) return [];
-    const walker = document.createTreeWalker(block, NodeFilter.SHOW_TEXT, {
-      acceptNode: (node) => node.parentElement?.closest?.('[data-marker]') ? NodeFilter.FILTER_REJECT : NodeFilter.FILTER_ACCEPT,
-    });
-    const segments = [];
-    let textNode;
-    let text = '';
-    while ((textNode = walker.nextNode())) {
-      segments.push({ node: textNode, start: text.length, end: text.length + textNode.data.length });
-      text += textNode.data;
+  _breakdownSearchableText(value) {
+    let normalized = '';
+    const offsets = [];
+    let previousWasSpace = false;
+    for (let index = 0; index < value.length;) {
+      const codePoint = value.codePointAt(index);
+      const character = String.fromCodePoint(codePoint);
+      const width = character.length;
+      const folded = character.normalize('NFKD')
+        .replace(/[\u0300-\u036f]/g, '')
+        .replace(/[\u2018\u2019\u201B]/g, "'")
+        .replace(/[\u201C\u201D\u201F]/g, '"')
+        .toLocaleLowerCase();
+      for (const foldedCharacter of folded) {
+        const isSpace = /\s/.test(foldedCharacter);
+        if (isSpace && previousWasSpace) continue;
+        normalized += isSpace ? ' ' : foldedCharacter;
+        offsets.push({ start: index, end: index + width });
+        previousWasSpace = isSpace;
+      }
+      index += width;
     }
+    return { text: normalized, offsets };
+  }
+
+  _findBreakdownTextRangesAcrossBlocks(blocks, reference) {
+    const query = String(reference || '').trim();
+    const roots = (Array.isArray(blocks) ? blocks : [blocks]).filter(Boolean);
+    if (!roots.length || !query) return [];
+    const segments = [];
+    let text = '';
+    roots.forEach((root, rootIndex) => {
+      if (rootIndex) text += '\n';
+      const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT, {
+        acceptNode: (node) => node.parentElement?.closest?.('[data-marker],[data-dialogue-marker]') ? NodeFilter.FILTER_REJECT : NodeFilter.FILTER_ACCEPT,
+      });
+      let textNode;
+      while ((textNode = walker.nextNode())) {
+        segments.push({ node: textNode, start: text.length, end: text.length + textNode.data.length });
+        text += textNode.data;
+      }
+    });
     const ranges = [];
-    const haystack = text.toLocaleLowerCase();
-    const needle = query.toLocaleLowerCase();
+    const haystack = this._breakdownSearchableText(text);
+    const needle = this._breakdownSearchableText(query).text.trim();
+    if (!needle) return ranges;
     let searchFrom = 0;
-    while (searchFrom < haystack.length) {
-      const start = haystack.indexOf(needle, searchFrom);
-      if (start < 0) break;
-      const end = start + needle.length;
-      searchFrom = Math.max(end, start + 1);
+    while (searchFrom < haystack.text.length) {
+      const normalizedStart = haystack.text.indexOf(needle, searchFrom);
+      if (normalizedStart < 0) break;
+      const normalizedEnd = normalizedStart + needle.length;
+      searchFrom = Math.max(normalizedEnd, normalizedStart + 1);
+      const start = haystack.offsets[normalizedStart]?.start;
+      const end = haystack.offsets[normalizedEnd - 1]?.end;
+      if (!Number.isFinite(start) || !Number.isFinite(end)) continue;
       const startSegment = segments.find((segment) => start >= segment.start && start < segment.end);
       const endSegment = segments.find((segment) => end > segment.start && end <= segment.end);
       if (!startSegment || !endSegment) continue;
@@ -3757,44 +4176,46 @@ class Component extends DCLogic {
     return ranges;
   }
 
+  _findBreakdownTextRanges(block, reference) {
+    return this._findBreakdownTextRangesAcrossBlocks([block], reference);
+  }
+
   _findBreakdownTextRange(block, reference) {
     return this._findBreakdownTextRanges(block, reference)[0] || null;
   }
 
-  _highlightBreakdownReference(sceneNumber, categoryKey, references) {
-    const sceneHeading = document.querySelector(`[data-scene-no="${Number(sceneNumber)}"]`);
+  _highlightBreakdownReference(sceneNumber, categoryKey, references, expectedHeading = '', options = {}) {
+    const sceneHeading = this._findBreakdownSceneHeading(sceneNumber, expectedHeading);
     if (!sceneHeading) return false;
+    // Scene content can continue on the next screenplay page. Read blocks in
+    // document order instead of following siblings inside only one page.
+    const screenplayBlocks = Array.from(document.querySelectorAll('[data-fs-page] [data-type]'));
+    const startIndex = Math.max(0, screenplayBlocks.indexOf(sceneHeading));
     const sceneBlocks = [];
-    let block = sceneHeading;
-    while (block && (block === sceneHeading || block.dataset?.type !== 'scene')) {
+    for (let index = startIndex; index < screenplayBlocks.length; index += 1) {
+      const block = screenplayBlocks[index];
+      if (index > startIndex && block.dataset?.type === 'scene') break;
       sceneBlocks.push(block);
-      block = block.nextElementSibling;
     }
     const candidates = Array.from(new Set((references || []).map((value) => String(value || '').trim()).filter(Boolean)));
     let target = null;
     for (const reference of candidates) {
-      const ranges = [];
-      let targetBlock = null;
-      for (const sceneBlock of sceneBlocks) {
-        const found = this._findBreakdownTextRanges(sceneBlock, reference);
-        if (found.length) {
-          targetBlock = targetBlock || sceneBlock;
-          ranges.push(...found);
-        }
-      }
-      if (ranges.length) target = { ranges, block: targetBlock };
+      const ranges = this._findBreakdownTextRangesAcrossBlocks(sceneBlocks, reference);
+      const targetBlock = ranges[0]?.startContainer?.parentElement?.closest?.('[data-type]') || null;
+      if (ranges.length && targetBlock) target = { ranges, block: targetBlock };
       if (target) break;
     }
     if (!target) return false;
     this._clearBreakdownReferenceHighlight();
-    const highlightKey = `v5-breakdown-${String(categoryKey || 'notes').replace(/_/g, '-')}`;
+    const normalizedCategory = this._normalizeBreakdownCategoryKey(categoryKey);
+    const highlightKey = `v5-breakdown-${normalizedCategory.replace(/_/g, '-')}`;
     if (window.CSS?.highlights && window.Highlight) {
       window.CSS.highlights.set(highlightKey, new window.Highlight(...target.ranges));
-    } else {
-      const color = this._breakdownReferenceColor(categoryKey);
+    } else if (target.ranges.every((range) => target.block.contains(range.endContainer))) {
+      const color = this._breakdownReferenceColor(normalizedCategory);
       const highlight = document.createElement('span');
       highlight.className = 'v5-breakdown-reference-fallback';
-      highlight.setAttribute('data-breakdown-reference', categoryKey || 'notes');
+      highlight.setAttribute('data-breakdown-reference', normalizedCategory);
       highlight.style.setProperty('--reference-color', color);
       highlight.style.setProperty('--reference-soft', this._hexA(color, this.state.darkMode ? 0.28 : 0.20));
       try {
@@ -3804,19 +4225,32 @@ class Component extends DCLogic {
         target.ranges[0].insertNode(highlight);
       }
     }
-    target.block.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    target.block.classList.add('v5-breakdown-split-target');
+    const reducedMotion = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
+    target.block.scrollIntoView({ behavior: reducedMotion || options.instant ? 'auto' : 'smooth', block: 'center' });
     this._breakdownHighlightTimer = window.setTimeout(() => this._clearBreakdownReferenceHighlight(), 4600);
     return true;
   }
 
-  async openBreakdownReference(sceneNumber, categoryKey, references, label) {
+  async openBreakdownReference(sceneNumber, categoryKey, references, label, context = {}) {
     this.setState({ breakdownEditing: false });
+    if (this._queueBreakdownSplitReveal({
+      sceneId: context.sceneId,
+      sceneNumber,
+      sceneHeading: context.sceneHeading,
+      categoryKey,
+      references,
+      label,
+    })) return;
+    const revealToken = (this._breakdownStandaloneRevealToken || 0) + 1;
+    this._breakdownStandaloneRevealToken = revealToken;
     await this.switchWorkMode('editor');
     let attempts = 0;
     const reveal = () => {
+      if (this._unmounted || revealToken !== this._breakdownStandaloneRevealToken) return;
       if (attempts === 0) this.jumpScene(sceneNumber);
       attempts += 1;
-      if (this._highlightBreakdownReference(sceneNumber, categoryKey, references)) {
+      if (this._highlightBreakdownReference(sceneNumber, categoryKey, references, context.sceneHeading)) {
         this._toast(`${label || 'Breakdown element'} highlighted in the script.`);
         return;
       }
@@ -3835,12 +4269,27 @@ class Component extends DCLogic {
     this._castReferenceCursor.set(key, (index + 1) % scenes.length);
     const target = scenes[index];
     this.setState({ breakdownEditing: false });
+    if (this._queueBreakdownSplitReveal({
+      sceneId: target.sceneId,
+      sceneNumber: target.sceneNumber,
+      sceneHeading: target.sceneHeading,
+      categoryKey: 'cast',
+      references: [target.reference || name, name],
+      label: name,
+    })) {
+      const targetIndex = Math.max(0, Number(target.sceneNumber) - 1);
+      if (targetIndex !== this.state.breakdownSceneIndex) this.setState({ breakdownSceneIndex: targetIndex });
+      return;
+    }
+    const revealToken = (this._breakdownStandaloneRevealToken || 0) + 1;
+    this._breakdownStandaloneRevealToken = revealToken;
     await this.switchWorkMode('editor');
     let attempts = 0;
     const reveal = () => {
+      if (this._unmounted || revealToken !== this._breakdownStandaloneRevealToken) return;
       if (attempts === 0) this.jumpScene(target.sceneNumber);
       attempts += 1;
-      if (this._highlightBreakdownReference(target.sceneNumber, 'cast', [target.reference || name, name])) {
+      if (this._highlightBreakdownReference(target.sceneNumber, 'cast', [target.reference || name, name], target.sceneHeading)) {
         this._toast(`${name} · appearance ${index + 1} of ${scenes.length}.`);
         return;
       }
@@ -4045,9 +4494,10 @@ class Component extends DCLogic {
   bindProductionScroll = (el) => { this._productionScroll = el || null; };
 
   _onBreakdownScriptFrameLoad = () => {
-    if (!this._unmounted && this.state.breakdownSplitView && !this.state.breakdownSplitLoaded) {
-      this.setState({ breakdownSplitLoaded: true });
-    }
+    if (this._unmounted || !this.state.breakdownSplitView) return;
+    this._breakdownSplitReady = false;
+    this.setState({ breakdownSplitLoaded: false, breakdownSplitLoadError: false, breakdownSplitAnnouncement: this._breakdownUi('Opening screenplay…', 'Abriendo el guion…') });
+    this._requestBreakdownEmbedReady();
   };
 
   bindBreakdownScriptFrame = (el) => {
@@ -4058,6 +4508,8 @@ class Component extends DCLogic {
     this._breakdownScriptFrame = el || null;
     if (this._breakdownScriptFrame) {
       this._breakdownScriptFrame.addEventListener('load', this._onBreakdownScriptFrameLoad);
+      this._breakdownSplitReady = false;
+      window.setTimeout(() => this._requestBreakdownEmbedReady(), 0);
     }
   };
 
@@ -5733,7 +6185,9 @@ class Component extends DCLogic {
       cur.push(b); lines += cost;
     }
     if (pageBlocks.length < PAGE_MAX && cur.length) pageBlocks.push(cur);
-    if (!pageBlocks.length) pageBlocks.push([{ type: 'action', text: '' }]);
+    // A normal editor session needs a blank first line. The Breakdown embed,
+    // however, must never report a fabricated empty line as a rendered script.
+    if (!pageBlocks.length && !this._isBreakdownEmbed) pageBlocks.push([{ type: 'action', text: '' }]);
     const pages = pageBlocks.slice(0, PAGE_MAX);
     if (!this._importedBlocks && pages.length) pages[pages.length - 1].push({ type: 'transition', text: 'FADE OUT.' });
 
@@ -6350,6 +6804,11 @@ class Component extends DCLogic {
 
   _scriptBlocksForSave() {
     const contentBlocks = this._collectEditorBlocks();
+    if (this._isBreakdownEmbed) {
+      // Split view hides title-page UI, but an edit made beside Breakdown must
+      // preserve the original cover byte-for-byte and must not invent one.
+      return [...(this._breakdownEmbedCoverPrefix || []).map((block) => ({ ...block })), ...contentBlocks];
+    }
     return this.state.tpEnabled
       ? [...this._coverBlocksFromState(), { id:(this._importedBlocks || []).find((block) => block.type === 'pagebreak')?.id || 'blk_cover_break', type: 'pagebreak', text: '' }, ...contentBlocks]
       : contentBlocks;
@@ -6846,7 +7305,8 @@ class Component extends DCLogic {
     if (!el || !c) return;
     if (this.state.soundOn) window.filmscriptSounds?.play('sceneNavigate');
     const top = el.getBoundingClientRect().top - c.getBoundingClientRect().top + c.scrollTop - 110;
-    c.scrollTo({ top, behavior: 'smooth' });
+    const reducedMotion = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
+    c.scrollTo({ top, behavior: reducedMotion || options.instant ? 'auto' : 'smooth' });
     if (options.analysisFocus) {
       this._focusAnalysisScene(el);
       const sceneNo = Number(no);
@@ -8155,6 +8615,8 @@ Write Lumiere's next reply only:`;
     if (this._analysisAskHandler) window.removeEventListener('filmscript:analysis-ask-lumiere', this._analysisAskHandler);
     if (this._analysisBackgroundHandler) window.removeEventListener('filmscript:analysis-background', this._analysisBackgroundHandler);
     if (this._canvasShotlistHandler) window.removeEventListener('filmscript:canvas-shotlist', this._canvasShotlistHandler);
+    if (this._breakdownOpenReferenceHandler) window.removeEventListener('filmscript:breakdown-open-reference', this._breakdownOpenReferenceHandler);
+    window.removeEventListener('message', this._handleBreakdownEmbedMessage);
     clearTimeout(this._saveT);
     clearTimeout(this._chatSaveTimer);
     clearTimeout(this._writingIdleCopyTimer);
@@ -8168,6 +8630,9 @@ Write Lumiere's next reply only:`;
     clearTimeout(this._analysisFocusTimer);
     clearTimeout(this._analysisBackgroundTimer);
     clearTimeout(this._workModeDependencyRetryTimer);
+    clearTimeout(this._breakdownEmbedRetryTimer);
+    clearTimeout(this._breakdownEmbedReadyTimer);
+    clearTimeout(this._breakdownEmbedHandshakeTimer);
     clearInterval(this._creditsRefreshTimer);
     this._clearBreakdownReferenceHighlight();
   }
@@ -8288,7 +8753,7 @@ Write Lumiere's next reply only:`;
           ...(Array.isArray(scene?.blocks) ? scene.blocks.map((block) => block?.text) : []),
           scene?.text,
         ].filter(Boolean).join('\n');
-        return mention.test(text) ? [{ sceneNumber: index + 1, reference: name }] : [];
+        return mention.test(text) ? [{ sceneId: scene?.id || '', sceneNumber: index + 1, sceneHeading: scene?.title || '', reference: name }] : [];
       });
     };
     const breakdownCategoryColors = dark
@@ -8358,8 +8823,9 @@ Write Lumiere's next reply only:`;
       const addNavigation = (entry, displayName = entry.name) => {
         const castAppearances = key === 'cast' ? (entry.castAppearances || castAppearancesFor(entry.rawName || entry.name)) : [];
         const isCastLink = key === 'cast' && castAppearances.length > 0;
-        const linkable = isCastLink || !!entry.linkable;
         const visualName = String(entry.rawName || displayName || '').replace(/^\s*\d+\s+/, '').replace(/\s*\([^)]*\)\s*$/g, '').trim();
+        const splitLinkable = this.state.breakdownSplitView && !!visualName;
+        const linkable = isCastLink || !!entry.linkable || splitLinkable;
         const isCharacterVisual = key === 'cast' && isScreenplayCastName(visualName);
         const isVisualEntry = key !== 'notes' && !!visualName;
         const appearanceLabel = castAppearances.length
@@ -8384,7 +8850,13 @@ Write Lumiere's next reply only:`;
             event?.preventDefault?.();
             event?.stopPropagation?.();
             if (isCastLink) this.openCastReference(castAppearances, entry.rawName || displayName.replace(/^\s*\d+\s+/, ''));
-            else if (linkable) this.openBreakdownReference(breakdownSceneIndex + 1, key, [entry.sourceExcerpt, entry.rawName], displayName);
+            else if (linkable) this.openBreakdownReference(
+              breakdownSceneIndex + 1,
+              key,
+              [entry.sourceExcerpt, entry.rawName, visualName, displayName],
+              displayName,
+              { sceneId: breakdownScene.id, sceneHeading: breakdownScene.title },
+            );
           },
         };
       };
@@ -9744,6 +10216,10 @@ Write Lumiere's next reply only:`;
       breakdownSceneNo: breakdownSceneIndex + 1,
       breakdownSceneId: breakdownScene.id || '',
       breakdownSceneTotal: productionScenesRaw.length,
+      breakdownSceneCountLabel: ui(`Scene ${breakdownSceneIndex + 1} of ${productionScenesRaw.length}`, `Escena ${breakdownSceneIndex + 1} de ${productionScenesRaw.length}`),
+      breakdownNavigatorAriaLabel: ui('Breakdown scene navigation', 'Navegación de escenas del desglose'),
+      breakdownPrevAriaLabel: ui('Previous breakdown scene', 'Escena de desglose anterior'),
+      breakdownNextAriaLabel: ui('Next breakdown scene', 'Siguiente escena de desglose'),
       breakdownSceneHeading: breakdownHeading,
       breakdownSceneHeadingProjectContent: !!breakdownHeadingSource,
       breakdownSceneHeadingInterfaceContent: !breakdownHeadingSource,
@@ -9817,17 +10293,46 @@ Write Lumiere's next reply only:`;
       breakdownExportPrint: () => this.exportBreakdownDepartment(this.state.breakdownExportDepartment, 'print'),
       breakdownSplitView: this.state.breakdownSplitView,
       breakdownWorkspaceClass: this.state.breakdownSplitView ? 'is-split' : '',
-      breakdownSplitLabel: this.state.breakdownSplitView ? 'Close split view' : 'Split view',
-      breakdownSplitAriaLabel: this.state.breakdownSplitView ? 'Close screenplay and breakdown split view' : 'Open screenplay and breakdown split view',
+      breakdownSplitLabel: this.state.breakdownSplitView ? ui('Close split view', 'Cerrar vista dividida') : ui('Split view', 'Vista dividida'),
+      breakdownSplitAriaLabel: this.state.breakdownSplitView ? ui('Close screenplay and breakdown split view', 'Cerrar la vista dividida de guion y desglose') : ui('Open screenplay and breakdown split view', 'Abrir la vista dividida de guion y desglose'),
       breakdownSplitToggle: () => {
         const next = !this.state.breakdownSplitView;
         const scriptId = this.state.activeScriptId || this._activeScriptId || 'default';
         try { localStorage.setItem(`filmscript_breakdown_split_${scriptId}`, next ? '1' : '0'); } catch (error) {}
-        this.setState({ breakdownSplitView: next, breakdownSplitLoaded: false });
+        clearTimeout(this._breakdownEmbedHandshakeTimer);
+        this._breakdownSplitReady = false;
+        this._pendingBreakdownSplitReveal = null;
+        this._latestBreakdownSplitRequestId = '';
+        this.setState({
+          breakdownSplitView: next,
+          breakdownSplitSession: next ? this._newBreakdownSplitSession() : this.state.breakdownSplitSession,
+          breakdownSplitLoaded: false,
+          breakdownSplitLoadError: false,
+          breakdownSplitAnnouncement: next ? ui('Opening screenplay…', 'Abriendo el guion…') : '',
+        }, () => {
+          if (!next) return;
+          const sceneNumber = breakdownSceneIndex + 1;
+          this._syncBreakdownSplitScene(sceneNumber, productionScenesRaw[breakdownSceneIndex] || {});
+          this._requestBreakdownEmbedReady();
+        });
       },
-      breakdownScriptSrc: `Editor%20v5.dc.html?script=${encodeURIComponent(this.state.activeScriptId || this._activeScriptId || '')}&title=${encodeURIComponent(this.state.docTitle || '')}&view=editor&embed=breakdown`,
+      breakdownScriptSrc: `Editor%20v5.dc.html?script=${encodeURIComponent(this.state.activeScriptId || this._activeScriptId || '')}&view=editor&embed=breakdown&splitSession=${encodeURIComponent(this.state.breakdownSplitSession || '')}`,
       bindBreakdownScriptFrame: this.bindBreakdownScriptFrame,
       breakdownScriptReadyClass: this.state.breakdownSplitLoaded ? 'is-ready' : '',
+      breakdownScriptErrorClass: this.state.breakdownSplitLoadError ? 'is-error' : '',
+      breakdownScriptLoadError: this.state.breakdownSplitLoadError,
+      breakdownScriptLoadingMark: this.state.breakdownSplitLoadError ? '!' : '',
+      breakdownScriptLoadingLabel: this.state.breakdownSplitLoadError ? ui('The screenplay could not open', 'No se pudo abrir el guion') : ui('Opening screenplay…', 'Abriendo el guion…'),
+      breakdownScriptRetryLabel: ui('Try again', 'Intentar de nuevo'),
+      breakdownScriptPaneAriaLabel: ui('Editable screenplay beside breakdown', 'Guion editable junto al desglose'),
+      breakdownScriptPaneTitle: ui('Screenplay', 'Guion'),
+      breakdownScriptPaneHint: ui('Edit while you break down the scene', 'Edita mientras desglosas la escena'),
+      breakdownScriptFrameTitle: ui('Editable screenplay', 'Guion editable'),
+      retryBreakdownScriptFrame: () => this._retryBreakdownScriptFrame(),
+      breakdownSplitStatusLabel: this.state.breakdownSplitAnnouncement || ui('Autosave on', 'Autoguardado activo'),
+      breakdownScriptAriaBusy: this.state.breakdownSplitLoaded ? 'false' : 'true',
+      breakdownScriptAriaHidden: this.state.breakdownSplitLoaded ? 'false' : 'true',
+      breakdownScriptTabIndex: this.state.breakdownSplitLoaded ? '0' : '-1',
       breakdownEmbedLoading: this._isBreakdownEmbed && !this.state.breakdownEmbedReady,
       breakdownStatus,
       breakdownStatusColor: breakdownStatus === 'Synced' ? (dark ? '#61B58B' : '#2E7D5B') : breakdownStatus === 'Outdated' ? (dark ? '#E46A64' : '#C74440') : accent,
@@ -9841,8 +10346,16 @@ Write Lumiere's next reply only:`;
       breakdownGenerationText,
       breakdownGenerationCount: breakdownGenerationCompleted > 0 ? `${breakdownGenerationCompleted} / ${breakdownGenerationTotal} scenes` : `${breakdownGenerationTotal} scenes queued`,
       breakdownCells,
-      breakdownPrev: () => this.setState({ breakdownSceneIndex: Math.max(0, breakdownSceneIndex - 1) }),
-      breakdownNext: () => this.setState({ breakdownSceneIndex: Math.min(Math.max(0, productionScenesRaw.length - 1), breakdownSceneIndex + 1) }),
+      breakdownPrev: () => {
+        const nextIndex = Math.max(0, breakdownSceneIndex - 1);
+        if (nextIndex === breakdownSceneIndex) return;
+        this.setState({ breakdownSceneIndex: nextIndex }, () => this._syncBreakdownSplitScene(nextIndex + 1, productionScenesRaw[nextIndex] || {}));
+      },
+      breakdownNext: () => {
+        const nextIndex = Math.min(Math.max(0, productionScenesRaw.length - 1), breakdownSceneIndex + 1);
+        if (nextIndex === breakdownSceneIndex) return;
+        this.setState({ breakdownSceneIndex: nextIndex }, () => this._syncBreakdownSplitScene(nextIndex + 1, productionScenesRaw[nextIndex] || {}));
+      },
       breakdownPrevDisabled: breakdownSceneIndex === 0,
       breakdownNextDisabled: breakdownSceneIndex >= productionScenesRaw.length - 1,
       breakdownPrevCursor: breakdownSceneIndex === 0 ? 'default' : 'pointer',
