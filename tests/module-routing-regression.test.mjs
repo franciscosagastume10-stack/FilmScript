@@ -68,7 +68,7 @@ test('project invitations use a neutral first-party route', async () => {
   assert.match(proxy, /headers\.Origin = String\(req\.headers\.origin\)/);
   assert.match(proxy, /ALLOWED_METHODS = new Set\(\["GET", "HEAD", "POST"\]\)/);
   assert.equal(
-    vercel.rewrites.some((entry) => entry.source === '/api/:path((?!auth-complete|scripts-proxy|access-proxy).*)'),
+    vercel.rewrites.some((entry) => entry.source === '/api/:path((?!auth-complete|scripts-proxy|access-proxy|supabase(?:/|$)).*)'),
     true,
   );
 });

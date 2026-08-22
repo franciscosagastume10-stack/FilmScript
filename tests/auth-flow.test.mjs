@@ -136,7 +136,7 @@ test('Vercel completes the Google handoff through a same-origin cookie proxy', a
     destination: '/api/access-proxy?path=:path*',
   });
   assert.equal(
-    vercelConfig.rewrites.some((entry) => entry.source === '/api/:path((?!auth-complete|scripts-proxy|access-proxy).*)'),
+    vercelConfig.rewrites.some((entry) => entry.source === '/api/:path((?!auth-complete|scripts-proxy|access-proxy|supabase(?:/|$)).*)'),
     true,
     'the generic API rewrite must not swallow either first-party proxy',
   );
@@ -152,7 +152,7 @@ test('Vercel completes the Google handoff through a same-origin cookie proxy', a
     source: '/workspace/:path*',
     destination: 'https://api.filmscript.app/api/:path*',
   });
-  assert.ok(vercelConfig.rewrites.some((entry) => entry.source === '/api/:path((?!auth-complete|scripts-proxy|access-proxy).*)'));
+  assert.ok(vercelConfig.rewrites.some((entry) => entry.source === '/api/:path((?!auth-complete|scripts-proxy|access-proxy|supabase(?:/|$)).*)'));
   assert.match(vercelIgnore, /^api\/\*$/m);
   assert.match(vercelIgnore, /^!api\/auth-complete\.js$/m);
   assert.match(vercelIgnore, /^!api\/scripts-proxy\.js$/m);
