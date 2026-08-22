@@ -7,6 +7,7 @@ const output = path.join(root, "dist");
 const frontendFiles = [
   "App.dc.html",
   "auth-complete.html",
+  "auth-mobile-notice.js",
   "auth-google.html",
   "Editor v5.dc.html",
   "Features.dc.html",
