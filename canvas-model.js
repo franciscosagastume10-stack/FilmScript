@@ -57,6 +57,8 @@ function normalizeAsset(value = {}) {
     : "image/jpeg";
   return {
     id: assetId,
+    createdBy: text(value.createdBy, 80),
+    ownerUserId: text(value.ownerUserId, 80),
     provider: text(value.provider || "local", 32).toLowerCase(),
     key: text(value.key, 500),
     mimeType,
@@ -65,6 +67,8 @@ function normalizeAsset(value = {}) {
     width: integer(value.width, 0, 0, 12000),
     height: integer(value.height, 0, 0, 12000),
     source: text(value.source || "upload", 40).toLowerCase(),
+    mediaMode: text(value.mediaMode, 32).toLowerCase(),
+    modelId: text(value.modelId, 80).toLowerCase(),
     prompt: text(value.prompt, 3200),
     generation: objectValue(value.generation, 12000),
     createdAt: dateText(value.createdAt, nowIso()),

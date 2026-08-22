@@ -2,14 +2,14 @@
 <html>
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <link rel="icon" href="./assets/filmscript-favicon.svg?v=20260813" type="image/svg+xml">
 <link rel="shortcut icon" href="./assets/filmscript-favicon.svg?v=20260813" type="image/svg+xml">
 <!-- Vercel Web Analytics: production page views and navigation. -->
 <script defer src="/_vercel/insights/script.js"></script>
 <script src="./support.js"></script>
 <script defer src="./seamless-navigation.js?v=20260728-route1"></script>
-<script src="./runtime-config.js?v=20260821-invitation-route2"></script>
+<script src="./runtime-config.js?v=20260821-imagine-direct1"></script>
 <script src="./theme-preference.js?v=20260720-themefade1"></script>
 <script defer src="./language-preference.js?v=20260821-personal-loading1"></script>
 <script defer src="./ui-sounds.js?v=20260804-imagine-live2"></script>
@@ -24,18 +24,18 @@
 <script defer src="./pdf-import.js?v=20260731-scenes3"></script>
 <script defer src="./project-client.js?v=20260820-browser-safe1"></script>
 <script defer src="./preproduction-client.js?v=20260820-module-routes3"></script>
-<script defer src="./canvas-client.js?v=20260821-imagine-access1"></script>
-<script defer src="./canvas-workspace.js?v=20260821-loading1"></script>
+<script defer src="./canvas-client.js?v=20260821-imagine-gallery1"></script>
+<script defer src="./canvas-workspace.js?v=20260821-imagine-fast2"></script>
 <script defer src="./analysis-client.js?v=20260820-access-gate1"></script>
     <script type="module" src="./analysis-workspace.js?v=20260821-loading1"></script>
 <script defer src="./budget-client.js?v=20260820-module-routes3"></script>
 <script type="module" src="./budget-workspace.js?v=20260821-loading1"></script>
 <script defer src="./calendar-client.js?v=20260820-module-routes3"></script>
 <script type="module" src="./calendar-workspace.js?v=20260821-loading1"></script>
-<script defer src="./platform-client.js?v=20260821-personal-name1"></script>
+<script defer src="./platform-client.js?v=20260821-mobile-nav1"></script>
 <script defer src="./assets/vendor/realtime-collaboration.bundle.js?v=20260819-collab2"></script>
 <link rel="stylesheet" href="./filmscript-controls.css?v=20260716-typography1">
-<link rel="stylesheet" href="./platform-ui.css?v=20260821-invitations1">
+<link rel="stylesheet" href="./platform-ui.css?v=20260821-desktop-nav2">
 <link rel="prefetch" href="./App.dc.html" as="document">
 </head>
 <body>
@@ -103,17 +103,13 @@
   .v5-work-mode[aria-pressed="true"] { color: var(--accent, #BA7517); }
   .v5-work-mode:focus-visible { outline: none; }
   .v5-work-mode:active { transform: scale(.97); }
-  .v5-mobile-nav, .v5-mobile-more-scrim, .v5-mobile-more-sheet { display: none; }
   @media (max-width: 700px) {
-    .v5-app-shell { padding-bottom: 0 !important; }
-    .v5-topbar { height: 88px !important; flex-basis: 88px !important; flex-wrap: wrap; align-content: center; padding: 5px 14px !important; gap: 0 !important; }
-    .v5-work-modes { order: 3; display: flex !important; flex: 0 0 100% !important; min-height: 33px; padding-top: 2px; justify-content: flex-start !important; gap: 1px !important; overflow-x: auto !important; scrollbar-width: none; }
-    .v5-work-modes::-webkit-scrollbar { display: none; }
-    .v5-work-mode { min-height: 29px; padding: 7px 10px; font-size: 11px; }
+    .v5-app-shell { height: calc(100dvh - var(--fs-mobile-nav-height, 0px)) !important; padding-bottom: 0 !important; }
+    .v5-topbar { height: 56px !important; flex-basis: 56px !important; flex-wrap: nowrap; align-content: center; padding: 5px 14px !important; gap: 0 !important; }
+    .v5-work-modes { display: none !important; }
     .fs-brand-mark { min-width: 102px; flex-basis: 102px; height: 35px; }
     .fs-brand-word { font-size: 19px; }
     .v5-top-actions { margin-left: auto; }
-    .v5-mobile-nav, .v5-mobile-more-scrim, .v5-mobile-more-sheet { display: none !important; }
     .v5-production-shell { padding: 18px 14px 32px !important; }
     .v5-production-shell-calendar { padding: 0 0 18px !important; }
     .v5-editor-toolbar { min-height: 48px; }
@@ -1019,9 +1015,6 @@
   @keyframes v5-spin { to { transform: rotate(360deg); } }
   .v5-app-shell.is-breakdown-embed .v5-topbar,
   .v5-app-shell.is-breakdown-embed .v5-editor-toolbar,
-  .v5-app-shell.is-breakdown-embed .v5-mobile-nav,
-  .v5-app-shell.is-breakdown-embed .v5-mobile-more-scrim,
-  .v5-app-shell.is-breakdown-embed .v5-mobile-more-sheet,
   .v5-app-shell.is-breakdown-embed .v5-editor-page-area > [aria-label="Screenplay zoom controls"] { display: none !important; }
   .v5-app-shell.is-breakdown-embed .v5-editor-workspace { height: 100vh; }
   .v5-app-shell.is-breakdown-embed-loading .v5-editor-workspace { opacity: 0; pointer-events: none; }
@@ -1078,7 +1071,7 @@
   .v5-top-actions [data-testid="account-avatar"] {
     border-radius: 999px !important;
   }
-  .v5-work-modes { justify-content: flex-start !important; gap: 2px !important; }
+  .v5-work-modes { justify-content: center !important; gap: 2px !important; }
   .v5-work-mode { min-height: 36px; padding: 8px 10px; font-size: 11.5px; }
   .v5-theme-toggle:hover,
   .v5-theme-toggle:focus-visible { background: rgba(255,255,255,.1) !important; transform: translateY(-1px); }
@@ -1171,7 +1164,7 @@
   <!-- ============ TOPBAR ============ -->
   <div class="v5-topbar" style="height: 56px; flex: 0 0 56px; background: var(--chrome, #232322); display: flex; align-items: center; padding: 0 22px; gap: 20px; user-select: none;">
     <div class="fs-brand-mark" data-filmscript-brand onClick="{{ goScripts }}" role="link" aria-label="FilmScript, go to scripts"><span class="fs-brand-word">FilmScript</span></div>
-    <div class="v5-work-modes" style="flex: 1; min-width: 0; display: flex; justify-content: center; gap: 3px; overflow-x: auto; scrollbar-width: none;">
+    <div class="v5-work-modes" style="flex: 1; min-width: 0; display: flex; justify-content: center; gap: 3px;">
       <button type="button" class="v5-work-mode" onClick="{{ goScripts }}" aria-label="Go to scripts">Scripts</button>
       <sc-for list="{{ workModes }}" as="mode" hint-placeholder-count="4">
         <button type="button" class="v5-work-mode" onClick="{{ mode.open }}" aria-pressed="{{ mode.active }}">{{ mode.label }}</button>
@@ -1210,21 +1203,6 @@
       </div>
     </div>
   </div>
-
-  <sc-if value="{{ mobileMoreOpen }}" hint-placeholder-val="false">
-    <div class="v5-mobile-more-scrim" onClick="{{ closeMobileMore }}" aria-hidden="true"></div>
-    <div class="v5-mobile-more-sheet" role="dialog" aria-label="More FilmScript spaces">
-      <strong>More tools</strong>
-      <sc-for list="{{ mobileMoreModes }}" as="mode" hint-placeholder-count="4">
-        <button type="button" onClick="{{ mode.open }}"><span>{{ mode.label }}</span><small>{{ mode.detail }}</small></button>
-      </sc-for>
-    </div>
-  </sc-if>
-  <nav class="v5-mobile-nav" aria-label="FilmScript mobile navigation">
-    <sc-for list="{{ mobileNav }}" as="mode" hint-placeholder-count="5">
-      <button type="button" class="{{ mode.className }}" onClick="{{ mode.open }}" aria-pressed="{{ mode.active }}"><span aria-hidden="true"></span>{{ mode.label }}</button>
-    </sc-for>
-  </nav>
 
   <sc-if value="{{ accountDetailsOpen }}" hint-placeholder-val="{{ false }}">
     <div data-testid="account-details-overlay" onClick="{{ closeAccountDetails }}" style="position: fixed; inset: 0; z-index: 1200; isolation: isolate; pointer-events: auto; display: flex; align-items: flex-start; justify-content: flex-end; padding: 66px 24px 22px; background: rgba(35,35,34,.18); animation: v5-fade .16s ease both;">
@@ -2419,7 +2397,6 @@ class Component extends DCLogic {
       if (mode === 'shotlist') return 'canvas';
       return allowed.includes(mode) ? mode : 'editor';
     })(),
-    mobileMenuOpen: false,
     canvasTool: (() => {
       const params = new URLSearchParams(window.location.search);
       const scriptId = params.get('script');
@@ -2951,6 +2928,7 @@ class Component extends DCLogic {
     const prompt = this._writingContinuationPrompt();
     this._writingIdle?.pause();
     clearTimeout(this._writingIdleCopyTimer);
+    this._rememberWorkMode('editor');
     this.setState({
       writingIdleNudge: false,
       writingIdlePromptCopied: false,
@@ -2997,6 +2975,15 @@ class Component extends DCLogic {
     // remain protected by data-project-content/data-lumiere-generated.
     this._languageHandler = () => this.setState({});
     window.addEventListener('filmscript:language-change', this._languageHandler);
+    this._mobileWorkModeHandler = async (event) => {
+      const mode = String(event?.detail?.mode || '');
+      if (!['editor', 'analysis', 'breakdown', 'stripboard', 'imagine', 'canvas', 'shotlist', 'budget', 'calendar'].includes(mode)) return;
+      await this.switchWorkMode(mode, mode === 'canvas' ? { canvasTool: 'home' } : {});
+      if (event?.detail?.lumiere === true && !this._unmounted) {
+        this.setState({ lumiereOpen: true, lumiereClosing: false }, () => this._fitEditorToAvailableWidth());
+      }
+    };
+    window.addEventListener('filmscript:navigate-work-mode', this._mobileWorkModeHandler);
     this._creditsUpdatedHandler = (event) => {
       const credits = event?.detail;
       if (!credits || typeof credits !== 'object') return;
@@ -3359,6 +3346,7 @@ class Component extends DCLogic {
       window.history.replaceState(window.history.state, '', `${url.pathname}${url.search}${url.hash}`);
       window.filmscriptPlatform?.sendPresence?.({ type:'presence.updated', module:mode === 'editor' ? 'script' : mode === 'shotlist' ? 'shot_list' : mode });
     } catch (e) {}
+    window.dispatchEvent(new CustomEvent('filmscript:work-mode-change', { detail:{ mode } }));
   }
 
   _restoreWorkMode() {
@@ -3418,7 +3406,6 @@ class Component extends DCLogic {
     const allowedModes = ['editor', 'analysis', 'breakdown', 'stripboard', 'imagine', 'canvas', 'shotlist', 'budget', 'calendar'];
     if (!allowedModes.includes(mode)) return;
     if (options.dependencyRetry !== true) this._clearWorkModeDependencyRetry();
-    if (this.state.mobileMenuOpen) this.setState({ mobileMenuOpen: false });
     const requestedCanvasTool = mode === 'canvas' && options.canvasTool === 'shotlist' ? 'shotlist' : 'home';
     const forceReload = options.force === true;
     if (mode === this.state.workMode && !forceReload) {
@@ -3525,6 +3512,7 @@ class Component extends DCLogic {
     const number = Number(sceneNumber);
     if (!Number.isFinite(number) || number < 1) return;
     this._playWorkModeSound();
+    this._rememberWorkMode('editor');
     this.setState({ workMode: 'editor' }, () => {
       this._restartWorkModeMotion();
       if (this._autoFit) requestAnimationFrame(() => this.fillPage(1));
@@ -3561,6 +3549,7 @@ class Component extends DCLogic {
     if (!this._requireLumiereChat()) return;
     const input = String(prompt || 'Help me understand the current screenplay Analysis.').trim();
     this._playWorkModeSound();
+    this._rememberWorkMode('editor');
     this.setState({ workMode: 'editor', lumiereOpen: true, lumiereClosing: false, input }, () => {
       this._restartWorkModeMotion();
       if (this._autoFit) requestAnimationFrame(() => this.fillPage(1));
@@ -4804,6 +4793,7 @@ class Component extends DCLogic {
   }
 
   addSceneFromStripboard() {
+    this._rememberWorkMode('editor');
     this.setState({ workMode: 'editor' }, () => {
       requestAnimationFrame(() => {
         const page = this._editorNode || document.querySelector('[data-fs-page]');
@@ -8147,6 +8137,7 @@ Write Lumiere's next reply only:`;
     if (this._creditsVisibilityHandler) document.removeEventListener('visibilitychange', this._creditsVisibilityHandler);
     if (this._themeHandler) window.removeEventListener('filmscript:theme-change', this._themeHandler);
     if (this._languageHandler) window.removeEventListener('filmscript:language-change', this._languageHandler);
+    if (this._mobileWorkModeHandler) window.removeEventListener('filmscript:navigate-work-mode', this._mobileWorkModeHandler);
     if (this._creditsUpdatedHandler) window.removeEventListener('filmscript:credits-updated', this._creditsUpdatedHandler);
     if (this._proRequiredHandler) window.removeEventListener('filmscript:pro-required', this._proRequiredHandler);
     if (this._analysisOpenEditorHandler) window.removeEventListener('filmscript:analysis-open-editor', this._analysisOpenEditorHandler);
@@ -9460,26 +9451,6 @@ Write Lumiere's next reply only:`;
       ].map(mode => ({
         ...mode,
         active: workMode === mode.id,
-        open: () => mode.id === 'shotlist' ? this.openCanvasShotList() : this.switchWorkMode(mode.id, mode.id === 'canvas' ? { canvasTool: 'home' } : {}),
-      })),
-      mobileMoreOpen: !!this.state.mobileMenuOpen,
-      closeMobileMore: () => this.setState({ mobileMenuOpen: false }),
-      mobileNav: [
-        { id: 'scripts', label: 'Scripts', active: false, open: () => { this.setState({ mobileMenuOpen: false }); window.location.href = 'App.dc.html'; } },
-        { id: 'editor', label: 'Write', active: workMode === 'editor', open: () => this.switchWorkMode('editor') },
-        { id: 'analysis', label: 'Analysis', active: workMode === 'analysis', open: () => this.switchWorkMode('analysis') },
-        { id: 'budget', label: 'Budget', active: workMode === 'budget', open: () => this.switchWorkMode('budget') },
-        { id: 'more', label: 'More', active: !!this.state.mobileMenuOpen || ['breakdown', 'stripboard', 'imagine', 'canvas', 'shotlist', 'calendar'].includes(workMode), open: () => this.setState(state => ({ mobileMenuOpen: !state.mobileMenuOpen })) },
-      ].map(mode => ({ ...mode, className: `v5-mobile-nav-item${mode.active ? ' is-active' : ''}` })),
-      mobileMoreModes: [
-        { id: 'breakdown', label: 'Breakdown', detail: 'Scenes and departments' },
-        { id: 'stripboard', label: 'Production', detail: 'Schedule and stripboard' },
-        { id: 'calendar', label: 'Calendar', detail: 'Timeline and tasks' },
-        { id: 'imagine', label: 'Imagine', detail: 'Create production visuals' },
-        { id: 'canvas', label: 'Canvas', detail: 'Boards and Vault' },
-        { id: 'shotlist', label: 'Shot List', detail: 'Camera coverage by scene' },
-      ].map(mode => ({
-        ...mode,
         open: () => mode.id === 'shotlist' ? this.openCanvasShotList() : this.switchWorkMode(mode.id, mode.id === 'canvas' ? { canvasTool: 'home' } : {}),
       })),
       editorDisplay: workMode === 'editor' && !this.state.scriptLoading && !this.state.scriptLoadError ? 'flex' : 'none',

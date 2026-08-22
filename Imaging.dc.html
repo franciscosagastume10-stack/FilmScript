@@ -1,0 +1,20 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="robots" content="noindex">
+  <title>Imagine · FilmScript</title>
+  <script>
+    (() => {
+      const destination = window.location.protocol === 'file:'
+        ? new URL('./Imagine.dc.html', window.location.href)
+        : new URL('/Imagine.dc.html', window.location.origin);
+      destination.search = window.location.search;
+      destination.hash = window.location.hash;
+      window.location.replace(destination.href);
+    })();
+  </script>
+</head>
+<body></body>
+</html>

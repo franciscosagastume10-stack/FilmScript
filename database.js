@@ -440,14 +440,13 @@ function importLegacyData() {
 importLegacyData();
 
 function claimLegacyLocalDataForSingleGoogleUser() {
-  const alreadyClaimed = sqlite.prepare("SELECT value FROM schema_meta WHERE key = 'legacy_local_data_claimed_v2'").get();
-  const importedLegacyData = sqlite.prepare("SELECT value FROM schema_meta WHERE key = 'legacy_json_imported_v1'").get();
-  if (alreadyClaimed || !importedLegacyData) return;
-  const googleUsers = sqlite.prepare("SELECT id FROM users WHERE google_sub IS NOT NULL").all();
-  if (googleUsers.length !== 1) return;
-  const googleUserId = googleUsers[0].id;
-
-  sqlite.transaction(() => {
+  const claim = sqlite.transaction(() => {
+    const alreadyClaimed = sqlite.prepare("SELECT value FROM schema_meta WHERE key = 'legacy_local_data_claimed_v2'").get();
+    const importedLegacyData = sqlite.prepare("SELECT value FROM schema_meta WHERE key = 'legacy_json_imported_v1'").get();
+    if (alreadyClaimed || !importedLegacyData) return;
+    const googleUsers = sqlite.prepare("SELECT id FROM users WHERE google_sub IS NOT NULL").all();
+    if (googleUsers.length !== 1) return;
+    const googleUserId = googleUsers[0].id;
     const legacyOwners = sqlite.prepare(`
       SELECT DISTINCT users.id
       FROM users
@@ -461,7 +460,11 @@ function claimLegacyLocalDataForSingleGoogleUser() {
     for (const owner of legacyOwners) transferOwnership(owner.id, googleUserId);
     sqlite.prepare("INSERT INTO schema_meta (key, value) VALUES ('legacy_local_data_claimed_v2', ?)").run(nowIso());
     sqlite.prepare("INSERT OR REPLACE INTO schema_meta (key, value) VALUES ('schema_version', '2')").run();
-  })();
+  });
+  // Multiple backend tasks can overlap briefly during a rolling deployment.
+  // Acquire the write lock before reading the marker so the second process
+  // waits, then observes the completed claim instead of failing on promotion.
+  claim.immediate();
 }
 
 claimLegacyLocalDataForSingleGoogleUser();
@@ -716,6 +719,195 @@ function saveCanvasLibrary(userId, library) {
       updated_at = excluded.updated_at
   `).run(userId, stringify(library || {}), updatedAt);
   return true;
+}
+
+function rowToAccountImagingAssetState(row) {
+  if (!row) return null;
+  return {
+    userId: row.user_id,
+    assetId: row.asset_id,
+    liked: row.liked === 1,
+    likedAt: row.liked === 1 ? (row.liked_at || null) : null,
+    trashed: Boolean(row.trashed_at),
+    trashedAt: row.trashed_at || null,
+    createdAt: row.created_at,
+    updatedAt: row.updated_at,
+  };
+}
+
+function getAccountImagingAssetStates(userId, assetIds = []) {
+  if (!userId) return new Map();
+  const ids = [...new Set((Array.isArray(assetIds) ? assetIds : []).map(String).filter(Boolean))];
+  if (!ids.length) return new Map();
+  const result = new Map();
+  for (let offset = 0; offset < ids.length; offset += 500) {
+    const chunk = ids.slice(offset, offset + 500);
+    const placeholders = chunk.map(() => "?").join(", ");
+    const rows = sqlite.prepare(`
+      SELECT user_id, asset_id, liked, liked_at, trashed_at, created_at, updated_at
+      FROM account_imaging_asset_state
+      WHERE user_id = ? AND asset_id IN (${placeholders})
+    `).all(userId, ...chunk);
+    for (const row of rows) result.set(row.asset_id, rowToAccountImagingAssetState(row));
+  }
+  return result;
+}
+
+function mutateAccountImagingAssetStates({ userId, assetIds = [], operation }) {
+  if (!userId) throw new Error("userId is required");
+  const ids = [...new Set((Array.isArray(assetIds) ? assetIds : []).map(String).filter(Boolean))];
+  if (!ids.length) return [];
+  if (!["like", "unlike", "trash"].includes(operation)) {
+    throw new Error("unsupported account Imagine asset-state operation");
+  }
+  const timestamp = nowIso();
+  const like = sqlite.prepare(`
+    INSERT INTO account_imaging_asset_state
+      (user_id, asset_id, liked, liked_at, trashed_at, created_at, updated_at)
+    VALUES (?, ?, 1, ?, NULL, ?, ?)
+    ON CONFLICT(user_id, asset_id) DO UPDATE SET
+      liked = CASE
+        WHEN account_imaging_asset_state.trashed_at IS NULL THEN 1
+        ELSE account_imaging_asset_state.liked
+      END,
+      liked_at = CASE
+        WHEN account_imaging_asset_state.trashed_at IS NOT NULL THEN account_imaging_asset_state.liked_at
+        WHEN account_imaging_asset_state.liked = 1 THEN account_imaging_asset_state.liked_at
+        ELSE excluded.liked_at
+      END,
+      updated_at = CASE
+        WHEN account_imaging_asset_state.trashed_at IS NOT NULL THEN account_imaging_asset_state.updated_at
+        WHEN account_imaging_asset_state.liked = 1 THEN account_imaging_asset_state.updated_at
+        ELSE excluded.updated_at
+      END
+  `);
+  const unlike = sqlite.prepare(`
+    INSERT INTO account_imaging_asset_state
+      (user_id, asset_id, liked, liked_at, trashed_at, created_at, updated_at)
+    VALUES (?, ?, 0, NULL, NULL, ?, ?)
+    ON CONFLICT(user_id, asset_id) DO UPDATE SET
+      liked = 0,
+      liked_at = NULL,
+      updated_at = CASE
+        WHEN account_imaging_asset_state.liked = 0 THEN account_imaging_asset_state.updated_at
+        ELSE excluded.updated_at
+      END
+  `);
+  const trash = sqlite.prepare(`
+    INSERT INTO account_imaging_asset_state
+      (user_id, asset_id, liked, liked_at, trashed_at, created_at, updated_at)
+    VALUES (?, ?, 0, NULL, ?, ?, ?)
+    ON CONFLICT(user_id, asset_id) DO UPDATE SET
+      liked = 0,
+      liked_at = NULL,
+      trashed_at = COALESCE(account_imaging_asset_state.trashed_at, excluded.trashed_at),
+      updated_at = CASE
+        WHEN account_imaging_asset_state.trashed_at IS NOT NULL
+          AND account_imaging_asset_state.liked = 0
+          THEN account_imaging_asset_state.updated_at
+        ELSE excluded.updated_at
+      END
+  `);
+  const mutation = sqlite.transaction(() => {
+    for (const assetId of ids) {
+      if (operation === "like") like.run(userId, assetId, timestamp, timestamp, timestamp);
+      else if (operation === "unlike") unlike.run(userId, assetId, timestamp, timestamp);
+      else trash.run(userId, assetId, timestamp, timestamp, timestamp);
+    }
+    const states = getAccountImagingAssetStates(userId, ids);
+    return ids.map((assetId) => states.get(assetId));
+  });
+  return mutation.immediate();
+}
+
+function rowToAccountImagingGeneration(row) {
+  if (!row) return null;
+  return {
+    userId: row.user_id,
+    requestId: row.request_id,
+    fingerprint: row.fingerprint,
+    status: row.status,
+    leaseToken: row.lease_token || null,
+    leaseExpiresAt: row.lease_expires_at || null,
+    assetId: row.asset_id || null,
+    result: parseJson(row.result_json, null),
+    errorCode: row.error_code || null,
+    createdAt: row.created_at,
+    updatedAt: row.updated_at,
+    completedAt: row.completed_at || null,
+  };
+}
+
+function claimAccountImagingGeneration({ userId, requestId, fingerprint, leaseMs = 15 * 60 * 1000 }) {
+  if (!userId || !requestId || !fingerprint) return { state: "missing", generation: null };
+  const timestamp = nowIso();
+  const leaseToken = `imaging_lease_${crypto.randomBytes(16).toString("hex")}`;
+  const leaseExpiresAt = new Date(Date.now() + Math.max(60_000, Number(leaseMs) || 0)).toISOString();
+  const claim = sqlite.transaction(() => {
+    const current = sqlite.prepare(`
+      SELECT * FROM account_imaging_generations WHERE user_id = ? AND request_id = ?
+    `).get(userId, requestId);
+    if (current?.fingerprint && current.fingerprint !== fingerprint) {
+      return { state: "conflict", generation: rowToAccountImagingGeneration(current) };
+    }
+    if (current?.status === "completed") {
+      return { state: "completed", generation: rowToAccountImagingGeneration(current) };
+    }
+    if (current?.status === "pending" && Date.parse(current.lease_expires_at || "") > Date.now()) {
+      return { state: "pending", generation: rowToAccountImagingGeneration(current) };
+    }
+    if (!current) {
+      sqlite.prepare(`
+        INSERT INTO account_imaging_generations
+          (user_id, request_id, fingerprint, status, lease_token, lease_expires_at, created_at, updated_at)
+        VALUES (?, ?, ?, 'pending', ?, ?, ?, ?)
+      `).run(userId, requestId, fingerprint, leaseToken, leaseExpiresAt, timestamp, timestamp);
+    } else {
+      sqlite.prepare(`
+        UPDATE account_imaging_generations
+        SET fingerprint = ?, status = 'pending', lease_token = ?, lease_expires_at = ?,
+          asset_id = NULL, result_json = NULL, error_code = NULL, updated_at = ?, completed_at = NULL
+        WHERE user_id = ? AND request_id = ?
+      `).run(fingerprint, leaseToken, leaseExpiresAt, timestamp, userId, requestId);
+    }
+    const generation = sqlite.prepare(`
+      SELECT * FROM account_imaging_generations WHERE user_id = ? AND request_id = ?
+    `).get(userId, requestId);
+    return { state: "claimed", generation: rowToAccountImagingGeneration(generation) };
+  });
+  // Acquire the write lock before inspecting the receipt. A deferred
+  // transaction can deadlock when two already-running ECS tasks both read and
+  // then attempt to upgrade at the same moment.
+  return claim.immediate();
+}
+
+function completeAccountImagingGeneration({ userId, requestId, leaseToken, assetId, result }) {
+  if (!userId || !requestId || !leaseToken) return null;
+  const timestamp = nowIso();
+  const update = sqlite.prepare(`
+    UPDATE account_imaging_generations
+    SET status = 'completed', lease_token = NULL, lease_expires_at = NULL,
+      asset_id = ?, result_json = ?, error_code = NULL, updated_at = ?, completed_at = ?
+    WHERE user_id = ? AND request_id = ? AND status = 'pending' AND lease_token = ?
+  `).run(assetId || null, stringify(result || null), timestamp, timestamp, userId, requestId, leaseToken);
+  if (update.changes !== 1) return null;
+  return rowToAccountImagingGeneration(sqlite.prepare(`
+    SELECT * FROM account_imaging_generations WHERE user_id = ? AND request_id = ?
+  `).get(userId, requestId));
+}
+
+function failAccountImagingGeneration({ userId, requestId, leaseToken, errorCode = "generation_failed" }) {
+  if (!userId || !requestId || !leaseToken) return null;
+  const timestamp = nowIso();
+  sqlite.prepare(`
+    UPDATE account_imaging_generations
+    SET status = 'failed', lease_token = NULL, lease_expires_at = NULL,
+      error_code = ?, updated_at = ?
+    WHERE user_id = ? AND request_id = ? AND status = 'pending' AND lease_token = ?
+  `).run(String(errorCode || "generation_failed").slice(0, 160), timestamp, userId, requestId, leaseToken);
+  return rowToAccountImagingGeneration(sqlite.prepare(`
+    SELECT * FROM account_imaging_generations WHERE user_id = ? AND request_id = ?
+  `).get(userId, requestId));
 }
 
 function loadCreditsSnapshot() {
@@ -1213,9 +1405,11 @@ function databaseHealth() {
 
 export {
   DATABASE_PATH,
+  claimAccountImagingGeneration,
   claimSubscriptionSwitchPreview,
   connectGoogleIdentity,
   completeSubscriptionSwitchPreview,
+  completeAccountImagingGeneration,
   consumeAuthHandoff,
   consumeOauthState,
   createAuthHandoff,
@@ -1229,7 +1423,9 @@ export {
   getBudgetReceipt,
   getCanvasLibrary,
   getCanvasWorkspace,
+  getAccountImagingAssetStates,
   failSubscriptionSwitchPreview,
+  failAccountImagingGeneration,
   getSubscription,
   getUser,
   loadBillingSnapshot,
@@ -1237,6 +1433,7 @@ export {
   loadLumiereCreditsSnapshot,
   loadPreproductionSnapshot,
   loadScriptsSnapshot,
+  mutateAccountImagingAssetStates,
   saveBillingSnapshot,
   saveBudgetReceipt,
   saveCanvasLibrary,

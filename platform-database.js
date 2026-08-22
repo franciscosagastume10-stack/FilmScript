@@ -143,6 +143,10 @@ function hasColumn(table, column) {
   return db.prepare(`PRAGMA table_info(${table})`).all().some((entry) => entry.name === column);
 }
 
+function hasTable(table) {
+  return Boolean(db.prepare("SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = ?").get(table));
+}
+
 export function runPlatformMigrations() {
   const current = Number(db.prepare("SELECT value FROM schema_meta WHERE key = 'schema_version'").get()?.value || 0);
   const migrations = [
@@ -155,13 +159,17 @@ export function runPlatformMigrations() {
     [16, "016_release_notice.sql"],
     [17, "017_user_interface_language.sql"],
     [18, "018_account_person_name.sql"],
+    [19, "019_account_imaging_idempotency.sql"],
+    [20, "020_account_imaging_asset_state.sql"],
   ];
   for (const [version, filename] of migrations) {
     if (current >= version
       && (version !== 10 || hasColumn("users", "theme"))
       && (version !== 11 || hasColumn("project_memberships", "department_ids_json"))
       && (version !== 17 || hasColumn("users", "interface_language"))
-      && (version !== 18 || (hasColumn("users", "first_name") && hasColumn("users", "last_name")))) continue;
+      && (version !== 18 || (hasColumn("users", "first_name") && hasColumn("users", "last_name")))
+      && (version !== 19 || hasTable("account_imaging_generations"))
+      && (version !== 20 || hasTable("account_imaging_asset_state"))) continue;
     const sql = fs.readFileSync(path.join(ROOT, "migrations", filename), "utf8");
     const statements = sql.split(/;\s*(?:\n|$)/).map((statement) => statement.trim()).filter(Boolean);
     db.transaction(() => {

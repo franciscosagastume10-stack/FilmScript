@@ -40,6 +40,20 @@
     if (firstPartyApi && (path === '/api/invitations' || path.startsWith('/api/invitations/'))) {
       return `${apiUrl}/film-data/access-list${path.slice('/api/invitations'.length)}`;
     }
+    // Account Imaging is independent from projects. Give it a neutral public
+    // browser route, then let Vercel translate it back to the authenticated
+    // account API without ever inventing a script identifier.
+    if (firstPartyApi && (path === '/api/me/imaging' || path.startsWith('/api/me/imaging/'))) {
+      return `${apiUrl}/visual-library${path.slice('/api/me/imaging'.length)}`;
+    }
+    // Image generation can legitimately take longer than the screenplay
+    // serverless proxy allows. Route only this long-running POST through a
+    // first-party edge rewrite straight to the API; every other screenplay
+    // request keeps using the cookie-preserving screenplay proxy below.
+    const projectImagineGeneration = path.match(/^\/api\/scripts\/([^/]+)\/canvas\/images\/generate$/);
+    if (firstPartyApi && projectImagineGeneration) {
+      return `${apiUrl}/visual-generation/project/${projectImagineGeneration[1]}`;
+    }
     // Embedded-browser privacy lists can block nested routes under both
     // `/scripts` and `/workspace`. Use a neutral first-party data route and
     // translate it back to the unchanged AWS API path at Vercel's edge.

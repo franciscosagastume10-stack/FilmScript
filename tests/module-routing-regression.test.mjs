@@ -21,6 +21,29 @@ test('screenplay module APIs use the neutral first-party route', async () => {
   assert.equal(nested?.destination, '/api/scripts-proxy?path=:path*');
 });
 
+test('project Imagine generation bypasses the short screenplay proxy only for its long POST', async () => {
+  const [runtime, canvasClient, vercel] = await Promise.all([
+    fs.readFile(path.join(ROOT, 'runtime-config.js'), 'utf8'),
+    fs.readFile(path.join(ROOT, 'canvas-client.js'), 'utf8'),
+    fs.readFile(path.join(ROOT, 'vercel.json'), 'utf8').then(JSON.parse),
+  ]);
+
+  assert.match(runtime, /projectImagineGeneration/);
+  assert.match(runtime, /visual-generation\/project/);
+  assert.match(canvasClient, /fetch\(resolve\(path\), \{ credentials: 'include'/);
+  assert.deepEqual(
+    vercel.rewrites.find((entry) => entry.source === '/visual-generation/project/:scriptId'),
+    {
+      source: '/visual-generation/project/:scriptId',
+      destination: 'https://api.filmscript.app/api/scripts/:scriptId/canvas/images/generate',
+    },
+  );
+  assert.equal(
+    vercel.rewrites.find((entry) => entry.source === '/film-data/document/:path*')?.destination,
+    '/api/scripts-proxy?path=:path*',
+  );
+});
+
 test('project invitations use a neutral first-party route', async () => {
   const [runtime, vercel] = await Promise.all([
     fs.readFile(path.join(ROOT, 'runtime-config.js'), 'utf8'),
@@ -89,7 +112,7 @@ test('Canvas and Imagine use the same neutral screenplay API resolver', async ()
 
   assert.match(client, /window\.filmscriptApiUrl \? window\.filmscriptApiUrl\(path\) : path/);
   assert.doesNotMatch(client, /FILMSCRIPT_CONFIG\?\.apiUrl/);
-  assert.match(editor, /canvas-client\.js\?v=20260821-imagine-access1/);
+  assert.match(editor, /canvas-client\.js\?v=20260821-imagine-gallery1/);
 });
 
 test('Breakdown, Stripboard, Shot List, Budget, and Calendar use the active screenplay API', async () => {
@@ -126,6 +149,6 @@ test('primary production pages request the cache-busted route resolver', async (
   ].map((name) => fs.readFile(path.join(ROOT, name), 'utf8')));
 
   for (const page of pages) {
-    assert.match(page, /runtime-config\.js\?v=20260821-invitation-route2/);
+    assert.match(page, /runtime-config\.js\?v=20260821-imagine-direct1/);
   }
 });

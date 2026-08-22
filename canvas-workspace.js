@@ -4,7 +4,7 @@
     :host(.filmscript-theme-transition),:host(.filmscript-theme-transition) *{transition-property:color,background-color,border-color,box-shadow,opacity,fill,stroke,outline-color!important;transition-duration:240ms!important;transition-timing-function:cubic-bezier(.22,.7,.25,1)!important}:host(.filmscript-theme-fading){opacity:.72}@media(prefers-reduced-motion:reduce){:host(.filmscript-theme-transition),:host(.filmscript-theme-transition) *{transition-duration:.01ms!important}:host(.filmscript-theme-fading){opacity:1!important}}
     :host,:host *{font-family:var(--fs-font-text)!important}
     :host h1,:host h2,:host h3,:host h4,:host h5,:host h6{font-family:var(--fs-font-display)!important}:host h1,:host h2{font-weight:900!important}:host h3{font-weight:800!important}
-    :host{display:block;min-height:560px;color:var(--ink,#2C2C2A);font-family:'Helvetica Neue',Helvetica,Arial,sans-serif;--cv-accent:var(--accent,#BA7517);--cv-accent-soft:var(--accent-soft,rgba(186,117,23,.11));--cv-bg:var(--bg,#F5F0E8);--cv-surface:var(--surface,#FFFEF9);--cv-ink:var(--ink,#2C2C2A);--cv-muted:var(--muted,#888780);--cv-hair:var(--hair,#E7E4DA);--cv-soft:var(--soft,#EFEBE1)}
+    :host{position:relative;display:block;min-height:560px;color:var(--ink,#2C2C2A);font-family:'Helvetica Neue',Helvetica,Arial,sans-serif;--cv-accent:var(--accent,#BA7517);--cv-accent-soft:var(--accent-soft,rgba(186,117,23,.11));--cv-bg:var(--bg,#F5F0E8);--cv-surface:var(--surface,#FFFEF9);--cv-ink:var(--ink,#2C2C2A);--cv-muted:var(--muted,#888780);--cv-hair:var(--hair,#E7E4DA);--cv-soft:var(--soft,#EFEBE1)}
     /* The workspace is in a Shadow DOM, so it must explicitly follow the
        document theme. This keeps the Imagine preview and its glass layers
        in the same mode as the gallery behind them. */
@@ -51,7 +51,7 @@
        a portrait frame monopolize the page. A shared thumbnail height makes
        the newest row calm and predictable, while the width expresses 4:3,
        3:2, 16:9, or portrait naturally. */
-    .cv-imagine-gallery{display:flex;flex-direction:column;align-items:stretch;gap:8px;width:100%;min-height:100%;padding:8px;background:color-mix(in srgb,var(--cv-soft) 86%,var(--cv-bg))}.cv-imagine-gallery-row{display:flex;align-items:stretch;gap:8px;width:100%;min-width:0;height:var(--cv-imagine-row-height,220px)}.cv-imagine-tile{display:block;flex:var(--cv-imagine-ratio,1) 1 0;min-width:0;height:100%;aspect-ratio:auto;padding:0;border-radius:11px 10px 12px 9px;background:color-mix(in srgb,var(--cv-ink) 7%,var(--cv-surface));box-shadow:0 2px 7px color-mix(in srgb,var(--cv-ink) 10%,transparent);transition:transform .18s cubic-bezier(.2,.8,.2,1),box-shadow .18s ease}.cv-imagine-gallery.is-entering .cv-imagine-tile{will-change:opacity,transform,filter;animation:cv-imagine-tile-enter .32s cubic-bezier(.18,.86,.28,1) both;animation-delay:min(calc(var(--cv-imagine-stagger,0) * 20ms),300ms)}@keyframes cv-imagine-tile-enter{from{opacity:0;transform:translateY(10px) scale(.985);filter:blur(2px)}to{opacity:1;transform:none;filter:none}}@media(prefers-reduced-motion:reduce){.cv-imagine-gallery.is-entering .cv-imagine-tile{animation:none}}.cv-imagine-tile.vertical,.cv-imagine-tile.horizontal{grid-column:auto;grid-row:auto}.cv-imagine-tile:hover{transform:translateY(-2px);box-shadow:0 9px 22px color-mix(in srgb,var(--cv-ink) 16%,transparent)}.cv-imagine-tile img{display:block;width:100%;height:100%;object-fit:contain;object-position:center;transform:none;transition:filter .18s ease}.cv-imagine-tile:hover img{transform:none;filter:brightness(.84)}.cv-imagine-style-trigger i,.cv-imagine-aspect-trigger>i:last-child{display:none}.cv-imagine-style-trigger,.cv-imagine-aspect-trigger{justify-content:center;min-width:0}.cv-imagine-style-trigger{gap:6px}.cv-imagine-aspect-trigger{gap:7px}.cv-imagine-style-menu,.cv-imagine-aspect-menu{isolation:isolate}.cv-imagine-style-menu button,.cv-imagine-aspect-menu button{margin-block:1px}.cv-imagine-empty{flex:1 0 100%}
+    .cv-imagine-gallery{display:flex;flex-direction:column;align-items:stretch;gap:8px;width:100%;min-height:100%;padding:8px;background:color-mix(in srgb,var(--cv-soft) 86%,var(--cv-bg))}.cv-imagine-gallery-row{display:flex;align-items:stretch;gap:8px;width:100%;min-width:0;height:var(--cv-imagine-row-height,220px);content-visibility:auto;contain-intrinsic-size:auto 220px}.cv-imagine-tile{display:block;flex:var(--cv-imagine-ratio,1) 1 0;min-width:0;height:100%;aspect-ratio:auto;padding:0;border-radius:11px 10px 12px 9px;background:color-mix(in srgb,var(--cv-ink) 7%,var(--cv-surface));box-shadow:0 2px 7px color-mix(in srgb,var(--cv-ink) 10%,transparent);transition:transform .18s cubic-bezier(.2,.8,.2,1),box-shadow .18s ease}.cv-imagine-gallery.is-entering .cv-imagine-tile{will-change:opacity,transform,filter;animation:cv-imagine-tile-enter .32s cubic-bezier(.18,.86,.28,1) both;animation-delay:min(calc(var(--cv-imagine-stagger,0) * 20ms),300ms)}@keyframes cv-imagine-tile-enter{from{opacity:0;transform:translateY(10px) scale(.985);filter:blur(2px)}to{opacity:1;transform:none;filter:none}}@media(prefers-reduced-motion:reduce){.cv-imagine-gallery.is-entering .cv-imagine-tile{animation:none}}.cv-imagine-tile.vertical,.cv-imagine-tile.horizontal{grid-column:auto;grid-row:auto}.cv-imagine-tile:hover{transform:translateY(-2px);box-shadow:0 9px 22px color-mix(in srgb,var(--cv-ink) 16%,transparent)}.cv-imagine-tile img{display:block;width:100%;height:100%;object-fit:contain;object-position:center;transform:none;transition:filter .18s ease}.cv-imagine-tile:hover img{transform:none;filter:brightness(.84)}.cv-imagine-style-trigger i,.cv-imagine-aspect-trigger>i:last-child{display:none}.cv-imagine-style-trigger,.cv-imagine-aspect-trigger{justify-content:center;min-width:0}.cv-imagine-style-trigger{gap:6px}.cv-imagine-aspect-trigger{gap:7px}.cv-imagine-style-menu,.cv-imagine-aspect-menu{isolation:isolate}.cv-imagine-style-menu button,.cv-imagine-aspect-menu button{margin-block:1px}.cv-imagine-empty{flex:1 0 100%}
     /* Composer controls share a single liquid-glass system and keep the
        primary action anchored to the far edge of the workspace. */
     .cv-imagine-controls{width:100%;min-width:0;gap:10px}.cv-imagine-controls .cv-imagine-generate{margin-left:auto;flex:0 0 auto;min-width:124px;height:39px;padding-inline:18px;border:1px solid color-mix(in srgb,var(--cv-accent) 72%,var(--cv-hair));border-radius:12px 11px 13px 10px;background:linear-gradient(135deg,color-mix(in srgb,var(--cv-accent) 88%,#fff 12%),var(--cv-accent));color:#fff;box-shadow:0 8px 20px color-mix(in srgb,var(--cv-accent) 31%,transparent),inset 0 1px 0 rgba(255,255,255,.36);text-shadow:0 1px 1px rgba(0,0,0,.14)}.cv-imagine-controls .cv-imagine-generate:hover{filter:saturate(1.07) brightness(1.04);box-shadow:0 12px 26px color-mix(in srgb,var(--cv-accent) 39%,transparent),inset 0 1px 0 rgba(255,255,255,.4)}.cv-imagine-aspect-trigger,.cv-imagine-style-trigger{border-color:color-mix(in srgb,var(--cv-surface) 78%,var(--cv-hair));background:linear-gradient(135deg,color-mix(in srgb,var(--cv-surface) 78%,transparent),color-mix(in srgb,var(--cv-accent) 7%,transparent));backdrop-filter:blur(18px) saturate(150%);-webkit-backdrop-filter:blur(18px) saturate(150%);box-shadow:inset 0 1px 0 color-mix(in srgb,var(--cv-surface) 88%,transparent),0 5px 16px color-mix(in srgb,var(--cv-ink) 9%,transparent);transition:transform .18s cubic-bezier(.2,.8,.2,1),border-color .18s ease,background .18s ease,box-shadow .18s ease}.cv-imagine-aspect-trigger:hover,.cv-imagine-style-trigger:hover{border-color:color-mix(in srgb,var(--cv-accent) 48%,var(--cv-hair));background:linear-gradient(135deg,color-mix(in srgb,var(--cv-surface) 86%,transparent),color-mix(in srgb,var(--cv-accent) 13%,transparent));box-shadow:inset 0 1px 0 color-mix(in srgb,var(--cv-surface) 94%,transparent),0 9px 22px color-mix(in srgb,var(--cv-ink) 14%,transparent);transform:translateY(-1px)}.cv-imagine-aspect-menu,.cv-imagine-style-menu{border-color:color-mix(in srgb,var(--cv-surface) 72%,var(--cv-hair));background:color-mix(in srgb,var(--cv-surface) 86%,transparent);backdrop-filter:blur(22px) saturate(155%);-webkit-backdrop-filter:blur(22px) saturate(155%);box-shadow:0 16px 34px color-mix(in srgb,var(--cv-ink) 21%,transparent),inset 0 1px 0 color-mix(in srgb,var(--cv-surface) 85%,transparent)}@media(max-width:720px){.cv-imagine-controls{gap:8px}.cv-imagine-controls .cv-imagine-generate{min-width:108px;margin-left:auto}.cv-imagine-aspect-trigger,.cv-imagine-style-trigger{flex:0 1 auto}}
@@ -88,10 +88,27 @@
     .cv-module-loader{position:relative;isolation:isolate;width:min(680px,100%);overflow:hidden;padding:clamp(25px,4.5vw,42px);border:1px solid color-mix(in srgb,var(--cv-ink) 25%,transparent);border-radius:26px 22px 29px 20px / 22px 28px 21px 26px;background:linear-gradient(145deg,color-mix(in srgb,var(--cv-surface) 76%,transparent),color-mix(in srgb,var(--cv-soft) 52%,transparent));box-shadow:0 26px 72px color-mix(in srgb,var(--cv-ink) 14%,transparent),inset 0 1px 0 color-mix(in srgb,#fff 72%,transparent);backdrop-filter:blur(28px) saturate(145%);-webkit-backdrop-filter:blur(28px) saturate(145%);animation:cvModuleLoaderIn .28s cubic-bezier(.2,.8,.2,1) both}.cv-module-loader:before{content:"";position:absolute;z-index:-1;width:390px;height:390px;top:-270px;left:-110px;border-radius:45% 55% 48% 52%;background:radial-gradient(circle at 58% 64%,color-mix(in srgb,var(--cv-accent) 24%,transparent),transparent 64%);animation:cvModuleLoaderDrift 4.2s ease-in-out infinite alternate}.cv-module-loader:after{content:"";position:absolute;inset:4px;pointer-events:none;border:1px solid color-mix(in srgb,var(--cv-ink) 15%,transparent);border-radius:22px 20px 25px 18px;opacity:.48}
     .cv-module-loader-head{display:grid;grid-template-columns:58px minmax(0,1fr);align-items:center;gap:18px}.cv-module-loader-mark{position:relative;display:grid;width:58px;height:58px;place-items:center;border:1px solid color-mix(in srgb,var(--cv-accent) 38%,transparent);border-radius:19px 16px 21px 15px;background:color-mix(in srgb,var(--cv-surface) 62%,transparent);box-shadow:0 12px 25px color-mix(in srgb,var(--cv-accent) 15%,transparent),inset 0 1px 0 color-mix(in srgb,#fff 70%,transparent);backdrop-filter:blur(18px);-webkit-backdrop-filter:blur(18px)}.cv-module-loader-mark:before{content:"";position:absolute;inset:7px;border:1px solid color-mix(in srgb,var(--cv-accent) 35%,transparent);border-radius:50%;animation:cvModuleOrbit 1.8s linear infinite}.cv-module-loader-mark:after{content:"";position:absolute;top:5px;left:26px;width:6px;height:6px;border-radius:50%;background:var(--cv-accent);box-shadow:0 0 0 4px color-mix(in srgb,var(--cv-accent) 14%,transparent)}.cv-module-loader-mark span{position:absolute;display:block;border:1.5px solid var(--cv-accent);border-radius:7px 6px 8px 5px}.cv-module-loader-mark span:nth-child(1){width:27px;height:20px;transform:translate(-4px,-3px) rotate(-5deg);opacity:.46}.cv-module-loader-mark span:nth-child(2){width:28px;height:21px;transform:translate(4px,3px) rotate(4deg);animation:cvCanvasFrame 1.45s ease-in-out infinite}.cv-module-loader-mark span:nth-child(3){width:6px;height:6px;border:0;border-radius:50%;background:var(--cv-accent);transform:translate(8px,-5px)}
     .cv-module-loader-kicker{display:block;color:var(--cv-accent);font-size:9.5px;font-weight:820;letter-spacing:1.55px;text-transform:uppercase}.cv-module-loader h2{margin:6px 0 0;color:var(--cv-ink);font-size:clamp(22px,3vw,31px);font-weight:790;letter-spacing:-.9px;line-height:1.05}.cv-module-loader p{margin:8px 0 0;color:var(--cv-muted);font-size:12px;line-height:1.52}.cv-module-loader-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;margin-top:30px}.cv-module-loader-cell{position:relative;min-height:112px;overflow:hidden;border:1px solid color-mix(in srgb,var(--cv-ink) 18%,transparent);border-radius:17px 14px 19px 13px;background:color-mix(in srgb,var(--cv-surface) 55%,transparent);box-shadow:0 12px 25px color-mix(in srgb,var(--cv-ink) 6%,transparent),inset 0 1px 0 color-mix(in srgb,#fff 65%,transparent);backdrop-filter:blur(20px) saturate(120%);-webkit-backdrop-filter:blur(20px) saturate(120%);animation:cvModuleCell 1.65s ease-in-out infinite;animation-delay:calc(var(--loader-cell) * 90ms)}.cv-module-loader-cell:before{content:"";position:absolute;inset:0;background:linear-gradient(108deg,transparent 20%,color-mix(in srgb,#fff 52%,transparent) 43%,transparent 66%);transform:translateX(-120%);animation:cvModuleShimmer 1.65s ease-in-out infinite;animation-delay:calc(var(--loader-cell) * 90ms)}.cv-module-loader-cell i,.cv-module-loader-cell b,.cv-module-loader-cell span{position:absolute;left:15px;display:block;border-radius:999px;background:color-mix(in srgb,var(--cv-muted) 16%,transparent)}.cv-module-loader-cell i{top:15px;width:7px;height:7px;background:var(--cv-accent);box-shadow:0 0 0 4px color-mix(in srgb,var(--cv-accent) 13%,transparent)}.cv-module-loader-cell b{top:35px;width:43%;height:7px}.cv-module-loader-cell span{top:56px;width:calc(100% - 30px);height:6px;box-shadow:0 15px 0 color-mix(in srgb,var(--cv-muted) 11%,transparent),0 30px 0 color-mix(in srgb,var(--cv-muted) 8%,transparent)}.cv-module-loader-status{display:flex;align-items:center;gap:9px;margin-top:18px;color:var(--cv-muted);font-size:10.5px;font-weight:650}.cv-module-loader-status:before{content:"";width:8px;height:8px;border-radius:50%;background:var(--cv-accent);animation:cvModulePulse 1.25s ease-out infinite}
-    .cv-imagine-loading-stage{min-height:calc(100dvh - 44px);padding:8px;overflow:hidden;background:color-mix(in srgb,var(--cv-soft) 86%,var(--cv-bg))}.cv-imagine-skeleton-gallery{display:grid;grid-template-columns:repeat(12,minmax(0,1fr));grid-auto-rows:88px;gap:8px;min-height:100%;align-content:start}.cv-imagine-skeleton{position:relative;grid-column:span 3;grid-row:span 2;overflow:hidden;border:1px solid color-mix(in srgb,var(--cv-hair) 78%,transparent);border-radius:13px 11px 14px 10px;background:linear-gradient(145deg,color-mix(in srgb,var(--cv-surface) 60%,transparent),color-mix(in srgb,var(--cv-soft) 78%,transparent));box-shadow:0 7px 18px color-mix(in srgb,var(--cv-ink) 8%,transparent),inset 0 1px 0 color-mix(in srgb,#fff 45%,transparent);backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px);animation:cvImagineSkeletonFloat 1.75s ease-in-out infinite;animation-delay:calc(var(--skeleton-index) * 55ms)}.cv-imagine-skeleton.wide{grid-column:span 5}.cv-imagine-skeleton.portrait{grid-column:span 2;grid-row:span 3}.cv-imagine-skeleton:before{content:"";position:absolute;inset:0;background:linear-gradient(105deg,transparent 22%,color-mix(in srgb,#fff 50%,transparent) 45%,transparent 68%);transform:translateX(-120%);animation:cvImagineSkeletonShimmer 1.7s ease-in-out infinite;animation-delay:calc(var(--skeleton-index) * 55ms)}.cv-imagine-skeleton:after{content:"";position:absolute;left:14px;bottom:14px;width:42%;height:7px;border-radius:999px;background:color-mix(in srgb,var(--cv-muted) 14%,transparent);box-shadow:0 -18px 0 -1px color-mix(in srgb,var(--cv-accent) 16%,transparent)}
+    .cv-imagine-loading-stage{min-height:calc(100dvh - 44px);padding:8px;overflow:hidden;background:color-mix(in srgb,var(--cv-soft) 86%,var(--cv-bg))}.cv-imagine-skeleton-gallery{display:grid;grid-template-columns:repeat(12,minmax(0,1fr));grid-auto-rows:88px;gap:8px;min-height:100%;align-content:start}.cv-imagine-skeleton{position:relative;grid-column:span 3;grid-row:span 2;overflow:hidden;border:1px solid color-mix(in srgb,var(--cv-hair) 78%,transparent);border-radius:13px 11px 14px 10px;background:color-mix(in srgb,var(--cv-soft) 88%,var(--cv-surface));box-shadow:0 7px 18px color-mix(in srgb,var(--cv-ink) 8%,transparent),inset 0 1px 0 color-mix(in srgb,#fff 45%,transparent);backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px)}.cv-imagine-skeleton.wide{grid-column:span 5}.cv-imagine-skeleton.portrait{grid-column:span 2;grid-row:span 3}.cv-imagine-skeleton:before{content:"";position:absolute;inset:0;background:linear-gradient(105deg,color-mix(in srgb,var(--cv-soft) 88%,var(--cv-surface)) 20%,color-mix(in srgb,#fff 44%,transparent) 46%,color-mix(in srgb,var(--cv-soft) 88%,var(--cv-surface)) 72%);background-size:240% 100%;animation:cvImageTileShimmer 1.35s ease-in-out infinite;animation-delay:calc(var(--skeleton-index) * -73ms)}.cv-imagine-skeleton:after{content:none}
     .cv-imagine-tile.is-image-loading:before{content:"";position:absolute;z-index:1;inset:0;background:linear-gradient(105deg,color-mix(in srgb,var(--cv-soft) 88%,var(--cv-surface)) 20%,color-mix(in srgb,#fff 44%,transparent) 46%,color-mix(in srgb,var(--cv-soft) 88%,var(--cv-surface)) 72%);background-size:240% 100%;animation:cvImageTileShimmer 1.35s ease-in-out infinite}.cv-imagine-tile.is-image-loading:after{display:none}.cv-imagine-tile.is-image-loading img{opacity:0!important;filter:none!important}.cv-imagine-tile img{opacity:1;transition:opacity .18s ease,filter .18s ease}.cv-imagine-tile.is-image-error img{opacity:.08;filter:grayscale(1)}
-    @keyframes cvModuleLoaderIn{from{opacity:0;transform:translateY(9px) scale(.985)}to{opacity:1;transform:none}}@keyframes cvModuleLoaderDrift{to{transform:translate(32px,18px) rotate(8deg)}}@keyframes cvModuleOrbit{to{transform:rotate(360deg)}}@keyframes cvCanvasFrame{0%,100%{transform:translate(4px,3px) rotate(4deg)}50%{transform:translate(2px,0) rotate(1deg)}}@keyframes cvModuleCell{0%,100%{transform:translateY(0)}50%{transform:translateY(-3px);border-color:color-mix(in srgb,var(--cv-accent) 34%,transparent)}}@keyframes cvModuleShimmer{45%,100%{transform:translateX(120%)}}@keyframes cvModulePulse{70%,100%{box-shadow:0 0 0 8px color-mix(in srgb,var(--cv-accent) 0%,transparent)}}@keyframes cvImagineSkeletonFloat{0%,100%{transform:translateY(0)}50%{transform:translateY(-2px)}}@keyframes cvImagineSkeletonShimmer{45%,100%{transform:translateX(120%)}}@keyframes cvImageTileShimmer{0%{background-position:120% 0}100%{background-position:-120% 0}}
+    @keyframes cvModuleLoaderIn{from{opacity:0;transform:translateY(9px) scale(.985)}to{opacity:1;transform:none}}@keyframes cvModuleLoaderDrift{to{transform:translate(32px,18px) rotate(8deg)}}@keyframes cvModuleOrbit{to{transform:rotate(360deg)}}@keyframes cvCanvasFrame{0%,100%{transform:translate(4px,3px) rotate(4deg)}50%{transform:translate(2px,0) rotate(1deg)}}@keyframes cvModuleCell{0%,100%{transform:translateY(0)}50%{transform:translateY(-3px);border-color:color-mix(in srgb,var(--cv-accent) 34%,transparent)}}@keyframes cvModuleShimmer{45%,100%{transform:translateX(120%)}}@keyframes cvModulePulse{70%,100%{box-shadow:0 0 0 8px color-mix(in srgb,var(--cv-accent) 0%,transparent)}}@keyframes cvImageTileShimmer{0%{background-position:120% 0}100%{background-position:-120% 0}}
     @media(max-width:760px){.cv-module-loader{padding:24px 20px}.cv-module-loader-head{grid-template-columns:50px minmax(0,1fr);gap:13px}.cv-module-loader-mark{width:50px;height:50px}.cv-module-loader-grid{gap:8px}.cv-module-loader-cell{min-height:92px}.cv-module-loader-cell:nth-child(3){display:none}.cv-imagine-skeleton-gallery{grid-template-columns:repeat(6,minmax(0,1fr));grid-auto-rows:72px;gap:5px}.cv-imagine-skeleton{grid-column:span 3}.cv-imagine-skeleton.wide{grid-column:span 4}.cv-imagine-skeleton.portrait{grid-column:span 2;grid-row:span 3}}
+    :host([scope="account"]){height:calc(100% + var(--fs-mobile-nav-height,0px));min-height:0;overflow:hidden}:host([scope="account"]) .cv-root,:host([scope="account"]) .cv-imagine-page,:host([scope="account"]) .cv-imagine-stage{height:100%;min-height:0}:host([scope="account"]) .cv-imagine-gallery{min-height:100%;overflow:auto;overscroll-behavior:contain;padding-bottom:190px;scrollbar-color:color-mix(in srgb,var(--cv-muted) 52%,transparent) transparent}:host([scope="account"]) .cv-imagine-empty{min-height:100%}:host([scope="account"]) .cv-imagine-loading-stage{height:100%;min-height:0}:host([scope="account"]) .cv-imagine-tile:after{display:none}
+    /* The preview belongs to the workspace container, not to the viewport.
+       This keeps its close control below fixed product chrome and lets the
+       outer shell reserve the mobile navigation height exactly once. */
+    .cv-imagine-preview-backdrop{position:absolute;inset:0;padding:20px}:host([scope="account"]) .cv-imagine-preview-backdrop{bottom:max(0px,calc(56px + 100% - 100dvh + var(--fs-mobile-nav-height,0px)))}.cv-imagine-preview-backdrop .cv-imagine-preview-solo{width:100%;height:100%;max-height:100%}
+    @media(max-width:800px){.cv-imagine-preview-backdrop{padding:12px}.cv-imagine-preview-backdrop .cv-imagine-preview-solo{width:100%;height:100%;max-height:100%;overflow:auto}}
+    /* Imagine gallery actions, filters and bulk selection share the same
+       readable liquid surface. The gallery reserves the measured height of
+       whichever bottom bar is present, including the device safe area. */
+    .cv-imagine-gallery{padding-bottom:var(--cv-imagine-floating-space,240px)}:host([scope="account"]) .cv-imagine-gallery{padding-bottom:var(--cv-imagine-floating-space,240px)}.cv-imagine-console{bottom:calc(14px + env(safe-area-inset-bottom,0px))}.cv-imagine-gallery-toolbar{position:sticky;z-index:5;top:8px;align-self:center;display:flex;flex:0 0 auto;gap:3px;margin:0 auto 2px;padding:4px;border:1px solid color-mix(in srgb,var(--cv-surface) 76%,var(--cv-hair));border-radius:999px;background:color-mix(in srgb,var(--cv-surface) 75%,transparent);box-shadow:0 10px 28px color-mix(in srgb,var(--cv-ink) 13%,transparent),inset 0 1px 0 color-mix(in srgb,#fff 70%,transparent);backdrop-filter:blur(24px) saturate(160%);-webkit-backdrop-filter:blur(24px) saturate(160%)}.cv-imagine-gallery-toolbar button{display:flex;align-items:center;gap:7px;min-height:34px;padding:0 12px;border:0;border-radius:999px;background:transparent;color:var(--cv-muted);font-size:11px;font-weight:760;cursor:pointer}.cv-imagine-gallery-toolbar button[aria-pressed="true"]{background:color-mix(in srgb,var(--cv-surface) 85%,transparent);color:var(--cv-ink);box-shadow:0 2px 8px color-mix(in srgb,var(--cv-ink) 11%,transparent)}.cv-imagine-gallery-toolbar button span{display:grid;min-width:19px;height:19px;padding:0 5px;place-items:center;border-radius:999px;background:var(--cv-soft);font-size:9px}.cv-imagine-tile:after{content:none!important}.cv-imagine-tile{isolation:isolate}.cv-imagine-tile-open{position:absolute;z-index:0;inset:0;display:block;width:100%;height:100%;padding:0;border:0;background:transparent;color:inherit;cursor:pointer}.cv-imagine-tile-open:focus-visible{outline:3px solid var(--cv-accent);outline-offset:-3px}.cv-imagine-selector{position:absolute;z-index:4;top:9px;left:9px;display:grid;width:34px;height:34px;padding:0;place-items:center;border:1px solid color-mix(in srgb,#fff 58%,transparent);border-radius:11px 10px 12px 9px;background:color-mix(in srgb,var(--cv-ink) 47%,transparent);color:#fff;box-shadow:0 6px 18px rgba(0,0,0,.18),inset 0 1px 0 rgba(255,255,255,.28);backdrop-filter:blur(16px) saturate(150%);-webkit-backdrop-filter:blur(16px) saturate(150%);opacity:.72;cursor:pointer;transition:opacity .15s ease,transform .15s ease,background .15s ease}.cv-imagine-selector svg{width:18px;height:18px;stroke-width:2.3}.cv-imagine-selector:hover,.cv-imagine-selector:focus-visible,.cv-imagine-tile.is-selected .cv-imagine-selector{opacity:1;transform:scale(1.04)}.cv-imagine-tile.is-selected .cv-imagine-selector{background:var(--cv-accent)}.cv-imagine-tile.is-selected{box-shadow:0 0 0 3px var(--cv-accent),0 12px 28px color-mix(in srgb,var(--cv-ink) 22%,transparent)}.cv-imagine-tile-actions{position:absolute;z-index:4;right:9px;bottom:9px;display:flex;gap:3px;padding:4px;border:1px solid color-mix(in srgb,#fff 52%,transparent);border-radius:13px 11px 14px 10px;background:color-mix(in srgb,var(--cv-ink) 52%,transparent);box-shadow:0 8px 22px rgba(0,0,0,.24),inset 0 1px 0 rgba(255,255,255,.24);backdrop-filter:blur(18px) saturate(155%);-webkit-backdrop-filter:blur(18px) saturate(155%);opacity:0;transform:translateY(5px);transition:opacity .16s ease,transform .18s cubic-bezier(.2,.8,.2,1)}.cv-imagine-tile:hover .cv-imagine-tile-actions,.cv-imagine-tile:focus-within .cv-imagine-tile-actions{opacity:1;transform:none}.cv-imagine-tile-actions button{display:grid;width:34px;height:34px;padding:0;place-items:center;border:0;border-radius:9px;background:transparent;color:#fff;cursor:pointer}.cv-imagine-tile-actions button:hover,.cv-imagine-tile-actions button:focus-visible,.cv-imagine-tile-actions button.active{background:rgba(255,255,255,.18)}.cv-imagine-tile-actions button.active{color:#ffd3c9}.cv-imagine-tile-actions svg{width:17px;height:17px}.cv-imagine-image-error{position:absolute;z-index:3;inset:0;display:grid;align-content:center;justify-items:center;gap:9px;padding:14px;background:linear-gradient(145deg,var(--cv-soft),var(--cv-surface));color:var(--cv-muted);text-align:center}.cv-imagine-image-error[hidden],.cv-imagine-preview-error[hidden]{display:none}.cv-imagine-image-error span{font-size:11px;font-weight:720}.cv-imagine-image-error button{min-height:34px;padding:0 11px;border:1px solid var(--cv-hair);border-radius:9px;background:var(--cv-surface);color:var(--cv-ink);font-size:10px;font-weight:760;cursor:pointer}.cv-imagine-selection-bar{position:fixed;z-index:90;left:50%;bottom:calc(14px + env(safe-area-inset-bottom,0px));display:flex;width:min(900px,calc(100vw - 28px));min-height:66px;align-items:center;justify-content:space-between;gap:16px;padding:9px 10px 9px 12px;transform:translateX(-50%);border:1px solid color-mix(in srgb,var(--cv-surface) 72%,var(--cv-hair));border-radius:21px 18px 23px 17px;background:linear-gradient(125deg,color-mix(in srgb,var(--cv-surface) 80%,transparent),color-mix(in srgb,var(--cv-accent) 10%,transparent));box-shadow:0 22px 62px color-mix(in srgb,var(--cv-ink) 24%,transparent),inset 0 1px 0 color-mix(in srgb,#fff 72%,transparent);backdrop-filter:blur(30px) saturate(165%);-webkit-backdrop-filter:blur(30px) saturate(165%);animation:cv-up .2s cubic-bezier(.2,.8,.2,1) both}.cv-imagine-selection-summary{display:flex;min-width:0;align-items:center;gap:10px}.cv-imagine-selection-summary strong{font-size:12px;white-space:nowrap}.cv-imagine-selection-thumbs{display:flex;padding-left:7px}.cv-imagine-selection-thumbs img,.cv-imagine-selection-thumbs span{width:34px;height:34px;margin-left:-7px;border:2px solid color-mix(in srgb,var(--cv-surface) 85%,transparent);border-radius:10px 9px 11px 8px;background:var(--cv-soft);object-fit:cover;box-shadow:0 3px 9px color-mix(in srgb,var(--cv-ink) 16%,transparent)}.cv-imagine-selection-thumbs span{display:grid;place-items:center;color:var(--cv-muted);font-size:9px;font-weight:800}.cv-imagine-selection-actions{display:flex;align-items:center;gap:4px}.cv-imagine-selection-actions button{display:flex;min-height:42px;align-items:center;justify-content:center;gap:6px;padding:0 11px;border:0;border-radius:11px 10px 12px 9px;background:color-mix(in srgb,var(--cv-surface) 54%,transparent);color:var(--cv-ink);font-size:10.5px;font-weight:760;white-space:nowrap;cursor:pointer}.cv-imagine-selection-actions button:hover,.cv-imagine-selection-actions button:focus-visible{background:var(--cv-surface)}.cv-imagine-selection-actions button.danger{color:#B24C47}.cv-imagine-selection-actions button.close{width:42px;padding:0;font-size:22px}.cv-imagine-selection-actions svg{width:16px;height:16px}.cv-imagine-selection-actions button:disabled{opacity:.48;cursor:wait}.cv-imagine-preview-error{display:grid;justify-items:center;gap:10px;color:var(--cv-muted);font-size:12px}.cv-imagine-inspector-actions{grid-template-columns:repeat(3,minmax(0,1fr))}.cv-imagine-inspector-actions .cv-btn{display:flex;min-width:0;align-items:center;justify-content:center;gap:6px;padding:0 8px}.cv-imagine-inspector-actions .cv-btn svg{width:16px;height:16px;flex:0 0 auto}.cv-imagine-inspector-actions .cv-btn.is-liked{color:#B24C47}.cv-imagine-preview-solo .cv-close{width:44px;height:44px}.cv-imagine-preview-solo-image:has(.cv-imagine-preview-error:not([hidden])){background:linear-gradient(145deg,var(--cv-soft),var(--cv-bg))}
+    @media(hover:none),(pointer:coarse){.cv-imagine-selector{opacity:1}.cv-imagine-tile-actions{opacity:1;transform:none}.cv-imagine-tile-open{touch-action:manipulation}}
+    @media(max-width:720px){.cv-imagine-gallery{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));grid-auto-flow:row;grid-auto-rows:auto;align-content:start;gap:6px;padding:6px 6px var(--cv-imagine-floating-space,330px)}:host([scope="account"]) .cv-imagine-gallery{padding-bottom:var(--cv-imagine-floating-space,330px)}.cv-imagine-gallery-row{display:contents}.cv-imagine-gallery-toolbar{grid-column:1/-1;top:6px;margin-bottom:0}.cv-imagine-empty{grid-column:1/-1;min-height:calc(100dvh - var(--cv-imagine-floating-space,330px))}.cv-imagine-tile{width:100%;height:auto;min-height:0;aspect-ratio:var(--cv-imagine-ratio,1);flex:none}.cv-imagine-pending{height:auto}.cv-imagine-selector{top:6px;left:6px;width:36px;height:36px}.cv-imagine-tile-actions{right:6px;bottom:6px}.cv-imagine-tile-actions button{width:32px;height:32px}.cv-imagine-selection-bar{display:grid;grid-template-columns:1fr;width:calc(100vw - 20px);gap:8px;padding:9px}.cv-imagine-selection-summary{justify-content:center}.cv-imagine-selection-actions{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));width:100%}.cv-imagine-selection-actions button{min-width:0;padding-inline:6px}.cv-imagine-selection-actions button.close{width:auto}.cv-imagine-inspector-actions{grid-template-columns:1fr}.cv-imagine-inspector-actions .cv-btn{min-height:44px}.cv-imagine-console{bottom:calc(10px + env(safe-area-inset-bottom,0px))}}
+    @media(max-width:390px){.cv-imagine-tile-actions{gap:1px;padding:3px}.cv-imagine-tile-actions button{width:29px;height:31px}.cv-imagine-selection-actions button span{font-size:9px}.cv-imagine-selection-thumbs img,.cv-imagine-selection-thumbs span{width:30px;height:30px}}
+    .cv-imagine-selector{width:40px;height:40px}.cv-imagine-tile-actions button{width:40px;height:40px}.cv-imagine-selection-actions button{min-height:44px}.cv-imagine-selection-actions button.close{width:44px}.cv-imagine-inspector-actions{grid-template-columns:repeat(auto-fit,minmax(118px,1fr))}.cv-imagine-selection-confirm{display:flex;min-width:0;align-items:center;justify-content:flex-end;gap:7px}.cv-imagine-selection-confirm strong{margin-right:3px;font-size:11px}.cv-imagine-selection-confirm button{min-width:72px;min-height:44px;padding:0 12px;border:0;border-radius:11px 10px 12px 9px;background:color-mix(in srgb,var(--cv-surface) 58%,transparent);color:var(--cv-ink);font-size:10.5px;font-weight:780;cursor:pointer}.cv-imagine-selection-confirm button:hover,.cv-imagine-selection-confirm button:focus-visible{background:var(--cv-surface)}.cv-imagine-selection-confirm button.danger.solid{background:#B24C47;color:#fff}.cv-imagine-selection-confirm button:disabled{opacity:.48;cursor:wait}
+    @media(max-width:900px){.cv-imagine-console,.cv-imagine-selection-bar{bottom:calc(var(--fs-mobile-nav-height,0px) + 10px)}}
+    @media(hover:none),(pointer:coarse){.cv-imagine-selector{width:44px;height:44px;opacity:1}.cv-imagine-tile-actions{display:none!important}}
+    @media(max-width:720px){.cv-imagine-selector{top:6px;left:6px;width:44px;height:44px}.cv-imagine-inspector-actions{grid-template-columns:1fr}.cv-imagine-selection-confirm{display:grid;grid-template-columns:1fr auto;width:100%}.cv-imagine-selection-confirm strong{grid-column:1/-1;text-align:center}.cv-imagine-selection-confirm button{min-width:0}}
     @media(prefers-reduced-motion:reduce){.cv-module-loader,.cv-module-loader:before,.cv-module-loader-mark:before,.cv-module-loader-mark span,.cv-module-loader-cell,.cv-module-loader-cell:before,.cv-module-loader-status:before,.cv-imagine-skeleton,.cv-imagine-skeleton:before,.cv-imagine-tile.is-image-loading:before{animation:none!important}}
     @media(prefers-reduced-transparency:reduce){.cv-module-loader,.cv-module-loader-mark,.cv-module-loader-cell,.cv-imagine-skeleton{background:var(--cv-surface);backdrop-filter:none;-webkit-backdrop-filter:none}}
   `;
@@ -103,6 +120,7 @@
       ? (window.filmscriptLanguage?.t?.(text, 'es') || text)
       : text;
   };
+  const localize = (english, spanish) => window.filmscriptLanguage?.get?.() === 'es' ? spanish : english;
   const num = (value, fallback = 0) => Number.isFinite(Number(value)) ? Number(value) : fallback;
   const money = (value) => `$${num(value).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
   const today = () => new Date().toISOString().slice(0, 10);
@@ -132,6 +150,9 @@
       group: '<circle cx="8" cy="11" r="3"/><circle cx="16" cy="11" r="3"/><path d="M10.5 9.5h3M10.5 12.5h3"/>',
       align: '<path d="M5 4v16M8 7h10M8 12h7M8 17h12"/>',
       download: '<path d="M12 4v10m0 0 4-4m-4 4-4-4M5 19h14"/>',
+      heart: '<path d="M20.8 4.7a5.5 5.5 0 0 0-7.8 0L12 5.8l-1.1-1.1a5.5 5.5 0 0 0-7.8 7.8l1.1 1.1L12 21l7.8-7.4 1.1-1.1a5.5 5.5 0 0 0-.1-7.8Z"/>',
+      selectEmpty: '<circle cx="12" cy="12" r="7.5"/>',
+      check: '<path d="m5 12 4 4L19 6"/>',
       delete: '<path d="M4 7h16M10 11v5M14 11v5M9 7l1-3h4l1 3M6 7l1 13h10l1-13"/>',
       undo: '<path d="M9 7 4 12l5 5"/><path d="M5 12h8a6 6 0 0 1 6 6"/>', redo: '<path d="m15 7 5 5-5 5"/><path d="M19 12h-8a6 6 0 0 0-6 6"/>',
       dots: '<circle cx="5" cy="12" r="1" fill="currentColor" stroke="none"/><circle cx="12" cy="12" r="1" fill="currentColor" stroke="none"/><circle cx="19" cy="12" r="1" fill="currentColor" stroke="none"/>',
@@ -142,7 +163,7 @@
   };
 
   class FilmScriptCanvasWorkspace extends HTMLElement {
-    static get observedAttributes() { return ['script-id', 'project-title', 'initial-view']; }
+    static get observedAttributes() { return ['script-id', 'project-title', 'initial-view', 'scope']; }
 
     constructor() {
       super();
@@ -156,7 +177,9 @@
         storyboardImageModal: false, storyboardImageGenerating: false, storyboardReferenceIds: [],
         visualReferencePicker: null, visualReferencePickerSource: 'imagine', visualReferencePickerDragging: false,
         imaginePendingJobs: [], imagineReferenceIds: [], imagineDragging: false, imagineStyle: 'cinematic', imagineStyleMenu: false,
+        imagineMediaMode: '', imagineModelId: '', imagineMediaModeExplicit: false, imagineModelIdExplicit: false,
         imagineOrientation: 'horizontal', imagineAspectMenu: false, imagineSize: '1536x1024', imagineSizeMenu: false, imagineQuality: 'low', imagineQualityMenu: false, imaginePrompt: '', imaginePreviewId: '',
+        imagineFilter: 'all', imagineSelectionMode: false, imagineSelected: new Set(), imagineUpdatingIds: new Set(), imagineBatchBusy: false, imagineDeleteConfirm: false,
         entitlements: null, accountTier: 'free', accountAuthenticated: null,
       };
       this._history = [];
@@ -181,18 +204,50 @@
       this._imagineEntrancePending = true;
       this._imagineRecoveryTimers = new Map();
       this._imagineLayoutTimer = 0;
+      this._imagineFloatingObserver = null;
+      this._imagineImageObserver = null;
+      this._imagineSubmissionStarting = false;
+      this._imagineFocusReturnId = '';
+      this._imaginePreviewFocusSnapshot = null;
       this._loadRetryTimer = 0;
       this._loadRetryCount = 0;
-      this._onImagineViewportResize = () => {
+      this._onLanguageChange = () => {
+        if (this.isConnected) this.render();
+      };
+      this._onImagineViewportResize = (event) => {
+        const visualViewportOnly = Boolean(window.visualViewport && event?.target === window.visualViewport);
         clearTimeout(this._imagineLayoutTimer);
         this._imagineLayoutTimer = setTimeout(() => {
-          if (this.isConnected && this.state.view === 'imagine') this.render();
+          if (!this.isConnected || this.state.view !== 'imagine') return;
+          // The software keyboard changes the visual viewport without always
+          // resizing the page. Recalculate only the floating clearance there
+          // so a focused prompt is never unmounted while the user is typing.
+          if (visualViewportOnly) this._syncImagineFloatingInset();
+          else this.render();
         }, 120);
       };
     }
 
     get scriptId() { return this.getAttribute('script-id') || ''; }
     get projectTitle() { return this.getAttribute('project-title') || 'Untitled screenplay'; }
+    get accountScoped() { return this.getAttribute('scope') === 'account'; }
+
+    _isImagineOnlyWorkspace() {
+      return this.accountScoped
+        || ['imagine', 'account_imaging', 'standalone_imaging'].includes(this.state.workspace?.accessScope);
+    }
+
+    _getWorkspace() {
+      return this.accountScoped
+        ? window.filmscriptCanvas.getAccountImaging()
+        : window.filmscriptCanvas.get(this.scriptId);
+    }
+
+    _generateImage(options) {
+      return this.accountScoped
+        ? window.filmscriptCanvas.generateAccountImagingImage(options)
+        : window.filmscriptCanvas.generateStoryboardImage(this.scriptId, options);
+    }
 
     connectedCallback() {
       if (!this._bound) {
@@ -220,10 +275,13 @@
         this.shadowRoot.addEventListener('keydown', (event) => this._onKeyDown(event));
       }
       window.addEventListener('resize', this._onImagineViewportResize, { passive: true });
+      window.visualViewport?.addEventListener('resize', this._onImagineViewportResize, { passive: true });
+      window.visualViewport?.addEventListener('scroll', this._onImagineViewportResize, { passive: true });
       if (!this._canvasDragHandler) this._canvasDragHandler = (event) => this._applyRemoteCanvasDrag(event.detail);
       if (!this._canvasOperationHandler) this._canvasOperationHandler = (event) => this._applyRemoteCanvasOperation(event.detail);
       window.addEventListener('filmscript:canvas.drag', this._canvasDragHandler);
       window.addEventListener('filmscript:content.operation', this._canvasOperationHandler);
+      window.addEventListener('filmscript:language-change', this._onLanguageChange);
       this.load();
     }
 
@@ -234,14 +292,26 @@
       clearTimeout(this._imagineLayoutTimer);
       clearTimeout(this._loadRetryTimer);
       this._loadRetryTimer = 0;
+      this._imagineFloatingObserver?.disconnect();
+      this._imagineFloatingObserver = null;
+      this._imagineImageObserver?.disconnect();
+      this._imagineImageObserver = null;
       window.removeEventListener('resize', this._onImagineViewportResize);
+      window.visualViewport?.removeEventListener('resize', this._onImagineViewportResize);
+      window.visualViewport?.removeEventListener('scroll', this._onImagineViewportResize);
       window.removeEventListener('filmscript:canvas.drag', this._canvasDragHandler);
       window.removeEventListener('filmscript:content.operation', this._canvasOperationHandler);
+      window.removeEventListener('filmscript:language-change', this._onLanguageChange);
       this._clearImagineRecoveryTimers();
       this._stopPointerInteraction();
     }
 
     attributeChangedCallback(name, oldValue, newValue) {
+      if (name === 'scope' && oldValue !== newValue && this.isConnected) {
+        this.state.imaginePendingJobs = [];
+        this.load();
+        return;
+      }
       if (name === 'script-id' && newValue && oldValue !== newValue && this.isConnected) {
         // A request belongs to the screenplay that started it. Do not let an
         // in-flight frame leave a visual placeholder in the next screenplay.
@@ -249,7 +319,7 @@
         this.load();
       }
       if (name === 'initial-view' && oldValue !== newValue && this.isConnected && this.state.workspace) {
-        if (this.state.workspace.accessScope === 'imagine') {
+        if (this._isImagineOnlyWorkspace()) {
           this.state.view = 'imagine';
           this.render();
           return;
@@ -271,7 +341,8 @@
       if (this._loadRetryCount >= 20) {
         this._loadRetryTimer = 0;
         this.state.loading = false;
-        this.state.error = 'Canvas is not available right now.';
+        if (this.accountScoped) this.state.error = localize('Imagine is not available right now.', 'Imagine no está disponible en este momento.');
+        else this.state.error = 'Canvas is not available right now.';
         this.render();
         return;
       }
@@ -284,13 +355,26 @@
 
     async load({ preserveClientRetry = false } = {}) {
       if (!preserveClientRetry) this._resetLoadRetry();
-      if (!this.scriptId) {
+      if (!this.accountScoped && !this.scriptId) {
         this.state.loading = false;
         this.state.error = 'Canvas is not available for this screenplay.';
         this.render();
         return;
       }
+      const accountClientReady = !this.accountScoped || (
+        typeof window.filmscriptCanvas?.getAccountImaging === 'function'
+        && typeof window.filmscriptCanvas?.generateAccountImagingImage === 'function'
+        && typeof window.filmscriptCanvas?.uploadAccountImagingAsset === 'function'
+        && typeof window.filmscriptCanvas?.accountImagingAssetUrl === 'function'
+      );
       if (!window.filmscriptCanvas) {
+        this.state.loading = true;
+        this.state.error = '';
+        this.render();
+        this._retryLoadWhenClientReady();
+        return;
+      }
+      if (!accountClientReady) {
         this.state.loading = true;
         this.state.error = '';
         this.render();
@@ -302,10 +386,11 @@
       this.render();
       try {
         const [result, account] = await Promise.all([
-          window.filmscriptCanvas.get(this.scriptId),
+          this._getWorkspace(),
           this.getAccountEntitlements(),
         ]);
         this.state.workspace = result.workspace;
+        this._syncImagineCapabilities(result.workspace);
         this._restoreImagineJobs(result.workspace);
         if (account) {
           this.state.entitlements = account.entitlements || {};
@@ -316,36 +401,154 @@
         this.state.error = '';
         const requested = this.getAttribute('initial-view');
         if (requested === 'imagine') this._imagineEntrancePending = true;
-        this.state.view = result.workspace?.accessScope === 'imagine' || requested === 'imagine' ? 'imagine' : ['home', 'vault', 'boards'].includes(result.workspace?.settings?.lastTool)
+        this.state.view = this.accountScoped || ['imagine', 'account_imaging', 'standalone_imaging'].includes(result.workspace?.accessScope) || requested === 'imagine' ? 'imagine' : ['home', 'vault', 'boards'].includes(result.workspace?.settings?.lastTool)
           ? result.workspace.settings.lastTool
           : 'home';
       } catch (error) {
         this.state.loading = false;
-        this.state.error = error.message || 'Canvas could not be loaded.';
+        this.state.error = error.message || (this.accountScoped
+          ? localize('Imagine could not be loaded.', 'No se pudo cargar Imagine.')
+          : 'Canvas could not be loaded.');
       }
       this.render();
     }
 
-    assetUrl(assetId) { return assetId ? window.filmscriptCanvas.assetUrl(this.scriptId, assetId) : ''; }
+    assetUrl(assetId) {
+      if (!assetId) return '';
+      return this.accountScoped
+        ? window.filmscriptCanvas.accountImagingAssetUrl(assetId)
+        : window.filmscriptCanvas.assetUrl(this.scriptId, assetId);
+    }
     asset(assetId) { return this.state.workspace?.assets?.find((entry) => entry.id === assetId) || null; }
     activeBoard() { return this.state.workspace?.boards?.find((board) => board.id === this.state.activeBoardId) || null; }
 
-    _imagineJobsStorageKey() { return `filmscript_imagine_jobs_${this.scriptId}`; }
+    _normalizeImagineCapabilityOptions(value, fallback = []) {
+      const supplied = Array.isArray(value) || Boolean(value && typeof value === 'object');
+      const entries = Array.isArray(value)
+        ? value
+        : (value && typeof value === 'object'
+          ? Object.entries(value).map(([id, option]) => (
+            option && typeof option === 'object' && !Array.isArray(option)
+              ? { id, ...option }
+              : { id, enabled: Boolean(option) }
+          ))
+          : []);
+      const normalized = entries.map((option) => {
+        const source = typeof option === 'string' ? { id: option, label: option } : (option || {});
+        const id = String(source.id || source.value || '').trim().toLowerCase();
+        const status = String(source.status || '').trim().toLowerCase();
+        const enabled = source.enabled !== false
+          && source.available !== false
+          && !['disabled', 'unavailable', 'hidden'].includes(status);
+        return {
+          id,
+          label: String(source.labels?.en || source.label || source.name || id).trim(),
+          labelEs: String(source.labels?.es || source.labelEs || source.spanishLabel || '').trim(),
+          mediaMode: String(source.mediaMode || '').trim().toLowerCase(),
+          enabled,
+        };
+      }).filter((option) => option.id && option.enabled);
+      return normalized.length || supplied ? normalized : fallback.map((option) => ({ ...option, enabled: true }));
+    }
+
+    _imagineCapabilities(workspace = this.state.workspace) {
+      const capabilities = workspace?.capabilities && typeof workspace.capabilities === 'object'
+        ? workspace.capabilities
+        : {};
+      const mediaModes = this._normalizeImagineCapabilityOptions(capabilities.mediaModes, [
+        { id: 'image', label: 'Image', mediaMode: '' },
+      ]);
+      const models = this._normalizeImagineCapabilityOptions(capabilities.models ?? capabilities.imageModels, [
+        { id: 'imagine-image-v1', label: 'Imagine Image', mediaMode: 'image' },
+      ]);
+      const suppliedDefaults = capabilities.defaults && typeof capabilities.defaults === 'object'
+        ? capabilities.defaults
+        : {};
+      const defaultMediaMode = String(suppliedDefaults.mediaMode || '').trim().toLowerCase();
+      const mediaMode = mediaModes.some((option) => option.id === defaultMediaMode)
+        ? defaultMediaMode
+        : (mediaModes[0]?.id || '');
+      const modelsForDefaultMode = models.filter((option) => !option.mediaMode || option.mediaMode === mediaMode);
+      const defaultModelId = String(suppliedDefaults.modelId || suppliedDefaults.imageModelId || '').trim().toLowerCase();
+      const modelId = modelsForDefaultMode.some((option) => option.id === defaultModelId)
+        ? defaultModelId
+        : (modelsForDefaultMode[0]?.id || models[0]?.id || '');
+      return { mediaModes, models, imageModels: models, defaults: { mediaMode, modelId } };
+    }
+
+    _imagineModelsForMode(capabilities, mediaMode) {
+      return capabilities.models.filter((option) => !option.mediaMode || option.mediaMode === mediaMode);
+    }
+
+    _syncImagineCapabilities(workspace = this.state.workspace) {
+      const capabilities = this._imagineCapabilities(workspace);
+      const requestedMediaMode = String(this.state.imagineMediaMode || '').trim().toLowerCase();
+      const mediaMode = this.state.imagineMediaModeExplicit && capabilities.mediaModes.some((option) => option.id === requestedMediaMode)
+        ? requestedMediaMode
+        : capabilities.defaults.mediaMode;
+      const models = this._imagineModelsForMode(capabilities, mediaMode);
+      const requestedModelId = String(this.state.imagineModelId || '').trim().toLowerCase();
+      const modelId = this.state.imagineModelIdExplicit && models.some((option) => option.id === requestedModelId)
+        ? requestedModelId
+        : (models.some((option) => option.id === capabilities.defaults.modelId)
+          ? capabilities.defaults.modelId
+          : (models[0]?.id || ''));
+      this.state.imagineMediaMode = mediaMode;
+      this.state.imagineModelId = modelId;
+      return capabilities;
+    }
+
+    _imagineCapabilityLabel(option) {
+      if (option.id === 'image') return localize('Image', 'Imagen');
+      if (option.id === 'video') return 'Video';
+      if (window.filmscriptLanguage?.get?.() === 'es') {
+        if (option.labelEs) return option.labelEs;
+        if (/^Imagine Image\b/i.test(option.label || '')) return String(option.label).replace(/^Imagine Image\b/i, 'Imagen Imagine');
+      }
+      return option.label || option.id;
+    }
+
+    _imagineJobsOwnerId() {
+      return this.accountScoped ? String(this.state.workspace?.ownerUserId || '') : '';
+    }
+
+    _imagineJobsStorageKey() {
+      if (!this.accountScoped) return `filmscript_imagine_jobs_${this.scriptId}`;
+      const ownerUserId = this._imagineJobsOwnerId();
+      return /^usr_[a-zA-Z0-9_-]+$/.test(ownerUserId) ? `filmscript_imaging_jobs_account_${ownerUserId}` : '';
+    }
+
+    _imagineJobsStorage() { return this.accountScoped ? window.sessionStorage : window.localStorage; }
 
     _readSavedImagineJobs() {
       try {
-        const saved = JSON.parse(window.localStorage.getItem(this._imagineJobsStorageKey()) || '[]');
+        const storageKey = this._imagineJobsStorageKey();
+        if (!storageKey) return [];
+        if (this.accountScoped) this._imagineJobsStorage().removeItem('filmscript_imaging_jobs_account');
+        const saved = JSON.parse(this._imagineJobsStorage().getItem(storageKey) || '[]');
         const oldestAllowed = Date.now() - (30 * 60 * 1000);
-        return (Array.isArray(saved) ? saved : []).filter((job) => (
+        const ownerUserId = this._imagineJobsOwnerId();
+        return (Array.isArray(saved) ? saved : []).map((job) => ({
+          ...job,
+          // Jobs saved before account capabilities were introduced must keep
+          // their original request fingerprint during refresh recovery.
+          mediaMode: String(job?.mediaMode || 'image').trim().toLowerCase(),
+          modelId: String(job?.modelId || 'imagine-image-v1').trim().toLowerCase(),
+        })).filter((job) => (
           /^imagine-job_[a-f0-9]+$/.test(String(job?.id || ''))
           && Number(job?.createdAtMs || 0) >= oldestAllowed
           && String(job?.prompt || '').trim().length >= 8
+          && (!this.accountScoped || String(job?.ownerUserId || '') === ownerUserId)
         )).slice(-8);
       } catch { return []; }
     }
 
     _saveImagineJobs(jobs = this.state.imaginePendingJobs) {
-      try { window.localStorage.setItem(this._imagineJobsStorageKey(), JSON.stringify((jobs || []).slice(-8))); } catch { /* A live request still completes normally. */ }
+      try {
+        const storageKey = this._imagineJobsStorageKey();
+        if (!storageKey) return;
+        this._imagineJobsStorage().setItem(storageKey, JSON.stringify((jobs || []).slice(-8)));
+      } catch { /* A live request still completes normally. */ }
     }
 
     _clearImagineRecoveryTimers(jobId = '') {
@@ -385,7 +588,7 @@
         this._imagineRecoveryTimers.delete(job.id);
         if (!this.state.imaginePendingJobs.some((entry) => entry.id === job.id)) return;
         try {
-          const result = await window.filmscriptCanvas.get(this.scriptId);
+          const result = await this._getWorkspace();
           if (result?.workspace) this.state.workspace = result.workspace;
           const completed = this._assetForImagineJob(job.id, result?.workspace);
           if (completed) {
@@ -407,9 +610,41 @@
     async _submitImagineJob(job, isRecovery = false) {
       if (!job?.id || !this.state.imaginePendingJobs.some((entry) => entry.id === job.id)) return;
       this._clearImagineRecoveryTimers(job.id);
+      const capabilities = this._imagineCapabilities();
+      const mediaMode = String(job.mediaMode || '').trim().toLowerCase();
+      const modelId = String(job.modelId || '').trim().toLowerCase();
+      const mediaModeSupported = capabilities.mediaModes.some((option) => option.id === mediaMode);
+      const modelSupported = this._imagineModelsForMode(capabilities, mediaMode).some((option) => option.id === modelId);
+      if (!mediaModeSupported || !modelSupported) {
+        if (isRecovery) {
+          // A saved request is immutable. Check once more for the original
+          // result, then retire its placeholder rather than replaying it with
+          // a newer default model and risking a duplicate charge/output.
+          try {
+            const result = await this._getWorkspace();
+            if (result?.workspace) this.state.workspace = result.workspace;
+            const completed = this._assetForImagineJob(job.id, result?.workspace);
+            if (completed) {
+              this._finishImagineJob(job, completed);
+              this._imagineAnimateNextRender = true;
+              this.render();
+              return;
+            }
+          } catch { /* The immutable request still must not be replayed. */ }
+        }
+        this._finishImagineJob(job);
+        this.toast(localize(
+          'This saved Imagine request can no longer be retried with its original model.',
+          'Esta solicitud guardada de Imagine ya no puede reintentarse con su modelo original.',
+        ));
+        this.render();
+        return;
+      }
       try {
-        const result = await window.filmscriptCanvas.generateStoryboardImage(this.scriptId, {
+        const result = await this._generateImage({
           prompt: job.prompt,
+          mediaMode,
+          modelId,
           orientation: job.orientation,
           size: job.size,
           style: job.style,
@@ -418,10 +653,18 @@
           referenceAssetIds: job.referenceAssetIds,
           requestId: job.id,
         });
+        if (result?.pending) {
+          this._watchImagineJob(job);
+          return;
+        }
         if (!result?.asset?.id) throw new Error('The image was not returned.');
         this._finishImagineJob(job, result.asset);
         this._imagineAnimateNextRender = true;
-        this.toast(isRecovery ? 'Your image finished after reload.' : 'Image ready to reuse across FilmScript.');
+        this.toast(isRecovery
+          ? localize('Your image finished after reload.', 'Tu imagen terminó después de recargar.')
+          : this.accountScoped
+            ? localize('Image ready in your Imagine gallery.', 'Imagen lista en tu galería de Imagine.')
+            : 'Image ready to reuse across FilmScript.');
       } catch (error) {
         if (isRecovery && (!error?.status || error.status >= 500)) {
           // Retain the job for one more passive check rather than spending a
@@ -462,6 +705,26 @@
       return this.imagineSizeOptions().find((entry) => entry.value === value) || this.imagineSizeOptions()[0];
     }
 
+    imagineStyleLabel(value) {
+      return ({
+        none: localize('Off', 'Sin estilo'),
+        cinematic: localize('Cinematic', 'Cinematográfico'),
+        animated: localize('Animated', 'Animado'),
+        sketch: localize('Sketch', 'Boceto'),
+        anime: 'Anime',
+      })[value] || value;
+    }
+
+    imagineQualityLabel(value) {
+      return ({
+        low: localize('Low', 'Baja'),
+        medium: localize('Medium', 'Media'),
+        high: localize('High', 'Alta'),
+      })[value] || value;
+    }
+
+    imagineCreditLabel(count) { return localize(`${count} credits`, `${count} créditos`); }
+
     imagineFormatLabel(asset) {
       const generation = asset?.generation || {};
       const rawSize = String(generation.requestedSize || generation.actualSize || '').toLowerCase();
@@ -489,7 +752,8 @@
 
     imagineGalleryEntries() {
       const timestamp = (value) => Number(value?.createdAtMs) || Date.parse(value?.createdAt || '') || 0;
-      const completed = this.imagineImages().map((asset, index) => ({
+      const favoritesOnly = this.accountScoped && this.state.imagineFilter === 'favorites';
+      const completed = this.imagineImages().filter((asset) => !favoritesOnly || asset.liked === true).map((asset, index) => ({
         type: 'image',
         id: asset.id,
         asset,
@@ -498,7 +762,7 @@
         createdAtMs: Date.parse(asset.createdAt || '') || 0,
         sequence: index,
       }));
-      const pending = (this.state.imaginePendingJobs || []).map((job) => ({ type: 'pending', ...job }));
+      const pending = favoritesOnly ? [] : (this.state.imaginePendingJobs || []).map((job) => ({ type: 'pending', ...job }));
       return [...pending, ...completed]
         .sort((left, right) => timestamp(right) - timestamp(left) || Number(right.sequence || 0) - Number(left.sequence || 0));
     }
@@ -536,15 +800,40 @@
       return rows;
     }
 
-    renderImagineTile(entry, index = 0) {
+    renderImagineTile(entry, index = 0, visibleRow = index === 0) {
       const vertical = entry.ratio < 1;
       const style = `--cv-imagine-ratio:${entry.ratio.toFixed(4)};--cv-imagine-stagger:${Math.min(index, 15)}`;
       if (entry.type === 'pending') {
-        return `<div class="cv-imagine-tile cv-imagine-pending ${vertical ? 'vertical' : 'horizontal'}" style="${style}" data-imagine-entry="pending:${esc(entry.id)}" aria-busy="true" aria-label="Imagine is creating a ${vertical ? 'vertical' : 'horizontal'} frame"><span class="cv-imagine-pending-content"><i aria-hidden="true"></i><strong>Imagine</strong><span>Creating your frame</span></span></div>`;
+        const product = 'Imagine';
+        const productMarkup = '<strong>Imagine</strong>';
+        const direction = vertical ? localize('vertical', 'vertical') : localize('horizontal', 'horizontal');
+        return `<div class="cv-imagine-tile cv-imagine-pending ${vertical ? 'vertical' : 'horizontal'}" style="${style}" data-imagine-entry="pending:${esc(entry.id)}" aria-busy="true" aria-label="${product} ${esc(localize(`is creating a ${direction} frame`, `está creando una imagen ${direction}`))}"><span class="cv-imagine-pending-content"><i aria-hidden="true"></i>${productMarkup}<span>${esc(localize('Creating your frame', 'Creando tu imagen'))}</span></span></div>`;
       }
       const asset = entry.asset;
       const dimensions = num(asset.width) > 0 && num(asset.height) > 0 ? `${Math.round(num(asset.width))} × ${Math.round(num(asset.height))}` : '';
-      return `<button class="cv-imagine-tile is-image-loading ${vertical ? 'vertical' : 'horizontal'}" style="${style}" data-imagine-entry="asset:${esc(asset.id)}" data-action="imagine-preview" data-id="${asset.id}" title="${esc(dimensions ? `View generated image, ${dimensions}` : 'View generated image')}"><img loading="lazy" decoding="async" src="${esc(this.assetUrl(asset.id))}" alt="${esc(asset.prompt || 'Generated visual')}"></button>`;
+      const viewLabel = localize('View generated image', 'Ver imagen generada');
+      const selected = this.accountScoped && this.state.imagineSelected.has(asset.id);
+      const liked = this.accountScoped && asset.liked === true;
+      const updating = this.state.imagineUpdatingIds.has(asset.id);
+      const selectLabel = selected ? localize('Remove from selection', 'Quitar de la selección') : localize('Select image', 'Seleccionar imagen');
+      const likeLabel = liked ? localize('Remove like', 'Quitar Me gusta') : localize('Like image', 'Marcar Me gusta');
+      const retryLabel = localize('Retry image', 'Reintentar imagen');
+      const selector = this.accountScoped
+        ? `<button type="button" class="cv-imagine-selector" data-action="imagine-toggle-select" data-id="${esc(asset.id)}" aria-pressed="${selected}" aria-label="${esc(selectLabel)}">${icon(selected ? 'check' : 'selectEmpty')}</button>`
+        : '';
+      const likeAction = this.accountScoped
+        ? `<button type="button" class="${liked ? 'active' : ''}" data-action="imagine-like" data-id="${esc(asset.id)}" aria-pressed="${liked}" aria-label="${esc(likeLabel)}" ${updating ? 'disabled' : ''}>${icon('heart')}</button>`
+        : '';
+      // The first visual row starts immediately. Everything below it keeps
+      // its URL dormant until it nears Imagine's own scroll viewport, so a
+      // large library never competes with the frames the user can already see.
+      const eager = Boolean(visibleRow);
+      const source = esc(this.assetUrl(asset.id));
+      const width = Math.max(0, Math.round(num(asset.width)));
+      const height = Math.max(0, Math.round(num(asset.height)));
+      const intrinsicSize = width > 0 && height > 0 ? ` width="${width}" height="${height}"` : '';
+      const sourceAttribute = eager ? `src="${source}"` : `data-src="${source}"`;
+      return `<article class="cv-imagine-tile is-image-loading ${vertical ? 'vertical' : 'horizontal'} ${liked ? 'is-liked' : ''} ${selected ? 'is-selected' : ''}" style="${style}" data-imagine-entry="asset:${esc(asset.id)}" data-id="${esc(asset.id)}"><button type="button" class="cv-imagine-tile-open" data-action="imagine-tile-primary" data-id="${esc(asset.id)}" title="${esc(dimensions ? `${viewLabel}, ${dimensions}` : viewLabel)}" aria-label="${esc(dimensions ? `${viewLabel}, ${dimensions}` : viewLabel)}"><img loading="${eager ? 'eager' : 'lazy'}" fetchpriority="${eager ? 'high' : 'low'}" decoding="async" ${sourceAttribute}${intrinsicSize} alt="${esc(asset.prompt || localize('Generated visual', 'Imagen generada'))}"></button><div class="cv-imagine-image-error" hidden><span>${esc(localize('Image unavailable', 'Imagen no disponible'))}</span><button type="button" data-action="imagine-retry-image" data-id="${esc(asset.id)}">${esc(retryLabel)}</button></div>${selector}<div class="cv-imagine-tile-actions" aria-label="${esc(localize('Image actions', 'Acciones de la imagen'))}">${likeAction}<button type="button" data-action="download-generated-image" data-id="${esc(asset.id)}" aria-label="${esc(localize('Download image', 'Descargar imagen'))}">${icon('download')}</button><button type="button" data-action="imagine-recreate" data-id="${esc(asset.id)}" aria-label="${esc(localize('Recreate image', 'Volver a crear imagen'))}">${icon('redo')}</button></div></article>`;
     }
 
     entitlementEnabled(value) { return value === true || value?.allowed === true; }
@@ -561,8 +850,8 @@
 
     imageGenerationMessage({ exhausted = false } = {}) {
       return exhausted
-        ? 'Your image credits are used for this cycle. They renew automatically; each image uses 3 credits.'
-        : 'Image generation is included with FilmScript Creator and Full. Creator includes 100 image credits each month; Full includes 1,000; each image uses 3 credits.';
+        ? localize('Your image credits are used for this cycle. They renew automatically; each image uses 3 credits.', 'Tus créditos de imagen se agotaron para este ciclo. Se renuevan automáticamente; cada imagen usa 3 créditos.')
+        : localize('Image generation is included with FilmScript Creator and Full. Creator includes 100 image credits each month; Full includes 1,000; each image uses 3 credits.', 'La generación de imágenes está incluida con FilmScript Creator y Full. Creator incluye 100 créditos de imagen al mes; Full incluye 1,000; cada imagen usa 3 créditos.');
     }
 
     presentImageGenerationUpgrade({ exhausted = false, error = 'image_generation_plan_required', message = '', requiredTier = 'creator', checkoutPlan = '', source = '' } = {}) {
@@ -590,6 +879,20 @@
       if (!account || !account.authenticated || this.hasImageGenerationAccess()) return true;
       this.presentImageGenerationUpgrade({ exhausted: ['creator', 'full'].includes(this.state.accountTier) });
       return false;
+    }
+
+    _setImagineSubmissionStarting(starting) {
+      this._imagineSubmissionStarting = Boolean(starting);
+      const form = this.shadowRoot.querySelector('[data-form="imagine-image"]');
+      const generate = form?.querySelector('.cv-imagine-generate[type="submit"]');
+      if (!form || !generate) return;
+      form.toggleAttribute('aria-busy', this._imagineSubmissionStarting);
+      generate.disabled = this._imagineSubmissionStarting;
+      const quality = ['low', 'medium', 'high'].includes(this.state.imagineQuality) ? this.state.imagineQuality : 'low';
+      const credits = { low: 3, medium: 5, high: 10 }[quality];
+      generate.textContent = this._imagineSubmissionStarting
+        ? localize('Checking…', 'Verificando…')
+        : this.imagineCreditLabel(credits);
     }
 
     handleImageGenerationError(error) {
@@ -635,9 +938,204 @@
         link.click();
         link.remove();
         window.setTimeout(() => URL.revokeObjectURL(url), 1000);
-        this.toast('Image downloaded');
+        this.toast(localize('Image downloaded', 'Imagen descargada'));
       } catch (error) {
-        this.toast('Could not download this image. Please try again.');
+        this.toast(localize('Could not download this image. Please try again.', 'No se pudo descargar esta imagen. Inténtalo de nuevo.'));
+      }
+    }
+
+    _saveImagineBlob(blob, filename) {
+      if (!blob) return;
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = filename || `FilmScript-Imagine-${today()}.zip`;
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      window.setTimeout(() => URL.revokeObjectURL(url), 1200);
+    }
+
+    selectedImagineAssets() {
+      const selected = this.state.imagineSelected || new Set();
+      return this.imagineImages().filter((asset) => selected.has(asset.id));
+    }
+
+    toggleImagineSelection(assetId) {
+      if (!this.accountScoped || !this.asset(assetId)) return;
+      const selected = new Set(this.state.imagineSelected || []);
+      if (selected.has(assetId)) selected.delete(assetId);
+      else selected.add(assetId);
+      this.state.imagineSelected = selected;
+      this.state.imagineSelectionMode = selected.size > 0;
+      this.state.imagineDeleteConfirm = false;
+      this.state.imaginePreviewId = '';
+      this.render();
+    }
+
+    closeImagineSelection() {
+      this.state.imagineSelected = new Set();
+      this.state.imagineSelectionMode = false;
+      this.state.imagineBatchBusy = false;
+      this.state.imagineDeleteConfirm = false;
+      this.render();
+    }
+
+    openImaginePreview(assetId) {
+      if (!this.asset(assetId)) return;
+      this._imagineFocusReturnId = assetId;
+      this._imaginePreviewFocusSnapshot = null;
+      this.state.imaginePreviewId = assetId;
+      this.render();
+      requestAnimationFrame(() => this.shadowRoot.querySelector('[data-imagine-preview-close]')?.focus());
+    }
+
+    closeImaginePreview() {
+      const focusId = this._imagineFocusReturnId || this.state.imaginePreviewId;
+      this.state.imaginePreviewId = '';
+      this._imaginePreviewFocusSnapshot = null;
+      this.render();
+      requestAnimationFrame(() => [...this.shadowRoot.querySelectorAll('[data-action="imagine-tile-primary"]')].find((button) => button.dataset.id === focusId)?.focus());
+    }
+
+    _captureImaginePreviewFocus() {
+      if (!this.state.imaginePreviewId) return null;
+      const dialog = this.shadowRoot.querySelector('.cv-imagine-preview[role="dialog"]');
+      const active = this.shadowRoot.activeElement;
+      if (!active || !dialog?.contains(active)) return null;
+      const action = active.dataset?.action || '';
+      const id = active.dataset?.id || '';
+      return action || active.hasAttribute?.('data-imagine-preview-close') ? { action, id } : null;
+    }
+
+    _restoreImaginePreviewFocus(snapshot) {
+      if (!this.state.imaginePreviewId) return;
+      const dialog = this.shadowRoot.querySelector('.cv-imagine-preview[role="dialog"]');
+      if (!dialog) return;
+      const controls = [...dialog.querySelectorAll('[data-action]')];
+      const matching = snapshot?.action
+        ? controls.find((control) => !control.disabled && control.dataset.action === snapshot.action && (!snapshot.id || control.dataset.id === snapshot.id))
+        : null;
+      const target = matching || dialog.querySelector('[data-imagine-preview-close]');
+      if (!target) return;
+      target.focus();
+      this._imaginePreviewFocusSnapshot = { action: target.dataset?.action || '', id: target.dataset?.id || '' };
+    }
+
+    recreateImagineAsset(assetId) {
+      const asset = this.asset(assetId);
+      if (!asset) return;
+      const generation = asset.generation || {};
+      const style = String(generation.style || '').toLowerCase();
+      const quality = String(generation.quality || '').toLowerCase();
+      const requestedSize = String(generation.requestedSize || generation.size || '').toLowerCase();
+      const mediaMode = String(generation.mediaMode || 'image').toLowerCase();
+      const modelId = String(generation.modelId || '').toLowerCase();
+      this.state.imaginePrompt = String(asset.prompt || generation.prompt || '');
+      if (['none', 'cinematic', 'animated', 'sketch', 'anime'].includes(style)) this.state.imagineStyle = style;
+      if (['low', 'medium', 'high'].includes(quality)) this.state.imagineQuality = quality;
+      if (this.imagineSizeOptions().some((option) => option.value === requestedSize)) {
+        const option = this.imagineSizeOption(requestedSize);
+        this.state.imagineSize = option.value;
+        this.state.imagineOrientation = option.orientation;
+      }
+      const capabilities = this._imagineCapabilities();
+      if (capabilities.mediaModes.some((option) => option.id === mediaMode)) {
+        this.state.imagineMediaMode = mediaMode;
+        this.state.imagineMediaModeExplicit = true;
+        if (this._imagineModelsForMode(capabilities, mediaMode).some((option) => option.id === modelId)) {
+          this.state.imagineModelId = modelId;
+          this.state.imagineModelIdExplicit = true;
+        }
+      }
+      this.state.imagineReferenceIds = (Array.isArray(generation.referenceAssetIds) ? generation.referenceAssetIds : []).filter((id) => Boolean(this.asset(id))).slice(0, 4);
+      this.state.imaginePreviewId = '';
+      this.state.imagineSelectionMode = false;
+      this.state.imagineSelected = new Set();
+      this.render();
+      requestAnimationFrame(() => {
+        const prompt = this.shadowRoot.querySelector('[data-imagine-prompt]');
+        prompt?.focus();
+        prompt?.setSelectionRange?.(prompt.value.length, prompt.value.length);
+      });
+      this.toast(localize('Settings restored. Adjust them or generate again.', 'Configuración restaurada. Ajústala o genera de nuevo.'));
+    }
+
+    async setImagineAssetsLiked(assetIds, liked) {
+      if (!this.accountScoped) return;
+      const ids = [...new Set(assetIds)].filter((id) => Boolean(this.asset(id)));
+      if (!ids.length || this.state.imagineBatchBusy) return;
+      const before = new Map(ids.map((id) => [id, { liked: this.asset(id).liked === true, likedAt: this.asset(id).likedAt || null }]));
+      ids.forEach((id) => {
+        const asset = this.asset(id);
+        asset.liked = Boolean(liked);
+        asset.likedAt = liked ? new Date().toISOString() : null;
+      });
+      this.state.imagineBatchBusy = ids.length > 1;
+      this.state.imagineUpdatingIds = new Set([...this.state.imagineUpdatingIds, ...ids]);
+      this.render();
+      try {
+        if (ids.length > 1 && window.filmscriptCanvas.batchAccountImagingAssets) {
+          await window.filmscriptCanvas.batchAccountImagingAssets(liked ? 'like' : 'unlike', ids);
+        } else {
+          await Promise.all(ids.map((id) => window.filmscriptCanvas.updateAccountImagingAsset(id, { liked: Boolean(liked) })));
+        }
+        this.toast(liked ? localize('Added to favorites', 'Agregada a favoritos') : localize('Removed from favorites', 'Eliminada de favoritos'));
+      } catch (error) {
+        ids.forEach((id) => Object.assign(this.asset(id) || {}, before.get(id)));
+        this.toast(error?.message || localize('Favorites could not be updated.', 'No se pudieron actualizar los favoritos.'));
+      } finally {
+        this.state.imagineBatchBusy = false;
+        this.state.imagineUpdatingIds = new Set([...this.state.imagineUpdatingIds].filter((id) => !ids.includes(id)));
+        this.render();
+      }
+    }
+
+    async downloadImagineSelection() {
+      const assets = this.selectedImagineAssets();
+      if (!assets.length || this.state.imagineBatchBusy) return;
+      if (assets.length === 1) return this.downloadGeneratedImage(assets[0].id);
+      if (!this.accountScoped || !window.filmscriptCanvas.downloadAccountImagingAssets) {
+        return this.toast(localize('ZIP downloads are available from your personal Imagine gallery.', 'Las descargas ZIP están disponibles desde tu galería personal de Imagine.'));
+      }
+      this.state.imagineBatchBusy = true;
+      this.render();
+      try {
+        const result = await window.filmscriptCanvas.downloadAccountImagingAssets(assets.map((asset) => asset.id));
+        this._saveImagineBlob(result?.blob || result, result?.filename || `FilmScript-Imagine-${today()}.zip`);
+        this.toast(localize('ZIP downloaded', 'ZIP descargado'));
+      } catch (error) {
+        this.toast(error?.message || localize('The ZIP could not be prepared.', 'No se pudo preparar el ZIP.'));
+      } finally {
+        this.state.imagineBatchBusy = false;
+        this.render();
+      }
+    }
+
+    async deleteImagineAssets(assetIds) {
+      const ids = [...new Set(assetIds)].filter((id) => Boolean(this.asset(id)));
+      if (!ids.length || this.state.imagineBatchBusy) return;
+      if (!this.accountScoped) return this.toast(localize('Delete is available from your personal Imagine gallery.', 'Eliminar está disponible desde tu galería personal de Imagine.'));
+      this.state.imagineBatchBusy = true;
+      this.render();
+      try {
+        if (ids.length > 1 && window.filmscriptCanvas.batchAccountImagingAssets) {
+          await window.filmscriptCanvas.batchAccountImagingAssets('trash', ids);
+        } else {
+          await window.filmscriptCanvas.deleteAccountImagingAsset(ids[0]);
+        }
+        this.state.workspace.assets = (this.state.workspace.assets || []).filter((asset) => !ids.includes(asset.id));
+        this.state.imagineReferenceIds = this.state.imagineReferenceIds.filter((id) => !ids.includes(id));
+        if (ids.includes(this.state.imaginePreviewId)) this.state.imaginePreviewId = '';
+        this.state.imagineSelected = new Set();
+        this.state.imagineSelectionMode = false;
+        this.state.imagineDeleteConfirm = false;
+        this.toast(ids.length === 1 ? localize('Image deleted', 'Imagen eliminada') : localize('Images deleted', 'Imágenes eliminadas'));
+      } catch (error) {
+        this.toast(error?.message || localize('The images could not be deleted.', 'No se pudieron eliminar las imágenes.'));
+      } finally {
+        this.state.imagineBatchBusy = false;
+        this.render();
       }
     }
 
@@ -669,7 +1167,7 @@
     }
 
     setView(view) {
-      if (this.state.workspace?.accessScope === 'imagine' && view !== 'imagine') view = 'imagine';
+      if (this._isImagineOnlyWorkspace() && view !== 'imagine') view = 'imagine';
       if (view === 'shotlist') {
         this.dispatchEvent(new CustomEvent('filmscript:canvas-shotlist', { bubbles: true, composed: true }));
         return;
@@ -685,7 +1183,7 @@
       this.state.selected.clear();
       this.state.vaultMenu = null;
       this.state.boardMenu = null;
-      if (this.state.workspace && this.state.workspace.accessScope !== 'imagine') {
+      if (this.state.workspace && !this._isImagineOnlyWorkspace()) {
         this.state.workspace.settings.lastTool = view === 'board' || view === 'quote' ? 'boards' : view === 'imagine' ? 'home' : view;
         window.filmscriptCanvas.update(this.scriptId, { settings: this.state.workspace.settings }).catch(() => {});
       }
@@ -700,9 +1198,10 @@
     }
 
     _isImagineLoadingTarget() {
-      return this.getAttribute('initial-view') === 'imagine'
+      return this.accountScoped
+        || this.getAttribute('initial-view') === 'imagine'
         || this.state.view === 'imagine'
-        || this.state.workspace?.accessScope === 'imagine';
+        || ['imagine', 'account_imaging', 'standalone_imaging'].includes(this.state.workspace?.accessScope);
     }
 
     _renderCanvasLoading() {
@@ -712,7 +1211,9 @@
     }
 
     _renderImagineLoading() {
-      const label = esc(tr('Loading your Imagine gallery'));
+      const label = esc(this.accountScoped
+        ? localize('Loading your Imagine gallery', 'Cargando tu galería de Imagine')
+        : tr('Loading your Imagine gallery'));
       const tiles = [
         'wide', 'square', 'portrait', 'wide', 'portrait', 'square',
         'wide', 'square', 'portrait', 'wide', 'square', 'portrait',
@@ -725,18 +1226,90 @@
         this._patchBoard();
         return;
       }
+      this._imagineImageObserver?.disconnect();
+      this._imagineImageObserver = null;
+      const imaginePreviewFocus = this.state.imaginePreviewId
+        ? (this._captureImaginePreviewFocus() || this._imaginePreviewFocusSnapshot)
+        : null;
+      if (!this.state.imaginePreviewId) this._imaginePreviewFocusSnapshot = null;
       const animateImagineReflow = this._imagineAnimateNextRender && this.state.view === 'imagine';
       const previousImagineTiles = animateImagineReflow ? this._captureImagineTileRects() : null;
       this._imagineAnimateNextRender = false;
       const content = this.state.loading
         ? (this._isImagineLoadingTarget() ? this._renderImagineLoading() : this._renderCanvasLoading())
         : this.state.error
-          ? `<div class="cv-empty"><div><h3>Canvas could not open</h3><p>${esc(this.state.error)}</p><button class="cv-btn" data-action="retry">Try again</button></div></div>`
+          ? `<div class="cv-empty"><div><h3>${esc(this.accountScoped ? localize('Imagine could not open', 'No se pudo abrir Imagine') : 'Canvas could not open')}</h3><p>${esc(this.state.error)}</p><button class="cv-btn" data-action="retry">${esc(localize('Try again', 'Intentar de nuevo'))}</button></div></div>`
           : this._renderView();
       const overlays = this.state.loading ? '' : this._renderOverlays();
       this.shadowRoot.innerHTML = `<style>${STYLE}</style><div class="cv-root">${content}</div>${overlays}${this.state.toast ? `<div class="cv-toast" role="status">${esc(this.state.toast)}</div>` : ''}`;
       if (this.state.view === 'board') requestAnimationFrame(() => this._positionBoardLayer());
       if (animateImagineReflow) requestAnimationFrame(() => this._animateImagineReflow(previousImagineTiles));
+      if (!this.state.loading && !this.state.error && this.state.view === 'imagine') requestAnimationFrame(() => {
+        this._syncImagineFloatingInset();
+        this._hydrateImagineImages();
+      });
+      if (this.state.imaginePreviewId) {
+        if (imaginePreviewFocus) this._imaginePreviewFocusSnapshot = imaginePreviewFocus;
+        requestAnimationFrame(() => this._restoreImaginePreviewFocus(this._imaginePreviewFocusSnapshot));
+      }
+    }
+
+    _hydrateImagineImages() {
+      this._imagineImageObserver?.disconnect();
+      this._imagineImageObserver = null;
+      const images = [...this.shadowRoot.querySelectorAll('.cv-imagine-tile img[data-src]')];
+      if (!images.length) return;
+      const reveal = (image) => {
+        if (!(image instanceof HTMLImageElement) || !image.dataset.src) return;
+        image.src = image.dataset.src;
+        delete image.dataset.src;
+        this._imagineImageObserver?.unobserve(image);
+        if (image.complete && image.naturalWidth > 0) this._onImageLoad({ target: image });
+      };
+      if (typeof IntersectionObserver !== 'function') {
+        images.forEach(reveal);
+        return;
+      }
+      // Account Imagine scrolls the gallery itself. Project Imagine is clipped
+      // by the Editor/page viewport, while its stage can grow as tall as the
+      // complete library. Using that tall stage as the observer root would
+      // classify distant rows as visible and eagerly download everything.
+      const root = this.accountScoped
+        ? this.shadowRoot.querySelector('.cv-imagine-gallery')
+        : null;
+      this._imagineImageObserver = new IntersectionObserver((entries) => {
+        entries.forEach((entry) => {
+          if (entry.isIntersecting) reveal(entry.target);
+        });
+      }, {
+        root: root || null,
+        // Start the next rows before the user reaches them without letting an
+        // entire long library saturate the connection on first paint.
+        rootMargin: '720px 0px',
+        threshold: 0.01,
+      });
+      images.forEach((image) => this._imagineImageObserver.observe(image));
+    }
+
+    _syncImagineFloatingInset() {
+      this._imagineFloatingObserver?.disconnect();
+      this._imagineFloatingObserver = null;
+      const floating = this.shadowRoot.querySelector('.cv-imagine-console,.cv-imagine-selection-bar');
+      if (!floating) {
+        this.style?.removeProperty?.('--cv-imagine-floating-space');
+        return;
+      }
+      const update = () => {
+        const rect = floating.getBoundingClientRect();
+        const viewportHeight = window.visualViewport?.height || window.innerHeight || rect.bottom;
+        const visibleBottomGap = Math.max(0, viewportHeight - rect.bottom);
+        this.style?.setProperty?.('--cv-imagine-floating-space', `${Math.ceil(rect.height + visibleBottomGap + 18)}px`);
+      };
+      update();
+      if (typeof ResizeObserver === 'function') {
+        this._imagineFloatingObserver = new ResizeObserver(update);
+        this._imagineFloatingObserver.observe(floating);
+      }
     }
 
     _captureImagineTileRects() {
@@ -888,43 +1461,74 @@
       // newer one simply to fill a gap.
       const galleryEntries = this.imagineGalleryEntries();
       const references = (this.state.workspace?.assets || []).filter((asset) => this.state.imagineReferenceIds.includes(asset.id));
+      const capabilities = this._imagineCapabilities();
+      const mediaMode = capabilities.mediaModes.some((option) => option.id === this.state.imagineMediaMode)
+        ? this.state.imagineMediaMode
+        : capabilities.defaults.mediaMode;
+      const modelOptionsForMode = this._imagineModelsForMode(capabilities, mediaMode);
+      const modelId = modelOptionsForMode.some((option) => option.id === this.state.imagineModelId)
+        ? this.state.imagineModelId
+        : (modelOptionsForMode.some((option) => option.id === capabilities.defaults.modelId)
+          ? capabilities.defaults.modelId
+          : (modelOptionsForMode[0]?.id || ''));
       const imageLocked = this.state.accountAuthenticated === true && !this.hasImageGenerationAccess();
-      const disabled = imageLocked ? 'disabled' : '';
-      const imageActionTitle = imageLocked ? this.imageGenerationMessage({ exhausted: this.state.accountTier === 'full' }) : 'Generate image';
-      const style = ['cinematic', 'animated', 'sketch', 'anime'].includes(this.state.imagineStyle) ? this.state.imagineStyle : 'cinematic';
-      const styleLabel = style[0].toUpperCase() + style.slice(1);
+      const capabilityUnavailable = !mediaMode || !modelId;
+      const disabled = imageLocked || capabilityUnavailable ? 'disabled' : '';
+      const imageActionTitle = imageLocked ? this.imageGenerationMessage({ exhausted: this.state.accountTier === 'full' }) : (this._imagineSubmissionStarting ? localize('Checking image access', 'Verificando acceso a imágenes') : localize('Generate image', 'Generar imagen'));
+      const style = ['none', 'cinematic', 'animated', 'sketch', 'anime'].includes(this.state.imagineStyle) ? this.state.imagineStyle : 'cinematic';
+      const styleLabel = this.imagineStyleLabel(style);
       const sizeOption = this.imagineSizeOption(this.state.imagineSize);
       const orientation = sizeOption.orientation;
       const quality = ['low', 'medium', 'high'].includes(this.state.imagineQuality) ? this.state.imagineQuality : 'low';
       const qualityCredits = { low: 3, medium: 5, high: 10 };
-      const qualityLabel = quality[0].toUpperCase() + quality.slice(1);
-      const imageActionLabel = imageLocked
-        ? (this.state.accountTier === 'full' ? 'Credits used' : 'Unlock Full')
-        : `${qualityCredits[quality]} credits`;
+      const qualityLabel = this.imagineQualityLabel(quality);
+      const imageActionLabel = this._imagineSubmissionStarting
+        ? localize('Checking…', 'Verificando…')
+        : imageLocked
+        ? (this.state.accountTier === 'full' ? localize('Credits used', 'Créditos agotados') : localize('Unlock Full', 'Desbloquear Full'))
+        : this.imagineCreditLabel(qualityCredits[quality]);
       // Build true justified rows rather than letting flex leave a ragged
       // final line. Every row calculates one shared height from its combined
       // aspect ratios, so both its left and right edges land exactly on the
       // gallery margins without stretching or cropping a frame.
+      const allImagineImages = this.imagineImages();
+      const favoriteCount = allImagineImages.filter((asset) => asset.liked === true).length;
+      const filterLabel = localize('Filter Imagine gallery', 'Filtrar galería de Imagine');
+      const galleryToolbar = this.accountScoped
+        ? `<div class="cv-imagine-gallery-toolbar" role="group" aria-label="${esc(filterLabel)}"><button type="button" data-action="imagine-filter-all" aria-pressed="${this.state.imagineFilter !== 'favorites'}">${esc(localize('All', 'Todos'))}<span>${allImagineImages.length}</span></button><button type="button" data-action="imagine-filter-favorites" aria-pressed="${this.state.imagineFilter === 'favorites'}">${esc(localize('Favorites', 'Favoritos'))}<span>${favoriteCount}</span></button></div>`
+        : '';
       const animateEntrance = this._imagineEntrancePending;
       this._imagineEntrancePending = false;
       let tileIndex = 0;
       const tiles = galleryEntries.length
-        ? this.imagineJustifiedRows(galleryEntries).map((row) => {
+        ? this.imagineJustifiedRows(galleryEntries).map((row, rowIndex) => {
           const height = Math.round(row.height);
-          return `<div class="cv-imagine-gallery-row" style="--cv-imagine-row-height:${height}px">${row.entries.map((entry) => this.renderImagineTile(entry, tileIndex++)).join('')}</div>`;
+          return `<div class="cv-imagine-gallery-row" style="--cv-imagine-row-height:${height}px">${row.entries.map((entry) => this.renderImagineTile(entry, tileIndex++, rowIndex === 0)).join('')}</div>`;
         }).join('')
-        : `<div class="cv-imagine-empty"><div>${icon('image')}<strong>Make your first frame</strong><span>It will live here, ready for Boards and Shot List.</span></div></div>`;
-      const referencePreview = references.length ? `<div class="cv-imagine-reference-list"><img src="${esc(this.assetUrl(references[0].id))}" alt="${esc(references[0].prompt || 'Reference image')}">${references.length > 1 ? `<span>+${references.length - 1}</span>` : ''}</div>` : '';
+        : `<div class="cv-imagine-empty"><div>${icon(this.accountScoped && this.state.imagineFilter === 'favorites' ? 'heart' : 'image')}<strong>${esc(this.accountScoped && this.state.imagineFilter === 'favorites' ? localize('No favorites yet', 'Aún no tienes favoritos') : localize('Make your first frame', 'Crea tu primera imagen'))}</strong><span>${esc(this.accountScoped && this.state.imagineFilter === 'favorites' ? localize('Like an image to keep it close.', 'Marca Me gusta en una imagen para tenerla a mano.') : (this.accountScoped ? localize('Every image you create will stay in your personal gallery.', 'Cada imagen que crees quedará en tu galería personal.') : 'It will live here, ready for Boards and Shot List.'))}</span></div></div>`;
+      const referencePreview = references.length ? `<div class="cv-imagine-reference-list"><img src="${esc(this.assetUrl(references[0].id))}" alt="${esc(references[0].prompt || localize('Reference image', 'Imagen de referencia'))}">${references.length > 1 ? `<span>+${references.length - 1}</span>` : ''}</div>` : '';
       const referenceControl = references.length
-        ? `<div class="cv-imagine-reference-row"><div class="cv-imagine-reference-wrap"><span class="cv-imagine-reference has-references" title="Current visual references">${referencePreview}</span><button class="cv-imagine-reference-remove" type="button" data-action="imagine-remove-reference" data-id="${esc(references[0].id)}" aria-label="Remove reference" title="Remove reference" ${disabled}>×</button></div><label class="cv-imagine-reference cv-imagine-reference-add" title="Add another visual reference">${icon('image')}<input data-file="imagine-references" type="file" accept="image/png,image/jpeg,image/webp" multiple ${disabled}></label></div>`
-        : `<label class="cv-imagine-reference" title="Add visual references">${icon('image')}<input data-file="imagine-references" type="file" accept="image/png,image/jpeg,image/webp" multiple ${disabled}></label>`;
-      const styleOptions = ['cinematic', 'animated', 'sketch', 'anime'].map((value) => `<button type="button" role="menuitemradio" aria-checked="${style === value}" class="${style === value ? 'active' : ''}" data-action="imagine-style-select" data-style="${value}">${value[0].toUpperCase() + value.slice(1)}</button>`).join('');
+        ? `<div class="cv-imagine-reference-row"><div class="cv-imagine-reference-wrap"><span class="cv-imagine-reference has-references" title="${esc(localize('Current visual references', 'Referencias visuales actuales'))}">${referencePreview}</span><button class="cv-imagine-reference-remove" type="button" data-action="imagine-remove-reference" data-id="${esc(references[0].id)}" aria-label="${esc(localize('Remove reference', 'Quitar referencia'))}" title="${esc(localize('Remove reference', 'Quitar referencia'))}" ${disabled}>×</button></div><label class="cv-imagine-reference cv-imagine-reference-add" title="${esc(localize('Add another visual reference', 'Agregar otra referencia visual'))}">${icon('image')}<input data-file="imagine-references" type="file" accept="image/png,image/jpeg,image/webp" multiple ${disabled}></label></div>`
+        : `<label class="cv-imagine-reference" title="${esc(localize('Add visual references', 'Agregar referencias visuales'))}">${icon('image')}<input data-file="imagine-references" type="file" accept="image/png,image/jpeg,image/webp" multiple ${disabled}></label>`;
+      const styleOptions = ['none', 'cinematic', 'animated', 'sketch', 'anime'].map((value) => `<button type="button" role="menuitemradio" aria-checked="${style === value}" class="${style === value ? 'active' : ''}" data-action="imagine-style-select" data-style="${value}">${esc(this.imagineStyleLabel(value))}</button>`).join('');
       const sizeOptions = this.imagineSizeOptions().map((entry) => `<button type="button" role="menuitemradio" aria-checked="${sizeOption.value === entry.value}" class="${sizeOption.value === entry.value ? 'active' : ''}" data-action="imagine-size-select" data-size="${entry.value}" aria-label="${entry.compact}"><i class="cv-aspect-preview ${entry.orientation}" aria-hidden="true"></i><span>${entry.compact}</span></button>`).join('');
-      const qualityOptions = ['low', 'medium', 'high'].map((value) => `<button type="button" role="menuitemradio" aria-checked="${quality === value}" class="${quality === value ? 'active' : ''}" data-action="imagine-quality-select" data-quality="${value}"><span>${value[0].toUpperCase() + value.slice(1)}</span><b>${qualityCredits[value]} credits</b></button>`).join('');
+      const qualityOptions = ['low', 'medium', 'high'].map((value) => `<button type="button" role="menuitemradio" aria-checked="${quality === value}" class="${quality === value ? 'active' : ''}" data-action="imagine-quality-select" data-quality="${value}"><span>${esc(this.imagineQualityLabel(value))}</span><b>${esc(this.imagineCreditLabel(qualityCredits[value]))}</b></button>`).join('');
       const imageAction = imageLocked
         ? `<button class="cv-imagine-generate" type="button" data-action="imagine-unlock-full" title="${esc(imageActionTitle)}">${imageActionLabel}</button>`
-        : `<button class="cv-imagine-generate" type="submit" title="${esc(imageActionTitle)}">${imageActionLabel}</button>`;
-      return `<section class="cv-imagine-stage"><div class="cv-imagine-gallery${animateEntrance ? ' is-entering' : ''}">${tiles}</div><form class="cv-imagine-console ${this.state.imagineDragging ? 'is-dragging' : ''}" data-form="imagine-image"><span class="cv-imagine-drop-hint">Drop to add as reference</span><div class="cv-imagine-console-top">${referenceControl}<textarea data-imagine-prompt name="prompt" required minlength="8" maxlength="3000" placeholder="Describe the frame you want to create…" ${disabled}>${esc(this.state.imaginePrompt)}</textarea></div><div class="cv-imagine-controls"><div class="cv-imagine-aspect-picker cv-imagine-size-picker"><input type="hidden" name="size" value="${sizeOption.value}"><input type="hidden" name="orientation" value="${orientation}"><button class="cv-imagine-aspect-trigger" type="button" data-action="imagine-size-menu" aria-label="Aspect ratio: ${sizeOption.compact}" aria-haspopup="menu" aria-expanded="${this.state.imagineSizeMenu}" ${disabled}><i class="cv-aspect-preview ${orientation}" aria-hidden="true"></i><strong>${sizeOption.compact}</strong></button>${this.state.imagineSizeMenu ? `<div class="cv-imagine-aspect-menu cv-imagine-size-menu" role="menu">${sizeOptions}</div>` : ''}</div><div class="cv-imagine-style-picker"><input type="hidden" name="style" value="${style}"><button class="cv-imagine-style-trigger" type="button" data-action="imagine-style-menu" aria-label="Style: ${styleLabel}" aria-haspopup="menu" aria-expanded="${this.state.imagineStyleMenu}" ${disabled}><span>Style</span><strong>${styleLabel}</strong></button>${this.state.imagineStyleMenu ? `<div class="cv-imagine-style-menu" role="menu">${styleOptions}</div>` : ''}</div><div class="cv-imagine-style-picker cv-imagine-quality-picker"><input type="hidden" name="quality" value="${quality}"><button class="cv-imagine-style-trigger" type="button" data-action="imagine-quality-menu" aria-label="Quality: ${qualityLabel}, ${qualityCredits[quality]} credits" aria-haspopup="menu" aria-expanded="${this.state.imagineQualityMenu}" ${disabled}><span>Quality</span><strong>${qualityLabel}</strong></button>${this.state.imagineQualityMenu ? `<div class="cv-imagine-style-menu cv-imagine-quality-menu" role="menu">${qualityOptions}</div>` : ''}</div>${imageAction}</div></form></section>`;
+        : `<button class="cv-imagine-generate" type="submit" title="${esc(imageActionTitle)}" ${this._imagineSubmissionStarting ? 'disabled' : ''}>${imageActionLabel}</button>`;
+      const dropHint = esc(localize('Drop to add as reference', 'Suelta para agregar como referencia'));
+      const promptPlaceholder = esc(localize('Describe the frame you want to create…', 'Describe la imagen que quieres crear…'));
+      const aspectLabel = esc(localize('Aspect ratio', 'Relación de aspecto'));
+      const styleControlLabel = esc(localize('Style', 'Estilo'));
+      const qualityControlLabel = esc(localize('Quality', 'Calidad'));
+      const mediaModeControl = capabilities.mediaModes.length > 1
+        ? `<label class="cv-imagine-style cv-imagine-capability"><span>${esc(localize('Media', 'Tipo'))}</span><select name="mediaMode" data-field="imagine-media-mode" aria-label="${esc(localize('Media type', 'Tipo de contenido'))}" ${disabled}>${capabilities.mediaModes.map((option) => `<option value="${esc(option.id)}" ${option.id === mediaMode ? 'selected' : ''}>${esc(this._imagineCapabilityLabel(option))}</option>`).join('')}</select></label>`
+        : `<input type="hidden" name="mediaMode" value="${esc(mediaMode)}">`;
+      const modelControl = modelOptionsForMode.length > 1
+        ? `<label class="cv-imagine-style cv-imagine-capability"><span>${esc(localize('Model', 'Modelo'))}</span><select name="modelId" data-field="imagine-model-id" aria-label="${esc(localize('Image model', 'Modelo de imagen'))}" ${disabled}>${modelOptionsForMode.map((option) => `<option value="${esc(option.id)}" ${option.id === modelId ? 'selected' : ''}>${esc(this._imagineCapabilityLabel(option))}</option>`).join('')}</select></label>`
+        : `<input type="hidden" name="modelId" value="${esc(modelId)}">`;
+      const composer = `<form class="cv-imagine-console ${this.state.imagineDragging ? 'is-dragging' : ''}" data-form="imagine-image"><span class="cv-imagine-drop-hint">${dropHint}</span><div class="cv-imagine-console-top">${referenceControl}<textarea data-imagine-prompt name="prompt" required minlength="8" maxlength="3000" placeholder="${promptPlaceholder}" ${disabled}>${esc(this.state.imaginePrompt)}</textarea></div><div class="cv-imagine-controls">${mediaModeControl}${modelControl}<div class="cv-imagine-aspect-picker cv-imagine-size-picker"><input type="hidden" name="size" value="${sizeOption.value}"><input type="hidden" name="orientation" value="${orientation}"><button class="cv-imagine-aspect-trigger" type="button" data-action="imagine-size-menu" aria-label="${aspectLabel}: ${sizeOption.compact}" aria-haspopup="menu" aria-expanded="${this.state.imagineSizeMenu}" ${disabled}><i class="cv-aspect-preview ${orientation}" aria-hidden="true"></i><strong>${sizeOption.compact}</strong></button>${this.state.imagineSizeMenu ? `<div class="cv-imagine-aspect-menu cv-imagine-size-menu" role="menu">${sizeOptions}</div>` : ''}</div><div class="cv-imagine-style-picker"><input type="hidden" name="style" value="${style}"><button class="cv-imagine-style-trigger" type="button" data-action="imagine-style-menu" aria-label="${styleControlLabel}: ${esc(styleLabel)}" aria-haspopup="menu" aria-expanded="${this.state.imagineStyleMenu}" ${disabled}><span>${styleControlLabel}</span><strong>${styleLabel}</strong></button>${this.state.imagineStyleMenu ? `<div class="cv-imagine-style-menu" role="menu">${styleOptions}</div>` : ''}</div><div class="cv-imagine-style-picker cv-imagine-quality-picker"><input type="hidden" name="quality" value="${quality}"><button class="cv-imagine-style-trigger" type="button" data-action="imagine-quality-menu" aria-label="${qualityControlLabel}: ${esc(qualityLabel)}, ${esc(this.imagineCreditLabel(qualityCredits[quality]))}" aria-haspopup="menu" aria-expanded="${this.state.imagineQualityMenu}" ${disabled}><span>${qualityControlLabel}</span><strong>${esc(qualityLabel)}</strong></button>${this.state.imagineQualityMenu ? `<div class="cv-imagine-style-menu cv-imagine-quality-menu" role="menu">${qualityOptions}</div>` : ''}</div>${imageAction}</div></form>`;
+      return `<section class="cv-imagine-stage"><div class="cv-imagine-gallery${animateEntrance ? ' is-entering' : ''}">${galleryToolbar}${tiles}</div>${this.accountScoped && this.state.imagineSelectionMode ? this._renderImagineSelectionBar() : composer}</section>`;
     }
 
     // Imagine's pickers are intentionally patched in place. Re-rendering the
@@ -935,15 +1539,15 @@
       if (!form || this.state.view !== 'imagine') return this.render();
 
       const imageLocked = this.state.accountAuthenticated === true && !this.hasImageGenerationAccess();
-      const style = ['cinematic', 'animated', 'sketch', 'anime'].includes(this.state.imagineStyle) ? this.state.imagineStyle : 'cinematic';
-      const styleLabel = style[0].toUpperCase() + style.slice(1);
+      const style = ['none', 'cinematic', 'animated', 'sketch', 'anime'].includes(this.state.imagineStyle) ? this.state.imagineStyle : 'cinematic';
+      const styleLabel = this.imagineStyleLabel(style);
       const sizeOption = this.imagineSizeOption(this.state.imagineSize);
       const quality = ['low', 'medium', 'high'].includes(this.state.imagineQuality) ? this.state.imagineQuality : 'low';
       const qualityCredits = { low: 3, medium: 5, high: 10 };
-      const qualityLabel = quality[0].toUpperCase() + quality.slice(1);
+      const qualityLabel = this.imagineQualityLabel(quality);
       const sizeOptions = this.imagineSizeOptions().map((entry) => `<button type="button" role="menuitemradio" aria-checked="${sizeOption.value === entry.value}" class="${sizeOption.value === entry.value ? 'active' : ''}" data-action="imagine-size-select" data-size="${entry.value}" aria-label="${entry.compact}"><i class="cv-aspect-preview ${entry.orientation}" aria-hidden="true"></i><span>${entry.compact}</span></button>`).join('');
-      const styleOptions = ['cinematic', 'animated', 'sketch', 'anime'].map((value) => `<button type="button" role="menuitemradio" aria-checked="${style === value}" class="${style === value ? 'active' : ''}" data-action="imagine-style-select" data-style="${value}">${value[0].toUpperCase() + value.slice(1)}</button>`).join('');
-      const qualityOptions = ['low', 'medium', 'high'].map((value) => `<button type="button" role="menuitemradio" aria-checked="${quality === value}" class="${quality === value ? 'active' : ''}" data-action="imagine-quality-select" data-quality="${value}"><span>${value[0].toUpperCase() + value.slice(1)}</span><b>${qualityCredits[value]} credits</b></button>`).join('');
+      const styleOptions = ['none', 'cinematic', 'animated', 'sketch', 'anime'].map((value) => `<button type="button" role="menuitemradio" aria-checked="${style === value}" class="${style === value ? 'active' : ''}" data-action="imagine-style-select" data-style="${value}">${esc(this.imagineStyleLabel(value))}</button>`).join('');
+      const qualityOptions = ['low', 'medium', 'high'].map((value) => `<button type="button" role="menuitemradio" aria-checked="${quality === value}" class="${quality === value ? 'active' : ''}" data-action="imagine-quality-select" data-quality="${value}"><span>${esc(this.imagineQualityLabel(value))}</span><b>${esc(this.imagineCreditLabel(qualityCredits[value]))}</b></button>`).join('');
 
       const sizePicker = form.querySelector('.cv-imagine-size-picker');
       const stylePicker = form.querySelector('.cv-imagine-style-picker:not(.cv-imagine-quality-picker)');
@@ -957,7 +1561,7 @@
       if (orientationInput) orientationInput.value = sizeOption.orientation;
       const sizeTrigger = sizePicker.querySelector('[data-action="imagine-size-menu"]');
       if (sizeTrigger) {
-        sizeTrigger.setAttribute('aria-label', `Aspect ratio: ${sizeOption.compact}`);
+        sizeTrigger.setAttribute('aria-label', `${localize('Aspect ratio', 'Relación de aspecto')}: ${sizeOption.compact}`);
         sizeTrigger.setAttribute('aria-expanded', String(Boolean(this.state.imagineSizeMenu)));
         sizeTrigger.querySelector('strong').textContent = sizeOption.compact;
         const preview = sizeTrigger.querySelector('.cv-aspect-preview');
@@ -967,7 +1571,7 @@
       if (styleInput) styleInput.value = style;
       const styleTrigger = stylePicker.querySelector('[data-action="imagine-style-menu"]');
       if (styleTrigger) {
-        styleTrigger.setAttribute('aria-label', `Style: ${styleLabel}`);
+        styleTrigger.setAttribute('aria-label', `${localize('Style', 'Estilo')}: ${styleLabel}`);
         styleTrigger.setAttribute('aria-expanded', String(Boolean(this.state.imagineStyleMenu)));
         styleTrigger.querySelector('strong').textContent = styleLabel;
       }
@@ -975,12 +1579,17 @@
       if (qualityInput) qualityInput.value = quality;
       const qualityTrigger = qualityPicker.querySelector('[data-action="imagine-quality-menu"]');
       if (qualityTrigger) {
-        qualityTrigger.setAttribute('aria-label', `Quality: ${qualityLabel}, ${qualityCredits[quality]} credits`);
+        qualityTrigger.setAttribute('aria-label', `${localize('Quality', 'Calidad')}: ${qualityLabel}, ${this.imagineCreditLabel(qualityCredits[quality])}`);
         qualityTrigger.setAttribute('aria-expanded', String(Boolean(this.state.imagineQualityMenu)));
         qualityTrigger.querySelector('strong').textContent = qualityLabel;
       }
       const generate = form.querySelector('.cv-imagine-generate');
-      if (generate && !imageLocked) generate.textContent = `${qualityCredits[quality]} credits`;
+      if (generate && !imageLocked) {
+        generate.disabled = this._imagineSubmissionStarting;
+        generate.textContent = this._imagineSubmissionStarting
+          ? localize('Checking…', 'Verificando…')
+          : this.imagineCreditLabel(qualityCredits[quality]);
+      }
       if (this.state.imagineSizeMenu) sizePicker.insertAdjacentHTML('beforeend', `<div class="cv-imagine-aspect-menu cv-imagine-size-menu" role="menu">${sizeOptions}</div>`);
       if (this.state.imagineStyleMenu) stylePicker.insertAdjacentHTML('beforeend', `<div class="cv-imagine-style-menu" role="menu">${styleOptions}</div>`);
       if (this.state.imagineQualityMenu) qualityPicker.insertAdjacentHTML('beforeend', `<div class="cv-imagine-style-menu cv-imagine-quality-menu" role="menu">${qualityOptions}</div>`);
@@ -1026,8 +1635,28 @@
       const image = event.target;
       if (image instanceof HTMLImageElement && image.matches('.cv-imagine-tile img')) {
         const tile = image.closest('.cv-imagine-tile');
+        if (!image.dataset.retried) {
+          image.dataset.retried = 'true';
+          const separator = image.src.includes('?') ? '&' : '?';
+          window.setTimeout(() => { image.src = `${image.src}${separator}retry=${Date.now()}`; }, 180);
+          return;
+        }
         tile?.classList.remove('is-image-loading');
         tile?.classList.add('is-image-error');
+        const fallback = tile?.querySelector('.cv-imagine-image-error');
+        if (fallback) fallback.hidden = false;
+        return;
+      }
+      if (image instanceof HTMLImageElement && image.matches('[data-imagine-preview-image]')) {
+        if (!image.dataset.retried) {
+          image.dataset.retried = 'true';
+          const separator = image.src.includes('?') ? '&' : '?';
+          window.setTimeout(() => { image.src = `${image.src}${separator}retry=${Date.now()}`; }, 180);
+          return;
+        }
+        image.hidden = true;
+        const fallback = image.parentElement?.querySelector('.cv-imagine-preview-error');
+        if (fallback) fallback.hidden = false;
         return;
       }
       if (!(image instanceof HTMLImageElement) || !image.matches('img[data-vault-image]')) return;
@@ -1046,10 +1675,18 @@
 
     _onImageLoad(event) {
       const image = event.target;
+      if (image instanceof HTMLImageElement && image.matches('[data-imagine-preview-image]')) {
+        image.hidden = false;
+        const fallback = image.parentElement?.querySelector('.cv-imagine-preview-error');
+        if (fallback) fallback.hidden = true;
+        return;
+      }
       if (!(image instanceof HTMLImageElement) || !image.matches('.cv-imagine-tile img')) return;
       const tile = image.closest('.cv-imagine-tile');
       if (!tile) return;
       tile.classList.remove('is-image-loading', 'is-image-error');
+      const fallback = tile.querySelector('.cv-imagine-image-error');
+      if (fallback) fallback.hidden = true;
       const width = Number(image.naturalWidth);
       const height = Number(image.naturalHeight);
       if (!Number.isFinite(width) || !Number.isFinite(height) || width <= 0 || height <= 0) return;
@@ -1073,6 +1710,23 @@
           if (this.isConnected && this.state.view === 'imagine') this.render();
         }, 40);
       }
+    }
+
+    _renderImagineSelectionBar() {
+      if (!this.accountScoped) return '';
+      const assets = this.selectedImagineAssets();
+      if (!assets.length) return '';
+      const count = assets.length;
+      const allLiked = assets.every((asset) => asset.liked === true);
+      const thumbs = assets.slice(0, 4).map((asset) => `<img src="${esc(this.assetUrl(asset.id))}" alt="">`).join('');
+      const overflow = count > 4 ? `<span>+${count - 4}</span>` : '';
+      const countLabel = count === 1 ? localize('1 selected', '1 seleccionada') : localize(`${count} selected`, `${count} seleccionadas`);
+      const downloadLabel = count > 1 ? localize('Download ZIP', 'Descargar ZIP') : localize('Download', 'Descargar');
+      const likeLabel = allLiked ? localize('Unlike', 'Quitar Me gusta') : localize('Like', 'Me gusta');
+      const actions = this.state.imagineDeleteConfirm
+        ? `<div class="cv-imagine-selection-confirm" role="alert"><strong>${esc(count === 1 ? localize('Delete this image?', '¿Eliminar esta imagen?') : localize(`Delete ${count} images?`, `¿Eliminar ${count} imágenes?`))}</strong><button type="button" data-action="imagine-selection-delete-cancel" ${this.state.imagineBatchBusy ? 'disabled' : ''}>${esc(localize('Cancel', 'Cancelar'))}</button><button type="button" class="danger solid" data-action="imagine-selection-delete-confirm" ${this.state.imagineBatchBusy ? 'disabled' : ''}>${esc(localize('Delete', 'Eliminar'))}</button></div>`
+        : `<div class="cv-imagine-selection-actions"><button type="button" data-action="imagine-selection-download" ${this.state.imagineBatchBusy ? 'disabled' : ''}>${icon('download')}<span>${esc(downloadLabel)}</span></button><button type="button" data-action="imagine-selection-like" data-liked="${allLiked}" ${this.state.imagineBatchBusy ? 'disabled' : ''}>${icon('heart')}<span>${esc(likeLabel)}</span></button><button type="button" class="danger" data-action="imagine-selection-delete" ${this.state.imagineBatchBusy ? 'disabled' : ''}>${icon('delete')}<span>${esc(localize('Delete', 'Eliminar'))}</span></button><button type="button" class="close" data-action="imagine-selection-close" aria-label="${esc(localize('Close selection', 'Cerrar selección'))}" ${this.state.imagineBatchBusy ? 'disabled' : ''}>×</button></div>`;
+      return `<div class="cv-imagine-selection-bar" role="toolbar" aria-label="${esc(localize('Selected Imagine images', 'Imágenes de Imagine seleccionadas'))}" aria-busy="${this.state.imagineBatchBusy}"><div class="cv-imagine-selection-summary"><div class="cv-imagine-selection-thumbs" aria-hidden="true">${thumbs}${overflow}</div><strong>${esc(countLabel)}</strong></div>${actions}</div>`;
     }
 
     _renderSelectionBar() {
@@ -1211,11 +1865,18 @@
       const orientation = this.imagineFormatLabel(asset);
       const created = asset.createdAt ? new Date(asset.createdAt).toLocaleString(undefined, { dateStyle: 'medium', timeStyle: 'short' }) : 'Just now';
       const dimensions = num(asset.width) > 0 && num(asset.height) > 0 ? `${Math.round(num(asset.width))} × ${Math.round(num(asset.height) )}` : orientation;
-      const style = String(generation.style || 'cinematic').replace(/^./, (letter) => letter.toUpperCase());
-      const quality = ['low', 'medium', 'high'].includes(String(generation.quality || '')) ? String(generation.quality).replace(/^./, (letter) => letter.toUpperCase()) : 'Low';
+      const style = this.imagineStyleLabel(String(generation.style || 'cinematic').toLowerCase());
+      const quality = this.imagineQualityLabel(['low', 'medium', 'high'].includes(String(generation.quality || '')) ? String(generation.quality).toLowerCase() : 'low');
       const referenceAssets = (Array.isArray(generation.referenceAssetIds) ? generation.referenceAssetIds : []).map((id) => this.asset(id)).filter(Boolean);
-      const referenceThumbs = referenceAssets.length ? `<div class="cv-imagine-preview-references">${referenceAssets.slice(0, 4).map((reference) => `<button type="button" class="cv-imagine-preview-reference" data-action="imagine-copy-reference" data-id="${esc(reference.id)}" title="Copy reference to Imagine"><img src="${esc(this.assetUrl(reference.id))}" alt="Reference image"><span>Copy</span></button>`).join('')}${referenceAssets.length > 4 ? `<span>+${referenceAssets.length - 4}</span>` : ''}</div>` : '<span class="cv-imagine-preview-none">No references</span>';
-      return `<div class="cv-modal-backdrop cv-imagine-preview-backdrop" data-action="close-imagine-preview"><section class="cv-modal cv-imagine-preview cv-imagine-preview-solo" data-stop aria-label="Generated image preview"><div class="cv-imagine-preview-solo-image"><img src="${esc(this.assetUrl(asset.id))}" alt="${esc(asset.prompt || 'Generated visual')}"></div><aside class="cv-imagine-inspector"><header class="cv-imagine-inspector-head"><div><div class="cv-eyebrow">Imagine frame</div><h3>Generated visual</h3><p>${esc(created)}</p></div></header><section class="cv-imagine-inspector-card"><span class="cv-imagine-inspector-label">Prompt</span><p>${esc(asset.prompt || 'No prompt stored.')}</p></section><section class="cv-imagine-inspector-card cv-imagine-inspector-details"><span class="cv-imagine-inspector-label">Details</span><dl><div><dt>Format</dt><dd>${esc(orientation)}</dd></div><div><dt>Style</dt><dd>${esc(style)}</dd></div><div><dt>Quality</dt><dd>${esc(quality)}</dd></div><div><dt>Size</dt><dd>${esc(dimensions)}</dd></div><div><dt>Created</dt><dd>${esc(created)}</dd></div></dl></section><section class="cv-imagine-inspector-card"><span class="cv-imagine-inspector-label">References</span>${referenceThumbs}</section></aside><button class="cv-icon-btn cv-close" data-action="close-imagine-preview" aria-label="Close preview">×</button></section></div>`;
+      const product = 'Imagine';
+      const copyTitle = localize(`Copy reference to ${product}`, `Copiar referencia a ${product}`);
+      const referenceThumbs = referenceAssets.length ? `<div class="cv-imagine-preview-references">${referenceAssets.slice(0, 4).map((reference) => `<button type="button" class="cv-imagine-preview-reference" data-action="imagine-copy-reference" data-id="${esc(reference.id)}" title="${esc(copyTitle)}"><img src="${esc(this.assetUrl(reference.id))}" alt="${esc(localize('Reference image', 'Imagen de referencia'))}"><span>${esc(localize('Copy', 'Copiar'))}</span></button>`).join('')}${referenceAssets.length > 4 ? `<span>+${referenceAssets.length - 4}</span>` : ''}</div>` : `<span class="cv-imagine-preview-none">${esc(localize('No references', 'Sin referencias'))}</span>`;
+      const liked = asset.liked === true;
+      const likePreviewAction = this.accountScoped
+        ? `<button type="button" class="cv-btn ${liked ? 'is-liked' : ''}" data-action="imagine-like" data-id="${esc(asset.id)}" aria-pressed="${liked}">${icon('heart')}<span>${esc(liked ? localize('Liked', 'Te gusta') : localize('Like', 'Me gusta'))}</span></button>`
+        : '';
+      const titleId = `cv-imagine-preview-title-${esc(asset.id)}`;
+      return `<div class="cv-modal-backdrop cv-imagine-preview-backdrop" data-action="close-imagine-preview"><section class="cv-modal cv-imagine-preview cv-imagine-preview-solo" data-stop role="dialog" aria-modal="true" aria-labelledby="${titleId}"><div class="cv-imagine-preview-solo-image"><img data-imagine-preview-image data-id="${esc(asset.id)}" src="${esc(this.assetUrl(asset.id))}" alt="${esc(asset.prompt || localize('Generated visual', 'Imagen generada'))}"><div class="cv-imagine-preview-error" hidden><span>${esc(localize('This image could not be displayed.', 'No se pudo mostrar esta imagen.'))}</span><button type="button" class="cv-btn" data-action="imagine-retry-preview" data-id="${esc(asset.id)}">${esc(localize('Try again', 'Intentar de nuevo'))}</button></div></div><aside class="cv-imagine-inspector"><header class="cv-imagine-inspector-head"><div><div class="cv-eyebrow">${product} ${esc(localize('frame', 'imagen'))}</div><h3 id="${titleId}">${esc(localize('Generated visual', 'Imagen generada'))}</h3><p>${esc(created)}</p></div></header><section class="cv-imagine-inspector-card"><span class="cv-imagine-inspector-label">${esc(localize('Prompt', 'Indicaciones'))}</span><p>${esc(asset.prompt || localize('No prompt stored.', 'No se guardó el prompt.'))}</p></section><section class="cv-imagine-inspector-card cv-imagine-inspector-details"><span class="cv-imagine-inspector-label">${esc(localize('Details', 'Detalles'))}</span><dl><div><dt>${esc(localize('Format', 'Formato'))}</dt><dd>${esc(orientation)}</dd></div><div><dt>${esc(localize('Style', 'Estilo'))}</dt><dd>${esc(style)}</dd></div><div><dt>${esc(localize('Quality', 'Calidad'))}</dt><dd>${esc(quality)}</dd></div><div><dt>${esc(localize('Size', 'Tamaño'))}</dt><dd>${esc(dimensions)}</dd></div><div><dt>${esc(localize('Created', 'Creada'))}</dt><dd>${esc(created)}</dd></div></dl></section><section class="cv-imagine-inspector-card"><span class="cv-imagine-inspector-label">${esc(localize('References', 'Referencias'))}</span>${referenceThumbs}</section><div class="cv-imagine-inspector-actions">${likePreviewAction}<button type="button" class="cv-btn" data-action="download-generated-image" data-id="${esc(asset.id)}">${icon('download')}<span>${esc(localize('Download', 'Descargar'))}</span></button><button type="button" class="cv-btn accent" data-action="imagine-recreate" data-id="${esc(asset.id)}">${icon('redo')}<span>${esc(localize('Recreate', 'Volver a crear'))}</span></button></div></aside><button type="button" class="cv-icon-btn cv-close" data-imagine-preview-close data-action="close-imagine-preview" aria-label="${esc(localize('Close preview', 'Cerrar vista previa'))}">×</button></section></div>`;
     }
 
     _renderBoardPicker() {
@@ -1355,10 +2016,61 @@
         this.toast('Reference added to Imagine');
         return this.render();
       }
+      if (action === 'imagine-tile-primary') return this.accountScoped && this.state.imagineSelectionMode ? this.toggleImagineSelection(id) : this.openImaginePreview(id);
+      if (action === 'imagine-toggle-select') return this.accountScoped ? this.toggleImagineSelection(id) : undefined;
+      if (action === 'imagine-like') {
+        if (!this.accountScoped) return;
+        const asset = this.asset(id);
+        if (asset) return this.setImagineAssetsLiked([id], asset.liked !== true);
+        return;
+      }
+      if (action === 'imagine-recreate') return this.recreateImagineAsset(id);
+      if (action === 'imagine-filter-all' || action === 'imagine-filter-favorites') {
+        if (!this.accountScoped) return;
+        this.state.imagineFilter = action === 'imagine-filter-favorites' ? 'favorites' : 'all';
+        this.state.imagineSelectionMode = false;
+        this.state.imagineSelected = new Set();
+        this.state.imagineDeleteConfirm = false;
+        return this.render();
+      }
+      if (action === 'imagine-selection-close') return this.closeImagineSelection();
+      if (action === 'imagine-selection-download') return this.downloadImagineSelection();
+      if (action === 'imagine-selection-like') return this.setImagineAssetsLiked([...this.state.imagineSelected], trigger.dataset.liked !== 'true');
+      if (action === 'imagine-selection-delete') {
+        this.state.imagineDeleteConfirm = true;
+        return this.render();
+      }
+      if (action === 'imagine-selection-delete-cancel') {
+        this.state.imagineDeleteConfirm = false;
+        return this.render();
+      }
+      if (action === 'imagine-selection-delete-confirm') return this.deleteImagineAssets([...this.state.imagineSelected]);
+      if (action === 'imagine-retry-image') {
+        const tile = trigger.closest('.cv-imagine-tile');
+        const image = tile?.querySelector('img');
+        if (!tile || !image) return;
+        delete image.dataset.retried;
+        tile.classList.remove('is-image-error');
+        tile.classList.add('is-image-loading');
+        const fallback = tile.querySelector('.cv-imagine-image-error');
+        if (fallback) fallback.hidden = true;
+        image.src = `${this.assetUrl(id)}${this.assetUrl(id).includes('?') ? '&' : '?'}retry=${Date.now()}`;
+        return;
+      }
+      if (action === 'imagine-retry-preview') {
+        const image = this.shadowRoot.querySelector('[data-imagine-preview-image]');
+        const fallback = this.shadowRoot.querySelector('.cv-imagine-preview-error');
+        if (!image) return;
+        delete image.dataset.retried;
+        image.hidden = false;
+        if (fallback) fallback.hidden = true;
+        image.src = `${this.assetUrl(id)}${this.assetUrl(id).includes('?') ? '&' : '?'}retry=${Date.now()}`;
+        return;
+      }
       if (action === 'imagine-style-menu') { this.state.imagineStyleMenu = !this.state.imagineStyleMenu; this.state.imagineAspectMenu = this.state.imagineSizeMenu = this.state.imagineQualityMenu = false; return this._patchImagineControls(); }
       if (action === 'imagine-style-select') {
         const style = trigger.dataset.style;
-        if (['cinematic', 'animated', 'sketch', 'anime'].includes(style)) this.state.imagineStyle = style;
+        if (['none', 'cinematic', 'animated', 'sketch', 'anime'].includes(style)) this.state.imagineStyle = style;
         this.state.imagineStyleMenu = false;
         return this._patchImagineControls();
       }
@@ -1383,8 +2095,8 @@
         this.state.imagineQualityMenu = false;
         return this._patchImagineControls();
       }
-      if (action === 'imagine-preview') { this.state.imaginePreviewId = id; return this.render(); }
-      if (action === 'close-imagine-preview') { this.state.imaginePreviewId = ''; return this.render(); }
+      if (action === 'imagine-preview') return this.openImaginePreview(id);
+      if (action === 'close-imagine-preview') return this.closeImaginePreview();
       if (action === 'add-item') { this.clearVaultUploadDraft(); this.state.itemModal = true; this.state.itemSaving = false; this.state.editingItemId = ''; return this.render(); }
       if (action === 'close-item') { if (this.state.itemSaving) return; this.clearVaultUploadDraft(); this.state.itemModal = false; this.state.editingItemId = ''; return this.render(); }
       if (action === 'view-item') { this.state.itemDetailId = id; this.state.vaultMenu = null; return this.render(); }
@@ -1498,6 +2210,32 @@
 
     _onChange(event) {
       const field = event.target.dataset.field;
+      if (field === 'imagine-media-mode') {
+        const capabilities = this._imagineCapabilities();
+        const requested = String(event.target.value || '').trim().toLowerCase();
+        if (capabilities.mediaModes.some((option) => option.id === requested)) {
+          this.state.imagineMediaMode = requested;
+          this.state.imagineMediaModeExplicit = true;
+        }
+        const models = this._imagineModelsForMode(capabilities, this.state.imagineMediaMode);
+        if (!models.some((option) => option.id === this.state.imagineModelId)) {
+          this.state.imagineModelId = models.some((option) => option.id === capabilities.defaults.modelId)
+            ? capabilities.defaults.modelId
+            : (models[0]?.id || '');
+          this.state.imagineModelIdExplicit = false;
+        }
+        return this.render();
+      }
+      if (field === 'imagine-model-id') {
+        const capabilities = this._imagineCapabilities();
+        const models = this._imagineModelsForMode(capabilities, this.state.imagineMediaMode);
+        const requested = String(event.target.value || '').trim().toLowerCase();
+        if (models.some((option) => option.id === requested)) {
+          this.state.imagineModelId = requested;
+          this.state.imagineModelIdExplicit = true;
+        }
+        return this.render();
+      }
       if (field === 'vault-category') this.state.category = event.target.value;
       else if (field === 'vault-availability') this.state.availability = event.target.value;
       else if (field === 'vault-condition') this.state.condition = event.target.value;
@@ -1635,7 +2373,35 @@
       this.render();
     }
 
+    _trapImaginePreviewFocus(event) {
+      const dialog = this.shadowRoot.querySelector('.cv-imagine-preview[role="dialog"]');
+      if (!dialog) return;
+      const focusable = [...dialog.querySelectorAll('button:not([disabled]),a[href],input:not([disabled]),textarea:not([disabled]),[tabindex]:not([tabindex="-1"])')].filter((node) => !node.hidden);
+      if (!focusable.length) return;
+      const first = focusable[0];
+      const last = focusable[focusable.length - 1];
+      const active = this.shadowRoot.activeElement || document.activeElement;
+      if (event.shiftKey && (active === first || !dialog.contains(active))) {
+        event.preventDefault();
+        last.focus();
+      } else if (!event.shiftKey && (active === last || !dialog.contains(active))) {
+        event.preventDefault();
+        first.focus();
+      }
+    }
+
     _onKeyDown(event) {
+      if (this.state.imaginePreviewId) {
+        if (event.key === 'Escape') {
+          event.preventDefault();
+          return this.closeImaginePreview();
+        }
+        if (event.key === 'Tab') this._trapImaginePreviewFocus(event);
+      }
+      if (this.state.view === 'imagine' && this.state.imagineSelectionMode && event.key === 'Escape') {
+        event.preventDefault();
+        return this.closeImagineSelection();
+      }
       // Imagine is a prompt-first canvas: Enter makes a frame immediately.
       // Shift+Enter stays available for a deliberate line break, and IME
       // composition must never be mistaken for a completed prompt.
@@ -1722,7 +2488,9 @@
       const assets = [];
       for (const original of files || []) {
         const compressed = await this.compressImage(original);
-        const result = await window.filmscriptCanvas.uploadAsset(this.scriptId, compressed.file, { ...compressed, scope });
+        const result = this.accountScoped
+          ? await window.filmscriptCanvas.uploadAccountImagingAsset(compressed.file, compressed)
+          : await window.filmscriptCanvas.uploadAsset(this.scriptId, compressed.file, { ...compressed, scope });
         assets.push(result.asset);
         this.state.workspace.assets = Array.isArray(this.state.workspace.assets) ? this.state.workspace.assets : [];
         this.state.workspace.assets.push(result.asset);
@@ -1978,7 +2746,7 @@
       if(this.state.storyboardImageGenerating)return;
       this.state.storyboardImageGenerating=true;this.render();
       try{
-        const result=await window.filmscriptCanvas.generateStoryboardImage(this.scriptId,{prompt,orientation,referenceAssetIds});
+        const result=await this._generateImage({prompt,orientation,referenceAssetIds});
         if(!result?.asset?.id)throw new Error('The storyboard frame was not returned.');
         this.state.workspace.assets=Array.isArray(this.state.workspace.assets)?this.state.workspace.assets:[];
         this.state.workspace.assets.push(result.asset);
@@ -2005,21 +2773,42 @@
     }
 
     async generateImagineImage(form) {
+      // Claim the submit synchronously, before the entitlement refresh can
+      // yield. Click, Enter and a double tap must all share this one start.
+      if (this._imagineSubmissionStarting) return;
+      this._setImagineSubmissionStarting(true);
+      try {
       const prompt = String(form.get('prompt') || '').trim();
       if (!await this.ensureImageGeneration()) return;
       if (prompt.length < 8) return this.toast('Describe the image in a little more detail.');
+      const capabilities = this._imagineCapabilities();
+      const requestedMediaMode = String(form.get('mediaMode') || this.state.imagineMediaMode || '').trim().toLowerCase();
+      const mediaMode = capabilities.mediaModes.some((option) => option.id === requestedMediaMode)
+        ? requestedMediaMode
+        : capabilities.defaults.mediaMode;
+      const modelOptions = this._imagineModelsForMode(capabilities, mediaMode);
+      const requestedModelId = String(form.get('modelId') || this.state.imagineModelId || '').trim().toLowerCase();
+      const modelId = modelOptions.some((option) => option.id === requestedModelId)
+        ? requestedModelId
+        : (modelOptions.some((option) => option.id === capabilities.defaults.modelId)
+          ? capabilities.defaults.modelId
+          : (modelOptions[0]?.id || ''));
+      if (!mediaMode || !modelId) return this.toast(localize('Image generation is not available right now.', 'La generación de imágenes no está disponible en este momento.'));
       const sizeOption = this.imagineSizeOption(String(form.get('size') || this.state.imagineSize));
       const orientation = sizeOption.orientation === 'vertical' ? 'vertical' : 'horizontal';
-      const style = ['cinematic', 'animated', 'sketch', 'anime'].includes(String(form.get('style') || '')) ? String(form.get('style')) : 'cinematic';
+      const style = ['none', 'cinematic', 'animated', 'sketch', 'anime'].includes(String(form.get('style') || '')) ? String(form.get('style')) : 'cinematic';
       const quality = ['low', 'medium', 'high'].includes(String(form.get('quality') || '')) ? String(form.get('quality')) : 'low';
       const referenceAssetIds = [...this.state.imagineReferenceIds];
       const createdAtMs = Date.now();
       const job = {
         id: uid('imagine-job'),
+        ownerUserId: this.accountScoped ? this._imagineJobsOwnerId() : '',
         createdAt: new Date(createdAtMs).toISOString(),
         createdAtMs,
         sequence: ++this._imagineJobSequence,
         prompt,
+        mediaMode,
+        modelId,
         orientation,
         size: sizeOption.value,
         style,
@@ -2034,6 +2823,11 @@
       // The job is persisted before its request begins. If the tab refreshes,
       // the next Canvas load restores its placeholder and safely resumes it.
       this._submitImagineJob(job);
+      } finally {
+        // A successful path has already rendered its persisted placeholder;
+        // every early-return/error path restores the existing composer here.
+        this._setImagineSubmissionStarting(false);
+      }
     }
 
     async addImagineToBoard(boardId) {

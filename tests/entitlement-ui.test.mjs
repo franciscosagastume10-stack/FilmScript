@@ -1072,7 +1072,7 @@ test("a saved photo or preset avatar is restored after reload and reactive remou
   assert.match(platform, /hasNewAvatar[\s\S]*?requestAnimationFrame\(\(\) => \{ identityFrame = 0; applyAccountIdentity\(\); \}\)/);
   assert.match(platform, /backgroundSize = 'cover'/);
   assert.match(platform, /state\.profile\?\.avatarCrop\?\.presetIcon/);
-  for (const page of [scripts, editor]) assert.match(page, /platform-client\.js\?v=20260821-personal-name1/);
+  for (const page of [scripts, editor]) assert.match(page, /platform-client\.js\?v=20260821-(?:personal-name1|mobile-nav1)/);
 });
 
 test("Account offers ten original film icons, fixed backgrounds, and never lists the current session as a collaborator", async () => {

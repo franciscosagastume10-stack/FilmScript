@@ -128,7 +128,7 @@ test('a production-shaped schema version 14 database migrates project messages s
     await execFile(process.execPath, ['--input-type=module', '--eval', "await import('./platform-database.js');"], childOptions);
     legacy = new Database(legacyDbPath, { readonly: true });
     assert.ok(legacy.prepare("SELECT name FROM sqlite_master WHERE type='table' AND name='project_messages'").get());
-    assert.equal(legacy.prepare("SELECT value FROM schema_meta WHERE key='schema_version'").get().value, '18');
+    assert.equal(legacy.prepare("SELECT value FROM schema_meta WHERE key='schema_version'").get().value, '20');
     legacy.close();
   } finally {
     fs.rmSync(legacyDir, { recursive: true, force: true });
