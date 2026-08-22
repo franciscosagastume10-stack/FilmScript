@@ -38,6 +38,7 @@ import {
   saveCreditsSnapshot,
   saveLumiereCreditsSnapshot,
   savePreproductionSnapshot,
+  saveScriptRecord,
   saveScriptsSnapshot,
   updateUserLumierePreferences,
   updateUserName,
@@ -69,7 +70,8 @@ import {
   claimReleaseNotice,
   getCollaborationDocument,
   getCollaborationEntity,
-  createAIJob,
+  createTranslationAIJob,
+  claimRecoverableTranslationAIJob,
   createComment,
   createProjectMessage,
   createInvitation,
@@ -81,6 +83,7 @@ import {
   financialAccess,
   guestProjectAccess,
   getAIJob,
+  getAIJobByIdempotencyKey,
   getSharedProject,
   listAccessibleProjectIds,
   listAccountInvitations,
@@ -92,10 +95,13 @@ import {
   listMembers,
   listInvitations,
   listNotifications,
+  listRecoverableTranslationAIJobs,
   markNotificationsRead,
+  inheritTranslationProjectAccess,
   projectAccess,
   projectBillingOwnerId,
   projectState,
+  previewTranslationVersion,
   recordActivity,
   requireProjectPermission,
   resolveComment,
@@ -409,6 +415,11 @@ const FREE_FEATURE_ALLOWANCES = Object.freeze({ analysis: 1, breakdown: 1, story
 // short-lived, server-side receipt for that idempotency key so the retry can
 // return the same Lumiere answer without spending a second prompt.
 const TEXT_IDEMPOTENCY_RECEIPT_MS = 30 * 60 * 1000;
+const TRANSLATION_CREATION_RESERVATION_MS = 2 * 60 * 1000;
+const TRANSLATION_CREDIT_RESERVATION_MS = 7 * 24 * 60 * 60 * 1000;
+const TRANSLATION_PROCESSING_LEASE_MS = Math.max(5 * 60_000, Number(process.env.FILMSCRIPT_TRANSLATION_PROCESSING_LEASE_MS) || 20 * 60_000);
+const TRANSLATION_FINALIZATION_LEASE_MS = Math.max(30_000, Number(process.env.FILMSCRIPT_TRANSLATION_FINALIZATION_LEASE_MS) || 60_000);
+const TRANSLATION_RECOVERY_INTERVAL_MS = Math.max(15_000, Number(process.env.FILMSCRIPT_TRANSLATION_RECOVERY_INTERVAL_MS) || 60_000);
 // A pricing preview authorizes one exact switch for a short period. The
 // browser never chooses the provider mode or amount when it confirms.
 const SUBSCRIPTION_SWITCH_PREVIEW_TTL_MS = 10 * 60 * 1000;
@@ -5077,30 +5088,63 @@ function textCreditReceipt(userId, reservationId) {
   };
 }
 
-function settleTextCredits(userId, reservationId, receipt = null) {
+function renewTextCreditReservation(userId, reservationId, ttlMs = 30 * 60_000) {
   const snapshot = loadLumiereCreditsSnapshot(); const entry = snapshot[userId] || {};
   const reservations = entry.textReservations && typeof entry.textReservations === "object" ? entry.textReservations : {};
   const reservation = reservations[reservationId];
   if (!reservation) return false;
   if (reservation.state === "settled") return true;
-  if (receipt && typeof receipt === "object") {
-    reservations[reservationId] = {
-      ...reservation,
-      state: "settled",
-      settledAt: new Date().toISOString(),
-      expiresAt: new Date(Date.now() + TEXT_IDEMPOTENCY_RECEIPT_MS).toISOString(),
+  reservations[reservationId] = { ...reservation, expiresAt: new Date(Date.now() + Math.max(60_000, Number(ttlMs) || 0)).toISOString() };
+  snapshot[userId] = { ...entry, textReservations: reservations };
+  saveLumiereCreditsSnapshot(snapshot);
+  return true;
+}
+
+function settleTextCredits(userId, reservationId, receipt = null, settledTtlMs = TEXT_IDEMPOTENCY_RECEIPT_MS) {
+  // Normalize the current plan period first, then settle usage and the
+  // idempotency marker in one app-settings write. A process interruption can
+  // therefore never preserve "settled" without the matching credit charge.
+  const state = lumiereCreditsFor(userId);
+  const snapshot = loadLumiereCreditsSnapshot(); const entry = snapshot[userId] || {};
+  const reservations = entry.textReservations && typeof entry.textReservations === "object" ? entry.textReservations : {};
+  const reservation = reservations[reservationId];
+  if (!reservation) return false;
+  if (reservation.state === "settled") return true;
+  const amount = Math.max(1, Number(reservation.amount) || 1);
+  const availability = lumiereCreditAvailability(state);
+  if (!state?.unlimited && availability.regularRemaining < amount) return false;
+  reservations[reservationId] = {
+    ...reservation,
+    state: "settled",
+    settledAt: new Date().toISOString(),
+    expiresAt: new Date(Date.now() + Math.max(TEXT_IDEMPOTENCY_RECEIPT_MS, Number(settledTtlMs) || 0)).toISOString(),
+    ...(receipt && typeof receipt === "object" ? {
       receipt: {
         reply: String(receipt.reply || "").slice(0, 50_000),
         provider: String(receipt.provider || "openai").slice(0, 80),
         model: String(receipt.model || OPENAI_TEXT_MODEL).slice(0, 160),
         requiredCredits: Math.max(1, Number(receipt.requiredCredits) || 1),
       },
-    };
-  } else {
-    delete reservations[reservationId];
+    } : { receipt: null }),
+  };
+  const next = { ...entry, textReservations: reservations };
+  if (!state?.unlimited) {
+    next.used = Math.min(state.limit, state.used + amount);
+    if (state.lifetime) {
+      next.lifetimeUsed = next.used;
+      next.week = { ...state.week, used: next.used };
+      next.session = { ...state.session, used: next.used };
+    } else {
+      next.week = { ...state.week, used: Math.min(state.week.limit, state.week.used + amount) };
+      next.session = {
+        ...state.session,
+        startedAt: state.session.startedAt || new Date().toISOString(),
+        used: Math.min(state.session.limit, state.session.used + amount),
+      };
+    }
   }
-  snapshot[userId] = { ...entry, textReservations: reservations }; saveLumiereCreditsSnapshot(snapshot);
-  consumeLumiereCredit(userId, reservation.amount);
+  snapshot[userId] = next;
+  saveLumiereCreditsSnapshot(snapshot);
   return true;
 }
 
@@ -7056,7 +7100,8 @@ function handleScriptsList(req, res) {
     const canOpenScript = canAccessModule(access, "script", "view");
     const publicAccess = access ? { projectRole: access.projectRole, cinematicRole: access.cinematicRole, modulePermissions: access.modulePermissions } : null;
     const screenplaySummary = canOpenScript ? { source: script.source, pages: script.blocks?.length ? script.blocks.filter((block) => block.type === "pagebreak").length + 1 : null } : {};
-    return { id: script.id, title: script.title, ...screenplaySummary, createdAt: script.createdAt, updatedAt: script.updatedAt, state: projectState(script.id), owner: { id: script.userId, name: owner?.name || "FilmScript collaborator" }, ownerName: owner?.name || "FilmScript collaborator", role: access?.projectRole || null, ...projectOpeningAccess(access), access: publicAccess };
+    const translationSummary = canOpenScript && script.translatedFromProjectId ? { translation: { sourceProjectId: script.translatedFromProjectId, sourceScriptId: script.translatedFromScriptId, sourceLanguage: script.sourceLanguage, targetLanguage: script.targetLanguage, version: script.translationVersion, translatedAt: script.translatedAt } } : {};
+    return { id: script.id, title: script.title, ...screenplaySummary, ...translationSummary, createdAt: script.createdAt, updatedAt: script.updatedAt, state: projectState(script.id), owner: { id: script.userId, name: owner?.name || "FilmScript collaborator" }, ownerName: owner?.name || "FilmScript collaborator", role: access?.projectRole || null, ...projectOpeningAccess(access), access: publicAccess };
   });
   json(res, 200, { scripts });
 }
@@ -8409,42 +8454,172 @@ function translationEntityMap(script) {
   return map;
 }
 
-async function runTranslationJob(jobId, requesterId, billingOwnerId) {
-  const job = getAIJob(jobId, requesterId, true); if (!job) return;
-  const script = loadScripts().scripts[job.sourceScriptId]; const reservationId = `translation:${job.id}`;
+function translationRecoveryOptions() {
+  return {
+    processingStaleBefore: new Date(Date.now() - TRANSLATION_PROCESSING_LEASE_MS).toISOString(),
+    savingStaleBefore: new Date(Date.now() - TRANSLATION_FINALIZATION_LEASE_MS).toISOString(),
+  };
+}
+
+function ensureTranslationCreditReservation(job, billingOwnerId) {
+  const reservationId = `translation:${job.id}`;
+  const reservation = reserveTextCredits(billingOwnerId, job.reservedCredits, reservationId);
+  if (reservation.allowed) {
+    renewTextCreditReservation(billingOwnerId, reservationId, TRANSLATION_CREDIT_RESERVATION_MS);
+    return true;
+  }
+  // A settled marker means a previous finalization consumed the credits and
+  // crashed before the durable job status was updated. It must not be charged
+  // a second time when the finalizer resumes.
+  return reservation.reason === "already_completed";
+}
+
+function translationFailureNotification(job, requesterId) {
+  return createNotification({
+    userId: requesterId,
+    projectId: job.projectId,
+    type: "translation_failed",
+    title: "Translation could not be completed",
+    message: "Your credits were returned. You can retry when ready.",
+    deepLink: "/App.dc.html",
+    deduplicationKey: `translation-failed:${job.id}`,
+    metadata: {
+      translation: { jobId: job.id, sourceProjectId: job.projectId, targetLanguage: job.input.targetLanguage },
+      i18n: {
+        en: { title: "Translation could not be completed", message: "Your credits were returned. You can retry when ready." },
+        es: { title: "No se pudo completar la traducción", message: "Tus créditos fueron devueltos. Puedes intentarlo de nuevo cuando quieras." },
+      },
+    },
+  });
+}
+
+async function runTranslationJob(jobId) {
+  const job = claimRecoverableTranslationAIJob(jobId, translationRecoveryOptions());
+  if (!job) return;
+  const requesterId = job.requestedByUserId;
+  const script = loadScripts().scripts[job.sourceScriptId];
+  const billingOwnerId = script?.userId || null;
+  const reservationId = billingOwnerId ? `translation:${job.id}` : null;
+  const language = job.input.targetLanguage;
+  const translatedId = `scr_${hashText(`translation:${job.id}`).slice(0, 20)}`;
+  const translationVersion = Math.max(1, Number(job.input.translationVersion) || 1);
+  let title = translatedProjectName(job.input.sourceProjectTitle || script?.title, language, translationVersion);
+  let completedModel = job.internalCompletedModel || modelForTask("translation");
+  let usedFallback = Boolean(job.usedFallback);
+  let translatedProject = loadScripts().scripts[translatedId] || null;
+
   try {
-    updateAIJob(job.id, { status: "processing", stage: "validating", progress: 5 });
-    if (!script || hashText(JSON.stringify(script.blocks || [])) !== job.sourceContentHash) throw Object.assign(new Error("The source screenplay changed before translation started."), { code: "corrupt_script", status: 409 });
-    const language = job.input.targetLanguage; const entityMap = translationEntityMap(script); const packet = screenplayTranslationPacket(script.blocks, Object.fromEntries(Object.entries(entityMap).map(([key, value]) => [key, value.occurrences])));
-    const translated = []; let usedFallback = false; let completedModel = modelForTask("translation");
-    const chunkSize = 80; const chunks = Math.max(1, Math.ceil(packet.length / chunkSize));
-    for (let index = 0; index < packet.length; index += chunkSize) {
-      if (!projectPermission(requesterId, script.id, "script", "edit")) throw Object.assign(new Error("Project access was revoked."), { code: "permission_denied", status: 403 });
-      const chunk = packet.slice(index, index + chunkSize);
-      updateAIJob(job.id, { status: "processing", stage: "translating", progress: 10 + Math.round((index / Math.max(1, packet.length)) * 70) });
-      const response = await requestLumiereForTask("translation", {
-        maxTokens: 8000, jsonMode: true,
-        system: `You are Lumiere translating a professional screenplay into ${language}. Preserve every block id, type, order, scene number, note relationship, and screenplay convention. Translate descriptive scene heading terms while preserving proper names. Preserve character voice, tone, slang, humor, insults, subtext, and period language. Return JSON with one blocks array. Entity glossary: ${JSON.stringify(entityMap)}`,
-        messages: [{ role: "user", content: JSON.stringify({ blocks: chunk }) }],
-      });
-      const raw = response.content.map((item) => item.text || "").join(""); const parsed = parseBreakdownJson(raw);
-      translated.push(...validateTranslatedBlocks(parsed.blocks, chunk));
-      usedFallback ||= response.usedFallback; completedModel = response.internalCompletedModel || completedModel;
+    if (!script || !billingOwnerId) throw Object.assign(new Error("The source screenplay is no longer available."), { code: "source_not_found", status: 404 });
+    // If the process stopped between durable job creation and reservation
+    // rebinding, clear its short request-scoped guard before recovering.
+    if (job.input.requestReservationId) releaseTextCredits(billingOwnerId, job.input.requestReservationId);
+    if (translatedProject && translatedProject.translationJobId !== job.id) {
+      throw Object.assign(new Error("The translated project identifier is already in use."), { code: "translation_output_conflict", status: 409 });
     }
-    updateAIJob(job.id, { status: "saving", stage: "saving", progress: 90, internalCompletedModel: completedModel, usedFallback });
-    const scripts = loadScripts(); const timestamp = new Date().toISOString(); const translatedId = `scr_${crypto.randomBytes(10).toString("hex")}`;
-    const title = translatedProjectName(script.title, language);
-    scripts.scripts[translatedId] = { ...script, id: translatedId, userId: billingOwnerId, title, filename: null, source: "translation", text: translated.map((block) => block.text).join("\n"), blocks: translated, chat: [], titleRoom: {}, characterNames: script.characterNames || {}, translatedFromProjectId: script.id, translatedFromScriptId: script.id, sourceLanguage: job.input.sourceLanguage || null, targetLanguage: language, sourceScriptVersionId: job.sourceScriptVersionId, sourceContentHash: job.sourceContentHash, translatedAt: timestamp, createdAt: timestamp, updatedAt: timestamp };
-    saveScripts(scripts);
-    settleTextCredits(billingOwnerId, reservationId);
-    updateAIJob(job.id, { status: "completed", stage: "completed", progress: 100, settledCredits: job.reservedCredits, output: { projectId: translatedId, scriptId: translatedId, title, targetLanguage: language }, internalCompletedModel: completedModel, usedFallback });
-    recordActivity({ projectId: script.id, module: "script", actorUserId: requesterId, actorType: "lumiere", entityType: "translation", entityId: job.id, action: "ai.job.completed", summary: `Translation to ${language} completed.` });
-    createNotification({ userId: requesterId, projectId: script.id, type: "translation_completed", title: "Translation is ready", message: `${title} was created as an independent project.`, deepLink: `/Editor%20v5.dc.html?id=${encodeURIComponent(translatedId)}` });
-    broadcastCollaboration(script.id, "ai.job.completed", { job: publicAIJob(getAIJob(job.id, requesterId, true)) });
+    const reservationReady = ensureTranslationCreditReservation(job, billingOwnerId);
+    if (!reservationReady && translatedProject) {
+      updateAIJob(job.id, { status: "saving", stage: "finalizing", progress: 95, errorCode: "credit_settlement_pending" });
+      return;
+    }
+    if (!reservationReady) {
+      throw Object.assign(new Error("The translation credit reservation is no longer available."), { code: "insufficient_credits", status: 402 });
+    }
+    if (!translatedProject) {
+      if (hashText(JSON.stringify(script.blocks || [])) !== job.sourceContentHash) throw Object.assign(new Error("The source screenplay changed before translation started."), { code: "corrupt_script", status: 409 });
+      const entityMap = translationEntityMap(script);
+      const packet = screenplayTranslationPacket(script.blocks, Object.fromEntries(Object.entries(entityMap).map(([key, value]) => [key, value.occurrences])));
+      const translated = []; const chunkSize = 80;
+      for (let index = 0; index < packet.length; index += chunkSize) {
+        if (!projectPermission(requesterId, script.id, "script", "edit")) throw Object.assign(new Error("Project access was revoked."), { code: "permission_denied", status: 403 });
+        if (!renewTextCreditReservation(billingOwnerId, reservationId, TRANSLATION_CREDIT_RESERVATION_MS)) throw Object.assign(new Error("The translation credit reservation expired."), { code: "credit_reservation_expired", status: 409 });
+        const chunk = packet.slice(index, index + chunkSize);
+        updateAIJob(job.id, { status: "processing", stage: "translating", progress: 10 + Math.round((index / Math.max(1, packet.length)) * 70), errorCode: null });
+        const response = await requestLumiereForTask("translation", {
+          maxTokens: 8000, jsonMode: true,
+          system: `You are Lumiere translating a professional screenplay into ${language}. Preserve every block id, type, order, scene number, note relationship, and screenplay convention. Translate descriptive scene heading terms while preserving proper names. Preserve character voice, tone, slang, humor, insults, subtext, and period language. Return JSON with one blocks array. Entity glossary: ${JSON.stringify(entityMap)}`,
+          messages: [{ role: "user", content: JSON.stringify({ blocks: chunk }) }],
+        });
+        const raw = response.content.map((item) => item.text || "").join(""); const parsed = parseBreakdownJson(raw);
+        translated.push(...validateTranslatedBlocks(parsed.blocks, chunk));
+        usedFallback ||= response.usedFallback; completedModel = response.internalCompletedModel || completedModel;
+      }
+      // Authorization is checked again at the exact persistence boundary. A
+      // collaborator revoked during the provider call cannot create a project.
+      if (!projectPermission(requesterId, script.id, "script", "edit")) throw Object.assign(new Error("Project access was revoked."), { code: "permission_denied", status: 403 });
+      updateAIJob(job.id, { status: "saving", stage: "saving", progress: 90, internalCompletedModel: completedModel, usedFallback, errorCode: null });
+      const timestamp = new Date().toISOString();
+      const translationFamilyId = job.input.translationFamilyId || script.translatedFromProjectId || script.id;
+      translatedProject = { ...script, id: translatedId, userId: billingOwnerId, title, filename: null, source: "translation", text: translated.map((block) => block.text).join("\n"), blocks: translated, chat: [], titleRoom: {}, characterNames: script.characterNames || {}, translatedFromProjectId: translationFamilyId, translatedFromScriptId: script.id, sourceLanguage: job.input.sourceLanguage || null, targetLanguage: language, translationVersion, translationJobId: job.id, sourceScriptVersionId: job.sourceScriptVersionId, sourceContentHash: job.sourceContentHash, translatedAt: timestamp, translationRelationship: { mode: "independent", synchronization: "none" }, createdAt: timestamp, updatedAt: timestamp };
+      // Persist only this new row. Replacing a global snapshot here could
+      // delete a project created concurrently by another translation worker.
+      translatedProject = saveScriptRecord(translatedProject);
+    } else {
+      title = translatedProject.title || title;
+    }
   } catch (error) {
-    releaseTextCredits(billingOwnerId, reservationId);
+    if (billingOwnerId && reservationId) releaseTextCredits(billingOwnerId, reservationId);
     updateAIJob(job.id, { status: "failed", stage: "failed", errorCode: error.code || "translation_failed" });
-    createNotification({ userId: requesterId, projectId: job.projectId, type: "translation_failed", title: "Translation could not be completed", message: "Your credits were returned. You can retry when ready.", deepLink: `/App.dc.html` });
+    try { translationFailureNotification(job, requesterId); } catch {}
+    return;
+  }
+
+  // Everything below is safely repeatable. A process interruption leaves the
+  // job in `saving`, and the recovery sweep resumes access, billing and the
+  // deduplicated notification without translating or charging again.
+  updateAIJob(job.id, { status: "saving", stage: "finalizing", progress: 95, internalCompletedModel: completedModel, usedFallback, errorCode: null });
+  try {
+    backfillOwners();
+    const requesterStillAuthorized = requesterId === billingOwnerId || Boolean(projectPermission(requesterId, script.id, "script", "edit"));
+    if (requesterStillAuthorized) inheritTranslationProjectAccess(script.id, translatedId, requesterId, billingOwnerId);
+  } catch {
+    updateAIJob(job.id, { status: "saving", stage: "finalizing", progress: 95, errorCode: "access_finalization_pending" });
+    return;
+  }
+  if (!ensureTranslationCreditReservation(job, billingOwnerId)
+    || !settleTextCredits(billingOwnerId, reservationId, null, TRANSLATION_CREDIT_RESERVATION_MS)) {
+    updateAIJob(job.id, { status: "saving", stage: "finalizing", progress: 95, errorCode: "credit_settlement_pending" });
+    return;
+  }
+  const englishMessage = `${title} was created as an independent project.`;
+  const spanishMessage = `${title} se creó como un proyecto independiente.`;
+  try {
+    const notificationId = createNotification({
+      userId: requesterId,
+      projectId: translatedId,
+      type: "translation_completed",
+      title: "Translation is ready",
+      message: englishMessage,
+      deepLink: `/Editor%20v5.dc.html?script=${encodeURIComponent(translatedId)}&view=editor`,
+      deduplicationKey: `translation-completed:${job.id}`,
+      metadata: {
+        translation: { jobId: job.id, sourceProjectId: script.id, translatedProjectId: translatedId, targetLanguage: language, translationVersion, title },
+        i18n: {
+          en: { title: "Translation is ready", message: englishMessage },
+          es: { title: "La traducción está lista", message: spanishMessage },
+        },
+      },
+    });
+    if (!notificationId) throw new Error("Translation notification was not stored.");
+  } catch {
+    updateAIJob(job.id, { status: "saving", stage: "notifying", progress: 98, errorCode: "notification_pending" });
+    return;
+  }
+  const completedJob = updateAIJob(job.id, { status: "completed", stage: "completed", progress: 100, settledCredits: job.reservedCredits, output: { projectId: translatedId, scriptId: translatedId, title, targetLanguage: language, translationVersion }, internalCompletedModel: completedModel, usedFallback, errorCode: null });
+  if (!completedJob) return;
+  try { recordActivity({ projectId: script.id, module: "script", actorUserId: requesterId, actorType: "lumiere", entityType: "translation", entityId: job.id, action: "ai.job.completed", summary: `Translation to ${language} completed.` }); } catch {}
+  try { broadcastCollaboration(script.id, "ai.job.completed", { job: publicAIJob(completedJob) }); } catch {}
+}
+
+function scheduleTranslationJob(job) {
+  if (!job || job.type !== "translation" || ["completed", "failed", "cancelled"].includes(job.status)) return;
+  setImmediate(() => runTranslationJob(job.id).catch((error) => console.error("Translation recovery error:", error?.message || error)));
+}
+
+function recoverTranslationJobs() {
+  try {
+    for (const job of listRecoverableTranslationAIJobs({ ...translationRecoveryOptions(), limit: 20 })) scheduleTranslationJob(job);
+  } catch (error) {
+    console.error("Translation recovery sweep failed:", error?.message || error);
   }
 }
 
@@ -8455,27 +8630,62 @@ async function handleTranslation(req, res, scriptId) {
   let body; try { body = JSON.parse(await readBody(req, 64 * 1024)); } catch { return json(res, 400, { error: "invalid_request_body" }); }
   const targetLanguage = TRANSLATION_LANGUAGES.find((language) => language.toLowerCase() === String(body.targetLanguage || "").toLowerCase());
   if (!targetLanguage) return json(res, 422, { error: "unsupported_language", message: "Choose English, Spanish, French, Portuguese, or German." });
+  const requestId = String(body.idempotencyKey || "").trim();
+  if (requestId && !/^[A-Za-z0-9][A-Za-z0-9._:-]{7,127}$/.test(requestId)) return json(res, 422, { error: "invalid_idempotency_key", message: "Start the translation again." });
+  const translationFamilyId = script.translatedFromProjectId || script.id;
+  const sourceProjectTitle = loadScripts().scripts[translationFamilyId]?.title || script.title;
+  // The browser request id names the user action, not the mutable screenplay
+  // revision. A network retry remains the same job even if autosave updates
+  // the source while the first response is in flight.
+  const requestKey = requestId ? hashText(`${sid}:${scriptId}:${targetLanguage}:${requestId}`) : null;
+  const quotedVersion = previewTranslationVersion(translationFamilyId, targetLanguage, requestKey);
+  const quotedProjectName = translatedProjectName(sourceProjectTitle, targetLanguage, quotedVersion);
   const pageCount = script.blocks?.length ? script.blocks.filter((block) => block.type === "pagebreak").length + 1 : Math.max(1, Math.ceil(String(script.text || "").length / 3000));
   const requiredCredits = translationCreditCost(pageCount); const available = creditsSummary(script.userId);
-  if (req.method === "GET" || body.preview === true) return json(res, 200, { sourceScriptName: script.title, pageCount, targetLanguage, newProjectName: translatedProjectName(script.title, targetLanguage), requiredCredits, availableCredits: available.unlimited ? null : available.remaining, remainingCredits: available.unlimited ? null : Math.max(0, Number(available.remaining || 0) - requiredCredits), createsIndependentProject: true });
-  const sourceContentHash = hashText(JSON.stringify(script.blocks || [])); const idempotencyKey = hashText(`${scriptId}:${script.updatedAt}:${targetLanguage}:${sid}`);
+  if (req.method === "GET" || body.preview === true) return json(res, 200, { sourceScriptName: script.title, pageCount, targetLanguage, translationVersion: quotedVersion, newProjectName: quotedProjectName, requiredCredits, availableCredits: available.unlimited ? null : available.remaining, remainingCredits: available.unlimited ? null : Math.max(0, Number(available.remaining || 0) - requiredCredits), createsIndependentProject: true });
+  const sourceContentHash = hashText(JSON.stringify(script.blocks || [])); const idempotencyKey = requestKey || hashText(`${scriptId}:${script.updatedAt}:${targetLanguage}:${sid}:legacy:${quotedVersion}`);
+  const existingJob = getAIJobByIdempotencyKey(idempotencyKey, sid, true);
+  if (existingJob) {
+    scheduleTranslationJob(existingJob);
+    const translationVersion = Math.max(1, Number(existingJob.input.translationVersion) || 1);
+    return json(res, 202, { job: publicAIJob(existingJob), sourceScriptName: script.title, targetLanguage, translationVersion, pageCount, requiredCredits, availableCredits: available.unlimited ? null : available.remaining, newProjectName: translatedProjectName(existingJob.input.sourceProjectTitle || sourceProjectTitle, targetLanguage, translationVersion) });
+  }
   const reservationId = `translation:${idempotencyKey}`; const reservation = reserveTextCredits(script.userId, requiredCredits, reservationId);
   if (!reservation.allowed) return json(res, 402, { error: "insufficient_credits", message: "There are not enough FilmScript AI credits for this translation.", requiredCredits, availableCredits: reservation.available });
-  const job = createAIJob({ projectId: scriptId, requestedByUserId: sid, type: "translation", sourceScriptId: scriptId, sourceScriptVersionId: script.updatedAt, sourceContentHash, internalPrimaryModel: modelForTask("translation"), reservedCredits: requiredCredits, idempotencyKey, input: { targetLanguage, sourceLanguage: body.sourceLanguage || null, pageCount }, outputSchemaVersion: 1 });
-  // Rebind a first reservation to the durable job id. A duplicate request keeps the existing reservation and job.
-  if (!reservation.duplicate) releaseTextCredits(script.userId, reservationId);
-  if (job.status === "queued") {
-    const durableReservation = reserveTextCredits(script.userId, requiredCredits, `translation:${job.id}`);
-    if (!durableReservation.allowed) return json(res, 402, { error: "insufficient_credits" });
-    setImmediate(() => runTranslationJob(job.id, sid, script.userId));
+  renewTextCreditReservation(script.userId, reservationId, TRANSLATION_CREATION_RESERVATION_MS);
+  let creation;
+  try {
+    creation = createTranslationAIJob({ projectId: scriptId, requestedByUserId: sid, sourceScriptId: scriptId, sourceScriptVersionId: script.updatedAt, sourceContentHash, internalPrimaryModel: modelForTask("translation"), reservedCredits: requiredCredits, idempotencyKey, targetLanguage, translationFamilyId, input: { sourceLanguage: body.sourceLanguage || null, sourceProjectTitle, pageCount, requestReservationId: reservationId }, outputSchemaVersion: 1 });
+  } finally {
+    // Never leave the short create-or-get guard blocking credits when the DB
+    // transaction fails or another request wins the idempotency race.
+    releaseTextCredits(script.userId, reservationId);
   }
-  return json(res, 202, { job: publicAIJob(job), sourceScriptName: script.title, pageCount, requiredCredits, availableCredits: available.unlimited ? null : available.remaining, newProjectName: translatedProjectName(script.title, targetLanguage) });
+  const job = creation.job;
+  if (creation.created) {
+    const durableReservation = reserveTextCredits(script.userId, requiredCredits, `translation:${job.id}`);
+    if (!durableReservation.allowed) {
+      updateAIJob(job.id, { status: "failed", stage: "failed", errorCode: "insufficient_credits" });
+      return json(res, 402, { error: "insufficient_credits" });
+    }
+    renewTextCreditReservation(script.userId, `translation:${job.id}`, TRANSLATION_CREDIT_RESERVATION_MS);
+  }
+  scheduleTranslationJob(job);
+  const translationVersion = Math.max(1, Number(job.input.translationVersion) || 1);
+  return json(res, 202, { job: publicAIJob(job), sourceScriptName: script.title, targetLanguage, translationVersion, pageCount, requiredCredits, availableCredits: available.unlimited ? null : available.remaining, newProjectName: translatedProjectName(job.input.sourceProjectTitle || sourceProjectTitle, targetLanguage, translationVersion) });
 }
 
 async function handleAIJob(req, res, jobId) {
   const sid = sessionId(req, res); if (!sid) return googleRequired(res);
-  const job = getAIJob(jobId, sid, false); return job ? json(res, 200, { job }) : json(res, 404, { error: "job_not_found" });
+  const job = getAIJob(jobId, sid, true);
+  if (!job) return json(res, 404, { error: "job_not_found" });
+  scheduleTranslationJob(job);
+  return json(res, 200, { job: publicAIJob(job) });
 }
+
+setImmediate(recoverTranslationJobs);
+const translationRecoveryTimer = setInterval(recoverTranslationJobs, TRANSLATION_RECOVERY_INTERVAL_MS);
+translationRecoveryTimer.unref?.();
 
 async function handlePlatformProfile(req, res) {
   const sid = sessionId(req, res); if (!sid) return googleRequired(res);

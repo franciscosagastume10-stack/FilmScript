@@ -14,9 +14,11 @@ export function translationCreditCost(pageCount) {
   return 100 + Math.ceil((pages - 200) / 50) * 25;
 }
 
-export function translatedProjectName(title, language) {
+export function translatedProjectName(title, language, version = 1) {
   const target = TRANSLATION_LANGUAGES.includes(language) ? language : "English";
-  return `${String(title || "Untitled Screenplay").trim()} — ${target} Version`;
+  const base = `${String(title || "Untitled Screenplay").trim()} — ${target} Version`;
+  const ordinal = Math.max(1, Math.floor(Number(version) || 1));
+  return ordinal === 1 ? base : `${base} ${String(ordinal).padStart(2, "0")}`;
 }
 
 // PDF imports retain their authored page boundaries. For original web scripts

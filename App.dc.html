@@ -26,10 +26,10 @@
 <script defer src="./pdf-import.js"></script>
 <script defer src="./project-client.js?v=20260820-browser-safe1"></script>
 <script defer src="./preproduction-client.js?v=20260819-collab2"></script>
-<script defer src="./platform-client.js?v=20260821-personal-name1"></script>
+<script defer src="./platform-client.js?v=20260821-translation-flow1"></script>
 <link rel="stylesheet" href="./auth-modal.css?v=20260712-auth2">
 <link rel="stylesheet" href="./filmscript-controls.css?v=20260716-typography1">
-<link rel="stylesheet" href="./platform-ui.css?v=20260821-invitations1">
+<link rel="stylesheet" href="./platform-ui.css?v=20260821-translation-flow1">
 </head>
 <body>
 <x-dc>
@@ -208,7 +208,8 @@
   .fs-scripts-actions .fs-scripts-action::before,
   .fs-scripts-actions .fs-scripts-action::after { display: none !important; }
   .fs-scripts-actions .fs-scripts-action:hover { transform: translateY(-2px) !important; border-color: color-mix(in srgb, var(--accent, #BA7517) 58%, transparent) !important; background: color-mix(in srgb, var(--accent, #BA7517) 10%, var(--surface, #FFFEF9)) !important; box-shadow: inset 0 1px 0 rgba(255,255,255,.58), 0 12px 28px rgba(30,28,23,.11) !important; }
-  .fs-scripts-actions .fs-scripts-action--primary { background: color-mix(in srgb, var(--accent, #BA7517) 82%, var(--surface, #FFFEF9)) !important; border-color: color-mix(in srgb, var(--accent, #BA7517) 70%, var(--line, #2C2C2A)) !important; }
+  .fs-scripts-actions .fs-scripts-action--primary { background: color-mix(in srgb, var(--accent, #BA7517) 92%, #8b4f08) !important; border-color: color-mix(in srgb, var(--accent, #BA7517) 70%, var(--line, #2C2C2A)) !important; color: #fff !important; }
+  .fs-scripts-actions .fs-scripts-action--primary > * { color: #fff !important; }
   .fs-scripts-actions .fs-scripts-action:focus-visible { outline: 3px solid color-mix(in srgb, var(--accent, #BA7517) 48%, transparent); outline-offset: 4px; }
   .fs-script-card { min-height: 232px !important; padding: 19px !important; border-radius: 22px !important; background: color-mix(in srgb, var(--surface, #FFFEF9) 62%, transparent) !important; border: 1px solid color-mix(in srgb, var(--line, #2C2C2A) 18%, transparent) !important; box-shadow: inset 0 1px 0 rgba(255,255,255,.45), 0 12px 32px rgba(30,28,23,.065) !important; backdrop-filter: blur(16px) saturate(1.12); -webkit-backdrop-filter: blur(16px) saturate(1.12); transition: transform .18s cubic-bezier(.2,.8,.2,1), border-color .18s ease, box-shadow .18s ease, background-color .18s ease !important; }
   .fs-script-card::before { background: transparent !important; border: 0 !important; filter: none !important; }
@@ -216,6 +217,9 @@
   .fs-script-card:has(.fs-script-import-progress) { cursor: default !important; border-color: color-mix(in srgb, var(--accent, #BA7517) 42%, transparent) !important; background: color-mix(in srgb, var(--accent, #BA7517) 6%, var(--surface, #FFFEF9)) !important; }
   .fs-script-card:has(.fs-script-import-progress):hover { transform: none !important; }
   .fs-script-card:has(.fs-script-import-progress) .fs-script-thumb-regular { display: none !important; }
+  .fs-script-card:has(.fs-script-translation-progress) { cursor:default!important; border-color:color-mix(in srgb,var(--accent,#BA7517) 48%,transparent)!important; background:linear-gradient(145deg,color-mix(in srgb,var(--accent,#BA7517) 9%,var(--surface,#FFFEF9)),color-mix(in srgb,var(--surface,#FFFEF9) 66%,transparent))!important; }
+  .fs-script-card:has(.fs-script-translation-progress):hover { transform:none!important; }
+  .fs-script-card:has(.fs-script-translation-progress) .fs-script-thumb-regular { display:none!important; }
   .fs-script-thumb { width: 58px; height: 76px; display: grid; place-items: center; border: 1px solid color-mix(in srgb, var(--accent, #BA7517) 36%, var(--line, #2C2C2A)); border-radius: 9px 7px 10px 8px; background: linear-gradient(145deg, color-mix(in srgb, var(--surface, #FFFEF9) 84%, transparent), color-mix(in srgb, var(--accent, #BA7517) 7%, var(--bg, #F5F0E8))); box-shadow: inset 0 1px 0 rgba(255,255,255,.58), 3px 4px 0 color-mix(in srgb, var(--accent, #BA7517) 12%, transparent); transition: transform .18s cubic-bezier(.2,.8,.2,1); }
   .fs-script-card:hover .fs-script-thumb { transform: translateY(-2px) rotate(-1.5deg); }
   .fs-script-thumb svg { width: 30px; height: 38px; }
@@ -233,8 +237,25 @@
   .fs-script-import-dots i { width: 3px; height: 3px; border-radius: 50%; background: currentColor; animation: fs-import-dot .9s ease-in-out infinite; }
   .fs-script-import-dots i:nth-child(2) { animation-delay: .12s; } .fs-script-import-dots i:nth-child(3) { animation-delay: .24s; }
   @keyframes fs-import-dot { 0%,100% { transform: translateY(0); opacity: .35; } 50% { transform: translateY(-2px); opacity: 1; } }
+  .fs-script-translation-progress { margin-top:auto; padding-top:13px; }
+  .fs-script-translation-visual { position:relative; width:64px; height:70px; display:grid; place-items:center; color:var(--accent,#BA7517); }
+  .fs-script-translation-visual > span { position:absolute; inset:5px 1px 1px 5px; border:1px solid color-mix(in srgb,var(--accent,#BA7517) 34%,transparent); border-radius:50%; animation:fs-translation-orbit 3.4s linear infinite; }
+  .fs-script-translation-visual > span i { position:absolute; width:6px; height:6px; border-radius:50%; background:var(--accent,#BA7517); box-shadow:0 0 0 5px color-mix(in srgb,var(--accent,#BA7517) 10%,transparent); }
+  .fs-script-translation-visual > span i:nth-child(1) { top:-3px; left:27px; }
+  .fs-script-translation-visual > span i:nth-child(2) { right:2px; bottom:8px; width:4px; height:4px; }
+  .fs-script-translation-visual > span i:nth-child(3) { left:2px; bottom:8px; width:3px; height:3px; }
+  .fs-script-translation-visual svg { position:relative; z-index:1; width:27px; filter:drop-shadow(0 5px 8px color-mix(in srgb,var(--accent,#BA7517) 18%,transparent)); animation:fs-translation-page 1.8s ease-in-out infinite; }
+  .fs-script-translation-visual.is-failed { color:#b33b32; }
+  .fs-script-translation-visual.is-stalled { color:var(--muted,#888780); }
+  .fs-script-translation-visual.is-failed > span,.fs-script-translation-visual.is-failed svg,.fs-script-translation-visual.is-stalled > span,.fs-script-translation-visual.is-stalled svg { animation:none; }
+  .fs-script-card.is-translation-arrival { animation:fs-translation-arrive .44s cubic-bezier(.2,.85,.2,1) both!important; }
+  .fs-script-card.is-translation-shifted { animation:fs-translation-shift .34s cubic-bezier(.2,.85,.2,1) both!important; }
+  @keyframes fs-translation-orbit { to { transform:rotate(360deg); } }
+  @keyframes fs-translation-page { 50% { transform:translateY(-4px) rotate(-2deg); } }
+  @keyframes fs-translation-arrive { from { opacity:0; transform:translateX(-30px) scale(.95); } 62% { opacity:1; transform:translateX(3px) scale(1.012); } to { opacity:1; transform:none; } }
+  @keyframes fs-translation-shift { from { transform:translateX(-14px); opacity:.82; } to { transform:none; opacity:1; } }
   @media (prefers-reduced-transparency: reduce) { .fs-scripts-actions .fs-scripts-action, .fs-script-card, .fs-script-card-menu { background: var(--surface, #FFFEF9) !important; backdrop-filter: none; -webkit-backdrop-filter: none; } }
-  @media (prefers-reduced-motion: reduce) { .fs-script-import-dots i { animation: none; } .fs-scripts-actions .fs-scripts-action, .fs-script-card, .fs-script-thumb { transition: none !important; } .fs-script-card.is-new-shared { animation: none !important; } }
+  @media (prefers-reduced-motion: reduce) { .fs-script-import-dots i,.fs-script-translation-visual>span,.fs-script-translation-visual svg { animation: none; } .fs-scripts-actions .fs-scripts-action, .fs-script-card, .fs-script-thumb { transition: none !important; } .fs-script-card.is-new-shared,.fs-script-card.is-translation-arrival,.fs-script-card.is-translation-shifted { animation: none !important; } }
   @media (max-width: 700px) {
     .fs-scripts-dashboard { position: relative; isolation: isolate; padding: 30px 20px 44px !important; background-size: cover !important; background-position: center !important; background-attachment: scroll !important; }
     .fs-scripts-dashboard::before { content: ""; position: absolute; inset: 0; z-index: 0; pointer-events: none; background: color-mix(in srgb, var(--bg, #F5F0E8) 87%, transparent); }
@@ -427,7 +448,7 @@
       </div>
     </sc-if>
     <sc-for list="{{ cards }}" as="card" hint-placeholder-count="5">
-          <div onClick="{{ card.open }}" onKeyDown="{{ card.onKey }}" role="button" tabindex="0" aria-label="{{ card.openLabel }}" class="fsx-lift fs-script-card {{ card.highlightClass }}" style="position: relative; min-height: 224px; padding: 18px; cursor: pointer; border-radius: 15px; animation: fs-rise .35s ease both {{ card.delay }}; display: flex; flex-direction: column;">
+          <div onClick="{{ card.open }}" onKeyDown="{{ card.onKey }}" role="{{ card.role }}" tabindex="{{ card.tabIndex }}" aria-busy="{{ card.ariaBusy }}" aria-label="{{ card.openLabel }}" class="fsx-lift fs-script-card {{ card.highlightClass }}" style="position: relative; min-height: 224px; padding: 18px; cursor: pointer; border-radius: 15px; animation: fs-rise .35s ease both {{ card.delay }}; display: flex; flex-direction: column;">
             <sc-if value="{{ card.importing }}" hint-placeholder-val="false">
               <div class="fs-script-thumb" aria-hidden="true"><svg viewBox="0 0 30 38" fill="none"><path d="M6 2.5h12l6 6v27H6z" stroke="currentColor" stroke-width="1.2" stroke-linejoin="round"/><path d="M18 2.5v7h6" stroke="currentColor" stroke-width="1.2" stroke-linejoin="round"/><path class="fs-script-thumb-line" d="M10 16h10M10 21h8M10 26h10" stroke-width="1.3"/></svg></div>
             </sc-if>
@@ -435,6 +456,13 @@
               <div class="fs-script-import-progress" role="status" aria-live="polite">
                 <div class="fs-script-import-progress-head"><span>{{ card.importStage }}<span class="fs-script-import-dots" aria-hidden="true"><i></i><i></i><i></i></span></span><span>{{ card.importPercent }}%</span></div>
                 <div class="fs-script-import-track" aria-hidden="true"><div class="fs-script-import-fill" style="width: {{ card.importPercent }}%;"></div></div>
+              </div>
+            </sc-if>
+            <sc-if value="{{ card.translating }}" hint-placeholder-val="false">
+              <div class="fs-script-translation-visual {{ card.translationStateClass }}" aria-hidden="true"><span><i></i><i></i><i></i></span><svg viewBox="0 0 30 38" fill="none"><path d="M6 2.5h12l6 6v27H6z" stroke="currentColor" stroke-width="1.2" stroke-linejoin="round"/><path d="M18 2.5v7h6" stroke="currentColor" stroke-width="1.2" stroke-linejoin="round"/><path d="M10 16h10M10 21h8M10 26h10" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" opacity=".4"/></svg></div>
+              <div class="fs-script-translation-progress" role="status" aria-live="polite">
+                <div class="fs-script-import-progress-head"><span>{{ card.translationStage }}<span class="fs-script-import-dots" aria-hidden="true"><i></i><i></i><i></i></span></span><span>{{ card.translationPercent }}%</span></div>
+                <div class="fs-script-import-track" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="{{ card.translationPercent }}"><div class="fs-script-import-fill" style="width: {{ card.translationPercent }}%;"></div></div>
               </div>
             </sc-if>
             <div class="fs-script-thumb-regular" style="position: relative; width: 58px; flex: 0 0 58px;">
@@ -868,6 +896,7 @@ class Component extends DCLogic {
   scriptsLoaded: false,
   scriptsLoadError: '',
   importingScript: null,
+  translatingScripts: [],
   highlightedScriptId: null,
     parallaxX: 0,
     parallaxY: 0,
@@ -929,11 +958,90 @@ class Component extends DCLogic {
       if (this._sharedArrivalTimer) window.clearTimeout(this._sharedArrivalTimer);
       this._sharedArrivalTimer = window.setTimeout(() => this.setState({ highlightedScriptId: null }), 3200);
     };
+    this._translationStartedHandler = (event) => {
+      const detail = event?.detail || {}; const job = detail.job || {}; const jobId = String(job.id || '');
+      if (!jobId) return;
+      const translation = {
+        jobId,
+        sourceScriptId:String(detail.sourceScriptId || ''),
+        title:String(detail.title || detail.sourceTitle || (window.filmscriptLanguage?.get?.() === 'es' ? 'Nueva traducción' : 'New translation')),
+        targetLanguage:String(detail.targetLanguage || ''),
+        status:String(job.status || 'queued'),
+        stage:String(job.stage || 'queued'),
+        progress:Math.max(3, Number(job.progress || 3)),
+        createdAt:new Date().toISOString(),
+      };
+      this.setState((state) => ({
+        scriptsSearch:'',
+        translatingScripts:[translation, ...state.translatingScripts.filter((item) => item.jobId !== jobId)],
+      }));
+    };
+    this._translationUpdatedHandler = (event) => {
+      const detail = event?.detail || {}; const job = detail.job || {}; const jobId = String(job.id || '');
+      if (!jobId) return;
+      this.setState((state) => ({ translatingScripts:state.translatingScripts.map((item) => item.jobId === jobId ? {
+        ...item,
+        title:String(job.output?.title || detail.title || item.title),
+        status:String(job.status || item.status),
+        stage:String(job.stage || job.status || item.stage),
+        progress:Math.max(item.progress || 3, Math.min(100, Number(job.progress || item.progress || 3))),
+      } : item) }));
+    };
+    this._translationCompletedHandler = async (event) => {
+      const detail = event?.detail || {}; const job = detail.job || {}; const jobId = String(job.id || '');
+      const syncAttempt = Math.max(0, Number(detail.syncAttempt || 0));
+      if (!jobId) return;
+      const translatedId = String(job.output?.projectId || job.output?.scriptId || '');
+      this.setState((state) => ({ translatingScripts:state.translatingScripts.map((item) => item.jobId === jobId ? { ...item, title:String(job.output?.title || item.title), status:'completed', stage:'completed', progress:100 } : item) }));
+      const immediateAttempts = syncAttempt === 0 ? 6 : 1;
+      for (let attempt = 0; attempt < immediateAttempts; attempt += 1) {
+        try {
+          const result = await window.filmscriptScripts.list();
+          const scripts = result?.scripts || [];
+          const translatedVisible = !translatedId || scripts.some((item) => String(item.id) === translatedId);
+          if (!translatedVisible) {
+            if (attempt < immediateAttempts - 1) await new Promise((resolve) => window.setTimeout(resolve, 420 * (attempt + 1)));
+            continue;
+          }
+          this.setState((state) => ({
+            importedScripts:scripts,
+            translatingScripts:state.translatingScripts.filter((item) => item.jobId !== jobId),
+            highlightedScriptId:/^scr_[a-f0-9]+$/.test(translatedId) ? translatedId : state.highlightedScriptId,
+          }));
+          if (translatedId) {
+            if (this._translationSyncTimers?.has(jobId)) { window.clearTimeout(this._translationSyncTimers.get(jobId)); this._translationSyncTimers.delete(jobId); }
+            if (this._translationArrivalTimer) window.clearTimeout(this._translationArrivalTimer);
+            this._translationArrivalTimer = window.setTimeout(() => this.setState({ highlightedScriptId:null }), 3200);
+          }
+          return;
+        } catch {
+          if (attempt < immediateAttempts - 1) await new Promise((resolve) => window.setTimeout(resolve, 420 * (attempt + 1)));
+        }
+      }
+      // Keep the completed card in place until the next normal scripts sync if
+      // the translated project is briefly delayed in the list response.
+      if (!this._translationSyncTimers) this._translationSyncTimers = new Map();
+      const retryDelay = Math.min(60_000, 5000 * (2 ** Math.min(syncAttempt, 4)));
+      const timer = window.setTimeout(() => {
+        this._translationSyncTimers?.delete(jobId);
+        this._translationCompletedHandler({ detail:{ ...detail, syncAttempt:syncAttempt + 1 } });
+      }, retryDelay);
+      this._translationSyncTimers.set(jobId, timer);
+    };
+    this._translationFailedHandler = (event) => {
+      const job = event?.detail?.job || {}; const jobId = String(job.id || '');
+      if (!jobId) return;
+      this.setState((state) => ({ translatingScripts:state.translatingScripts.map((item) => item.jobId === jobId ? { ...item, status:'failed', stage:'failed' } : item) }));
+    };
     window.addEventListener('filmscript:pro-required', this._proRequiredHandler);
     window.addEventListener('filmscript:language-change', this._languageHandler);
     window.addEventListener('filmscript:profile-updated', this._profileHandler);
     window.addEventListener('filmscript:theme-change', this._themeHandler);
     window.addEventListener('filmscript:project-membership-changed', this._membershipHandler);
+    window.addEventListener('filmscript:translation-started', this._translationStartedHandler);
+    window.addEventListener('filmscript:translation-updated', this._translationUpdatedHandler);
+    window.addEventListener('filmscript:translation-completed', this._translationCompletedHandler);
+    window.addEventListener('filmscript:translation-failed', this._translationFailedHandler);
     const scriptsAccessGranted = await window.filmscriptScriptsAccess?.ready;
     if (scriptsAccessGranted === false) {
       this._clearGreetingIdentity();
@@ -971,11 +1079,18 @@ class Component extends DCLogic {
     if (this._scriptTransitionTimer) window.clearTimeout(this._scriptTransitionTimer);
     if (this._parallaxFrame) cancelAnimationFrame(this._parallaxFrame);
     if (this._sharedArrivalTimer) window.clearTimeout(this._sharedArrivalTimer);
+    if (this._translationArrivalTimer) window.clearTimeout(this._translationArrivalTimer);
+    this._translationSyncTimers?.forEach((timer) => window.clearTimeout(timer));
+    this._translationSyncTimers?.clear();
     if (this._proRequiredHandler) window.removeEventListener('filmscript:pro-required', this._proRequiredHandler);
     if (this._languageHandler) window.removeEventListener('filmscript:language-change', this._languageHandler);
     if (this._profileHandler) window.removeEventListener('filmscript:profile-updated', this._profileHandler);
     if (this._themeHandler) window.removeEventListener('filmscript:theme-change', this._themeHandler);
     if (this._membershipHandler) window.removeEventListener('filmscript:project-membership-changed', this._membershipHandler);
+    if (this._translationStartedHandler) window.removeEventListener('filmscript:translation-started', this._translationStartedHandler);
+    if (this._translationUpdatedHandler) window.removeEventListener('filmscript:translation-updated', this._translationUpdatedHandler);
+    if (this._translationCompletedHandler) window.removeEventListener('filmscript:translation-completed', this._translationCompletedHandler);
+    if (this._translationFailedHandler) window.removeEventListener('filmscript:translation-failed', this._translationFailedHandler);
     this._flushChatSave();
   }
 
@@ -2120,7 +2235,34 @@ Write Lumiere's next reply only:`;
       openLabel: `Importing ${this.state.importingScript.title}`,
       open: () => {},
     }] : [];
+    const translationStageLabels = scriptsSpanish ? {
+      queued:'Preparando traducción', validating:'Leyendo el guion', translating:'Traduciendo con Lumiere', saving:'Finalizando el nuevo guion', completed:'Traducción lista', failed:'No se pudo traducir', stalled:'Continúa en segundo plano; te avisaremos',
+    } : {
+      queued:'Preparing translation', validating:'Reading the screenplay', translating:'Translating with Lumiere', saving:'Finalizing the new screenplay', completed:'Translation ready', failed:'Translation could not finish', stalled:'Still running in the background; we will notify you',
+    };
+    const translatingCards = this.state.translatingScripts.map((translation) => {
+      const progress = Math.max(3, Math.min(100, Number(translation.progress || 3)));
+      const stageLabel = translationStageLabels[translation.stage] || translationStageLabels[translation.status] || translationStageLabels.queued;
+      const failed = translation.status === 'failed';
+      const stalled = translation.stage === 'stalled';
+      return {
+        id:`translation:${translation.jobId}`,
+        title:translation.title,
+        meta:failed ? (scriptsSpanish ? 'Tu guion original no cambió' : 'Your original screenplay is unchanged') : `${stageLabel} · ${translation.targetLanguage}`,
+        translating:true,
+        translationFailed:failed,
+        translationStalled:stalled,
+        translationStateClass:failed ? 'is-failed' : stalled ? 'is-stalled' : '',
+        translationStage:stageLabel,
+        translationPercent:progress,
+        hasMenu:false,
+        canDelete:false,
+        openLabel:failed ? stageLabel : `${stageLabel}. ${progress}%`,
+        open:() => {},
+      };
+    });
     const cardData = [
+      ...translatingCards,
       ...importingCard,
       ...orderedImportedScripts.map((s) => {
         const role = String(s.access?.projectRole || 'owner');
@@ -2158,8 +2300,11 @@ Write Lumiere's next reply only:`;
         thumbPath: this._roughPath(62, 84, 1.5, (i + 1) * 8123 + 17, 8),
         delay: (0.14 + i * 0.06).toFixed(2) + 's',
         open,
-        highlightClass: this.state.highlightedScriptId === c.id ? 'is-new-shared' : '',
-        openLabel: scriptsSpanish ? `Abrir ${c.title}${c.sharedAccess ? `. ${c.roleLabel}. ${c.ownerLabel}` : ' en el editor de guion'}` : `Open ${c.title}${c.sharedAccess ? `. ${c.roleLabel}. ${c.ownerLabel}` : ' in the screenplay editor'}`,
+        role:c.translating ? 'status' : 'button',
+        tabIndex:c.translating ? '-1' : '0',
+        ariaBusy:c.translating && !c.translationFailed && !c.translationStalled ? 'true' : 'false',
+        highlightClass: [this.state.highlightedScriptId === c.id ? 'is-new-shared' : '', c.translating ? 'is-translation-arrival' : '', this.state.translatingScripts.length && !c.translating ? 'is-translation-shifted' : ''].filter(Boolean).join(' '),
+        openLabel:c.openLabel || (scriptsSpanish ? `Abrir ${c.title}${c.sharedAccess ? `. ${c.roleLabel}. ${c.ownerLabel}` : ' en el editor de guion'}` : `Open ${c.title}${c.sharedAccess ? `. ${c.roleLabel}. ${c.ownerLabel}` : ' in the screenplay editor'}`),
         onKey: (event) => {
           if (event.key !== 'Enter' && event.key !== ' ') return;
           event.preventDefault();

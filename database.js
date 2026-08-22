@@ -91,6 +91,13 @@ sqlite.exec(`
     chat_json TEXT NOT NULL DEFAULT '[]',
     title_room_json TEXT NOT NULL DEFAULT '{}',
     character_names_json TEXT NOT NULL DEFAULT '{}',
+    translated_from_project_id TEXT REFERENCES scripts(id) ON DELETE SET NULL,
+    translated_from_script_id TEXT REFERENCES scripts(id) ON DELETE SET NULL,
+    source_language TEXT,
+    target_language TEXT,
+    translation_version INTEGER,
+    translation_job_id TEXT,
+    translated_at TEXT,
     created_at TEXT NOT NULL,
     updated_at TEXT NOT NULL
   );
@@ -206,6 +213,17 @@ if (!scriptColumns.has("title_room_json")) {
 }
 if (!scriptColumns.has("character_names_json")) {
   sqlite.exec("ALTER TABLE scripts ADD COLUMN character_names_json TEXT NOT NULL DEFAULT '{}'");
+}
+for (const [column, definition] of [
+  ["translated_from_project_id", "TEXT REFERENCES scripts(id) ON DELETE SET NULL"],
+  ["translated_from_script_id", "TEXT REFERENCES scripts(id) ON DELETE SET NULL"],
+  ["source_language", "TEXT"],
+  ["target_language", "TEXT"],
+  ["translation_version", "INTEGER"],
+  ["translation_job_id", "TEXT"],
+  ["translated_at", "TEXT"],
+]) {
+  if (!scriptColumns.has(column)) sqlite.exec(`ALTER TABLE scripts ADD COLUMN ${column} ${definition}`);
 }
 const userColumns = new Set(sqlite.prepare("PRAGMA table_info(users)").all().map((column) => column.name));
 if (!userColumns.has("lumiere_preferences_json")) {
@@ -465,7 +483,10 @@ function claimLegacyLocalDataForSingleGoogleUser() {
 }
 
 claimLegacyLocalDataForSingleGoogleUser();
-sqlite.prepare("INSERT OR REPLACE INTO schema_meta (key, value) VALUES ('schema_version', '9')").run();
+const storedSchemaVersion = Number(sqlite.prepare("SELECT value FROM schema_meta WHERE key = 'schema_version'").get()?.value || 0);
+if (!Number.isFinite(storedSchemaVersion) || storedSchemaVersion < 9) {
+  sqlite.prepare("INSERT OR REPLACE INTO schema_meta (key, value) VALUES ('schema_version', '9')").run();
+}
 
 function rowToUser(row) {
   if (!row) return null;
@@ -588,7 +609,7 @@ function saveBillingSnapshot(snapshot) {
 }
 
 function rowToScript(row) {
-  return {
+  const script = {
     id: row.id,
     userId: row.user_id,
     title: row.title,
@@ -602,6 +623,19 @@ function rowToScript(row) {
     createdAt: row.created_at,
     updatedAt: row.updated_at,
   };
+  if (row.translated_from_project_id) {
+    Object.assign(script, {
+      translatedFromProjectId: row.translated_from_project_id,
+      translatedFromScriptId: row.translated_from_script_id || row.translated_from_project_id,
+      sourceLanguage: row.source_language || null,
+      targetLanguage: row.target_language || null,
+      translationVersion: Math.max(1, Number(row.translation_version) || 1),
+      translationJobId: row.translation_job_id || null,
+      translatedAt: row.translated_at || null,
+      translationRelationship: { mode: "independent", synchronization: "none" },
+    });
+  }
+  return script;
 }
 
 function loadScriptsSnapshot() {
@@ -613,6 +647,39 @@ function loadScriptsSnapshot() {
   };
 }
 
+function upsertScriptRow(script) {
+  sqlite.prepare(`
+    INSERT INTO scripts
+      (id, user_id, title, filename, source, text, blocks_json, chat_json, title_room_json, character_names_json,
+       translated_from_project_id, translated_from_script_id, source_language, target_language, translation_version, translation_job_id, translated_at,
+       created_at, updated_at)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    ON CONFLICT(id) DO UPDATE SET user_id=excluded.user_id, title=excluded.title,
+      filename=excluded.filename, source=excluded.source, text=excluded.text,
+      blocks_json=excluded.blocks_json, chat_json=excluded.chat_json,
+      title_room_json=excluded.title_room_json, character_names_json=excluded.character_names_json,
+      translated_from_project_id=excluded.translated_from_project_id,
+      translated_from_script_id=excluded.translated_from_script_id,
+      source_language=excluded.source_language, target_language=excluded.target_language,
+      translation_version=excluded.translation_version, translation_job_id=excluded.translation_job_id,
+      translated_at=excluded.translated_at,
+      updated_at=excluded.updated_at
+  `).run(script.id, script.userId, script.title || "Untitled Screenplay", script.filename || null,
+    script.source || null, script.text || "", stringify(script.blocks || []), stringify(script.chat || []), stringify(script.titleRoom || {}), stringify(script.characterNames || {}),
+    script.translatedFromProjectId || null, script.translatedFromScriptId || null, script.sourceLanguage || null, script.targetLanguage || null,
+    script.translationVersion == null ? null : Math.max(1, Number(script.translationVersion) || 1), script.translationJobId || null, script.translatedAt || null,
+    script.createdAt || nowIso(), script.updatedAt || nowIso());
+}
+
+function saveScriptRecord(script) {
+  if (!script?.id || !script.userId) throw new Error("A script id and owner are required");
+  sqlite.transaction(() => {
+    ensureUserRow(script.userId, {});
+    upsertScriptRow(script);
+  })();
+  return rowToScript(sqlite.prepare("SELECT * FROM scripts WHERE id = ?").get(script.id));
+}
+
 function saveScriptsSnapshot(snapshot) {
   sqlite.transaction(() => {
     const incoming = new Set();
@@ -620,18 +687,7 @@ function saveScriptsSnapshot(snapshot) {
       if (!script?.id || !script.userId) continue;
       incoming.add(script.id);
       ensureUserRow(script.userId, {});
-      sqlite.prepare(`
-        INSERT INTO scripts
-          (id, user_id, title, filename, source, text, blocks_json, chat_json, title_room_json, character_names_json, created_at, updated_at)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-        ON CONFLICT(id) DO UPDATE SET user_id=excluded.user_id, title=excluded.title,
-          filename=excluded.filename, source=excluded.source, text=excluded.text,
-          blocks_json=excluded.blocks_json, chat_json=excluded.chat_json,
-          title_room_json=excluded.title_room_json, character_names_json=excluded.character_names_json,
-          updated_at=excluded.updated_at
-      `).run(script.id, script.userId, script.title || "Untitled Screenplay", script.filename || null,
-        script.source || null, script.text || "", stringify(script.blocks || []), stringify(script.chat || []), stringify(script.titleRoom || {}), stringify(script.characterNames || {}),
-        script.createdAt || nowIso(), script.updatedAt || nowIso());
+      upsertScriptRow(script);
     }
     for (const { id } of sqlite.prepare("SELECT id FROM scripts").all()) {
       if (!incoming.has(id)) sqlite.prepare("DELETE FROM scripts WHERE id = ?").run(id);
@@ -1244,6 +1300,7 @@ export {
   saveCreditsSnapshot,
   saveLumiereCreditsSnapshot,
   savePreproductionSnapshot,
+  saveScriptRecord,
   saveScriptsSnapshot,
   rotateSessionToken,
   updateUserLumierePreferences,

@@ -44,7 +44,7 @@ test("translation packets preserve screenplay block metadata, entities, notes, a
   assert.equal(result[1].text, "NILA");
 });
 
-test("translation prepares protected entities and keeps a distinct durable job for each target language", () => {
+test("translation keeps idempotent durable jobs, recovery, and one version family per target language", () => {
   const dataDir = fs.mkdtempSync(path.join(os.tmpdir(), "filmscript-translation-phase7-"));
   const source = `
     import { connectGoogleIdentity, createSession, saveScriptsSnapshot } from "./database.js";
@@ -58,17 +58,13 @@ test("translation prepares protected entities and keeps a distinct durable job f
       { id: "blk_3", type: "character", text: "NILA" },
       { id: "blk_4", type: "dialogue", text: "Meet me at ACME." },
     ] } } });
-    const server = await import("./server.js");
-    const args = { type: "translation", projectId, requesterId: owner.id, sourceScriptVersionId: now, sourceContentHash: "translation-source", reservedCredits: 0 };
-    const spanish = server.__aiInfrastructureTesting.createDurableAIJob({ ...args, input: { targetLanguage: "Spanish" } });
-    const spanishRepeat = server.__aiInfrastructureTesting.createDurableAIJob({ ...args, input: { targetLanguage: "Spanish" } });
-    const french = server.__aiInfrastructureTesting.createDurableAIJob({ ...args, input: { targetLanguage: "French" } });
-    const entities = server.__translationTesting.translationEntityMap({ blocks: [
-      { id: "blk_1", type: "scene", text: "INT. CASA DE NILA - NIGHT" },
-      { id: "blk_2", type: "action", text: "NILA parks an ACME truck outside." },
-      { id: "blk_3", type: "character", text: "NILA" },
-    ] });
-    console.log(JSON.stringify({ spanish, spanishRepeat, french, entities }));
+    const platform = await import("./platform-database.js");
+    const args = { projectId, requestedByUserId: owner.id, sourceScriptId: projectId, sourceScriptVersionId: now, sourceContentHash: "translation-source", internalPrimaryModel: "test-model", reservedCredits: 0, translationFamilyId: projectId, input: { sourceProjectTitle: "Nila's Test" }, outputSchemaVersion: 1 };
+    const spanish = platform.createTranslationAIJob({ ...args, targetLanguage: "Spanish", idempotencyKey: "phase7-spanish-request" });
+    const spanishRepeat = platform.createTranslationAIJob({ ...args, targetLanguage: "Spanish", idempotencyKey: "phase7-spanish-request" });
+    const french = platform.createTranslationAIJob({ ...args, targetLanguage: "French", idempotencyKey: "phase7-french-request" });
+    const recoverable = platform.listRecoverableTranslationAIJobs().map((job) => job.id);
+    console.log(JSON.stringify({ spanish, spanishRepeat, french, recoverable }));
   `;
   try {
     const result = spawnSync(process.execPath, ["--input-type=module", "--eval", source], {
@@ -83,10 +79,12 @@ test("translation prepares protected entities and keeps a distinct durable job f
     assert.equal(output.spanish.job.id, output.spanishRepeat.job.id);
     assert.equal(output.french.created, true);
     assert.notEqual(output.spanish.job.id, output.french.job.id);
-    const names = Object.values(output.entities).map((entry) => entry.name);
-    assert.ok(names.includes("NILA"));
-    assert.ok(names.includes("ACME"));
-    assert.ok(!names.includes("CASA"));
+    assert.equal(output.spanish.job.input.targetLanguage, "Spanish");
+    assert.equal(output.french.job.input.targetLanguage, "French");
+    assert.equal(output.spanish.job.input.translationVersion, 1);
+    assert.equal(output.french.job.input.translationVersion, 1);
+    assert.ok(output.recoverable.includes(output.spanish.job.id));
+    assert.ok(output.recoverable.includes(output.french.job.id));
   } finally {
     fs.rmSync(dataDir, { recursive: true, force: true });
   }
@@ -95,13 +93,15 @@ test("translation prepares protected entities and keeps a distinct durable job f
 test("the translation flow confirms price before work and keeps source access, reservations, fallback, and independent-project safeguards", async () => {
   const client = read("platform-client.js");
   const server = read("server.js");
+  const platformDatabase = read("platform-database.js");
   const router = read("ai-router.js");
   assert.match(client, /Confirm translation —/);
   assert.match(client, /Remaining after translation/);
   assert.match(client, /Future edits will not sync/);
   assert.match(server, /canUseLumiereAction\(access, "translation"\)/);
   assert.match(server, /reservedCredits: requiredCredits/);
-  assert.match(server, /targetLanguage: input\.targetLanguage/);
+  assert.match(platformDatabase, /targetLanguage: input\.targetLanguage/);
+  assert.match(platformDatabase, /translation_family_id,target_language,translation_version/);
   assert.match(server, /translationRelationship: \{ mode: "independent", synchronization: "none" \}/);
   assert.match(server, /backfillOwners\(\)/);
   assert.match(server, /requestLumiereForTask\("translation"/);

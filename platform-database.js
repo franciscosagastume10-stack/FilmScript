@@ -155,13 +155,15 @@ export function runPlatformMigrations() {
     [16, "016_release_notice.sql"],
     [17, "017_user_interface_language.sql"],
     [18, "018_account_person_name.sql"],
+    [19, "019_translation_lineage.sql"],
   ];
   for (const [version, filename] of migrations) {
     if (current >= version
       && (version !== 10 || hasColumn("users", "theme"))
       && (version !== 11 || hasColumn("project_memberships", "department_ids_json"))
       && (version !== 17 || hasColumn("users", "interface_language"))
-      && (version !== 18 || (hasColumn("users", "first_name") && hasColumn("users", "last_name")))) continue;
+      && (version !== 18 || (hasColumn("users", "first_name") && hasColumn("users", "last_name")))
+      && (version !== 19 || (hasColumn("scripts", "translation_job_id") && hasColumn("notifications", "deduplication_key") && hasColumn("ai_jobs", "translation_version")))) continue;
     const sql = fs.readFileSync(path.join(ROOT, "migrations", filename), "utf8");
     const statements = sql.split(/;\s*(?:\n|$)/).map((statement) => statement.trim()).filter(Boolean);
     db.transaction(() => {
@@ -623,6 +625,11 @@ export function createNotification(input) {
   if (!input.userId) return null;
   const timestamp = nowIso();
   const metadata = input.metadata && typeof input.metadata === "object" && !Array.isArray(input.metadata) ? input.metadata : {};
+  const deduplicationKey = input.deduplicationKey ? String(input.deduplicationKey).trim().slice(0, 180) : null;
+  if (deduplicationKey) {
+    const existing = db.prepare("SELECT id FROM notifications WHERE user_id=? AND deduplication_key=?").get(input.userId, deduplicationKey);
+    if (existing) return existing.id;
+  }
   if (input.aggregationKey) {
     const existing = db.prepare("SELECT id FROM notifications WHERE user_id=? AND aggregation_key=? AND read_at IS NULL AND updated_at > ?").get(input.userId, input.aggregationKey, new Date(Date.now() - 10 * 60_000).toISOString());
     if (existing) {
@@ -631,8 +638,15 @@ export function createNotification(input) {
     }
   }
   const notificationId = id("not");
-  db.prepare(`INSERT INTO notifications (id,user_id,project_id,type,title,message,actor_user_id,deep_link,contains_financial_data,financial_department_id,aggregation_key,metadata_json,created_at,updated_at)
-    VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)`).run(notificationId, input.userId, input.projectId || null, input.type, input.title, input.message, input.actorUserId || null, input.deepLink || null, input.containsFinancialData ? 1 : 0, input.financialDepartmentId || null, input.aggregationKey || null, JSON.stringify(metadata), timestamp, timestamp);
+  try {
+    db.prepare(`INSERT INTO notifications (id,user_id,project_id,type,title,message,actor_user_id,deep_link,contains_financial_data,financial_department_id,aggregation_key,metadata_json,deduplication_key,created_at,updated_at)
+      VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`).run(notificationId, input.userId, input.projectId || null, input.type, input.title, input.message, input.actorUserId || null, input.deepLink || null, input.containsFinancialData ? 1 : 0, input.financialDepartmentId || null, input.aggregationKey || null, JSON.stringify(metadata), deduplicationKey, timestamp, timestamp);
+  } catch (error) {
+    if (deduplicationKey && error?.code === "SQLITE_CONSTRAINT_UNIQUE") {
+      return db.prepare("SELECT id FROM notifications WHERE user_id=? AND deduplication_key=?").get(input.userId, deduplicationKey)?.id || null;
+    }
+    throw error;
+  }
   return notificationId;
 }
 
@@ -655,7 +669,7 @@ export function listNotifications(userId, { limit = 40 } = {}) {
         ownerName: matched.ownerName,
       };
     }
-    return { id: row.id, projectId: row.project_id, type: row.type, title: row.title, message: row.message, actor: row.actor_user_id ? { id: row.actor_user_id, name: row.actor_name, ...avatarPresentationFromRow(row, { userIdKey: "actor_user_id" }) } : null, deepLink: row.deep_link, read: !!row.read_at, invitation, createdAt: row.created_at, updatedAt: row.updated_at };
+    return { id: row.id, projectId: row.project_id, type: row.type, title: row.title, message: row.message, metadata, actor: row.actor_user_id ? { id: row.actor_user_id, name: row.actor_name, ...avatarPresentationFromRow(row, { userIdKey: "actor_user_id" }) } : null, deepLink: row.deep_link, read: !!row.read_at, invitation, createdAt: row.created_at, updatedAt: row.updated_at };
   });
 }
 
@@ -771,9 +785,103 @@ export function createAIJob(input) {
   return getAIJob(jobId, input.requestedByUserId, true);
 }
 
+function nextTranslationVersion(sourceProjectId, targetLanguage) {
+  const stored = db.prepare(`SELECT MAX(translation_version) AS version FROM scripts
+    WHERE translated_from_project_id=? AND lower(target_language)=lower(?)`).get(sourceProjectId, targetLanguage)?.version;
+  const reserved = db.prepare(`SELECT MAX(translation_version) AS version
+    FROM ai_jobs
+    WHERE type='translation'
+      AND translation_family_id=?
+      AND lower(target_language)=lower(?)
+      AND status NOT IN ('failed','cancelled')`).get(sourceProjectId, targetLanguage)?.version;
+  return Math.max(0, Number(stored) || 0, Number(reserved) || 0) + 1;
+}
+
+export function previewTranslationVersion(sourceProjectId, targetLanguage, idempotencyKey = null) {
+  if (idempotencyKey) {
+    const existing = db.prepare("SELECT input_json FROM ai_jobs WHERE idempotency_key=? AND type='translation'").get(idempotencyKey);
+    if (existing) return Math.max(1, Number(jsonParse(existing.input_json, {}).translationVersion) || 1);
+  }
+  return nextTranslationVersion(sourceProjectId, targetLanguage);
+}
+
+export function createTranslationAIJob(input) {
+  const create = db.transaction(() => {
+    const existing = db.prepare("SELECT * FROM ai_jobs WHERE idempotency_key=?").get(input.idempotencyKey);
+    if (existing) return { job: rowToJob(existing, true), created: false };
+    const translationVersion = nextTranslationVersion(input.translationFamilyId || input.sourceScriptId, input.targetLanguage);
+    const jobId = id("job"); const timestamp = nowIso();
+    const jobInput = {
+      ...(input.input || {}),
+      targetLanguage: input.targetLanguage,
+      translationFamilyId: input.translationFamilyId || input.sourceScriptId,
+      translationVersion,
+    };
+    db.prepare(`INSERT INTO ai_jobs (id,project_id,requested_by_user_id,type,status,progress,stage,source_script_id,source_script_version_id,source_content_hash,internal_primary_model,reserved_credits,idempotency_key,input_json,output_schema_version,translation_family_id,target_language,translation_version,created_at,updated_at)
+      VALUES (?,?,?,'translation','queued',0,'queued',?,?,?,?,?,?,?,?,?,?,?,?,?)`).run(jobId, input.projectId, input.requestedByUserId, input.sourceScriptId, input.sourceScriptVersionId, input.sourceContentHash, input.internalPrimaryModel, Number(input.reservedCredits)||0, input.idempotencyKey, JSON.stringify(jobInput), Number(input.outputSchemaVersion)||1, jobInput.translationFamilyId, jobInput.targetLanguage, translationVersion, timestamp, timestamp);
+    return { job: getAIJob(jobId, input.requestedByUserId, true), created: true };
+  });
+  return create.immediate();
+}
+
+export function claimQueuedAIJob(jobId) {
+  const timestamp = nowIso();
+  const claimed = db.prepare(`UPDATE ai_jobs SET status='processing',stage='validating',progress=5,
+    started_at=COALESCE(started_at,?),updated_at=? WHERE id=? AND status='queued'`).run(timestamp, timestamp, jobId);
+  return claimed.changes === 1 ? rowToJob(db.prepare("SELECT * FROM ai_jobs WHERE id=?").get(jobId), true) : null;
+}
+
+export function claimRecoverableTranslationAIJob(jobId, {
+  processingStaleBefore = new Date(Date.now() - 20 * 60_000).toISOString(),
+  savingStaleBefore = new Date(Date.now() - 60_000).toISOString(),
+} = {}) {
+  const timestamp = nowIso();
+  const claimed = db.prepare(`UPDATE ai_jobs
+    SET status='processing',stage='validating',progress=CASE WHEN progress > 5 THEN progress ELSE 5 END,
+        error_code=NULL,started_at=COALESCE(started_at,?),updated_at=?
+    WHERE id=? AND type='translation' AND (
+      status='queued'
+      OR (status='processing' AND updated_at <= ?)
+      OR (status='saving' AND updated_at <= ?)
+    )`).run(timestamp, timestamp, jobId, processingStaleBefore, savingStaleBefore);
+  return claimed.changes === 1 ? rowToJob(db.prepare("SELECT * FROM ai_jobs WHERE id=?").get(jobId), true) : null;
+}
+
+export function listRecoverableTranslationAIJobs({
+  processingStaleBefore = new Date(Date.now() - 20 * 60_000).toISOString(),
+  savingStaleBefore = new Date(Date.now() - 60_000).toISOString(),
+  limit = 20,
+} = {}) {
+  return db.prepare(`SELECT * FROM ai_jobs
+    WHERE type='translation' AND (
+      status='queued'
+      OR (status='processing' AND updated_at <= ?)
+      OR (status='saving' AND updated_at <= ?)
+    )
+    ORDER BY CASE status WHEN 'saving' THEN 0 WHEN 'queued' THEN 1 ELSE 2 END, updated_at ASC
+    LIMIT ?`).all(processingStaleBefore, savingStaleBefore, Math.min(100, Math.max(1, Number(limit) || 20)))
+    .map((row) => rowToJob(row, true));
+}
+
+export function inheritTranslationProjectAccess(sourceProjectId, translatedProjectId, requesterUserId, billingOwnerId) {
+  if (!requesterUserId || requesterUserId === billingOwnerId) return false;
+  const source = db.prepare("SELECT * FROM project_memberships WHERE project_id=? AND user_id=? AND status='active'").get(sourceProjectId, requesterUserId);
+  if (!source) return false;
+  const timestamp = nowIso();
+  db.prepare(`INSERT OR IGNORE INTO project_memberships
+    (id,project_id,user_id,project_role,cinematic_role,module_permissions_json,financial_permissions_json,financial_department_ids_json,department_ids_json,status,invited_by_user_id,version,created_at,updated_at)
+    VALUES (?,?,?,?,?,?,?,?,?,'active',?,1,?,?)`)
+    .run(id("mem"), translatedProjectId, requesterUserId, source.project_role, source.cinematic_role, source.module_permissions_json, source.financial_permissions_json, source.financial_department_ids_json, source.department_ids_json, billingOwnerId, timestamp, timestamp);
+  return true;
+}
+
 function rowToJob(row, internal = false) {
   if (!row) return null;
-  const job = { id: row.id, projectId: row.project_id, requestedByUserId: row.requested_by_user_id, type: row.type, status: row.status, progress: row.progress, stage: row.stage, sourceScriptId: row.source_script_id, sourceScriptVersionId: row.source_script_version_id, sourceContentHash: row.source_content_hash, reservedCredits: row.reserved_credits, settledCredits: row.settled_credits, input: jsonParse(row.input_json, {}), output: jsonParse(row.output_json, null), outputSchemaVersion: row.output_schema_version, errorCode: row.error_code, createdAt: row.created_at, startedAt: row.started_at, completedAt: row.completed_at, updatedAt: row.updated_at };
+  const input = jsonParse(row.input_json, {});
+  if (row.translation_family_id && !input.translationFamilyId) input.translationFamilyId = row.translation_family_id;
+  if (row.target_language && !input.targetLanguage) input.targetLanguage = row.target_language;
+  if (row.translation_version != null && input.translationVersion == null) input.translationVersion = row.translation_version;
+  const job = { id: row.id, projectId: row.project_id, requestedByUserId: row.requested_by_user_id, type: row.type, status: row.status, progress: row.progress, stage: row.stage, sourceScriptId: row.source_script_id, sourceScriptVersionId: row.source_script_version_id, sourceContentHash: row.source_content_hash, reservedCredits: row.reserved_credits, settledCredits: row.settled_credits, input, output: jsonParse(row.output_json, null), outputSchemaVersion: row.output_schema_version, errorCode: row.error_code, createdAt: row.created_at, startedAt: row.started_at, completedAt: row.completed_at, updatedAt: row.updated_at };
   if (internal) Object.assign(job, { internalPrimaryModel: row.internal_primary_model, internalCompletedModel: row.internal_completed_model, usedFallback: !!row.used_fallback });
   return job;
 }
@@ -786,12 +894,18 @@ export function getAIJob(jobId, userId, internal = false) {
   return rowToJob(row, internal);
 }
 
+export function getAIJobByIdempotencyKey(idempotencyKey, userId, internal = false) {
+  if (!idempotencyKey || !userId) return null;
+  const row = db.prepare("SELECT * FROM ai_jobs WHERE idempotency_key=? AND requested_by_user_id=?").get(idempotencyKey, userId);
+  return rowToJob(row, internal);
+}
+
 export function updateAIJob(jobId, patch = {}) {
   const current = db.prepare("SELECT * FROM ai_jobs WHERE id=?").get(jobId);
   if (!current) return null;
   const status = patch.status || current.status; const timestamp = nowIso();
   db.prepare(`UPDATE ai_jobs SET status=?,progress=?,stage=?,internal_completed_model=?,used_fallback=?,settled_credits=?,output_json=?,error_code=?,started_at=?,completed_at=?,updated_at=? WHERE id=?`)
-    .run(status, Math.max(0, Math.min(100, Number(patch.progress ?? current.progress))), patch.stage || current.stage, patch.internalCompletedModel ?? current.internal_completed_model, patch.usedFallback === undefined ? current.used_fallback : patch.usedFallback ? 1 : 0, Number(patch.settledCredits ?? current.settled_credits), patch.output === undefined ? current.output_json : JSON.stringify(patch.output), patch.errorCode ?? current.error_code, patch.startedAt ?? current.started_at ?? (status === "processing" ? timestamp : null), patch.completedAt ?? current.completed_at ?? (["completed","failed","cancelled"].includes(status) ? timestamp : null), timestamp, jobId);
+    .run(status, Math.max(0, Math.min(100, Number(patch.progress ?? current.progress))), patch.stage || current.stage, patch.internalCompletedModel ?? current.internal_completed_model, patch.usedFallback === undefined ? current.used_fallback : patch.usedFallback ? 1 : 0, Number(patch.settledCredits ?? current.settled_credits), patch.output === undefined ? current.output_json : JSON.stringify(patch.output), patch.errorCode === undefined ? current.error_code : patch.errorCode, patch.startedAt ?? current.started_at ?? (status === "processing" ? timestamp : null), patch.completedAt ?? current.completed_at ?? (["completed","failed","cancelled"].includes(status) ? timestamp : null), timestamp, jobId);
   return rowToJob(db.prepare("SELECT * FROM ai_jobs WHERE id=?").get(jobId), true);
 }
 
