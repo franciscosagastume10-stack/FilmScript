@@ -41,7 +41,7 @@
       "destination": "https://api.filmscript.app/api/:path*"
     },
     {
-      "source": "/api/:path((?!auth-complete|scripts-proxy|access-proxy).*)",
+      "source": "/api/:path((?!auth-complete|scripts-proxy|access-proxy|supabase(?:/|$)).*)",
       "destination": "https://api.filmscript.app/api/:path*"
     },
     {

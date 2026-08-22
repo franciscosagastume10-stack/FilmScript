@@ -1,0 +1,2 @@
+-- Production data is imported by the audited SQLite/S3 ETL pipeline.
+-- Keep local resets empty by default so tests never resemble production data.

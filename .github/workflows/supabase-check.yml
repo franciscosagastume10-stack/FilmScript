@@ -1,0 +1,42 @@
+name: Supabase migration checks
+
+on:
+  pull_request:
+    paths:
+      - "supabase/**"
+      - "scripts/supabase-migration/**"
+      - "tests/supabase-*.test.mjs"
+      - ".github/workflows/supabase-*.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  database:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+      - name: Install application dependencies
+        run: npm ci
+      - uses: supabase/setup-cli@v1
+        with:
+          version: 2.115.0
+      - name: Start local Supabase
+        run: supabase start -x studio,imgproxy,edge-runtime,logflare,vector
+      - name: Rebuild database from migrations
+        run: supabase db reset
+      - name: Lint database
+        run: supabase db lint --local --level warning --fail-on warning
+      - name: Run migration contracts
+        run: ./scripts/run-node.sh --test tests/supabase-*.test.mjs
+        env:
+          FILMSCRIPT_TEST_POSTGRES_URL: postgresql://postgres:postgres@127.0.0.1:54322/postgres
+      - name: Stop local Supabase
+        if: always()
+        run: supabase stop --no-backup

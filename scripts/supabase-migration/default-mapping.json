@@ -1,0 +1,79 @@
+{
+  "format": "filmscript-sqlite-postgres-mapping",
+  "version": 1,
+  "storageBucket": "filmscript-private",
+  "tables": {
+    "schema_meta": { "action": "skip", "reason": "Recorded in the export and migration control metadata, not copied as application rows." },
+    "sessions": { "action": "skip", "reason": "Legacy sessions are invalidated when Supabase Auth becomes authoritative." },
+    "oauth_states": { "action": "skip", "reason": "Short-lived legacy OAuth state must never be migrated." },
+    "auth_handoffs": { "action": "skip", "reason": "Short-lived legacy auth handoffs must never be migrated." },
+
+    "users": {
+      "target": "public.profiles",
+      "order": 10,
+      "columnRenames": { "lumiere_preferences_json": "lumiere_preferences", "avatar_crop_json": "avatar_crop" },
+      "booleanColumns": ["email_verified"],
+      "dateColumns": ["birth_date"]
+    },
+    "scripts": { "target": "public.scripts", "order": 20 },
+    "preproduction_projects": { "target": "public.preproduction_projects", "order": 30 },
+    "canvas_workspaces": { "target": "public.canvas_workspaces", "order": 31 },
+    "canvas_libraries": { "target": "public.canvas_libraries", "order": 32 },
+    "location_plans": { "target": "public.location_plans", "order": 33 },
+
+    "project_memberships": { "target": "public.project_memberships", "order": 40 },
+    "project_invitations": { "target": "private.project_invitations", "order": 41 },
+    "project_guest_sessions": { "target": "private.project_guest_sessions", "order": 42 },
+    "shared_projects": { "target": "private.shared_projects", "order": 43 },
+    "project_states": { "target": "public.project_states", "order": 44 },
+
+    "activity_events": {
+      "target": "public.activity_events",
+      "order": 50,
+      "booleanColumns": ["contains_financial_data"]
+    },
+    "notifications": {
+      "target": "public.notifications",
+      "order": 51,
+      "booleanColumns": ["contains_financial_data"]
+    },
+    "project_comments": { "target": "public.project_comments", "order": 52 },
+    "comment_mentions": { "target": "public.comment_mentions", "order": 53 },
+    "project_messages": { "target": "public.project_messages", "order": 54 },
+    "release_notice_acknowledgements": { "target": "public.release_notice_acknowledgements", "order": 55 },
+
+    "ai_jobs": {
+      "target": "public.ai_jobs",
+      "order": 60,
+      "booleanColumns": ["used_fallback"]
+    },
+    "ai_job_attempts": {
+      "target": "private.ai_job_attempts",
+      "order": 61,
+      "booleanColumns": ["is_fallback"]
+    },
+    "collaboration_documents": {
+      "target": "public.collaboration_documents",
+      "order": 62,
+      "columnRenames": { "snapshot_blob": "snapshot" }
+    },
+    "collaboration_entities": { "target": "public.collaboration_entities", "order": 63 },
+    "collaboration_operations": { "target": "public.collaboration_operations", "order": 64 },
+    "content_conflicts": { "target": "public.content_conflicts", "order": 65 },
+
+    "budget_receipts": {
+      "target": "private.budget_receipts",
+      "order": 71,
+      "special": "budgetReceiptStorage"
+    },
+    "app_settings": { "target": "private.app_settings", "order": 72 },
+    "subscriptions": {
+      "target": "billing.subscriptions",
+      "order": 73,
+      "timestampColumns": ["current_period_start", "current_period_end"]
+    },
+    "checkouts": { "target": "billing.checkouts", "order": 74 },
+    "subscription_switch_previews": { "target": "billing.subscription_switch_previews", "order": 75 },
+    "processed_events": { "target": "billing.processed_events", "order": 76 }
+  }
+}
