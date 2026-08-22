@@ -40,7 +40,7 @@
     me: () => request('/api/me'), profile: () => request('/api/me/platform-profile'),
     updateMe: (body) => request('/api/me', { method:'PATCH', body:JSON.stringify(body) }),
     updateProfile: (body) => request('/api/me/platform-profile', { method:'PATCH', body:JSON.stringify(body) }),
-    notifications: () => request('/api/notifications'), markRead: (id) => request(`/api/notifications${id ? `/${id}` : ''}`, { method:'PATCH' }), deleteNotification: (id) => request(`/api/notifications${id ? `/${id}` : ''}`, { method:'DELETE' }),
+    notifications: () => request('/api/notifications'), markRead: (id) => request(`/api/notifications${id ? `/${id}` : ''}`, { method:'PATCH', keepalive:true }), deleteNotification: (id) => request(`/api/notifications${id ? `/${id}` : ''}`, { method:'DELETE' }),
     acceptInvitation: (id) => request(`/api/invitations/${encodeURIComponent(id)}/accept`, { method:'POST' }),
     declineInvitation: (id) => request(`/api/invitations/${encodeURIComponent(id)}/decline`, { method:'POST' }),
     releaseNotice: () => request('/api/release-notice'), acknowledgeReleaseNotice: () => request('/api/release-notice', { method:'POST', keepalive:true }),
@@ -51,8 +51,9 @@
     revokeInvitation: (id) => request(`/api/projects/${projectId}/invitations/${id}`, { method:'DELETE' }),
     invitationLink: (id, resend = false) => request(`/api/projects/${projectId}/invitations/${id}/${resend ? 'resend' : 'link'}`, { method:'POST' }),
     activity: (module) => request(`/api/projects/${projectId}/activity${module ? `?module=${encodeURIComponent(module)}` : ''}`),
-    translationPreview: (id, targetLanguage) => request(`/api/scripts/${id}/translation`, { method:'POST', body:JSON.stringify({ preview:true,targetLanguage }) }),
-    translate: (id, targetLanguage) => request(`/api/scripts/${id}/translation`, { method:'POST', body:JSON.stringify({ targetLanguage }) }),
+    translationPreview: (id, targetLanguage, idempotencyKey) => request(`/api/scripts/${id}/translation`, { method:'POST', body:JSON.stringify({ preview:true,targetLanguage,idempotencyKey }) }),
+    translate: (id, targetLanguage, idempotencyKey) => request(`/api/scripts/${id}/translation`, { method:'POST', body:JSON.stringify({ targetLanguage,idempotencyKey }) }),
+    aiJob: (id) => request(`/api/ai-jobs/${encodeURIComponent(id)}`),
     createShared: (body) => request(`/api/projects/${projectId}/shared-projects`, { method:'POST', body:JSON.stringify(body) }),
     locationPlans: () => request(`/api/projects/${projectId}/location-plans`),
     createLocationPlan: (body) => request(`/api/projects/${projectId}/location-plans`, { method:'POST', body:JSON.stringify(body) }),
@@ -221,7 +222,18 @@
     try { result = await api.notifications(); }
     catch { return dialog(localize('Notifications', 'Notificaciones'), localize('Notifications are unavailable right now.', 'Las notificaciones no están disponibles en este momento.'), `<div class="fs-notification-empty"><strong>${escapeHtml(localize('Try again in a moment.', 'Intenta de nuevo en un momento.'))}</strong></div>`, 'fs-notifications-dialog'); }
     state.notifications = Array.isArray(result.notifications) ? result.notifications : [];
-    const unreadCount = Number(result.unreadCount) || state.notifications.filter((item) => !item.read).length;
+    const loadedUnreadCount = Number(result.unreadCount) || state.notifications.filter((item) => !item.read).length;
+    // Opening the successfully loaded center means these notifications have
+    // been seen. Clear the global badge immediately and persist the read state
+    // without requiring a second "Read all" interaction.
+    if (loadedUnreadCount) {
+      const seenNotificationIds = state.notifications.filter((item) => !item.read).map((item) => item.id).filter(Boolean);
+      state.notifications = state.notifications.map((item) => ({ ...item, read:true }));
+      const badge = document.querySelector('.fs-notification-badge');
+      if (badge) { badge.textContent = ''; badge.hidden = true; }
+      Promise.allSettled(seenNotificationIds.map((id) => api.markRead(id))).then((results) => { if (results.every((item) => item.status === 'fulfilled')) refreshNotifications(); });
+    }
+    const unreadCount = 0;
     const unread = state.notifications.filter((item) => !item.read); const earlier = state.notifications.filter((item) => item.read);
     const groups = [[unread.length ? localize('New', 'Nuevas') : '', unread], [earlier.length ? localize('Earlier', 'Anteriores') : '', earlier]].filter(([,items]) => items.length);
     const list = groups.map(([labelText,items]) => `<section class="fs-notification-group"><h3>${escapeHtml(labelText)}</h3><div class="fs-notification-stack">${items.map(notificationCard).join('')}</div></section>`).join('');
@@ -282,6 +294,72 @@
     root.querySelector('[data-mark-all]')?.addEventListener('click', async (event) => { event.currentTarget.disabled = true; await api.markRead(); root.querySelectorAll('.is-unread').forEach((row) => row.classList.remove('is-unread')); openNotifications(); refreshNotifications(); });
     root.querySelector('[data-clear-all]')?.addEventListener('click', async (event) => { if (!confirm(localize('Delete all notifications?', '¿Eliminar todas las notificaciones?'))) return; event.currentTarget.disabled = true; await api.deleteNotification(); root.querySelectorAll('[data-notification-row]').forEach((row) => row.classList.add('is-removing')); window.setTimeout(() => { openNotifications(); refreshNotifications(); }, 190); });
   }
+
+  const translationTrackers = new Map();
+  const translationAttemptKey = () => {
+    const value = globalThis.crypto?.randomUUID?.().replace(/-/g, '');
+    return `tr_${value || `${Date.now().toString(36)}_${Math.random().toString(36).slice(2)}`}`;
+  };
+  const emitTranslation = (type, detail) => window.dispatchEvent(new CustomEvent(`filmscript:translation-${type}`, { detail }));
+  function trackTranslationJob(initialJob, context) {
+    const jobId = String(initialJob?.id || '');
+    if (!jobId || translationTrackers.has(jobId)) return;
+    const tracker = { timer:0, stopped:false, failures:0, startedAt:Date.now() };
+    const stall = (errorCode) => {
+      tracker.stopped = true;
+      clearTimeout(tracker.timer);
+      translationTrackers.delete(jobId);
+      emitTranslation('updated', { ...context, job:{ ...initialJob, id:jobId, status:'queued', stage:'stalled', errorCode } });
+    };
+    translationTrackers.set(jobId, tracker);
+    const finish = (type, job) => {
+      tracker.stopped = true;
+      clearTimeout(tracker.timer);
+      translationTrackers.delete(jobId);
+      emitTranslation(type, { ...context, job });
+      refreshNotifications();
+    };
+    const poll = async () => {
+      if (tracker.stopped || tracker.paused) return;
+      try {
+        const result = await api.aiJob(jobId);
+        const job = result?.job || result;
+        if (!job?.id) throw new Error('Translation job unavailable');
+        tracker.failures = 0;
+        emitTranslation('updated', { ...context, job });
+        if (job.status === 'completed') { finish('completed', job); return; }
+        if (job.status === 'failed' || job.status === 'cancelled') { finish('failed', job); return; }
+      } catch (error) {
+        // Durable jobs keep running server-side. A brief network interruption
+        // should not remove the translating card or create a second job.
+        tracker.failures += 1;
+        if ([401,403].includes(Number(error?.status))) { stall('authentication_required'); return; }
+        if (Number(error?.status) === 404 && tracker.failures >= 3) { stall('job_sync_delayed'); return; }
+        if (Date.now() - tracker.startedAt > 30 * 60 * 1000) { stall('status_refresh_needed'); return; }
+      }
+      const retryDelay = tracker.failures ? Math.min(12000, 1400 * (2 ** Math.min(tracker.failures, 3))) : document.hidden ? 3200 : 1400;
+      tracker.timer = window.setTimeout(poll, retryDelay);
+    };
+    tracker.poll = poll;
+    tracker.timer = window.setTimeout(poll, 700);
+  }
+  window.addEventListener('pagehide', (event) => {
+    if (event.persisted) {
+      translationTrackers.forEach((tracker) => { tracker.paused = true; clearTimeout(tracker.timer); });
+      return;
+    }
+    translationTrackers.forEach((tracker) => { tracker.stopped = true; clearTimeout(tracker.timer); });
+    translationTrackers.clear();
+  });
+  window.addEventListener('pageshow', (event) => {
+    if (!event.persisted) return;
+    translationTrackers.forEach((tracker) => {
+      if (tracker.stopped || !tracker.paused || typeof tracker.poll !== 'function') return;
+      tracker.paused = false;
+      clearTimeout(tracker.timer);
+      tracker.timer = window.setTimeout(tracker.poll, 120);
+    });
+  });
 
   function releaseNoticeCopy() {
     const spanish = String(window.filmscriptLanguage?.get?.() || document.documentElement.lang || 'en').toLowerCase().startsWith('es');
@@ -808,29 +886,57 @@
   async function openTranslation(script) {
     const languages = [['English','Inglés'],['Spanish','Español'],['French','Francés'],['Portuguese','Portugués'],['German','Alemán']];
     const options = languages.map(([value, spanish]) => `<option value="${value}">${escapeHtml(localize(value, spanish))}</option>`).join('');
-    const root = dialog(localize('Translate Script', 'Traducir guion'), localize('This will create a new independent project.', 'Esto creará un proyecto nuevo e independiente.'), `<div class="fs-form-grid"><label class="fs-form-field" style="grid-column:1/-1"><span>${escapeHtml(localize('Source script', 'Guion de origen'))}</span><input data-project-content data-i18n-skip value="${escapeHtml(script.title)}" readonly></label><label class="fs-form-field" style="grid-column:1/-1"><span>${escapeHtml(localize('Target language', 'Idioma de destino'))}</span><select data-language>${options}</select></label></div><div data-translation-summary class="fs-member-card" style="margin-top:14px"><span class="fs-member-copy"><strong>${escapeHtml(localize('Choose a target language', 'Elige un idioma de destino'))}</strong><small>${escapeHtml(localize('The exact credit cost will appear before processing.', 'El costo exacto en créditos aparecerá antes de procesar.'))}</small></span></div><div class="fs-dialog-actions"><button class="fs-action fs-action-primary" data-start disabled>${escapeHtml(localize('Translate and create project', 'Traducir y crear proyecto'))}</button></div>`);
-    const select = root.querySelector('[data-language]'); const start = root.querySelector('[data-start]'); let preview;
+    const idempotencyKey = translationAttemptKey();
+    const title = localize('Translate Script', 'Traducir guion');
+    const body = `<div class="fs-translation-glow" aria-hidden="true"><i></i><i></i><i></i></div>
+      <div class="fs-translation-intro"><span class="fs-translation-mark" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M5 5.5h8M9 3v2.5m-2.8 3.2c1.1 2.8 3.2 5 6.2 6.2M12.4 8.7c-1.1 2.8-3.2 5-6.2 6.2M14.5 19l3.2-8 3.3 8m-5.4-2.8h4.8"></path></svg></span><div><strong>${escapeHtml(localize('A new version, without touching your original', 'Una nueva versión, sin tocar tu original'))}</strong><p>${escapeHtml(localize('FilmScript creates an independent project and keeps the screenplay structure intact.', 'FilmScript crea un proyecto independiente y conserva la estructura del guion.'))}</p></div></div>
+      <div class="fs-translation-form"><label class="fs-translation-field"><span>${escapeHtml(localize('Source script', 'Guion de origen'))}</span><span class="fs-translation-source" data-project-content data-i18n-skip>${escapeHtml(script.title)}</span></label><label class="fs-translation-field"><span>${escapeHtml(localize('Translate to', 'Traducir a'))}</span><span class="fs-translation-select"><select data-language aria-label="${escapeHtml(localize('Target language', 'Idioma de destino'))}">${options}</select><i aria-hidden="true">⌄</i></span></label></div>
+      <div data-translation-summary class="fs-translation-summary is-loading" role="status" aria-live="polite" aria-busy="true"><span class="fs-translation-summary-icon" aria-hidden="true">✦</span><span class="fs-member-copy"><strong>${escapeHtml(localize('Preparing your translation', 'Preparando tu traducción'))}</strong><small>${escapeHtml(localize('Calculating pages and the exact credit cost.', 'Calculando páginas y el costo exacto en créditos.'))}</small></span></div>
+      <p class="fs-translation-note"><span aria-hidden="true">✓</span>${escapeHtml(localize('You can keep working while Lumiere translates in the background.', 'Puedes seguir trabajando mientras Lumiere traduce en segundo plano.'))}</p>
+      <div class="fs-dialog-actions fs-translation-actions"><button class="fs-action fs-translation-cancel" type="button" data-cancel>${escapeHtml(localize('Not now', 'Ahora no'))}</button><button class="fs-action fs-action-primary fs-translation-start" type="button" data-start disabled><span>${escapeHtml(localize('Translate and create project', 'Traducir y crear proyecto'))}</span><i aria-hidden="true">→</i></button></div>`;
+    const root = dialog(title, localize('Choose the language for the new screenplay version.', 'Elige el idioma de la nueva versión del guion.'), body, 'fs-translation-dialog');
+    const select = root.querySelector('[data-language]'); const start = root.querySelector('[data-start]'); const summary = root.querySelector('[data-translation-summary]'); let preview; let previewSequence = 0;
+    root.querySelector('[data-cancel]').onclick = closeDialog;
     const refresh = async () => {
+      const sequence = ++previewSequence; const targetLanguage = select.value; preview = null;
+      start.disabled = true;
+      summary.classList.add('is-loading'); summary.setAttribute('aria-busy', 'true');
+      summary.innerHTML = `<span class="fs-translation-summary-icon" aria-hidden="true">✦</span><span class="fs-member-copy"><strong>${escapeHtml(localize('Preparing your translation', 'Preparando tu traducción'))}</strong><small>${escapeHtml(localize('Calculating pages and the exact credit cost.', 'Calculando páginas y el costo exacto en créditos.'))}</small></span>`;
       try {
-        preview = await api.translationPreview(script.id, select.value);
+        const nextPreview = await api.translationPreview(script.id, targetLanguage, idempotencyKey);
+        if (sequence !== previewSequence || targetLanguage !== select.value) return;
+        preview = nextPreview;
         const available = preview.availableCredits ?? localize('Unlimited', 'Ilimitados');
         const summary = localize(
-          `${preview.pageCount} pages · Translation cost ${preview.requiredCredits} credits · Available ${available}`,
-          `${preview.pageCount} páginas · Costo de traducción: ${preview.requiredCredits} créditos · Disponibles: ${available}`
+          `${preview.pageCount} pages · Remaining after translation ${preview.remainingCredits ?? available} credits`,
+          `${preview.pageCount} páginas · Créditos restantes después de traducir: ${preview.remainingCredits ?? available}`
         );
-        root.querySelector('[data-translation-summary]').innerHTML = `<span class="fs-member-copy"><strong data-project-content data-i18n-skip>${escapeHtml(preview.newProjectName)}</strong><small>${escapeHtml(summary)}</small></span>`;
+        const confirmation = localize(`Confirm translation — ${preview.requiredCredits} credits`, `Confirmar traducción — ${preview.requiredCredits} créditos`);
+        const independence = localize('Future edits will not sync between versions.', 'Los cambios futuros no se sincronizarán entre versiones.');
+        root.querySelector('[data-translation-summary]').innerHTML = `<span class="fs-translation-summary-icon" aria-hidden="true">✓</span><span class="fs-member-copy"><strong data-project-content data-i18n-skip>${escapeHtml(preview.newProjectName)}</strong><small>${escapeHtml(`${confirmation} · ${summary}. ${independence}`)}</small></span>`;
+        root.querySelector('[data-translation-summary]').classList.remove('is-loading'); root.querySelector('[data-translation-summary]').setAttribute('aria-busy', 'false');
         start.disabled = false;
-      } catch (error) { root.querySelector('[data-translation-summary]').textContent = localizedError(error, 'The translation cost could not be calculated.', 'No se pudo calcular el costo de la traducción.'); }
+      } catch (error) {
+        if (sequence !== previewSequence || targetLanguage !== select.value) return;
+        summary.classList.remove('is-loading'); summary.setAttribute('aria-busy', 'false');
+        summary.innerHTML = `<span class="fs-translation-summary-icon is-error" aria-hidden="true">!</span><span class="fs-member-copy"><strong>${escapeHtml(localize('Could not prepare this translation', 'No se pudo preparar esta traducción'))}</strong><small>${escapeHtml(localizedError(error, 'The translation cost could not be calculated.', 'No se pudo calcular el costo de la traducción.'))}</small></span>`;
+      }
     };
     select.onchange = refresh; refresh(); start.onclick = async () => {
-      start.disabled = true; start.textContent = localize('Starting translation', 'Iniciando traducción');
+      if (!preview || String(preview.targetLanguage || select.value) !== select.value) { await refresh(); return; }
+      const selectedLanguage = select.value;
+      start.disabled = true; select.disabled = true; start.classList.add('is-working'); start.querySelector('span').textContent = `${localize('Starting translation', 'Iniciando traducción')}…`;
       try {
-        const result = await api.translate(script.id, select.value);
-        root.querySelector('.fs-platform-body').innerHTML = `<div class="fs-member-card"><span class="fs-member-copy"><strong>${escapeHtml(localize('Translation started', 'Traducción iniciada'))}</strong><small>${escapeHtml(localize('You can leave this screen. FilmScript will notify you when the new project is ready.', 'Puedes salir de esta pantalla. FilmScript te avisará cuando el proyecto nuevo esté listo.'))}</small><div class="fs-progress" style="margin-top:12px"><span style="--progress:${result.job.progress}%"></span></div></span></div>`;
+        const result = await api.translate(script.id, selectedLanguage, idempotencyKey);
+        const context = { sourceScriptId:script.id, sourceTitle:script.title, targetLanguage:selectedLanguage, title:result.newProjectName || preview?.newProjectName || script.title, idempotencyKey };
+        closeDialog();
+        emitTranslation('started', { ...context, job:result.job });
+        trackTranslationJob(result.job, context);
         refreshNotifications();
       } catch (error) {
-        start.disabled = false; start.textContent = localize('Translate and create project', 'Traducir y crear proyecto');
-        root.querySelector('[data-translation-summary]').textContent = localizedError(error, 'The translation could not be started.', 'No se pudo iniciar la traducción.');
+        start.disabled = false; select.disabled = false; start.classList.remove('is-working'); start.querySelector('span').textContent = localize('Translate and create project', 'Traducir y crear proyecto');
+        summary.classList.remove('is-loading'); summary.setAttribute('aria-busy', 'false');
+        summary.innerHTML = `<span class="fs-translation-summary-icon is-error" aria-hidden="true">!</span><span class="fs-member-copy"><strong>${escapeHtml(localize('Translation did not start', 'La traducción no inició'))}</strong><small>${escapeHtml(localizedError(error, 'The translation could not be started.', 'No se pudo iniciar la traducción.'))}</small></span>`;
       }
     };
   }
