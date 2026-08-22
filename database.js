@@ -440,14 +440,13 @@ function importLegacyData() {
 importLegacyData();
 
 function claimLegacyLocalDataForSingleGoogleUser() {
-  const alreadyClaimed = sqlite.prepare("SELECT value FROM schema_meta WHERE key = 'legacy_local_data_claimed_v2'").get();
-  const importedLegacyData = sqlite.prepare("SELECT value FROM schema_meta WHERE key = 'legacy_json_imported_v1'").get();
-  if (alreadyClaimed || !importedLegacyData) return;
-  const googleUsers = sqlite.prepare("SELECT id FROM users WHERE google_sub IS NOT NULL").all();
-  if (googleUsers.length !== 1) return;
-  const googleUserId = googleUsers[0].id;
-
-  sqlite.transaction(() => {
+  const claim = sqlite.transaction(() => {
+    const alreadyClaimed = sqlite.prepare("SELECT value FROM schema_meta WHERE key = 'legacy_local_data_claimed_v2'").get();
+    const importedLegacyData = sqlite.prepare("SELECT value FROM schema_meta WHERE key = 'legacy_json_imported_v1'").get();
+    if (alreadyClaimed || !importedLegacyData) return;
+    const googleUsers = sqlite.prepare("SELECT id FROM users WHERE google_sub IS NOT NULL").all();
+    if (googleUsers.length !== 1) return;
+    const googleUserId = googleUsers[0].id;
     const legacyOwners = sqlite.prepare(`
       SELECT DISTINCT users.id
       FROM users
@@ -461,7 +460,11 @@ function claimLegacyLocalDataForSingleGoogleUser() {
     for (const owner of legacyOwners) transferOwnership(owner.id, googleUserId);
     sqlite.prepare("INSERT INTO schema_meta (key, value) VALUES ('legacy_local_data_claimed_v2', ?)").run(nowIso());
     sqlite.prepare("INSERT OR REPLACE INTO schema_meta (key, value) VALUES ('schema_version', '2')").run();
-  })();
+  });
+  // Multiple backend tasks can overlap briefly during a rolling deployment.
+  // Acquire the write lock before reading the marker so the second process
+  // waits, then observes the completed claim instead of failing on promotion.
+  claim.immediate();
 }
 
 claimLegacyLocalDataForSingleGoogleUser();
@@ -716,6 +719,105 @@ function saveCanvasLibrary(userId, library) {
       updated_at = excluded.updated_at
   `).run(userId, stringify(library || {}), updatedAt);
   return true;
+}
+
+function rowToAccountImagingAssetState(row) {
+  if (!row) return null;
+  return {
+    userId: row.user_id,
+    assetId: row.asset_id,
+    liked: row.liked === 1,
+    likedAt: row.liked === 1 ? (row.liked_at || null) : null,
+    trashed: Boolean(row.trashed_at),
+    trashedAt: row.trashed_at || null,
+    createdAt: row.created_at,
+    updatedAt: row.updated_at,
+  };
+}
+
+function getAccountImagingAssetStates(userId, assetIds = []) {
+  if (!userId) return new Map();
+  const ids = [...new Set((Array.isArray(assetIds) ? assetIds : []).map(String).filter(Boolean))];
+  if (!ids.length) return new Map();
+  const result = new Map();
+  for (let offset = 0; offset < ids.length; offset += 500) {
+    const chunk = ids.slice(offset, offset + 500);
+    const placeholders = chunk.map(() => "?").join(", ");
+    const rows = sqlite.prepare(`
+      SELECT user_id, asset_id, liked, liked_at, trashed_at, created_at, updated_at
+      FROM account_imaging_asset_state
+      WHERE user_id = ? AND asset_id IN (${placeholders})
+    `).all(userId, ...chunk);
+    for (const row of rows) result.set(row.asset_id, rowToAccountImagingAssetState(row));
+  }
+  return result;
+}
+
+function mutateAccountImagingAssetStates({ userId, assetIds = [], operation }) {
+  if (!userId) throw new Error("userId is required");
+  const ids = [...new Set((Array.isArray(assetIds) ? assetIds : []).map(String).filter(Boolean))];
+  if (!ids.length) return [];
+  if (!["like", "unlike", "trash"].includes(operation)) {
+    throw new Error("unsupported account Imagine asset-state operation");
+  }
+  const timestamp = nowIso();
+  const like = sqlite.prepare(`
+    INSERT INTO account_imaging_asset_state
+      (user_id, asset_id, liked, liked_at, trashed_at, created_at, updated_at)
+    VALUES (?, ?, 1, ?, NULL, ?, ?)
+    ON CONFLICT(user_id, asset_id) DO UPDATE SET
+      liked = CASE
+        WHEN account_imaging_asset_state.trashed_at IS NULL THEN 1
+        ELSE account_imaging_asset_state.liked
+      END,
+      liked_at = CASE
+        WHEN account_imaging_asset_state.trashed_at IS NOT NULL THEN account_imaging_asset_state.liked_at
+        WHEN account_imaging_asset_state.liked = 1 THEN account_imaging_asset_state.liked_at
+        ELSE excluded.liked_at
+      END,
+      updated_at = CASE
+        WHEN account_imaging_asset_state.trashed_at IS NOT NULL THEN account_imaging_asset_state.updated_at
+        WHEN account_imaging_asset_state.liked = 1 THEN account_imaging_asset_state.updated_at
+        ELSE excluded.updated_at
+      END
+  `);
+  const unlike = sqlite.prepare(`
+    INSERT INTO account_imaging_asset_state
+      (user_id, asset_id, liked, liked_at, trashed_at, created_at, updated_at)
+    VALUES (?, ?, 0, NULL, NULL, ?, ?)
+    ON CONFLICT(user_id, asset_id) DO UPDATE SET
+      liked = 0,
+      liked_at = NULL,
+      updated_at = CASE
+        WHEN account_imaging_asset_state.liked = 0 THEN account_imaging_asset_state.updated_at
+        ELSE excluded.updated_at
+      END
+  `);
+  const trash = sqlite.prepare(`
+    INSERT INTO account_imaging_asset_state
+      (user_id, asset_id, liked, liked_at, trashed_at, created_at, updated_at)
+    VALUES (?, ?, 0, NULL, ?, ?, ?)
+    ON CONFLICT(user_id, asset_id) DO UPDATE SET
+      liked = 0,
+      liked_at = NULL,
+      trashed_at = COALESCE(account_imaging_asset_state.trashed_at, excluded.trashed_at),
+      updated_at = CASE
+        WHEN account_imaging_asset_state.trashed_at IS NOT NULL
+          AND account_imaging_asset_state.liked = 0
+          THEN account_imaging_asset_state.updated_at
+        ELSE excluded.updated_at
+      END
+  `);
+  const mutation = sqlite.transaction(() => {
+    for (const assetId of ids) {
+      if (operation === "like") like.run(userId, assetId, timestamp, timestamp, timestamp);
+      else if (operation === "unlike") unlike.run(userId, assetId, timestamp, timestamp);
+      else trash.run(userId, assetId, timestamp, timestamp, timestamp);
+    }
+    const states = getAccountImagingAssetStates(userId, ids);
+    return ids.map((assetId) => states.get(assetId));
+  });
+  return mutation.immediate();
 }
 
 function rowToAccountImagingGeneration(row) {
@@ -1321,6 +1423,7 @@ export {
   getBudgetReceipt,
   getCanvasLibrary,
   getCanvasWorkspace,
+  getAccountImagingAssetStates,
   failSubscriptionSwitchPreview,
   failAccountImagingGeneration,
   getSubscription,
@@ -1330,6 +1433,7 @@ export {
   loadLumiereCreditsSnapshot,
   loadPreproductionSnapshot,
   loadScriptsSnapshot,
+  mutateAccountImagingAssetStates,
   saveBillingSnapshot,
   saveBudgetReceipt,
   saveCanvasLibrary,

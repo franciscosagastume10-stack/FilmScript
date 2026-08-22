@@ -48,8 +48,8 @@ test('standalone Imagine has an account-only, project-free shell', () => {
   assert.doesNotMatch(header, />\s*(?:Scripts|Guiones|Editor|Analysis|Análisis|Breakdown|Desglose|Canvas|Boards|Vault)\s*</);
   assert.match(page, /scripts-access-guard\.js\?v=/);
   assert.match(page, /platform-client\.js\?v=/);
-  assert.match(page, /canvas-client\.js\?v=20260821-account-imagine2/);
-  assert.match(page, /canvas-workspace\.js\?v=20260821-account-imagine2/);
+  assert.match(page, /canvas-client\.js\?v=20260821-imagine-gallery1/);
+  assert.match(page, /canvas-workspace\.js\?v=20260821-imagine-gallery1/);
 });
 
 test('standalone Imagine preserves accessible navigation, localization, and mobile targets', () => {
@@ -64,7 +64,7 @@ test('standalone Imagine preserves accessible navigation, localization, and mobi
   assert.match(page, /Abrir cuenta/);
   assert.match(page, /Ir a Imagine/);
   assert.match(page, /width:44px!important;height:44px!important;min-width:44px!important;min-height:44px!important/);
-  assert.match(page, /\.fs-mobile-global\{display:none!important\}/);
+  assert.doesNotMatch(page, /\.fs-mobile-(?:global|project)\s*\{/);
   assert.match(page, /prefers-reduced-transparency:reduce/);
   assert.match(page, /prefers-reduced-motion:reduce/);
 });

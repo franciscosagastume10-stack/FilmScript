@@ -966,16 +966,66 @@
     setLabel('[data-bell]', count ? `Notifications, ${count} unread` : 'Notifications', count ? `Notificaciones, ${count} sin leer` : 'Notificaciones');
   }
 
-  function mountMobileNav() {
-    if (document.querySelector('.fs-mobile-global')) return;
-    const globalNav = document.createElement('nav'); globalNav.className = 'fs-mobile-nav fs-mobile-global'; globalNav.setAttribute('aria-label', localize('FilmScript navigation', 'Navegación de FilmScript'));
-    globalNav.innerHTML = `<a href="App.dc.html"${projectId ? '' : ' aria-current="page"'}>${escapeHtml(localize('Home', 'Inicio'))}</a><a href="App.dc.html">${escapeHtml(localize('Projects', 'Proyectos'))}</a><a href="App.dc.html?lumiere=1">Lumiere</a><button type="button" data-activity>${escapeHtml(localize('Activity', 'Actividad'))}</button><button type="button" data-profile>${escapeHtml(localize('Account', 'Cuenta'))}</button>`;
-    document.body.appendChild(globalNav); globalNav.querySelector('[data-activity]').onclick = openNotifications; globalNav.querySelector('[data-profile]').onclick = openAccount;
-    if (!projectId) return;
-    const view = params.get('view') || 'script'; const projectNav = document.createElement('nav'); projectNav.className = 'fs-mobile-nav fs-mobile-project'; projectNav.setAttribute('aria-label', localize('Project navigation', 'Navegación del proyecto'));
-    projectNav.innerHTML = `<a href="App.dc.html">${escapeHtml(localize('Overview', 'Resumen'))}</a><a href="Editor%20v5.dc.html?script=${projectId}"${view === 'script' ? ' aria-current="page"' : ''}>${escapeHtml(localize('Script', 'Guion'))}</a><a href="Editor%20v5.dc.html?script=${projectId}&view=breakdown"${['breakdown','stripboard','shot-list','budget','calendar'].includes(view) ? ' aria-current="page"' : ''}>${escapeHtml(localize('Production', 'Producción'))}</a><a href="Editor%20v5.dc.html?script=${projectId}&view=canvas"${view === 'canvas' ? ' aria-current="page"' : ''}>Canvas</a><button type="button" data-more>${escapeHtml(localize('More', 'Más'))}</button>`;
-    document.body.appendChild(projectNav); projectNav.querySelector('[data-more]').onclick = () => { const root = dialog(localize('More', 'Más'), localize('Authorized project modules', 'Módulos autorizados del proyecto'), `<div class="fs-platform-list"><a class="fs-member-card" href="Editor%20v5.dc.html?script=${projectId}&view=analysis">${escapeHtml(localize('Analysis', 'Análisis'))}</a><a class="fs-member-card" href="Editor%20v5.dc.html?script=${projectId}&view=budget">${escapeHtml(localize('Budget', 'Presupuesto'))}</a><button type="button" class="fs-member-card" data-location>${escapeHtml(localize('Location Plan', 'Plan de locaciones'))}</button><button type="button" class="fs-member-card" data-people>${escapeHtml(localize('Members', 'Miembros'))}</button><button type="button" class="fs-member-card" data-share>${escapeHtml(localize('Shared Projects', 'Proyectos compartidos'))}</button></div>`); root.querySelector('[data-location]').onclick = () => { closeDialog(); openLocationPlan(); }; root.querySelector('[data-people]').onclick = () => { closeDialog(); openMembers(); }; root.querySelector('[data-share]').onclick = () => { closeDialog(); openShare(); }; };
+  const canonicalMobileWorkMode = (value) => {
+    const aliases = { script:'editor', 'shot-list':'shotlist', shot_list:'shotlist' };
+    const mode = aliases[String(value || '')] || String(value || 'editor');
+    return ['editor','analysis','breakdown','stripboard','imagine','canvas','shotlist','budget','calendar'].includes(mode) ? mode : 'editor';
+  };
+
+  const currentMobileWorkMode = () => canonicalMobileWorkMode(new URLSearchParams(location.search).get('view'));
+
+  function syncMobileNavActive(mode = currentMobileWorkMode(), { scroll = true } = {}) {
+    const nav = document.querySelector('.fs-mobile-nav');
+    if (!nav || !projectId) return;
+    const canonicalMode = canonicalMobileWorkMode(mode);
+    const items = nav.querySelectorAll('[data-project-view]');
+    items.forEach((item) => {
+      if (item.dataset.projectView === canonicalMode) item.setAttribute('aria-current', 'page');
+      else item.removeAttribute('aria-current');
+    });
+    const active = nav.querySelector('[data-project-view][aria-current="page"]');
+    if (scroll && active) active.scrollIntoView({ behavior:matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth', block:'nearest', inline:'center' });
   }
+
+  function mountMobileNav() {
+    if (document.querySelector('.fs-mobile-nav')) return;
+    const nav = document.createElement('nav');
+    nav.className = 'fs-mobile-nav';
+    nav.setAttribute('aria-label', localize(projectId ? 'Project navigation' : 'FilmScript navigation', projectId ? 'Navegación del proyecto' : 'Navegación de FilmScript'));
+    if (projectId) {
+      const projectItems = [
+        ['editor', localize('Script', 'Guion')],
+        ['lumiere', 'Lumiere'],
+        ['analysis', localize('Analysis', 'Análisis')],
+        ['breakdown', localize('Breakdown', 'Desglose')],
+        ['stripboard', localize('Shooting plan', 'Plan de rodaje')],
+        ['imagine', 'Imagine'],
+        ['canvas', 'Canvas'],
+        ['shotlist', localize('Shot List', 'Lista de planos')],
+        ['budget', localize('Budget', 'Presupuesto')],
+        ['calendar', localize('Calendar', 'Calendario')],
+      ];
+      nav.innerHTML = `${projectItems.map(([mode, label]) => mode === 'lumiere'
+        ? `<button type="button" data-project-action="lumiere">${escapeHtml(label)}</button>`
+        : `<button type="button" data-project-view="${mode}">${escapeHtml(label)}</button>`).join('')}<span class="fs-mobile-nav-divider" aria-hidden="true"></span><a href="/App.dc.html">${escapeHtml(localize('Projects', 'Proyectos'))}</a><button type="button" data-activity>${escapeHtml(localize('Activity', 'Actividad'))}</button><button type="button" data-profile>${escapeHtml(localize('Account', 'Cuenta'))}</button>`;
+      nav.querySelectorAll('[data-project-view]').forEach((item) => item.addEventListener('click', () => {
+        window.dispatchEvent(new CustomEvent('filmscript:navigate-work-mode', { detail:{ mode:item.dataset.projectView } }));
+      }));
+      nav.querySelector('[data-project-action="lumiere"]')?.addEventListener('click', () => {
+        window.dispatchEvent(new CustomEvent('filmscript:navigate-work-mode', { detail:{ mode:'editor', lumiere:true } }));
+      });
+    } else {
+      const standaloneImagine = document.body.classList.contains('imaging-account-workspace') || !!document.querySelector('film-script-canvas[scope="account"]');
+      nav.innerHTML = `<a href="/App.dc.html"${standaloneImagine ? '' : ' aria-current="page"'}>${escapeHtml(localize('Projects', 'Proyectos'))}</a><a href="/Imagine.dc.html"${standaloneImagine ? ' aria-current="page"' : ''}>Imagine</a><button type="button" data-activity>${escapeHtml(localize('Activity', 'Actividad'))}</button><button type="button" data-profile>${escapeHtml(localize('Account', 'Cuenta'))}</button>`;
+    }
+    document.body.appendChild(nav);
+    nav.querySelector('[data-activity]')?.addEventListener('click', openNotifications);
+    nav.querySelector('[data-profile]')?.addEventListener('click', openAccount);
+    if (projectId) requestAnimationFrame(() => syncMobileNavActive(currentMobileWorkMode()));
+  }
+
+  window.addEventListener('filmscript:work-mode-change', (event) => syncMobileNavActive(event?.detail?.mode));
+  window.addEventListener('popstate', () => syncMobileNavActive(currentMobileWorkMode()));
 
   function syncDynamicLanguage() {
     syncHubLanguage(); renderPresence();

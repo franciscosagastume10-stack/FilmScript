@@ -32,6 +32,25 @@
     return data;
   }
 
+  async function requestBlob(path, options = {}) {
+    const response = await fetch(resolve(path), { credentials: 'include', ...options });
+    if (!response.ok) {
+      const data = await response.json().catch(() => ({}));
+      const error = new Error(data.message || data.error || `Canvas request failed (${response.status})`);
+      error.status = response.status;
+      error.data = data;
+      error.code = data.error || null;
+      if (response.status === 401) window.dispatchEvent(new CustomEvent('filmscript:auth-required'));
+      throw error;
+    }
+    const disposition = response.headers.get('Content-Disposition') || '';
+    const match = disposition.match(/filename\*?=(?:UTF-8''|\")?([^\";]+)/i);
+    return {
+      blob: await response.blob(),
+      filename: match ? decodeURIComponent(match[1].replace(/^\"|\"$/g, '')) : '',
+    };
+  }
+
   const jsonOptions = (method, body) => ({
     method,
     headers: { 'Content-Type': 'application/json' },
@@ -42,6 +61,7 @@
   // project identifier, which keeps the gallery available from the dashboard
   // without creating a hidden project or a shared sentinel script.
   const accountImagingPath = (suffix = '') => `/api/me/imaging${suffix}`;
+  const canvasAssetPath = (...parts) => ['/assets', ...parts.map(String)].join('/');
 
   // Older API deployments expose Canvas but not its dedicated Vault/image
   // routes. Keep a private browser-side mirror only for that 404 case so a
@@ -173,7 +193,29 @@
       jsonOptions('POST', typeof options === 'string' ? { prompt: options } : (options || {})),
     ),
     uploadAccountImagingAsset: (file, dimensions = {}) => uploadRemoteAssetTo(accountImagingPath('/assets'), file, { ...dimensions, scope: 'imagine' }),
-    accountImagingAssetUrl: (assetId) => resolve(accountImagingPath(`/assets/${encodeURIComponent(assetId)}`)),
+    accountImagingAssetUrl: (assetId) => resolve(accountImagingPath(canvasAssetPath(encodeURIComponent(assetId)))),
+    updateAccountImagingAsset: (assetId, patch) => request(
+      accountImagingPath(canvasAssetPath(encodeURIComponent(assetId))),
+      jsonOptions('PATCH', patch),
+    ),
+    likeAccountImagingAsset: (assetId, liked) => request(
+      accountImagingPath(canvasAssetPath(encodeURIComponent(assetId), 'like')),
+      jsonOptions('PUT', { liked: Boolean(liked) }),
+    ),
+    batchAccountImagingAssets: (operation, assetIds) => request(
+      // Keep API routes assembled so the static frontend collector does not
+      // mistake an endpoint for a public image file.
+      accountImagingPath(canvasAssetPath('batch')),
+      jsonOptions('POST', { operation, assetIds }),
+    ),
+    downloadAccountImagingAssets: (assetIds) => requestBlob(
+      accountImagingPath('/downloads'),
+      jsonOptions('POST', { assetIds }),
+    ),
+    deleteAccountImagingAsset: (assetId) => request(
+      accountImagingPath(canvasAssetPath(encodeURIComponent(assetId))),
+      { method: 'DELETE' },
+    ),
     get: async (scriptId) => {
       const result = await request(pathFor(scriptId));
       // A browser-side legacy Vault cache must never repopulate a response
@@ -241,7 +283,7 @@
     },
     assetUrl: (scriptId, assetId) => {
       const local = readCompat(scriptId).assets.find((asset) => asset.id === assetId)?.localDataUrl || memoryAssets.get(assetId);
-      return local || resolve(pathFor(scriptId, `/assets/${encodeURIComponent(assetId)}`));
+      return local || resolve(pathFor(scriptId, canvasAssetPath(encodeURIComponent(assetId))));
     },
     quotePdfUrl: (scriptId, quoteId) => resolve(pathFor(scriptId, `/quotes/${encodeURIComponent(quoteId)}.pdf`)),
   };

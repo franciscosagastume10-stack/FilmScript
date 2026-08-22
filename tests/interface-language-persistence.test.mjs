@@ -90,7 +90,7 @@ test("account migrations restore language and person-name columns on an older da
   assert.equal(userColumns.has("interface_language"), true);
   assert.equal(userColumns.has("first_name"), true);
   assert.equal(userColumns.has("last_name"), true);
-  assert.equal(db.prepare("SELECT value FROM schema_meta WHERE key = 'schema_version'").get().value, "19");
+  assert.equal(db.prepare("SELECT value FROM schema_meta WHERE key = 'schema_version'").get().value, "20");
 });
 
 test("interface language is isolated per account, validated, and survives restart", async (t) => {

@@ -20,7 +20,7 @@ test('notifications and chat expose complete Spanish and English dynamic copy', 
 
 test('hub and mobile navigation localize labels without translating collaborator names', async () => {
   const client = await fs.readFile(path.join(ROOT, 'platform-client.js'), 'utf8');
-  for (const copy of ['Colaboradores activos', 'Personas y acceso', 'Navegación de FilmScript', 'Navegación del proyecto', 'Inicio', 'Proyectos', 'Actividad', 'Cuenta', 'Resumen', 'Guion', 'Producción', 'Plan de locaciones', 'Proyectos compartidos']) assert.ok(client.includes(copy), `missing navigation Spanish copy: ${copy}`);
+  for (const copy of ['Colaboradores activos', 'Personas y acceso', 'Navegación de FilmScript', 'Navegación del proyecto', 'Proyectos', 'Actividad', 'Cuenta', 'Guion', 'Análisis', 'Desglose', 'Plan de rodaje', 'Lista de planos', 'Presupuesto', 'Calendario']) assert.ok(client.includes(copy), `missing navigation Spanish copy: ${copy}`);
   assert.match(client, /data-project-content data-i18n-skip style="--collaborator-color/);
   assert.match(client, /window\.addEventListener\('filmscript:language-change', syncDynamicLanguage\)/);
   assert.match(client, /syncHubLanguage\(\); renderPresence\(\)/);

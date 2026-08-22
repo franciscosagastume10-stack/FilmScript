@@ -16,7 +16,7 @@ RUN npm ci --omit=dev \
 # build scripts, documentation and source-only helpers do not belong in the
 # internet-facing backend container.
 COPY server.js database.js budget-model.js budget-import-model.js calendar-model.js analysis-model.js ./
-COPY reference-storage.js canvas-model.js canvas-storage.js s3-storage.js ./
+COPY reference-storage.js canvas-model.js canvas-storage.js s3-storage.js zip-archive.js ./
 COPY platform-database.js permissions-model.js invitation-mailer.js ai-router.js collaboration-engine.js location-plan-model.js translation-policy.js ./
 COPY realtime-collaboration.js ./
 COPY migrations ./migrations

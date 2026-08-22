@@ -89,7 +89,7 @@ test('Canvas and Imagine use the same neutral screenplay API resolver', async ()
 
   assert.match(client, /window\.filmscriptApiUrl \? window\.filmscriptApiUrl\(path\) : path/);
   assert.doesNotMatch(client, /FILMSCRIPT_CONFIG\?\.apiUrl/);
-  assert.match(editor, /canvas-client\.js\?v=20260821-imagine-access1/);
+  assert.match(editor, /canvas-client\.js\?v=20260821-imagine-gallery1/);
 });
 
 test('Breakdown, Stripboard, Shot List, Budget, and Calendar use the active screenplay API', async () => {
