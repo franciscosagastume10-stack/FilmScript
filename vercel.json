@@ -21,6 +21,10 @@
       "destination": "/api/scripts-proxy?path=:path*"
     },
     {
+      "source": "/visual-generation/project/:scriptId",
+      "destination": "https://api.filmscript.app/api/scripts/:scriptId/canvas/images/generate"
+    },
+    {
       "source": "/workspace/projects",
       "destination": "/api/scripts-proxy"
     },

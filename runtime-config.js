@@ -40,6 +40,11 @@
     if (firstPartyApi && (path === '/api/invitations' || path.startsWith('/api/invitations/'))) {
       return `${apiUrl}/film-data/access-list${path.slice('/api/invitations'.length)}`;
     }
+    // Long-running project image generation bypasses the short screenplay proxy.
+    const projectImagineGeneration = path.match(/^\/api\/scripts\/([^/]+)\/canvas\/images\/generate$/);
+    if (firstPartyApi && projectImagineGeneration) {
+      return `${apiUrl}/visual-generation/project/${projectImagineGeneration[1]}`;
+    }
     // Embedded-browser privacy lists can block nested routes under both
     // `/scripts` and `/workspace`. Use a neutral first-party data route and
     // translate it back to the unchanged AWS API path at Vercel's edge.

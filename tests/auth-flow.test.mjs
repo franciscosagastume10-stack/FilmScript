@@ -80,6 +80,14 @@ test('the official app uses privacy-safe first-party project routes', () => {
   assert.equal(window.filmscriptApiUrl('/api/me'), '/workspace/me');
   assert.equal(window.filmscriptApiUrl('/api/scripts'), '/film-data/document');
   assert.equal(window.filmscriptApiUrl('/api/scripts/scr_123'), '/film-data/document/scr_123');
+  assert.equal(
+    window.filmscriptApiUrl('/api/scripts/scr_123/canvas/images/generate'),
+    '/visual-generation/project/scr_123',
+  );
+  assert.equal(
+    window.filmscriptApiUrl('/api/scripts/scr_123/canvas'),
+    '/film-data/document/scr_123/canvas',
+  );
   assert.equal(window.filmscriptApiUrl('/api/invitations'), '/film-data/access-list');
   assert.equal(window.filmscriptApiUrl('/api/invitations/inv_123/accept'), '/film-data/access-list/inv_123/accept');
   assert.equal(window.filmscriptApiUrl('/api/projects/scr_123/chat'), '/workspace/projects/scr_123/chat');
@@ -114,6 +122,10 @@ test('Vercel completes the Google handoff through a same-origin cookie proxy', a
   assert.deepEqual(vercelConfig.rewrites.find((entry) => entry.source === '/film-data/document/:path*'), {
     source: '/film-data/document/:path*',
     destination: '/api/scripts-proxy?path=:path*',
+  });
+  assert.deepEqual(vercelConfig.rewrites.find((entry) => entry.source === '/visual-generation/project/:scriptId'), {
+    source: '/visual-generation/project/:scriptId',
+    destination: 'https://api.filmscript.app/api/scripts/:scriptId/canvas/images/generate',
   });
   assert.deepEqual(vercelConfig.rewrites.find((entry) => entry.source === '/film-data/access-list'), {
     source: '/film-data/access-list',
@@ -151,7 +163,7 @@ test('Vercel completes the Google handoff through a same-origin cookie proxy', a
     { key: 'Cache-Control', value: 'public, max-age=0, must-revalidate' },
   ]);
   for (const page of [featuresPage, scriptsPage, editorPage]) {
-    assert.match(page, /runtime-config\.js\?v=20260821-invitation-route2/);
+    assert.match(page, /runtime-config\.js\?v=20260821-imagine-direct1/);
   }
   for (const page of [scriptsPage, editorPage]) {
     assert.match(page, /project-client\.js\?v=20260820-browser-safe1/);
