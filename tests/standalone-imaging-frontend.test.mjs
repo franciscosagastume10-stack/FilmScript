@@ -49,7 +49,7 @@ test('standalone Imagine has an account-only, project-free shell', () => {
   assert.match(page, /scripts-access-guard\.js\?v=/);
   assert.match(page, /platform-client\.js\?v=/);
   assert.match(page, /canvas-client\.js\?v=20260821-imagine-gallery1/);
-  assert.match(page, /canvas-workspace\.js\?v=20260821-imagine-gallery1/);
+  assert.match(page, /canvas-workspace\.js\?v=20260821-imagine-fast2/);
 });
 
 test('standalone Imagine preserves accessible navigation, localization, and mobile targets', () => {
