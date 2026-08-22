@@ -51,7 +51,7 @@
        a portrait frame monopolize the page. A shared thumbnail height makes
        the newest row calm and predictable, while the width expresses 4:3,
        3:2, 16:9, or portrait naturally. */
-    .cv-imagine-gallery{display:flex;flex-direction:column;align-items:stretch;gap:8px;width:100%;min-height:100%;padding:8px;background:color-mix(in srgb,var(--cv-soft) 86%,var(--cv-bg))}.cv-imagine-gallery-row{display:flex;align-items:stretch;gap:8px;width:100%;min-width:0;height:var(--cv-imagine-row-height,220px)}.cv-imagine-tile{display:block;flex:var(--cv-imagine-ratio,1) 1 0;min-width:0;height:100%;aspect-ratio:auto;padding:0;border-radius:11px 10px 12px 9px;background:color-mix(in srgb,var(--cv-ink) 7%,var(--cv-surface));box-shadow:0 2px 7px color-mix(in srgb,var(--cv-ink) 10%,transparent);transition:transform .18s cubic-bezier(.2,.8,.2,1),box-shadow .18s ease}.cv-imagine-gallery.is-entering .cv-imagine-tile{will-change:opacity,transform,filter;animation:cv-imagine-tile-enter .32s cubic-bezier(.18,.86,.28,1) both;animation-delay:min(calc(var(--cv-imagine-stagger,0) * 20ms),300ms)}@keyframes cv-imagine-tile-enter{from{opacity:0;transform:translateY(10px) scale(.985);filter:blur(2px)}to{opacity:1;transform:none;filter:none}}@media(prefers-reduced-motion:reduce){.cv-imagine-gallery.is-entering .cv-imagine-tile{animation:none}}.cv-imagine-tile.vertical,.cv-imagine-tile.horizontal{grid-column:auto;grid-row:auto}.cv-imagine-tile:hover{transform:translateY(-2px);box-shadow:0 9px 22px color-mix(in srgb,var(--cv-ink) 16%,transparent)}.cv-imagine-tile img{display:block;width:100%;height:100%;object-fit:contain;object-position:center;transform:none;transition:filter .18s ease}.cv-imagine-tile:hover img{transform:none;filter:brightness(.84)}.cv-imagine-style-trigger i,.cv-imagine-aspect-trigger>i:last-child{display:none}.cv-imagine-style-trigger,.cv-imagine-aspect-trigger{justify-content:center;min-width:0}.cv-imagine-style-trigger{gap:6px}.cv-imagine-aspect-trigger{gap:7px}.cv-imagine-style-menu,.cv-imagine-aspect-menu{isolation:isolate}.cv-imagine-style-menu button,.cv-imagine-aspect-menu button{margin-block:1px}.cv-imagine-empty{flex:1 0 100%}
+    .cv-imagine-gallery{display:flex;flex-direction:column;align-items:stretch;gap:8px;width:100%;min-height:100%;padding:8px;background:color-mix(in srgb,var(--cv-soft) 86%,var(--cv-bg))}.cv-imagine-gallery-row{display:flex;align-items:stretch;gap:8px;width:100%;min-width:0;height:var(--cv-imagine-row-height,220px);content-visibility:auto;contain-intrinsic-size:auto 220px}.cv-imagine-tile{display:block;flex:var(--cv-imagine-ratio,1) 1 0;min-width:0;height:100%;aspect-ratio:auto;padding:0;border-radius:11px 10px 12px 9px;background:color-mix(in srgb,var(--cv-ink) 7%,var(--cv-surface));box-shadow:0 2px 7px color-mix(in srgb,var(--cv-ink) 10%,transparent);transition:transform .18s cubic-bezier(.2,.8,.2,1),box-shadow .18s ease}.cv-imagine-gallery.is-entering .cv-imagine-tile{will-change:opacity,transform,filter;animation:cv-imagine-tile-enter .32s cubic-bezier(.18,.86,.28,1) both;animation-delay:min(calc(var(--cv-imagine-stagger,0) * 20ms),300ms)}@keyframes cv-imagine-tile-enter{from{opacity:0;transform:translateY(10px) scale(.985);filter:blur(2px)}to{opacity:1;transform:none;filter:none}}@media(prefers-reduced-motion:reduce){.cv-imagine-gallery.is-entering .cv-imagine-tile{animation:none}}.cv-imagine-tile.vertical,.cv-imagine-tile.horizontal{grid-column:auto;grid-row:auto}.cv-imagine-tile:hover{transform:translateY(-2px);box-shadow:0 9px 22px color-mix(in srgb,var(--cv-ink) 16%,transparent)}.cv-imagine-tile img{display:block;width:100%;height:100%;object-fit:contain;object-position:center;transform:none;transition:filter .18s ease}.cv-imagine-tile:hover img{transform:none;filter:brightness(.84)}.cv-imagine-style-trigger i,.cv-imagine-aspect-trigger>i:last-child{display:none}.cv-imagine-style-trigger,.cv-imagine-aspect-trigger{justify-content:center;min-width:0}.cv-imagine-style-trigger{gap:6px}.cv-imagine-aspect-trigger{gap:7px}.cv-imagine-style-menu,.cv-imagine-aspect-menu{isolation:isolate}.cv-imagine-style-menu button,.cv-imagine-aspect-menu button{margin-block:1px}.cv-imagine-empty{flex:1 0 100%}
     /* Composer controls share a single liquid-glass system and keep the
        primary action anchored to the far edge of the workspace. */
     .cv-imagine-controls{width:100%;min-width:0;gap:10px}.cv-imagine-controls .cv-imagine-generate{margin-left:auto;flex:0 0 auto;min-width:124px;height:39px;padding-inline:18px;border:1px solid color-mix(in srgb,var(--cv-accent) 72%,var(--cv-hair));border-radius:12px 11px 13px 10px;background:linear-gradient(135deg,color-mix(in srgb,var(--cv-accent) 88%,#fff 12%),var(--cv-accent));color:#fff;box-shadow:0 8px 20px color-mix(in srgb,var(--cv-accent) 31%,transparent),inset 0 1px 0 rgba(255,255,255,.36);text-shadow:0 1px 1px rgba(0,0,0,.14)}.cv-imagine-controls .cv-imagine-generate:hover{filter:saturate(1.07) brightness(1.04);box-shadow:0 12px 26px color-mix(in srgb,var(--cv-accent) 39%,transparent),inset 0 1px 0 rgba(255,255,255,.4)}.cv-imagine-aspect-trigger,.cv-imagine-style-trigger{border-color:color-mix(in srgb,var(--cv-surface) 78%,var(--cv-hair));background:linear-gradient(135deg,color-mix(in srgb,var(--cv-surface) 78%,transparent),color-mix(in srgb,var(--cv-accent) 7%,transparent));backdrop-filter:blur(18px) saturate(150%);-webkit-backdrop-filter:blur(18px) saturate(150%);box-shadow:inset 0 1px 0 color-mix(in srgb,var(--cv-surface) 88%,transparent),0 5px 16px color-mix(in srgb,var(--cv-ink) 9%,transparent);transition:transform .18s cubic-bezier(.2,.8,.2,1),border-color .18s ease,background .18s ease,box-shadow .18s ease}.cv-imagine-aspect-trigger:hover,.cv-imagine-style-trigger:hover{border-color:color-mix(in srgb,var(--cv-accent) 48%,var(--cv-hair));background:linear-gradient(135deg,color-mix(in srgb,var(--cv-surface) 86%,transparent),color-mix(in srgb,var(--cv-accent) 13%,transparent));box-shadow:inset 0 1px 0 color-mix(in srgb,var(--cv-surface) 94%,transparent),0 9px 22px color-mix(in srgb,var(--cv-ink) 14%,transparent);transform:translateY(-1px)}.cv-imagine-aspect-menu,.cv-imagine-style-menu{border-color:color-mix(in srgb,var(--cv-surface) 72%,var(--cv-hair));background:color-mix(in srgb,var(--cv-surface) 86%,transparent);backdrop-filter:blur(22px) saturate(155%);-webkit-backdrop-filter:blur(22px) saturate(155%);box-shadow:0 16px 34px color-mix(in srgb,var(--cv-ink) 21%,transparent),inset 0 1px 0 color-mix(in srgb,var(--cv-surface) 85%,transparent)}@media(max-width:720px){.cv-imagine-controls{gap:8px}.cv-imagine-controls .cv-imagine-generate{min-width:108px;margin-left:auto}.cv-imagine-aspect-trigger,.cv-imagine-style-trigger{flex:0 1 auto}}
@@ -88,9 +88,9 @@
     .cv-module-loader{position:relative;isolation:isolate;width:min(680px,100%);overflow:hidden;padding:clamp(25px,4.5vw,42px);border:1px solid color-mix(in srgb,var(--cv-ink) 25%,transparent);border-radius:26px 22px 29px 20px / 22px 28px 21px 26px;background:linear-gradient(145deg,color-mix(in srgb,var(--cv-surface) 76%,transparent),color-mix(in srgb,var(--cv-soft) 52%,transparent));box-shadow:0 26px 72px color-mix(in srgb,var(--cv-ink) 14%,transparent),inset 0 1px 0 color-mix(in srgb,#fff 72%,transparent);backdrop-filter:blur(28px) saturate(145%);-webkit-backdrop-filter:blur(28px) saturate(145%);animation:cvModuleLoaderIn .28s cubic-bezier(.2,.8,.2,1) both}.cv-module-loader:before{content:"";position:absolute;z-index:-1;width:390px;height:390px;top:-270px;left:-110px;border-radius:45% 55% 48% 52%;background:radial-gradient(circle at 58% 64%,color-mix(in srgb,var(--cv-accent) 24%,transparent),transparent 64%);animation:cvModuleLoaderDrift 4.2s ease-in-out infinite alternate}.cv-module-loader:after{content:"";position:absolute;inset:4px;pointer-events:none;border:1px solid color-mix(in srgb,var(--cv-ink) 15%,transparent);border-radius:22px 20px 25px 18px;opacity:.48}
     .cv-module-loader-head{display:grid;grid-template-columns:58px minmax(0,1fr);align-items:center;gap:18px}.cv-module-loader-mark{position:relative;display:grid;width:58px;height:58px;place-items:center;border:1px solid color-mix(in srgb,var(--cv-accent) 38%,transparent);border-radius:19px 16px 21px 15px;background:color-mix(in srgb,var(--cv-surface) 62%,transparent);box-shadow:0 12px 25px color-mix(in srgb,var(--cv-accent) 15%,transparent),inset 0 1px 0 color-mix(in srgb,#fff 70%,transparent);backdrop-filter:blur(18px);-webkit-backdrop-filter:blur(18px)}.cv-module-loader-mark:before{content:"";position:absolute;inset:7px;border:1px solid color-mix(in srgb,var(--cv-accent) 35%,transparent);border-radius:50%;animation:cvModuleOrbit 1.8s linear infinite}.cv-module-loader-mark:after{content:"";position:absolute;top:5px;left:26px;width:6px;height:6px;border-radius:50%;background:var(--cv-accent);box-shadow:0 0 0 4px color-mix(in srgb,var(--cv-accent) 14%,transparent)}.cv-module-loader-mark span{position:absolute;display:block;border:1.5px solid var(--cv-accent);border-radius:7px 6px 8px 5px}.cv-module-loader-mark span:nth-child(1){width:27px;height:20px;transform:translate(-4px,-3px) rotate(-5deg);opacity:.46}.cv-module-loader-mark span:nth-child(2){width:28px;height:21px;transform:translate(4px,3px) rotate(4deg);animation:cvCanvasFrame 1.45s ease-in-out infinite}.cv-module-loader-mark span:nth-child(3){width:6px;height:6px;border:0;border-radius:50%;background:var(--cv-accent);transform:translate(8px,-5px)}
     .cv-module-loader-kicker{display:block;color:var(--cv-accent);font-size:9.5px;font-weight:820;letter-spacing:1.55px;text-transform:uppercase}.cv-module-loader h2{margin:6px 0 0;color:var(--cv-ink);font-size:clamp(22px,3vw,31px);font-weight:790;letter-spacing:-.9px;line-height:1.05}.cv-module-loader p{margin:8px 0 0;color:var(--cv-muted);font-size:12px;line-height:1.52}.cv-module-loader-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;margin-top:30px}.cv-module-loader-cell{position:relative;min-height:112px;overflow:hidden;border:1px solid color-mix(in srgb,var(--cv-ink) 18%,transparent);border-radius:17px 14px 19px 13px;background:color-mix(in srgb,var(--cv-surface) 55%,transparent);box-shadow:0 12px 25px color-mix(in srgb,var(--cv-ink) 6%,transparent),inset 0 1px 0 color-mix(in srgb,#fff 65%,transparent);backdrop-filter:blur(20px) saturate(120%);-webkit-backdrop-filter:blur(20px) saturate(120%);animation:cvModuleCell 1.65s ease-in-out infinite;animation-delay:calc(var(--loader-cell) * 90ms)}.cv-module-loader-cell:before{content:"";position:absolute;inset:0;background:linear-gradient(108deg,transparent 20%,color-mix(in srgb,#fff 52%,transparent) 43%,transparent 66%);transform:translateX(-120%);animation:cvModuleShimmer 1.65s ease-in-out infinite;animation-delay:calc(var(--loader-cell) * 90ms)}.cv-module-loader-cell i,.cv-module-loader-cell b,.cv-module-loader-cell span{position:absolute;left:15px;display:block;border-radius:999px;background:color-mix(in srgb,var(--cv-muted) 16%,transparent)}.cv-module-loader-cell i{top:15px;width:7px;height:7px;background:var(--cv-accent);box-shadow:0 0 0 4px color-mix(in srgb,var(--cv-accent) 13%,transparent)}.cv-module-loader-cell b{top:35px;width:43%;height:7px}.cv-module-loader-cell span{top:56px;width:calc(100% - 30px);height:6px;box-shadow:0 15px 0 color-mix(in srgb,var(--cv-muted) 11%,transparent),0 30px 0 color-mix(in srgb,var(--cv-muted) 8%,transparent)}.cv-module-loader-status{display:flex;align-items:center;gap:9px;margin-top:18px;color:var(--cv-muted);font-size:10.5px;font-weight:650}.cv-module-loader-status:before{content:"";width:8px;height:8px;border-radius:50%;background:var(--cv-accent);animation:cvModulePulse 1.25s ease-out infinite}
-    .cv-imagine-loading-stage{min-height:calc(100dvh - 44px);padding:8px;overflow:hidden;background:color-mix(in srgb,var(--cv-soft) 86%,var(--cv-bg))}.cv-imagine-skeleton-gallery{display:grid;grid-template-columns:repeat(12,minmax(0,1fr));grid-auto-rows:88px;gap:8px;min-height:100%;align-content:start}.cv-imagine-skeleton{position:relative;grid-column:span 3;grid-row:span 2;overflow:hidden;border:1px solid color-mix(in srgb,var(--cv-hair) 78%,transparent);border-radius:13px 11px 14px 10px;background:linear-gradient(145deg,color-mix(in srgb,var(--cv-surface) 60%,transparent),color-mix(in srgb,var(--cv-soft) 78%,transparent));box-shadow:0 7px 18px color-mix(in srgb,var(--cv-ink) 8%,transparent),inset 0 1px 0 color-mix(in srgb,#fff 45%,transparent);backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px);animation:cvImagineSkeletonFloat 1.75s ease-in-out infinite;animation-delay:calc(var(--skeleton-index) * 55ms)}.cv-imagine-skeleton.wide{grid-column:span 5}.cv-imagine-skeleton.portrait{grid-column:span 2;grid-row:span 3}.cv-imagine-skeleton:before{content:"";position:absolute;inset:0;background:linear-gradient(105deg,transparent 22%,color-mix(in srgb,#fff 50%,transparent) 45%,transparent 68%);transform:translateX(-120%);animation:cvImagineSkeletonShimmer 1.7s ease-in-out infinite;animation-delay:calc(var(--skeleton-index) * 55ms)}.cv-imagine-skeleton:after{content:"";position:absolute;left:14px;bottom:14px;width:42%;height:7px;border-radius:999px;background:color-mix(in srgb,var(--cv-muted) 14%,transparent);box-shadow:0 -18px 0 -1px color-mix(in srgb,var(--cv-accent) 16%,transparent)}
+    .cv-imagine-loading-stage{min-height:calc(100dvh - 44px);padding:8px;overflow:hidden;background:color-mix(in srgb,var(--cv-soft) 86%,var(--cv-bg))}.cv-imagine-skeleton-gallery{display:grid;grid-template-columns:repeat(12,minmax(0,1fr));grid-auto-rows:88px;gap:8px;min-height:100%;align-content:start}.cv-imagine-skeleton{position:relative;grid-column:span 3;grid-row:span 2;overflow:hidden;border:1px solid color-mix(in srgb,var(--cv-hair) 78%,transparent);border-radius:13px 11px 14px 10px;background:color-mix(in srgb,var(--cv-soft) 88%,var(--cv-surface));box-shadow:0 7px 18px color-mix(in srgb,var(--cv-ink) 8%,transparent),inset 0 1px 0 color-mix(in srgb,#fff 45%,transparent);backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px)}.cv-imagine-skeleton.wide{grid-column:span 5}.cv-imagine-skeleton.portrait{grid-column:span 2;grid-row:span 3}.cv-imagine-skeleton:before{content:"";position:absolute;inset:0;background:linear-gradient(105deg,color-mix(in srgb,var(--cv-soft) 88%,var(--cv-surface)) 20%,color-mix(in srgb,#fff 44%,transparent) 46%,color-mix(in srgb,var(--cv-soft) 88%,var(--cv-surface)) 72%);background-size:240% 100%;animation:cvImageTileShimmer 1.35s ease-in-out infinite;animation-delay:calc(var(--skeleton-index) * -73ms)}.cv-imagine-skeleton:after{content:none}
     .cv-imagine-tile.is-image-loading:before{content:"";position:absolute;z-index:1;inset:0;background:linear-gradient(105deg,color-mix(in srgb,var(--cv-soft) 88%,var(--cv-surface)) 20%,color-mix(in srgb,#fff 44%,transparent) 46%,color-mix(in srgb,var(--cv-soft) 88%,var(--cv-surface)) 72%);background-size:240% 100%;animation:cvImageTileShimmer 1.35s ease-in-out infinite}.cv-imagine-tile.is-image-loading:after{display:none}.cv-imagine-tile.is-image-loading img{opacity:0!important;filter:none!important}.cv-imagine-tile img{opacity:1;transition:opacity .18s ease,filter .18s ease}.cv-imagine-tile.is-image-error img{opacity:.08;filter:grayscale(1)}
-    @keyframes cvModuleLoaderIn{from{opacity:0;transform:translateY(9px) scale(.985)}to{opacity:1;transform:none}}@keyframes cvModuleLoaderDrift{to{transform:translate(32px,18px) rotate(8deg)}}@keyframes cvModuleOrbit{to{transform:rotate(360deg)}}@keyframes cvCanvasFrame{0%,100%{transform:translate(4px,3px) rotate(4deg)}50%{transform:translate(2px,0) rotate(1deg)}}@keyframes cvModuleCell{0%,100%{transform:translateY(0)}50%{transform:translateY(-3px);border-color:color-mix(in srgb,var(--cv-accent) 34%,transparent)}}@keyframes cvModuleShimmer{45%,100%{transform:translateX(120%)}}@keyframes cvModulePulse{70%,100%{box-shadow:0 0 0 8px color-mix(in srgb,var(--cv-accent) 0%,transparent)}}@keyframes cvImagineSkeletonFloat{0%,100%{transform:translateY(0)}50%{transform:translateY(-2px)}}@keyframes cvImagineSkeletonShimmer{45%,100%{transform:translateX(120%)}}@keyframes cvImageTileShimmer{0%{background-position:120% 0}100%{background-position:-120% 0}}
+    @keyframes cvModuleLoaderIn{from{opacity:0;transform:translateY(9px) scale(.985)}to{opacity:1;transform:none}}@keyframes cvModuleLoaderDrift{to{transform:translate(32px,18px) rotate(8deg)}}@keyframes cvModuleOrbit{to{transform:rotate(360deg)}}@keyframes cvCanvasFrame{0%,100%{transform:translate(4px,3px) rotate(4deg)}50%{transform:translate(2px,0) rotate(1deg)}}@keyframes cvModuleCell{0%,100%{transform:translateY(0)}50%{transform:translateY(-3px);border-color:color-mix(in srgb,var(--cv-accent) 34%,transparent)}}@keyframes cvModuleShimmer{45%,100%{transform:translateX(120%)}}@keyframes cvModulePulse{70%,100%{box-shadow:0 0 0 8px color-mix(in srgb,var(--cv-accent) 0%,transparent)}}@keyframes cvImageTileShimmer{0%{background-position:120% 0}100%{background-position:-120% 0}}
     @media(max-width:760px){.cv-module-loader{padding:24px 20px}.cv-module-loader-head{grid-template-columns:50px minmax(0,1fr);gap:13px}.cv-module-loader-mark{width:50px;height:50px}.cv-module-loader-grid{gap:8px}.cv-module-loader-cell{min-height:92px}.cv-module-loader-cell:nth-child(3){display:none}.cv-imagine-skeleton-gallery{grid-template-columns:repeat(6,minmax(0,1fr));grid-auto-rows:72px;gap:5px}.cv-imagine-skeleton{grid-column:span 3}.cv-imagine-skeleton.wide{grid-column:span 4}.cv-imagine-skeleton.portrait{grid-column:span 2;grid-row:span 3}}
     @media(prefers-reduced-motion:reduce){.cv-module-loader,.cv-module-loader:before,.cv-module-loader-mark:before,.cv-module-loader-mark span,.cv-module-loader-cell,.cv-module-loader-cell:before,.cv-module-loader-status:before,.cv-imagine-skeleton,.cv-imagine-skeleton:before,.cv-imagine-tile.is-image-loading:before{animation:none!important}}
     @media(prefers-reduced-transparency:reduce){.cv-module-loader,.cv-module-loader-mark,.cv-module-loader-cell,.cv-imagine-skeleton{background:var(--cv-surface);backdrop-filter:none;-webkit-backdrop-filter:none}}
@@ -181,6 +181,8 @@
       this._imagineEntrancePending = true;
       this._imagineRecoveryTimers = new Map();
       this._imagineLayoutTimer = 0;
+      this._imagineImageObserver = null;
+      this._imagineSubmissionStarting = false;
       this._loadRetryTimer = 0;
       this._loadRetryCount = 0;
       this._onImagineViewportResize = () => {
@@ -238,6 +240,8 @@
       window.removeEventListener('filmscript:canvas.drag', this._canvasDragHandler);
       window.removeEventListener('filmscript:content.operation', this._canvasOperationHandler);
       this._clearImagineRecoveryTimers();
+      this._imagineImageObserver?.disconnect();
+      this._imagineImageObserver = null;
       this._stopPointerInteraction();
     }
 
@@ -536,7 +540,7 @@
       return rows;
     }
 
-    renderImagineTile(entry, index = 0) {
+    renderImagineTile(entry, index = 0, visibleRow = index === 0) {
       const vertical = entry.ratio < 1;
       const style = `--cv-imagine-ratio:${entry.ratio.toFixed(4)};--cv-imagine-stagger:${Math.min(index, 15)}`;
       if (entry.type === 'pending') {
@@ -544,7 +548,27 @@
       }
       const asset = entry.asset;
       const dimensions = num(asset.width) > 0 && num(asset.height) > 0 ? `${Math.round(num(asset.width))} × ${Math.round(num(asset.height))}` : '';
-      return `<button class="cv-imagine-tile is-image-loading ${vertical ? 'vertical' : 'horizontal'}" style="${style}" data-imagine-entry="asset:${esc(asset.id)}" data-action="imagine-preview" data-id="${asset.id}" title="${esc(dimensions ? `View generated image, ${dimensions}` : 'View generated image')}"><img loading="lazy" decoding="async" src="${esc(this.assetUrl(asset.id))}" alt="${esc(asset.prompt || 'Generated visual')}"></button>`;
+      // The first visual row starts immediately. Everything below it keeps
+      // its URL dormant until it nears the project viewport.
+      const eager = Boolean(visibleRow);
+      const source = esc(this.assetUrl(asset.id));
+      const width = Math.max(0, Math.round(num(asset.width)));
+      const height = Math.max(0, Math.round(num(asset.height)));
+      const intrinsicSize = width > 0 && height > 0 ? ` width="${width}" height="${height}"` : '';
+      const sourceAttribute = eager ? `src="${source}"` : `data-src="${source}"`;
+      return `<button class="cv-imagine-tile is-image-loading ${vertical ? 'vertical' : 'horizontal'}" style="${style}" data-imagine-entry="asset:${esc(asset.id)}" data-action="imagine-preview" data-id="${esc(asset.id)}" title="${esc(dimensions ? `View generated image, ${dimensions}` : 'View generated image')}"><img loading="${eager ? 'eager' : 'lazy'}" fetchpriority="${eager ? 'high' : 'low'}" decoding="async" ${sourceAttribute}${intrinsicSize} alt="${esc(asset.prompt || 'Generated visual')}"></button>`;
+    }
+
+    _setImagineSubmissionStarting(starting) {
+      this._imagineSubmissionStarting = Boolean(starting);
+      const form = this.shadowRoot.querySelector('[data-form="imagine-image"]');
+      const generate = form?.querySelector('.cv-imagine-generate[type="submit"]');
+      if (!form || !generate) return;
+      form.toggleAttribute('aria-busy', this._imagineSubmissionStarting);
+      generate.disabled = this._imagineSubmissionStarting;
+      const quality = ['low', 'medium', 'high'].includes(this.state.imagineQuality) ? this.state.imagineQuality : 'low';
+      const credits = { low: 3, medium: 5, high: 10 }[quality];
+      generate.textContent = this._imagineSubmissionStarting ? 'Checking…' : `${credits} credits`;
     }
 
     entitlementEnabled(value) { return value === true || value?.allowed === true; }
@@ -725,6 +749,8 @@
         this._patchBoard();
         return;
       }
+      this._imagineImageObserver?.disconnect();
+      this._imagineImageObserver = null;
       const animateImagineReflow = this._imagineAnimateNextRender && this.state.view === 'imagine';
       const previousImagineTiles = animateImagineReflow ? this._captureImagineTileRects() : null;
       this._imagineAnimateNextRender = false;
@@ -737,6 +763,39 @@
       this.shadowRoot.innerHTML = `<style>${STYLE}</style><div class="cv-root">${content}</div>${overlays}${this.state.toast ? `<div class="cv-toast" role="status">${esc(this.state.toast)}</div>` : ''}`;
       if (this.state.view === 'board') requestAnimationFrame(() => this._positionBoardLayer());
       if (animateImagineReflow) requestAnimationFrame(() => this._animateImagineReflow(previousImagineTiles));
+      if (!this.state.loading && !this.state.error && this.state.view === 'imagine') {
+        requestAnimationFrame(() => this._hydrateImagineImages());
+      }
+    }
+
+    _hydrateImagineImages() {
+      this._imagineImageObserver?.disconnect();
+      this._imagineImageObserver = null;
+      const images = [...this.shadowRoot.querySelectorAll('.cv-imagine-tile img[data-src]')];
+      if (!images.length) return;
+      const reveal = (image) => {
+        if (!(image instanceof HTMLImageElement) || !image.dataset.src) return;
+        image.src = image.dataset.src;
+        delete image.dataset.src;
+        this._imagineImageObserver?.unobserve(image);
+        if (image.complete && image.naturalWidth > 0) this._onImageLoad({ target: image });
+      };
+      if (typeof IntersectionObserver !== 'function') {
+        images.forEach(reveal);
+        return;
+      }
+      // Project Imagine is clipped by the Editor viewport. Using that viewport
+      // prevents distant rows from competing with the first visible frames.
+      this._imagineImageObserver = new IntersectionObserver((entries) => {
+        entries.forEach((entry) => {
+          if (entry.isIntersecting) reveal(entry.target);
+        });
+      }, {
+        root: null,
+        rootMargin: '720px 0px',
+        threshold: 0.01,
+      });
+      images.forEach((image) => this._imagineImageObserver.observe(image));
     }
 
     _captureImagineTileRects() {
@@ -890,7 +949,9 @@
       const references = (this.state.workspace?.assets || []).filter((asset) => this.state.imagineReferenceIds.includes(asset.id));
       const imageLocked = this.state.accountAuthenticated === true && !this.hasImageGenerationAccess();
       const disabled = imageLocked ? 'disabled' : '';
-      const imageActionTitle = imageLocked ? this.imageGenerationMessage({ exhausted: this.state.accountTier === 'full' }) : 'Generate image';
+      const imageActionTitle = imageLocked
+        ? this.imageGenerationMessage({ exhausted: this.state.accountTier === 'full' })
+        : (this._imagineSubmissionStarting ? 'Checking image access' : 'Generate image');
       const style = ['cinematic', 'animated', 'sketch', 'anime'].includes(this.state.imagineStyle) ? this.state.imagineStyle : 'cinematic';
       const styleLabel = style[0].toUpperCase() + style.slice(1);
       const sizeOption = this.imagineSizeOption(this.state.imagineSize);
@@ -898,7 +959,9 @@
       const quality = ['low', 'medium', 'high'].includes(this.state.imagineQuality) ? this.state.imagineQuality : 'low';
       const qualityCredits = { low: 3, medium: 5, high: 10 };
       const qualityLabel = quality[0].toUpperCase() + quality.slice(1);
-      const imageActionLabel = imageLocked
+      const imageActionLabel = this._imagineSubmissionStarting
+        ? 'Checking…'
+        : imageLocked
         ? (this.state.accountTier === 'full' ? 'Credits used' : 'Unlock Full')
         : `${qualityCredits[quality]} credits`;
       // Build true justified rows rather than letting flex leave a ragged
@@ -909,9 +972,9 @@
       this._imagineEntrancePending = false;
       let tileIndex = 0;
       const tiles = galleryEntries.length
-        ? this.imagineJustifiedRows(galleryEntries).map((row) => {
+        ? this.imagineJustifiedRows(galleryEntries).map((row, rowIndex) => {
           const height = Math.round(row.height);
-          return `<div class="cv-imagine-gallery-row" style="--cv-imagine-row-height:${height}px">${row.entries.map((entry) => this.renderImagineTile(entry, tileIndex++)).join('')}</div>`;
+          return `<div class="cv-imagine-gallery-row" style="--cv-imagine-row-height:${height}px">${row.entries.map((entry) => this.renderImagineTile(entry, tileIndex++, rowIndex === 0)).join('')}</div>`;
         }).join('')
         : `<div class="cv-imagine-empty"><div>${icon('image')}<strong>Make your first frame</strong><span>It will live here, ready for Boards and Shot List.</span></div></div>`;
       const referencePreview = references.length ? `<div class="cv-imagine-reference-list"><img src="${esc(this.assetUrl(references[0].id))}" alt="${esc(references[0].prompt || 'Reference image')}">${references.length > 1 ? `<span>+${references.length - 1}</span>` : ''}</div>` : '';
@@ -923,7 +986,7 @@
       const qualityOptions = ['low', 'medium', 'high'].map((value) => `<button type="button" role="menuitemradio" aria-checked="${quality === value}" class="${quality === value ? 'active' : ''}" data-action="imagine-quality-select" data-quality="${value}"><span>${value[0].toUpperCase() + value.slice(1)}</span><b>${qualityCredits[value]} credits</b></button>`).join('');
       const imageAction = imageLocked
         ? `<button class="cv-imagine-generate" type="button" data-action="imagine-unlock-full" title="${esc(imageActionTitle)}">${imageActionLabel}</button>`
-        : `<button class="cv-imagine-generate" type="submit" title="${esc(imageActionTitle)}">${imageActionLabel}</button>`;
+        : `<button class="cv-imagine-generate" type="submit" title="${esc(imageActionTitle)}" ${this._imagineSubmissionStarting ? 'disabled' : ''}>${imageActionLabel}</button>`;
       return `<section class="cv-imagine-stage"><div class="cv-imagine-gallery${animateEntrance ? ' is-entering' : ''}">${tiles}</div><form class="cv-imagine-console ${this.state.imagineDragging ? 'is-dragging' : ''}" data-form="imagine-image"><span class="cv-imagine-drop-hint">Drop to add as reference</span><div class="cv-imagine-console-top">${referenceControl}<textarea data-imagine-prompt name="prompt" required minlength="8" maxlength="3000" placeholder="Describe the frame you want to create…" ${disabled}>${esc(this.state.imaginePrompt)}</textarea></div><div class="cv-imagine-controls"><div class="cv-imagine-aspect-picker cv-imagine-size-picker"><input type="hidden" name="size" value="${sizeOption.value}"><input type="hidden" name="orientation" value="${orientation}"><button class="cv-imagine-aspect-trigger" type="button" data-action="imagine-size-menu" aria-label="Aspect ratio: ${sizeOption.compact}" aria-haspopup="menu" aria-expanded="${this.state.imagineSizeMenu}" ${disabled}><i class="cv-aspect-preview ${orientation}" aria-hidden="true"></i><strong>${sizeOption.compact}</strong></button>${this.state.imagineSizeMenu ? `<div class="cv-imagine-aspect-menu cv-imagine-size-menu" role="menu">${sizeOptions}</div>` : ''}</div><div class="cv-imagine-style-picker"><input type="hidden" name="style" value="${style}"><button class="cv-imagine-style-trigger" type="button" data-action="imagine-style-menu" aria-label="Style: ${styleLabel}" aria-haspopup="menu" aria-expanded="${this.state.imagineStyleMenu}" ${disabled}><span>Style</span><strong>${styleLabel}</strong></button>${this.state.imagineStyleMenu ? `<div class="cv-imagine-style-menu" role="menu">${styleOptions}</div>` : ''}</div><div class="cv-imagine-style-picker cv-imagine-quality-picker"><input type="hidden" name="quality" value="${quality}"><button class="cv-imagine-style-trigger" type="button" data-action="imagine-quality-menu" aria-label="Quality: ${qualityLabel}, ${qualityCredits[quality]} credits" aria-haspopup="menu" aria-expanded="${this.state.imagineQualityMenu}" ${disabled}><span>Quality</span><strong>${qualityLabel}</strong></button>${this.state.imagineQualityMenu ? `<div class="cv-imagine-style-menu cv-imagine-quality-menu" role="menu">${qualityOptions}</div>` : ''}</div>${imageAction}</div></form></section>`;
     }
 
@@ -980,7 +1043,10 @@
         qualityTrigger.querySelector('strong').textContent = qualityLabel;
       }
       const generate = form.querySelector('.cv-imagine-generate');
-      if (generate && !imageLocked) generate.textContent = `${qualityCredits[quality]} credits`;
+      if (generate && !imageLocked) {
+        generate.disabled = this._imagineSubmissionStarting;
+        generate.textContent = this._imagineSubmissionStarting ? 'Checking…' : `${qualityCredits[quality]} credits`;
+      }
       if (this.state.imagineSizeMenu) sizePicker.insertAdjacentHTML('beforeend', `<div class="cv-imagine-aspect-menu cv-imagine-size-menu" role="menu">${sizeOptions}</div>`);
       if (this.state.imagineStyleMenu) stylePicker.insertAdjacentHTML('beforeend', `<div class="cv-imagine-style-menu" role="menu">${styleOptions}</div>`);
       if (this.state.imagineQualityMenu) qualityPicker.insertAdjacentHTML('beforeend', `<div class="cv-imagine-style-menu cv-imagine-quality-menu" role="menu">${qualityOptions}</div>`);
@@ -2005,35 +2071,45 @@
     }
 
     async generateImagineImage(form) {
-      const prompt = String(form.get('prompt') || '').trim();
-      if (!await this.ensureImageGeneration()) return;
-      if (prompt.length < 8) return this.toast('Describe the image in a little more detail.');
-      const sizeOption = this.imagineSizeOption(String(form.get('size') || this.state.imagineSize));
-      const orientation = sizeOption.orientation === 'vertical' ? 'vertical' : 'horizontal';
-      const style = ['cinematic', 'animated', 'sketch', 'anime'].includes(String(form.get('style') || '')) ? String(form.get('style')) : 'cinematic';
-      const quality = ['low', 'medium', 'high'].includes(String(form.get('quality') || '')) ? String(form.get('quality')) : 'low';
-      const referenceAssetIds = [...this.state.imagineReferenceIds];
-      const createdAtMs = Date.now();
-      const job = {
-        id: uid('imagine-job'),
-        createdAt: new Date(createdAtMs).toISOString(),
-        createdAtMs,
-        sequence: ++this._imagineJobSequence,
-        prompt,
-        orientation,
-        size: sizeOption.value,
-        style,
-        quality,
-        referenceAssetIds,
-        ratio: sizeOption.ratio,
-      };
-      this.state.imaginePendingJobs.push(job);
-      this._saveImagineJobs();
-      this._imagineAnimateNextRender = true;
-      this.render();
-      // The job is persisted before its request begins. If the tab refreshes,
-      // the next Canvas load restores its placeholder and safely resumes it.
-      this._submitImagineJob(job);
+      // Claim the submit before the entitlement refresh can yield. Click,
+      // Enter and a double tap must all share this one start.
+      if (this._imagineSubmissionStarting) return;
+      this._setImagineSubmissionStarting(true);
+      try {
+        const prompt = String(form.get('prompt') || '').trim();
+        if (!await this.ensureImageGeneration()) return;
+        if (prompt.length < 8) return this.toast('Describe the image in a little more detail.');
+        const sizeOption = this.imagineSizeOption(String(form.get('size') || this.state.imagineSize));
+        const orientation = sizeOption.orientation === 'vertical' ? 'vertical' : 'horizontal';
+        const style = ['cinematic', 'animated', 'sketch', 'anime'].includes(String(form.get('style') || '')) ? String(form.get('style')) : 'cinematic';
+        const quality = ['low', 'medium', 'high'].includes(String(form.get('quality') || '')) ? String(form.get('quality')) : 'low';
+        const referenceAssetIds = [...this.state.imagineReferenceIds];
+        const createdAtMs = Date.now();
+        const job = {
+          id: uid('imagine-job'),
+          createdAt: new Date(createdAtMs).toISOString(),
+          createdAtMs,
+          sequence: ++this._imagineJobSequence,
+          prompt,
+          orientation,
+          size: sizeOption.value,
+          style,
+          quality,
+          referenceAssetIds,
+          ratio: sizeOption.ratio,
+        };
+        this.state.imaginePendingJobs.push(job);
+        this._saveImagineJobs();
+        this._imagineAnimateNextRender = true;
+        this.render();
+        // The job is persisted before its request begins. If the tab refreshes,
+        // the next Canvas load restores its placeholder and safely resumes it.
+        this._submitImagineJob(job);
+      } finally {
+        // A successful path has rendered its persisted placeholder; every
+        // early-return/error path restores the existing composer here.
+        this._setImagineSubmissionStarting(false);
+      }
     }
 
     async addImagineToBoard(boardId) {

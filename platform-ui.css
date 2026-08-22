@@ -124,8 +124,15 @@ html[data-filmscript-theme="dark"] .v5-screenplay-stage, html[data-filmscript-th
 @media (min-width:901px) {
   .v5-topbar { min-height:64px!important; height:64px!important; flex-basis:64px!important; padding-right:24px!important; padding-left:24px!important; }
   .v5-topbar .v5-top-actions { margin-left:auto!important; }
-  .v5-topbar .v5-work-modes { position:absolute; left:50%; max-width:calc(100% - 420px); transform:translateX(-50%); justify-content:center; overflow-x:auto; scrollbar-width:none; }
-  .v5-topbar .v5-work-modes::-webkit-scrollbar { display:none; }
+  .v5-topbar .v5-work-modes { position:absolute; top:0; left:50%; width:calc(100% - 500px); max-width:none; height:100%; transform:translateX(-50%); align-content:center; justify-content:center; flex-wrap:wrap; overflow:visible!important; }
+  .v5-topbar .v5-work-mode { min-width:0; white-space:nowrap; }
+}
+
+/* Keep every project destination visible in compact desktop windows. The
+   horizontal carousel remains exclusively in the mobile navigation. */
+@media (min-width:901px) and (max-width:1180px) {
+  .v5-topbar .v5-work-modes { column-gap:1px!important; row-gap:0!important; }
+  .v5-topbar .v5-work-mode { min-height:28px; padding:4px 6px; font-size:10px; letter-spacing:.08px; }
 }
 
 .fs-platform-scrim { position:fixed; inset:0; z-index:1490; background:rgba(22,22,20,.28); backdrop-filter:blur(3px); display:grid; place-items:center; padding:24px; }
