@@ -2,7 +2,7 @@
 <html>
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <link rel="icon" href="./assets/filmscript-favicon.svg?v=20260813" type="image/svg+xml">
 <link rel="shortcut icon" href="./assets/filmscript-favicon.svg?v=20260813" type="image/svg+xml">
 <!-- Vercel Web Analytics: production page views and navigation. -->
@@ -32,10 +32,10 @@
 <script type="module" src="./budget-workspace.js?v=20260821-loading1"></script>
 <script defer src="./calendar-client.js?v=20260820-module-routes3"></script>
 <script type="module" src="./calendar-workspace.js?v=20260821-loading1"></script>
-<script defer src="./platform-client.js?v=20260821-personal-name1"></script>
+<script defer src="./platform-client.js?v=20260822-mobile4"></script>
 <script defer src="./assets/vendor/realtime-collaboration.bundle.js?v=20260819-collab2"></script>
 <link rel="stylesheet" href="./filmscript-controls.css?v=20260716-typography1">
-<link rel="stylesheet" href="./platform-ui.css?v=20260821-desktop-nav2">
+<link rel="stylesheet" href="./platform-ui.css?v=20260822-mobile4">
 <link rel="prefetch" href="./App.dc.html" as="document">
 </head>
 <body>
@@ -103,7 +103,6 @@
   .v5-work-mode[aria-pressed="true"] { color: var(--accent, #BA7517); }
   .v5-work-mode:focus-visible { outline: none; }
   .v5-work-mode:active { transform: scale(.97); }
-  .v5-mobile-nav, .v5-mobile-more-scrim, .v5-mobile-more-sheet { display: none; }
   @media (max-width: 700px) {
     .v5-app-shell { padding-bottom: 0 !important; }
     .v5-topbar { height: 88px !important; flex-basis: 88px !important; flex-wrap: wrap; align-content: center; padding: 5px 14px !important; gap: 0 !important; }
@@ -113,7 +112,6 @@
     .fs-brand-mark { min-width: 102px; flex-basis: 102px; height: 35px; }
     .fs-brand-word { font-size: 19px; }
     .v5-top-actions { margin-left: auto; }
-    .v5-mobile-nav, .v5-mobile-more-scrim, .v5-mobile-more-sheet { display: none !important; }
     .v5-production-shell { padding: 18px 14px 32px !important; }
     .v5-production-shell-calendar { padding: 0 0 18px !important; }
     .v5-editor-toolbar { min-height: 48px; }
@@ -1026,9 +1024,6 @@
   @keyframes v5-spin { to { transform: rotate(360deg); } }
   .v5-app-shell.is-breakdown-embed .v5-topbar,
   .v5-app-shell.is-breakdown-embed .v5-editor-toolbar,
-  .v5-app-shell.is-breakdown-embed .v5-mobile-nav,
-  .v5-app-shell.is-breakdown-embed .v5-mobile-more-scrim,
-  .v5-app-shell.is-breakdown-embed .v5-mobile-more-sheet,
   .v5-app-shell.is-breakdown-embed .v5-editor-page-area > [aria-label="Screenplay zoom controls"] { display: none !important; }
   .v5-app-shell.is-breakdown-embed .v5-editor-workspace { height: 100vh; }
   .v5-app-shell.is-breakdown-embed-loading .v5-editor-workspace { opacity: 0; pointer-events: none; }
@@ -1172,6 +1167,279 @@
   @media (prefers-reduced-motion: reduce) {
     .v5-strip-toolbar-actions > button, .v5-strip-history > button, .v5-strip-toolbar-top > button, .v5-strip-view-switch button, .v5-shotlist-button, .v5-strip-bulk-action { transition-duration: .01ms !important; }
   }
+
+  /* Mobile is a calm screenplay reader first. Editing remains available,
+     while secondary tools open as focused sheets instead of side rails. */
+  .v5-mobile-format-control,
+  .v5-mobile-panel-scrim,
+  .v5-mobile-sheet-close { display: none; }
+  .v5-mobile-editor-toolbar,
+  .v5-mobile-editor-actions-layer { display: none; }
+  @media (max-width: 900px) {
+    html, body { width: 100%; min-width: 0; overflow: hidden; }
+    .v5-app-shell { height: 100dvh !important; min-height: 100dvh; padding-bottom: 0 !important; overflow: hidden !important; }
+    .v5-topbar {
+      height: calc(56px + env(safe-area-inset-top)) !important;
+      min-height: calc(56px + env(safe-area-inset-top)) !important;
+      flex-basis: calc(56px + env(safe-area-inset-top)) !important;
+      flex-wrap: nowrap !important;
+      align-content: normal !important;
+      padding: env(safe-area-inset-top) 12px 0 !important;
+      gap: 8px !important;
+    }
+    .v5-topbar .v5-work-modes { display: none !important; }
+    .v5-topbar .fs-brand-mark { min-width: 82px; height: 44px; flex: 1 1 auto; }
+    .v5-topbar .fs-brand-word { font-size: 18px; }
+    .v5-topbar .v5-top-actions { flex: 0 0 auto; min-height: 44px !important; gap: 2px !important; padding: 0 !important; border: 0 !important; background: transparent !important; box-shadow: none !important; backdrop-filter: none !important; -webkit-backdrop-filter: none !important; }
+    .v5-topbar .v5-theme-toggle,
+    .v5-topbar [data-testid="account-avatar"] { width: 44px !important; height: 44px !important; }
+
+    .v5-editor-toolbar {
+      min-height: 54px !important;
+      height: 54px !important;
+      padding: 0 10px !important;
+      gap: 7px !important;
+      overflow: visible;
+    }
+    .v5-editor-toolbar > .v5tipwrap:first-child { flex: 0 0 44px; }
+    .v5-editor-toolbar > .v5tipwrap:first-child > .v5ic { width: 44px !important; height: 44px !important; }
+    .v5-editor-toolbar-meta { flex: 1 1 86px !important; max-width: none !important; min-width: 0; gap: 0 !important; }
+    .v5-editor-toolbar-title { font-size: 12.5px !important; }
+    .v5-editor-format-stage { display: none !important; }
+    .v5-mobile-format-control {
+      position: relative;
+      flex: 0 0 auto;
+      display: flex;
+      align-items: center;
+      min-width: 124px;
+      height: 44px;
+      border: 1px solid var(--hair, #E7E4DA);
+      border-radius: 12px 10px 13px 9px;
+      background: var(--soft, #EFEBE1);
+      color: var(--ink, #2C2C2A);
+      overflow: hidden;
+    }
+    .v5-mobile-format-control::before {
+      content: "";
+      position: absolute;
+      inset: 3px -3px -3px 3px;
+      z-index: -1;
+      border: 1px solid color-mix(in srgb, var(--hair, #E7E4DA) 78%, transparent);
+      border-radius: 10px 13px 9px 12px;
+      pointer-events: none;
+    }
+    .v5-mobile-format-control svg { width: 17px; height: 17px; margin-left: 10px; flex: 0 0 17px; color: var(--accent, #BA7517); pointer-events: none; }
+    .v5-mobile-format-control select {
+      width: 100%; height: 100%; min-width: 0; padding: 0 30px 0 7px;
+      border: 0; outline: 0; appearance: none; -webkit-appearance: none;
+      background: transparent; color: var(--ink, #2C2C2A);
+      font: 700 11.5px/1 "Helvetica Neue", Helvetica, Arial, sans-serif;
+    }
+    .v5-mobile-format-control > span { position: absolute; right: 10px; top: 50%; color: var(--muted, #888780); font-size: 13px; transform: translateY(-52%); pointer-events: none; }
+    .v5-mobile-format-control:focus-within { border-color: var(--accent, #BA7517); box-shadow: 0 0 0 2px var(--accent-soft, rgba(186,117,23,.11)); }
+    .v5-editor-toolbar-secondary { position: static !important; flex: 0 0 44px; margin: 0 !important; gap: 0 !important; }
+    .v5-editor-toolbar-secondary > .v5-editor-save-state,
+    .v5-editor-toolbar-secondary > div:not([data-v5-pop]),
+    .v5-editor-toolbar-secondary > [data-v5-pop],
+    .v5-editor-toolbar-secondary > .v5ghost { display: none !important; }
+    .v5-editor-export-pdf { width: 44px !important; height: 44px !important; padding: 0 !important; justify-content: center; border-radius: 12px 10px 13px 9px; }
+    .v5-editor-export-pdf > span { display: none !important; }
+    .v5-editor-export-options { position: fixed; top: calc(118px + env(safe-area-inset-top)); right: 10px; width: min(260px, calc(100vw - 20px)); }
+
+    .v5-editor-workspace { position: relative; width: 100%; min-width: 0; overflow: hidden; }
+    .v5-editor-page-area { width: 100%; min-width: 0 !important; }
+    .v5-editor-page-area > div:first-child {
+      width: 100%; overflow-x: hidden !important; overflow-y: auto !important;
+      padding: 16px 12px calc(104px + env(safe-area-inset-bottom)) !important;
+      overscroll-behavior-x: none; -webkit-overflow-scrolling: touch;
+    }
+    .v5-screenplay-stage { width: 100% !important; height: auto !important; margin: 0 !important; }
+    .v5-screenplay-stage > div { width: 100% !important; gap: 14px !important; transform: none !important; }
+    .v5-screenplay-stage [data-v5-page] {
+      width: 100% !important; height: auto !important; min-height: 0 !important; flex: none !important;
+      border-radius: 14px 12px 16px 11px !important;
+      box-shadow: 2px 3px 0 var(--hair, #E7E4DA), 0 10px 26px rgba(35,35,34,.06) !important;
+      overflow: visible !important;
+    }
+    .v5-screenplay-stage [data-v5-page] > span { top: 13px !important; right: 16px !important; font-size: 10px !important; }
+    .v5-screenplay-stage [data-fs-page] {
+      position: relative !important; inset: auto !important; width: 100% !important;
+      min-height: 180px; padding: 38px 26px 44px 36px !important;
+      overflow: visible !important; font-size: 15px !important; line-height: 1.42 !important;
+      caret-color: var(--accent, #BA7517); overflow-wrap: anywhere;
+    }
+    .v5-screenplay-stage [data-v5-cover] {
+      width: 100% !important; height: min(68dvh, 570px) !important; min-height: 420px !important; flex: none !important;
+      border-radius: 14px 12px 16px 11px !important;
+      box-shadow: 2px 3px 0 var(--hair, #E7E4DA), 0 10px 26px rgba(35,35,34,.06) !important;
+    }
+    .v5-screenplay-stage [data-v5-cover] > div:first-child { padding: 52px 26px !important; }
+    [data-fs-page] > [data-type] { min-width: 0 !important; max-width: 100% !important; overflow-wrap: anywhere; }
+    [data-fs-page] > [data-type="scene"] { margin: 28px 0 0 !important; }
+    [data-fs-page] > [data-type="action"] { margin: 15px 0 0 !important; }
+    [data-fs-page] > [data-type="character"] { width: auto !important; margin: 18px 0 0 27% !important; }
+    [data-fs-page] > [data-type="paren"] { width: 64% !important; margin: 0 0 0 20% !important; }
+    [data-fs-page] > [data-type="dialogue"] { width: 78% !important; margin: 0 0 0 9% !important; }
+    [data-fs-page] > [data-type="transition"] { width: 76% !important; margin: 20px 0 0 auto !important; }
+    [data-fs-page] > [data-type="end"] { margin-top: 38px !important; }
+    [data-fs-page] [data-marker] { left: -22px !important; top: 1px !important; font-size: 10px !important; color: var(--muted, #888780) !important; }
+    [data-fs-page] [data-dialogue-marker] { display: none !important; }
+    .v5-editor-page-area > [aria-label="Screenplay zoom controls"] { display: none !important; }
+    .v5-scene-picker { position: fixed; inset: auto 10px calc(88px + env(safe-area-inset-bottom)) 10px; width: auto; max-height: min(62dvh, 520px); overflow: auto; transform: none; }
+
+    .v5-mobile-panel-scrim {
+      position: fixed; inset: 0; z-index: 780; display: block; width: 100%; height: 100%; padding: 0;
+      border: 0; background: rgba(28,27,24,.32); backdrop-filter: blur(2px); -webkit-backdrop-filter: blur(2px);
+    }
+    .v5-scene-rail,
+    .v5-lumiere-panel {
+      position: fixed !important; inset: auto 8px calc(82px + env(safe-area-inset-bottom)) 8px !important;
+      z-index: 790 !important; width: auto !important; max-width: none !important;
+      max-height: min(68dvh, 590px); min-height: 0 !important; flex: none !important;
+      overflow: hidden; border: 1px solid var(--hair, #E7E4DA) !important;
+      border-radius: 22px 19px 24px 17px !important;
+      box-shadow: 4px 5px 0 color-mix(in srgb, var(--hair, #E7E4DA) 82%, transparent), 0 24px 64px rgba(22,21,19,.25) !important;
+      animation: v5-mobile-sheet-in .24s cubic-bezier(.2,.8,.2,1) both !important;
+    }
+    .v5-scene-rail { height: min(60dvh, 520px); }
+    .v5-lumiere-panel { height: min(68dvh, 590px); }
+    .v5-mobile-sheet-close {
+      display: grid; place-items: center; width: 44px; height: 44px; margin: -10px -12px -10px 6px;
+      border: 0; border-radius: 50%; background: transparent; color: var(--muted, #888780);
+      font-family: inherit; font-size: 24px; font-weight: 400; line-height: 1; cursor: pointer;
+    }
+    .v5-mobile-sheet-close:focus-visible,
+    .v5-lumiere-toggle:focus-visible { outline: 2px solid var(--accent, #BA7517); outline-offset: -3px; }
+    .v5-lumiere-panel > div:first-child { min-height: 56px; height: 56px !important; flex-basis: 56px !important; padding-left: 18px !important; }
+    .v5-lumiere-toggle { min-width: 44px !important; min-height: 44px !important; padding: 0 !important; justify-content: center; }
+    .v5-lumiere-toggle > span { display: none; }
+    .v5-lumiere-footer { padding-bottom: max(8px, env(safe-area-inset-bottom)) !important; }
+    @keyframes v5-mobile-sheet-in { from { opacity: 0; transform: translateY(24px) scale(.985); } to { opacity: 1; transform: none; } }
+
+    .v5-production-shell { width: 100%; min-width: 0; padding: 18px 12px calc(104px + env(safe-area-inset-bottom)) !important; overflow-x: hidden !important; }
+    .v5-production-shell > div { width: 100%; min-width: 0; }
+    .v5-production-header { gap: 14px; padding-bottom: 18px; }
+    .v5-production-header-actions,
+    .v5-breakdown-actions { max-width: 100%; overflow-x: auto; flex-wrap: nowrap; padding-bottom: 3px; }
+    .v5-production-header-actions > *,
+    .v5-breakdown-actions > * { flex: 0 0 auto; min-height: 44px; }
+    .v5-breakdown-toolbar { gap: 12px; }
+    .v5-breakdown-navigator { width: 100%; }
+    .v5-breakdown-scene-copy { flex: 1; }
+    .v5-breakdown-scene-heading { max-width: none !important; overflow-wrap: anywhere; white-space: normal; }
+    .v5-breakdown-sheet { width: 100%; min-width: 0; }
+    .v5-breakdown-grid { grid-template-columns: minmax(0, 1fr); grid-template-rows: none; gap: 11px; }
+    .v5-breakdown-cell { grid-column: 1 !important; grid-row: auto !important; min-height: 0; }
+    .v5-breakdown-script-pane { min-height: 400px; height: 64dvh; }
+    .v5-breakdown-workspace.is-split .v5-breakdown-pane-navigator .v5-breakdown-scene-heading { max-width: none; }
+    .v5-stripboard-toolbar-controls { width: 100%; overflow-x: auto; }
+    .v5-strip-toolbar-top,
+    .v5-strip-toolbar-actions,
+    .v5-strip-toolbar-legend { max-width: 100%; flex-wrap: nowrap; overflow-x: auto; padding-bottom: 3px; }
+    .v5-stripboard-board { width: 100%; max-width: 100%; overflow-x: auto !important; }
+    .v5-stripboard-board > .v5-stripboard-head,
+    .v5-stripboard-board > .v5-strip { min-width: 720px; }
+    .v5-shotlist-toolbar-actions { max-width: 100%; overflow-x: auto; flex-wrap: nowrap; border-radius: 16px !important; }
+    .v5-shotlist-button { min-height: 44px; flex: 0 0 auto; }
+    .v5-shotlist-scroll { max-width: 100%; overflow-x: auto; overscroll-behavior-x: contain; }
+    .v5-shotlist-sheet { min-width: 820px; }
+    .v5-production-shell-calendar,
+    .v5-production-shell-canvas { padding-bottom: 0 !important; }
+    .v5-writing-pause { bottom: calc(88px + env(safe-area-inset-bottom)); }
+    .v5-app-shell.is-breakdown-embed { height: 100dvh !important; }
+    .v5-app-shell.is-breakdown-embed .v5-editor-workspace { height: 100dvh; }
+    .v5-app-shell.is-breakdown-embed .v5-editor-page-area > div:first-child { padding: 14px 10px 32px !important; }
+
+    /* A dedicated two row mobile toolbar prevents the screenplay controls
+       from competing for one narrow line. Desktop controls remain untouched. */
+    .v5-editor-toolbar {
+      height: 112px !important;
+      min-height: 112px !important;
+      padding: 4px 10px 5px !important;
+      overflow: visible !important;
+      animation: none !important;
+      transform: none !important;
+    }
+    .v5-editor-toolbar > :not(.v5-mobile-editor-toolbar):not(.v5-mobile-editor-actions-layer) { display: none !important; }
+    .v5-mobile-editor-toolbar {
+      width: 100%; height: 103px; min-width: 0;
+      display: grid; grid-template-rows: 46px 53px; gap: 4px;
+    }
+    .v5-mobile-editor-status-row,
+    .v5-mobile-editor-controls-row { display: flex; align-items: center; min-width: 0; gap: 8px; }
+    .v5-mobile-editor-document { min-width: 0; flex: 1 1 auto; padding-left: 3px; }
+    .v5-mobile-editor-document strong {
+      display: block; max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+      color: var(--ink, #2C2C2A); font-size: 13px; font-weight: 700; letter-spacing: -.08px;
+    }
+    .v5-mobile-editor-save {
+      min-height: 18px; display: flex; align-items: center; gap: 6px; margin-top: 2px;
+      color: var(--muted, #888780); font-size: 10.5px; font-weight: 600; white-space: nowrap;
+    }
+    .v5-mobile-editor-save i { width: 6px; height: 6px; flex: 0 0 6px; border-radius: 50%; background: currentColor; box-shadow: 0 0 0 3px color-mix(in srgb, currentColor 11%, transparent); }
+    .v5-mobile-editor-lumiere {
+      min-width: 102px; height: 44px; flex: 0 0 auto; display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+      padding: 0 14px; border: 1px solid var(--hair, #E7E4DA); border-radius: 13px 11px 14px 10px;
+      background: var(--surface, #FFFEF9); color: var(--ink, #2C2C2A);
+      font: 700 12.5px/1 "Helvetica Neue", Helvetica, Arial, sans-serif; cursor: pointer;
+    }
+    .v5-mobile-editor-lumiere i { width: 7px; height: 7px; flex: 0 0 7px; border-radius: 50%; background: var(--accent, #BA7517); box-shadow: 0 0 0 4px var(--accent-soft, rgba(186,117,23,.11)); }
+    .v5-mobile-editor-lumiere[aria-pressed="true"] { border-color: var(--accent, #BA7517); background: var(--accent-soft, rgba(186,117,23,.11)); color: var(--accent, #BA7517); }
+    .v5-mobile-editor-control {
+      width: 44px; height: 44px; flex: 0 0 44px; display: grid; place-items: center; padding: 0;
+      border: 1px solid var(--hair, #E7E4DA); border-radius: 12px 10px 13px 9px;
+      background: var(--surface, #FFFEF9); color: var(--muted, #888780); cursor: pointer;
+    }
+    .v5-mobile-editor-control svg { width: 19px; height: 19px; }
+    .v5-mobile-editor-controls-row .v5-mobile-format-control { min-width: 0; height: 44px; flex: 1 1 auto; }
+    .v5-mobile-editor-controls-row .v5-mobile-format-control select { height: 44px; }
+    .v5-mobile-editor-control:focus-visible,
+    .v5-mobile-editor-lumiere:focus-visible { outline: 2px solid var(--accent, #BA7517); outline-offset: 2px; }
+    .v5-mobile-editor-control:active,
+    .v5-mobile-editor-lumiere:active { transform: scale(.97); }
+    .v5-mobile-editor-actions-layer { display: contents; }
+    .v5-mobile-editor-actions-scrim {
+      position: fixed; inset: 0; z-index: 1080; width: 100%; height: 100%; padding: 0; border: 0;
+      background: rgba(28,27,24,.34); backdrop-filter: blur(3px); -webkit-backdrop-filter: blur(3px);
+    }
+    .v5-mobile-editor-actions-sheet {
+      position: fixed; left: 8px; right: 8px; bottom: calc(82px + env(safe-area-inset-bottom)); z-index: 1090;
+      max-height: min(72dvh, 620px); overflow: auto; padding: 8px 12px 14px;
+      border: 1px solid var(--hair, #E7E4DA); border-radius: 22px 19px 24px 17px;
+      background: color-mix(in srgb, var(--surface, #FFFEF9) 96%, transparent); color: var(--ink, #2C2C2A);
+      box-shadow: 4px 5px 0 color-mix(in srgb, var(--hair, #E7E4DA) 84%, transparent), 0 26px 70px rgba(22,21,19,.28);
+      backdrop-filter: blur(22px) saturate(1.12); -webkit-backdrop-filter: blur(22px) saturate(1.12);
+      animation: v5-mobile-sheet-in .22s cubic-bezier(.2,.8,.2,1) both;
+    }
+    .v5-mobile-editor-actions-head { min-height: 52px; display: flex; align-items: center; gap: 10px; }
+    .v5-mobile-editor-actions-head strong { flex: 1; padding-left: 4px; font-size: 15px; }
+    .v5-mobile-editor-actions-head button { width: 44px; height: 44px; border: 0; border-radius: 50%; background: transparent; color: var(--muted, #888780); font-family: inherit; font-size: 24px; font-weight: 400; line-height: 1; cursor: pointer; }
+    .v5-mobile-editor-action-label { margin: 10px 4px 7px; color: var(--muted, #888780); font-size: 9.5px; font-weight: 750; letter-spacing: 1.05px; text-transform: uppercase; }
+    .v5-mobile-editor-action-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+    .v5-mobile-editor-action-grid button {
+      min-width: 0; min-height: 54px; display: flex; align-items: center; gap: 10px; padding: 9px 12px;
+      border: 1px solid var(--hair, #E7E4DA); border-radius: 13px 11px 14px 10px;
+      background: var(--soft, #EFEBE1); color: var(--ink, #2C2C2A);
+      font: 700 11.5px/1.2 "Helvetica Neue", Helvetica, Arial, sans-serif; text-align: left; cursor: pointer;
+    }
+    .v5-mobile-editor-action-grid button svg { width: 19px; height: 19px; flex: 0 0 19px; color: var(--accent, #BA7517); }
+    .v5-mobile-editor-action-grid button.is-primary { border-color: var(--accent, #BA7517); background: var(--accent, #BA7517); color: #171714; }
+    .v5-mobile-editor-action-grid button.is-primary svg { color: #171714; }
+    .v5-mobile-editor-action-grid button:focus-visible,
+    .v5-mobile-editor-actions-head button:focus-visible { outline: 2px solid var(--accent, #BA7517); outline-offset: 2px; }
+    .v5-editor-export-options button { min-height: 44px; }
+  }
+  @media (max-width: 430px) {
+    .v5-editor-toolbar-meta { display: none !important; }
+    .v5-mobile-format-control { flex: 1 1 auto; min-width: 0; }
+  }
+  @media (max-width: 350px) {
+    .v5-mobile-editor-lumiere { min-width: 92px; padding-inline: 11px; }
+    .v5-mobile-editor-action-grid { grid-template-columns: minmax(0, 1fr); }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .v5-scene-rail, .v5-lumiere-panel { animation: none !important; }
+  }
 </style>
 </helmet>
 
@@ -1219,21 +1487,6 @@
       </div>
     </div>
   </div>
-
-  <sc-if value="{{ mobileMoreOpen }}" hint-placeholder-val="false">
-    <div class="v5-mobile-more-scrim" onClick="{{ closeMobileMore }}" aria-hidden="true"></div>
-    <div class="v5-mobile-more-sheet" role="dialog" aria-label="More FilmScript spaces">
-      <strong>More tools</strong>
-      <sc-for list="{{ mobileMoreModes }}" as="mode" hint-placeholder-count="4">
-        <button type="button" onClick="{{ mode.open }}"><span>{{ mode.label }}</span><small>{{ mode.detail }}</small></button>
-      </sc-for>
-    </div>
-  </sc-if>
-  <nav class="v5-mobile-nav" aria-label="FilmScript mobile navigation">
-    <sc-for list="{{ mobileNav }}" as="mode" hint-placeholder-count="5">
-      <button type="button" class="{{ mode.className }}" onClick="{{ mode.open }}" aria-pressed="{{ mode.active }}"><span aria-hidden="true"></span>{{ mode.label }}</button>
-    </sc-for>
-  </nav>
 
   <sc-if value="{{ accountDetailsOpen }}" hint-placeholder-val="{{ false }}">
     <div data-testid="account-details-overlay" onClick="{{ closeAccountDetails }}" style="position: fixed; inset: 0; z-index: 1200; isolation: isolate; pointer-events: auto; display: flex; align-items: flex-start; justify-content: flex-end; padding: 66px 24px 22px; background: rgba(35,35,34,.18); animation: v5-fade .16s ease both;">
@@ -1283,6 +1536,67 @@
 
   <!-- ============ TOOLBAR ============ -->
   <div class="v5-editor-toolbar" style="position: relative; z-index: 190; flex: 0 0 auto; height: 50px; background: var(--surface, #FFFEF9); border-bottom: 1px solid var(--hair, #E7E4DA); display: {{ editorDisplay }}; align-items: center; padding: 0 14px; gap: 10px; animation: v5-rise .4s ease both; transition: background-color .3s ease, border-color .3s ease;">
+
+    <div class="v5-mobile-editor-toolbar" aria-label="Screenplay controls">
+      <div class="v5-mobile-editor-status-row">
+        <div class="v5-mobile-editor-document">
+          <strong title="{{ docTitleFull }}">{{ docTitleDisplay }}</strong>
+          <span class="v5-mobile-editor-save" aria-live="polite"><i aria-hidden="true" style="background: {{ saveDotColor }};"></i>{{ saveLabel }}</span>
+        </div>
+        <button type="button" class="v5-mobile-editor-lumiere" onClick="{{ mobileToggleLumiere }}" aria-pressed="{{ lumiereOpen }}" aria-label="Open Lumiere"><i aria-hidden="true"></i><span>Lumiere</span></button>
+      </div>
+      <div class="v5-mobile-editor-controls-row">
+        <button type="button" class="v5-mobile-editor-control" onClick="{{ mobileToggleRail }}" aria-label="Open scenes" aria-pressed="{{ railOpen }}">
+          <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="2.5" y="3.5" width="15" height="13" rx="2"></rect><path d="M7.5 3.5v13"></path></svg>
+        </button>
+        <label class="v5-mobile-format-control" aria-label="Screenplay format">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 6h14M5 12h10M5 18h7"></path></svg>
+          <select value="{{ mobileFormatValue }}" onChange="{{ mobileFormatChange }}" aria-label="Screenplay format">
+            <option value="scene">Scene</option>
+            <option value="action">Action</option>
+            <option value="character">Character</option>
+            <option value="paren">Parenthetical</option>
+            <option value="dialogue">Dialogue</option>
+            <option value="transition">Transition</option>
+          </select>
+          <span aria-hidden="true">⌄</span>
+        </label>
+        <button type="button" class="v5-mobile-editor-control v5-mobile-editor-more" onClick="{{ toggleMobileEditorActions }}" aria-label="More screenplay actions" aria-haspopup="dialog" aria-expanded="{{ mobileEditorActionsOpen }}">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" aria-hidden="true"><path d="M5 7h14M5 12h14M5 17h14"></path><circle cx="9" cy="7" r="1.5" fill="var(--surface, #FFFEF9)"></circle><circle cx="15" cy="12" r="1.5" fill="var(--surface, #FFFEF9)"></circle><circle cx="10" cy="17" r="1.5" fill="var(--surface, #FFFEF9)"></circle></svg>
+        </button>
+      </div>
+    </div>
+
+    <sc-if value="{{ mobileEditorActionsOpen }}" hint-placeholder-val="false">
+      <div class="v5-mobile-editor-actions-layer">
+        <button type="button" class="v5-mobile-editor-actions-scrim" onClick="{{ closeMobileEditorActions }}" aria-label="Close screenplay actions"></button>
+        <section class="v5-mobile-editor-actions-sheet" role="dialog" aria-modal="true" aria-label="Screenplay actions" onKeyDown="{{ mobileEditorActionsKey }}">
+          <header class="v5-mobile-editor-actions-head"><strong>Screenplay actions</strong><button type="button" onClick="{{ closeMobileEditorActions }}" aria-label="Close screenplay actions">×</button></header>
+          <div class="v5-mobile-editor-action-label">Export</div>
+          <div class="v5-mobile-editor-action-grid">
+            <button type="button" class="is-primary" onClick="{{ mobileExportAnalyze }}"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7 3.8h7l3.2 3.2v12.8H7z"></path><path d="M14 3.8V7h3.2M12 10.5v6M9.4 13.9 12 16.5l2.6-2.6"></path></svg><span>{{ exportAnalyzeLabel }}</span></button>
+            <button type="button" onClick="{{ mobileExportNow }}"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7 3.8h7l3.2 3.2v12.8H7z"></path><path d="M14 3.8V7h3.2M9.5 14.5h5"></path></svg><span>{{ exportNowLabel }}</span></button>
+          </div>
+          <div class="v5-mobile-editor-action-label">Editing</div>
+          <div class="v5-mobile-editor-action-grid">
+            <button type="button" onClick="{{ mobileUndo }}"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m9 7-4.5 4.5L9 16"></path><path d="M5 11.5h8.5Q19 11.5 19 17"></path></svg><span>Undo</span></button>
+            <button type="button" onClick="{{ mobileRedo }}"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m15 7 4.5 4.5L15 16"></path><path d="M19 11.5h-8.5Q5 11.5 5 17"></path></svg><span>Redo</span></button>
+          </div>
+          <sc-if value="{{ lumiereClosed }}" hint-placeholder-val="true">
+            <div class="v5-mobile-editor-action-label">Assistant</div>
+            <div class="v5-mobile-editor-action-grid"><button type="button" onClick="{{ mobileToggleLumiere }}"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m12 3 1.6 5.4L19 10l-5.4 1.6L12 17l-1.6-5.4L5 10l5.4-1.6Z"></path><path d="m18.5 16 .6 1.7 1.7.6-1.7.6-.6 1.7-.6-1.7-1.7-.6 1.7-.6Z"></path></svg><span>Open Lumiere</span></button></div>
+          </sc-if>
+          <div class="v5-mobile-editor-action-label">Screenplay settings</div>
+          <div class="v5-mobile-editor-action-grid">
+            <button type="button" onClick="{{ mobileTitlePage }}"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 3.5h12v17H6zM9 8h6M9 12h6"></path></svg><span>Title page</span></button>
+            <button type="button" onClick="{{ mobileRevisions }}"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 6h14v12H5zM8 9h8M8 13h5"></path></svg><span>Revision history</span></button>
+            <button type="button" onClick="{{ mobileAutosave }}"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 4h10l2 2v14H6zM9 4v6h6V4M9 16h6"></path></svg><span>Autosave</span></button>
+            <button type="button" onClick="{{ mobileImport }}"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 4v11M8 11l4 4 4-4M5 19h14"></path></svg><span>Import screenplay</span></button>
+            <button type="button" onClick="{{ mobileRenumber }}"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 6h10M9 12h10M9 18h10M5 5v3M4 12h2M4 18h2"></path></svg><span>Renumber scenes</span></button>
+          </div>
+        </section>
+      </div>
+    </sc-if>
 
     <div class="v5tipwrap">
       <div onClick="{{ toggleRail }}" style="width: 32px; height: 32px; display: flex; align-items: center; justify-content: center; border-radius: 8px; cursor: pointer; transition: background-color .15s ease, color .15s ease;" class="v5ic">
@@ -1759,10 +2073,12 @@
 
     <!-- Scene navigator -->
     <sc-if value="{{ railVisible }}" hint-placeholder-val="{{ true }}">
-    <div style="flex: 0 0 216px; width: 216px; background: var(--surface, #FFFEF9); border-right: 1px solid var(--hair, #E7E4DA); display: flex; flex-direction: column; min-height: 0; animation: {{ railAnimation }}; transition: background-color .3s ease, border-color .3s ease;">
+    <button type="button" class="v5-mobile-panel-scrim" onClick="{{ toggleRail }}" aria-label="Close scenes"></button>
+    <div class="v5-scene-rail" role="dialog" aria-label="Scenes" style="flex: 0 0 216px; width: 216px; background: var(--surface, #FFFEF9); border-right: 1px solid var(--hair, #E7E4DA); display: flex; flex-direction: column; min-height: 0; animation: {{ railAnimation }}; transition: background-color .3s ease, border-color .3s ease;">
       <div style="padding: 15px 18px 9px; display: flex; align-items: baseline;">
         <span style="font-size: 10px; letter-spacing: 1.6px; text-transform: uppercase; font-weight: 600; color: var(--muted, #888780); flex: 1;">Scenes</span>
         <span style="font-size: 10.5px; color: var(--muted, #888780); font-variant-numeric: tabular-nums;">{{ sceneCount }}</span>
+        <button type="button" class="v5-mobile-sheet-close" onClick="{{ toggleRail }}" aria-label="Close scenes">×</button>
       </div>
       <div style="flex: 1; overflow-y: auto; padding: 2px 10px 16px; display: flex; flex-direction: column; gap: 1px;">
         <sc-for list="{{ scenes }}" as="s" hint-placeholder-count="8">
@@ -1860,7 +2176,8 @@
 
     <!-- ============ LUMIERE ============ -->
     <sc-if value="{{ lumiereVisible }}" hint-placeholder-val="{{ true }}">
-    <div class="v5-lumiere-panel" style="flex: 0 0 clamp(288px, 25vw, 324px); width: clamp(288px, 25vw, 324px); background: var(--surface, #FFFEF9); border-left: 1px solid var(--hair, #E7E4DA); display: flex; flex-direction: column; min-height: 0; animation: {{ lumiereAnimation }}; transition: background-color .3s ease, border-color .3s ease;">
+    <button type="button" class="v5-mobile-panel-scrim" onClick="{{ toggleLumiere }}" aria-label="Close Lumiere"></button>
+    <div class="v5-lumiere-panel" role="dialog" aria-label="Lumiere" style="flex: 0 0 clamp(288px, 25vw, 324px); width: clamp(288px, 25vw, 324px); background: var(--surface, #FFFEF9); border-left: 1px solid var(--hair, #E7E4DA); display: flex; flex-direction: column; min-height: 0; animation: {{ lumiereAnimation }}; transition: background-color .3s ease, border-color .3s ease;">
 
       <div style="height: 52px; flex: 0 0 52px; display: flex; align-items: center; gap: 10px; padding: 0 12px 0 18px; border-bottom: 1px solid var(--hair, #E7E4DA); transition: border-color .3s ease;">
         <span style="width: 7px; height: 7px; border-radius: 50%; background: var(--accent, #BA7517); box-shadow: 0 0 0 4px var(--accent-soft, rgba(186,117,23,.12));"></span>
@@ -2413,6 +2730,7 @@
 }">
 class Component extends DCLogic {
   _isBreakdownEmbed = new URLSearchParams(window.location.search).get('embed') === 'breakdown';
+  _startsMobile = window.matchMedia?.('(max-width: 900px)').matches === true;
 
   state = {
     darkMode: window.filmscriptTheme?.isDark() ?? false,
@@ -2428,7 +2746,7 @@ class Component extends DCLogic {
       if (mode === 'shotlist') return 'canvas';
       return allowed.includes(mode) ? mode : 'editor';
     })(),
-    mobileMenuOpen: false,
+    mobileEditorActionsOpen: false,
     canvasTool: (() => {
       const params = new URLSearchParams(window.location.search);
       const scriptId = params.get('script');
@@ -2520,7 +2838,7 @@ class Component extends DCLogic {
     visualReferenceWorkspace: null,
     shotListExporting: false,
     shotListAddingScene: false,
-    railOpen: this._isBreakdownEmbed ? false : (this.props.showSceneRail ?? true),
+    railOpen: this._isBreakdownEmbed ? false : (this._startsMobile ? false : (this.props.showSceneRail ?? true)),
     railClosing: false,
     scenePickerOpen: false,
     scenePickerLocations: [],
@@ -2529,7 +2847,7 @@ class Component extends DCLogic {
     scenePickerTimes: [],
     characterPickerOpen: false,
     characterPickerNames: [],
-    lumiereOpen: this._isBreakdownEmbed ? false : (this.props.lumiereStartOpen ?? true),
+    lumiereOpen: this._isBreakdownEmbed ? false : (this._startsMobile ? false : (this.props.lumiereStartOpen ?? true)),
     lumiereClosing: false,
     writingIdleNudge: false,
     writingIdlePromptCopied: false,
@@ -3039,7 +3357,39 @@ class Component extends DCLogic {
     window.addEventListener('filmscript:content.operation', this._remoteScriptHandler);
     window.addEventListener('filmscript:content.operation', this._structuredCollaborationHandler);
     document.addEventListener('selectionchange', this._selHandler);
-    this._resizeHandler = () => { if (this._autoFit) this.fillPage(1); };
+    this._mobileViewport = this._startsMobile;
+    this._mobileLumiereHandler = async () => {
+      await this.switchWorkMode('editor');
+      if (this._unmounted) return;
+      this.setState({
+        railOpen: false,
+        railClosing: false,
+        lumiereOpen: true,
+        lumiereClosing: false,
+        mobileEditorActionsOpen: false,
+        scenePickerOpen: false,
+        characterPickerOpen: false,
+      });
+    };
+    window.addEventListener('filmscript:open-mobile-lumiere', this._mobileLumiereHandler);
+    this._resizeHandler = () => {
+      const mobile = window.matchMedia?.('(max-width: 900px)').matches === true;
+      if (mobile && !this._mobileViewport) {
+        this.setState({
+          railOpen: false,
+          railClosing: false,
+          lumiereOpen: false,
+          lumiereClosing: false,
+          mobileEditorActionsOpen: false,
+          scenePickerOpen: false,
+          characterPickerOpen: false,
+        });
+      } else if (!mobile && this.state.mobileEditorActionsOpen) {
+        this.setState({ mobileEditorActionsOpen: false });
+      }
+      this._mobileViewport = mobile;
+      if (this._autoFit) this.fillPage(1);
+    };
     window.addEventListener('resize', this._resizeHandler);
     this._editorZoomWheelHandler = (event) => {
       if (this.state.workMode !== 'editor' || (!event.altKey && !event.ctrlKey)) return;
@@ -3468,7 +3818,7 @@ class Component extends DCLogic {
     const allowedModes = ['editor', 'analysis', 'breakdown', 'stripboard', 'imagine', 'canvas', 'shotlist', 'budget', 'calendar'];
     if (!allowedModes.includes(mode)) return;
     if (options.dependencyRetry !== true) this._clearWorkModeDependencyRetry();
-    if (this.state.mobileMenuOpen) this.setState({ mobileMenuOpen: false });
+    if (this.state.mobileEditorActionsOpen) this.setState({ mobileEditorActionsOpen: false });
     const requestedCanvasTool = mode === 'canvas' && options.canvasTool === 'shotlist' ? 'shotlist' : 'home';
     const forceReload = options.force === true;
     if (mode === this.state.workMode && !forceReload) {
@@ -7320,14 +7670,32 @@ class Component extends DCLogic {
     if (this.state.railOpen && !this.state.railClosing) {
       this.setState({ railClosing: true });
       window.setTimeout(() => this.setState({ railOpen: false, railClosing: false }, () => { if (this._autoFit) this.fillPage(1); }), 240);
-    } else if (!this.state.railClosing) this.setState({ railOpen: true });
+    } else if (!this.state.railClosing) {
+      const mobile = window.matchMedia?.('(max-width: 900px)').matches === true;
+      this.setState({
+        railOpen: true,
+        ...(mobile ? { lumiereOpen: false, lumiereClosing: false, mobileEditorActionsOpen: false, scenePickerOpen: false, characterPickerOpen: false } : {}),
+      });
+    }
   }
 
   toggleLumierePanel() {
     if (this.state.lumiereOpen && !this.state.lumiereClosing) {
       this.setState({ lumiereClosing: true });
       window.setTimeout(() => this.setState({ lumiereOpen: false, lumiereClosing: false }, () => this._fitEditorToAvailableWidth()), 240);
-    } else if (!this.state.lumiereClosing) this.setState({ lumiereOpen: true }, () => this._fitEditorToAvailableWidth());
+    } else if (!this.state.lumiereClosing) {
+      const mobile = window.matchMedia?.('(max-width: 900px)').matches === true;
+      if (mobile) {
+        this.setState({
+          lumiereOpen: true,
+          railOpen: false,
+          railClosing: false,
+          mobileEditorActionsOpen: false,
+          scenePickerOpen: false,
+          characterPickerOpen: false,
+        }, () => this._fitEditorToAvailableWidth());
+      } else this.setState({ lumiereOpen: true }, () => this._fitEditorToAvailableWidth());
+    }
   }
 
   _fitEditorToAvailableWidth() {
@@ -8599,6 +8967,7 @@ Write Lumiere's next reply only:`;
     if (this._remoteScriptHandler) window.removeEventListener('filmscript:content.operation', this._remoteScriptHandler);
     if (this._structuredCollaborationHandler) window.removeEventListener('filmscript:content.operation', this._structuredCollaborationHandler);
     if (this._resizeHandler) window.removeEventListener('resize', this._resizeHandler);
+    if (this._mobileLumiereHandler) window.removeEventListener('filmscript:open-mobile-lumiere', this._mobileLumiereHandler);
     if (this._editorZoomWheelHandler && this._canvas) this._canvas.removeEventListener('wheel', this._editorZoomWheelHandler);
     if (this._editorZoomKeyHandler) document.removeEventListener('keydown', this._editorZoomKeyHandler, true);
     if (this._docClick) document.removeEventListener('click', this._docClick);
@@ -9934,26 +10303,6 @@ Write Lumiere's next reply only:`;
         active: workMode === mode.id,
         open: () => mode.id === 'shotlist' ? this.openCanvasShotList() : this.switchWorkMode(mode.id, mode.id === 'canvas' ? { canvasTool: 'home' } : {}),
       })),
-      mobileMoreOpen: !!this.state.mobileMenuOpen,
-      closeMobileMore: () => this.setState({ mobileMenuOpen: false }),
-      mobileNav: [
-        { id: 'scripts', label: 'Scripts', active: false, open: () => { this.setState({ mobileMenuOpen: false }); window.location.href = 'App.dc.html'; } },
-        { id: 'editor', label: 'Write', active: workMode === 'editor', open: () => this.switchWorkMode('editor') },
-        { id: 'analysis', label: 'Analysis', active: workMode === 'analysis', open: () => this.switchWorkMode('analysis') },
-        { id: 'budget', label: 'Budget', active: workMode === 'budget', open: () => this.switchWorkMode('budget') },
-        { id: 'more', label: 'More', active: !!this.state.mobileMenuOpen || ['breakdown', 'stripboard', 'imagine', 'canvas', 'shotlist', 'calendar'].includes(workMode), open: () => this.setState(state => ({ mobileMenuOpen: !state.mobileMenuOpen })) },
-      ].map(mode => ({ ...mode, className: `v5-mobile-nav-item${mode.active ? ' is-active' : ''}` })),
-      mobileMoreModes: [
-        { id: 'breakdown', label: 'Breakdown', detail: 'Scenes and departments' },
-        { id: 'stripboard', label: 'Production', detail: 'Schedule and stripboard' },
-        { id: 'calendar', label: 'Calendar', detail: 'Timeline and tasks' },
-        { id: 'imagine', label: 'Imagine', detail: 'Create production visuals' },
-        { id: 'canvas', label: 'Canvas', detail: 'Boards and Vault' },
-        { id: 'shotlist', label: 'Shot List', detail: 'Camera coverage by scene' },
-      ].map(mode => ({
-        ...mode,
-        open: () => mode.id === 'shotlist' ? this.openCanvasShotList() : this.switchWorkMode(mode.id, mode.id === 'canvas' ? { canvasTool: 'home' } : {}),
-      })),
       editorDisplay: workMode === 'editor' && !this.state.scriptLoading && !this.state.scriptLoadError ? 'flex' : 'none',
       editorLoadGate: workMode === 'editor' && (this.state.scriptLoading || this.state.scriptLoadError),
       editorLoadFailed: this.state.scriptLoadError,
@@ -10782,6 +11131,30 @@ Write Lumiere's next reply only:`;
       },
       toggleRail: () => this.toggleRailPanel(),
       toggleLumiere: () => this.toggleLumierePanel(),
+      mobileEditorActionsOpen: !!this.state.mobileEditorActionsOpen,
+      toggleMobileEditorActions: () => this.setState(state => {
+        const open = !state.mobileEditorActionsOpen;
+        return {
+          mobileEditorActionsOpen: open,
+          ...(open ? {
+            railOpen: false,
+            railClosing: false,
+            lumiereOpen: false,
+            lumiereClosing: false,
+            scenePickerOpen: false,
+            characterPickerOpen: false,
+          } : {}),
+        };
+      }),
+      closeMobileEditorActions: () => this.setState({ mobileEditorActionsOpen: false }),
+      mobileEditorActionsKey: (event) => {
+        if (event.key === 'Escape') {
+          event.preventDefault();
+          this.setState({ mobileEditorActionsOpen: false });
+        }
+      },
+      mobileToggleRail: () => this.setState({ mobileEditorActionsOpen: false }, () => this.toggleRailPanel()),
+      mobileToggleLumiere: () => this.setState({ mobileEditorActionsOpen: false }, () => this.toggleLumierePanel()),
       openLumierePreferences: () => window.filmscriptLumierePreferences?.open(),
       toggleSound: () => this.toggleSound(),
       toggleMenu: () => this.setState(s => ({ menuOpen: !s.menuOpen, accountOpen: false })),
@@ -10831,6 +11204,20 @@ Write Lumiere's next reply only:`;
       exportChoiceCopy: String(window.filmscriptLanguage?.get?.() || document.documentElement.lang || 'en').toLowerCase().startsWith('es') ? 'Elige cómo quieres preparar el guion.' : 'Choose how you want to prepare this screenplay.',
       exportAnalyzeLabel: String(window.filmscriptLanguage?.get?.() || document.documentElement.lang || 'en').toLowerCase().startsWith('es') ? 'Analizar con Lumiere' : 'Analyze with Lumiere',
       exportNowLabel: String(window.filmscriptLanguage?.get?.() || document.documentElement.lang || 'en').toLowerCase().startsWith('es') ? 'Exportar ahora' : 'Export now',
+      mobileExportAnalyze: () => this.setState({ mobileEditorActionsOpen: false }, () => this.downloadPdf()),
+      mobileExportNow: () => this.setState({ mobileEditorActionsOpen: false }, () => this._renderPdf()),
+      mobileUndo: () => this.setState({ mobileEditorActionsOpen: false }, () => this.undoEdit()),
+      mobileRedo: () => this.setState({ mobileEditorActionsOpen: false }, () => this.redoEdit()),
+      mobileTitlePage: () => this.setState({ mobileEditorActionsOpen: false }, () => this.menuAction('title')),
+      mobileRevisions: () => this.setState({ mobileEditorActionsOpen: false }, () => this.menuAction('rev')),
+      mobileAutosave: () => this.setState({ mobileEditorActionsOpen: false }, () => this.menuAction('auto')),
+      mobileImport: () => this.setState({ mobileEditorActionsOpen: false }, () => this.menuAction('import')),
+      mobileRenumber: () => this.setState({ mobileEditorActionsOpen: false }, () => this.menuAction('renumber')),
+      mobileFormatValue: this.state.activeType || 'action',
+      mobileFormatChange: (event) => {
+        const type = event.target.value;
+        this.setState({ mobileEditorActionsOpen: false }, () => this.formatFromControl(type));
+      },
       fmtScene: () => this.formatFromControl('scene'),
       openScenePicker: () => this.openScenePicker(),
       closeScenePicker: () => this.closeScenePicker(),

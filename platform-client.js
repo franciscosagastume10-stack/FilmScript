@@ -966,20 +966,106 @@
     setLabel('[data-bell]', count ? `Notifications, ${count} unread` : 'Notifications', count ? `Notificaciones, ${count} sin leer` : 'Notificaciones');
   }
 
+  function openMobileProjectSpaces() {
+    if (!projectId || document.querySelector('.fs-mobile-space-scrim')) return;
+    const view = params.get('view') || 'editor';
+    const modes = [
+      ['editor', 'Script', 'Read and lightly edit the screenplay'],
+      ['analysis', 'Analysis', 'Review story findings'],
+      ['breakdown', 'Breakdown', 'Inspect scenes and departments'],
+      ['stripboard', 'Stripboard', 'Review the production order'],
+      ['shotlist', 'Shot List', 'Review camera coverage'],
+      ['canvas', 'Canvas', 'Open Boards and Vault'],
+      ['budget', 'Budget', 'Review costs and totals'],
+      ['calendar', 'Calendar', 'Review tasks and dates'],
+    ];
+    const scrim = document.createElement('div');
+    scrim.className = 'fs-mobile-space-scrim';
+    scrim.innerHTML = `<section class="fs-mobile-space-sheet" role="dialog" aria-modal="true" aria-labelledby="fs-mobile-space-title"><div class="fs-mobile-space-handle" aria-hidden="true"></div><header><div><span>Current project</span><h2 id="fs-mobile-space-title">Choose a workspace</h2></div><button type="button" data-close aria-label="Close project workspaces">×</button></header><div class="fs-mobile-space-list">${modes.map(([id,label,detail]) => { const route = id === 'editor' ? `Editor%20v5.dc.html?script=${encodeURIComponent(projectId)}` : id === 'shotlist' ? `Editor%20v5.dc.html?script=${encodeURIComponent(projectId)}&view=canvas&tool=shotlist` : `Editor%20v5.dc.html?script=${encodeURIComponent(projectId)}&view=${id}`; const active = id === 'shotlist' ? view === 'shotlist' || (view === 'canvas' && params.get('tool') === 'shotlist') : id === 'editor' ? !params.get('view') || view === 'editor' || view === 'script' : view === id; return `<a href="${route}"${active ? ' aria-current="page"' : ''}><strong>${label}</strong><span>${detail}</span><i aria-hidden="true">›</i></a>`; }).join('')}<button type="button" data-lumiere><strong>Lumiere</strong><span>Open your creative collaborator</span><i aria-hidden="true">›</i></button></div><footer><button type="button" data-chat>Chat</button><button type="button" data-activity>Activity</button><button type="button" data-people>People</button></footer></section>`;
+    const localizedModes = [
+      ['Script', 'Guion', 'Read and lightly edit the screenplay', 'Lee y edita ligeramente el guion'],
+      ['Analysis', 'Análisis', 'Review story findings', 'Revisa los hallazgos de la historia'],
+      ['Breakdown', 'Desglose', 'Inspect scenes and departments', 'Inspecciona escenas y departamentos'],
+      ['Stripboard', 'Plan de rodaje', 'Review the production order', 'Revisa el orden de producción'],
+      ['Shot List', 'Lista de planos', 'Review camera coverage', 'Revisa la cobertura de cámara'],
+      ['Canvas', 'Canvas', 'Open Boards and Vault', 'Abre Boards y Vault'],
+      ['Budget', 'Presupuesto', 'Review costs and totals', 'Revisa costos y totales'],
+      ['Calendar', 'Calendario', 'Review tasks and dates', 'Revisa tareas y fechas'],
+    ];
+    const spaceSheet = scrim.querySelector('.fs-mobile-space-sheet');
+    const spaceItems = [...scrim.querySelectorAll('.fs-mobile-space-list > a')];
+    spaceItems.forEach((item, index) => {
+      const copy = localizedModes[index];
+      if (!copy) return;
+      const title = item.querySelector('strong');
+      const detail = item.querySelector('span');
+      if (title) title.textContent = localize(copy[0], copy[1]);
+      if (detail) detail.textContent = localize(copy[2], copy[3]);
+    });
+    const lumiere = scrim.querySelector('[data-lumiere]');
+    if (lumiere) { lumiere.querySelector('strong').textContent = 'Lumiere'; lumiere.querySelector('span').textContent = localize('Open your creative collaborator', 'Abre tu colaborador creativo'); }
+    if (spaceSheet) {
+      spaceSheet.querySelector('header span').textContent = localize('Current project', 'Proyecto actual');
+      spaceSheet.querySelector('h2').textContent = localize('Choose a workspace', 'Elige un espacio de trabajo');
+      spaceSheet.querySelector('[data-close]').setAttribute('aria-label', localize('Close project workspaces', 'Cerrar espacios del proyecto'));
+      spaceSheet.querySelector('[data-chat]').textContent = localize('Chat', 'Chat');
+      spaceSheet.querySelector('[data-activity]').textContent = localize('Activity', 'Actividad');
+      spaceSheet.querySelector('[data-people]').textContent = localize('People', 'Personas');
+    }
+    const escape = (event) => { if (event.key === 'Escape') close(); };
+    const close = () => {
+      document.removeEventListener('keydown', escape);
+      scrim.classList.add('is-closing');
+      document.body.classList.remove('fs-mobile-sheet-open');
+      window.setTimeout(() => scrim.remove(), 170);
+    };
+    scrim.addEventListener('click', (event) => { if (event.target === scrim) close(); });
+    scrim.querySelector('[data-close]').onclick = close;
+    scrim.querySelector('[data-lumiere]').onclick = () => { close(); window.dispatchEvent(new CustomEvent('filmscript:open-mobile-lumiere')); };
+    scrim.querySelector('[data-chat]').onclick = () => { close(); openChatDirectory(); };
+    scrim.querySelector('[data-activity]').onclick = () => { close(); openNotifications(); };
+    scrim.querySelector('[data-people]').onclick = () => { close(); openMembers(); };
+    document.addEventListener('keydown', escape);
+    document.body.classList.add('fs-mobile-sheet-open');
+    document.body.appendChild(scrim);
+    window.requestAnimationFrame(() => scrim.querySelector('[data-close]')?.focus());
+  }
+
   function mountMobileNav() {
     if (document.querySelector('.fs-mobile-global')) return;
-    const globalNav = document.createElement('nav'); globalNav.className = 'fs-mobile-nav fs-mobile-global'; globalNav.setAttribute('aria-label', localize('FilmScript navigation', 'Navegación de FilmScript'));
-    globalNav.innerHTML = `<a href="App.dc.html"${projectId ? '' : ' aria-current="page"'}>${escapeHtml(localize('Home', 'Inicio'))}</a><a href="App.dc.html">${escapeHtml(localize('Projects', 'Proyectos'))}</a><a href="App.dc.html?lumiere=1">Lumiere</a><button type="button" data-activity>${escapeHtml(localize('Activity', 'Actividad'))}</button><button type="button" data-profile>${escapeHtml(localize('Account', 'Cuenta'))}</button>`;
-    document.body.appendChild(globalNav); globalNav.querySelector('[data-activity]').onclick = openNotifications; globalNav.querySelector('[data-profile]').onclick = openAccount;
-    if (!projectId) return;
-    const view = params.get('view') || 'script'; const projectNav = document.createElement('nav'); projectNav.className = 'fs-mobile-nav fs-mobile-project'; projectNav.setAttribute('aria-label', localize('Project navigation', 'Navegación del proyecto'));
-    projectNav.innerHTML = `<a href="App.dc.html">${escapeHtml(localize('Overview', 'Resumen'))}</a><a href="Editor%20v5.dc.html?script=${projectId}"${view === 'script' ? ' aria-current="page"' : ''}>${escapeHtml(localize('Script', 'Guion'))}</a><a href="Editor%20v5.dc.html?script=${projectId}&view=breakdown"${['breakdown','stripboard','shot-list','budget','calendar'].includes(view) ? ' aria-current="page"' : ''}>${escapeHtml(localize('Production', 'Producción'))}</a><a href="Editor%20v5.dc.html?script=${projectId}&view=canvas"${view === 'canvas' ? ' aria-current="page"' : ''}>Canvas</a><button type="button" data-more>${escapeHtml(localize('More', 'Más'))}</button>`;
-    document.body.appendChild(projectNav); projectNav.querySelector('[data-more]').onclick = () => { const root = dialog(localize('More', 'Más'), localize('Authorized project modules', 'Módulos autorizados del proyecto'), `<div class="fs-platform-list"><a class="fs-member-card" href="Editor%20v5.dc.html?script=${projectId}&view=analysis">${escapeHtml(localize('Analysis', 'Análisis'))}</a><a class="fs-member-card" href="Editor%20v5.dc.html?script=${projectId}&view=budget">${escapeHtml(localize('Budget', 'Presupuesto'))}</a><button type="button" class="fs-member-card" data-location>${escapeHtml(localize('Location Plan', 'Plan de locaciones'))}</button><button type="button" class="fs-member-card" data-people>${escapeHtml(localize('Members', 'Miembros'))}</button><button type="button" class="fs-member-card" data-share>${escapeHtml(localize('Shared Projects', 'Proyectos compartidos'))}</button></div>`); root.querySelector('[data-location]').onclick = () => { closeDialog(); openLocationPlan(); }; root.querySelector('[data-people]').onclick = () => { closeDialog(); openMembers(); }; root.querySelector('[data-share]').onclick = () => { closeDialog(); openShare(); }; };
+    const view = params.get('view') || 'editor';
+    const isImagine = Boolean(projectId && view === 'imagine');
+    document.documentElement.toggleAttribute('data-filmscript-imagine', isImagine);
+    const imagineHref = projectId
+      ? `Editor%20v5.dc.html?script=${encodeURIComponent(projectId)}&view=imagine`
+      : 'App.dc.html?imagine=1';
+    const libraryHref = projectId
+      ? `Editor%20v5.dc.html?script=${encodeURIComponent(projectId)}&view=canvas`
+      : 'App.dc.html?library=1';
+    const globalNav = document.createElement('nav');
+    globalNav.className = 'fs-mobile-nav fs-mobile-global';
+    globalNav.setAttribute('aria-label', localize('FilmScript navigation', 'Navegación de FilmScript'));
+    globalNav.innerHTML = `<a class="fs-mobile-home" href="App.dc.html"${projectId ? '' : ' aria-current="page"'}><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3.8 11.1 12 4l8.2 7.1v8.4H14.8v-5.4H9.2v5.4H3.8z"></path></svg><span>${escapeHtml(localize('Home', 'Inicio'))}</span></a><a class="fs-mobile-imagine" href="${imagineHref}"${isImagine ? ' aria-current="page"' : ''} aria-label="${escapeHtml(localize('Open Imagine', 'Abrir Imagine'))}"><span class="fs-mobile-imagine-mark"><svg viewBox="0 0 32 32" aria-hidden="true"><path d="M5 11V6h5M22 6h5v5M27 21v5h-5M10 26H5v-5"></path><path class="fs-mobile-imagine-spark" d="M16 8.4c.5 4.6 2.8 6.9 7.4 7.6-4.6.6-6.9 3-7.4 7.6-.6-4.6-2.9-7-7.5-7.6 4.6-.7 6.9-3 7.5-7.6Z"></path></svg></span><span>${escapeHtml(localize('Imagine', 'Imagine'))}</span></a><a class="fs-mobile-library" href="${libraryHref}"${view === 'canvas' && params.get('tool') !== 'shotlist' ? ' aria-current="page"' : ''}><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3.5 6.2h6l2 2h9v10.4H3.5z"></path><path d="M7.5 12.1h9M7.5 15.3h6"></path></svg><span>${escapeHtml(localize('Library', 'Biblioteca'))}</span></a>`;
+    document.body.appendChild(globalNav);
+    if (!projectId || isImagine) return;
+    const topbar = document.querySelector('.v5-topbar');
+    if (!topbar || topbar.querySelector('.fs-mobile-space-trigger')) return;
+    const labels = { editor:['Script','Guion'], script:['Script','Guion'], analysis:['Analysis','Análisis'], breakdown:['Breakdown','Desglose'], stripboard:['Stripboard','Plan de rodaje'], shotlist:['Shot List','Lista de planos'], canvas:params.get('tool') === 'shotlist' ? ['Shot List','Lista de planos'] : ['Canvas','Canvas'], budget:['Budget','Presupuesto'], calendar:['Calendar','Calendario'] };
+    const [labelEnglish, labelSpanish] = labels[view] || ['Project','Proyecto'];
+    const trigger = document.createElement('button');
+    trigger.type = 'button';
+    trigger.className = 'fs-mobile-space-trigger';
+    trigger.setAttribute('aria-label', localize('Choose a project workspace', 'Elige un espacio de trabajo del proyecto'));
+    trigger.innerHTML = `<span>${escapeHtml(localize(labelEnglish, labelSpanish))}</span><i aria-hidden="true">⌄</i>`;
+    trigger.onclick = openMobileProjectSpaces;
+    const actions = topbar.querySelector('.v5-top-actions');
+    topbar.insertBefore(trigger, actions || null);
   }
 
   function syncDynamicLanguage() {
     syncHubLanguage(); renderPresence();
-    document.querySelectorAll('.fs-mobile-nav').forEach((nav) => nav.remove()); mountMobileNav();
+    document.querySelector('.fs-mobile-space-scrim')?.querySelector('[data-close]')?.click();
+    document.querySelectorAll('.fs-mobile-nav,.fs-mobile-space-trigger').forEach((node) => node.remove()); mountMobileNav();
     const panel = document.querySelector('.fs-chat-panel'); if (!panel) return;
     const set = (selector, value, attribute) => { const element = panel.querySelector(selector); if (!element) return; if (attribute) element.setAttribute(attribute, value); else element.textContent = value; };
     set('[data-chat-peer-caption]', localize('FilmScript collaborator', 'Colaborador de FilmScript'));

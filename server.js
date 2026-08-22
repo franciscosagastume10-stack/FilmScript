@@ -7500,9 +7500,10 @@ async function handleCanvasStoryboardImageGenerate(req, res, scriptId) {
       ? 'square'
       : 'horizontal';
   const size = requestedSize === 'auto' ? (orientation === 'vertical' ? '1024x1536' : '1536x1024') : requestedSize;
-  const visualStyle = ['cinematic', 'animated', 'sketch', 'anime'].includes(String(body?.style || '').toLowerCase())
-    ? String(body.style).toLowerCase()
-    : 'cinematic';
+  const submittedStyle = String(body?.style || '').trim().toLowerCase();
+  const visualStyle = ['cinematic', 'animated', 'sketch', 'anime'].includes(submittedStyle)
+    ? submittedStyle
+    : '';
   const quality = normalizeImageQuality(body?.quality);
   const camera = String(body?.camera || '').trim().slice(0, 100);
   const lens = String(body?.lens || '').trim().slice(0, 100);
@@ -7541,6 +7542,9 @@ async function handleCanvasStoryboardImageGenerate(req, res, scriptId) {
     sketch: 'filmmaking concept sketch: refined hand-drawn line work, tonal shading, clear composition',
     anime: 'cinematic anime frame: deliberate composition, expressive lighting, high-end animation detail',
   }[visualStyle];
+  const styleOpening = styleDirection
+    ? `Create one polished ${styleDirection} image.`
+    : 'Create one polished image. Follow the explicit visual direction and references without adding a preset visual style.';
   const characterDirection = character
     ? `CHARACTER IDENTITY MODE: Generate only ${character.name}, as one consistent, recurring film character. Ground every visible trait in the supplied character evidence. Do not add other people, unrelated vehicles, or plot events. This is a clean identity reference for later Shot List frames.`
     : '';
@@ -7561,7 +7565,7 @@ async function handleCanvasStoryboardImageGenerate(req, res, scriptId) {
     // Imagine is intentionally a blank visual canvas. It must use only the
     // direction, style, format and optional visual references selected here;
     // screenplay context belongs exclusively to Shot List generation.
-    prompt: `Create one polished ${styleDirection} image. ${isFreeformImagine ? 'Allow typography only when the user explicitly requests it.' : 'No typography, captions, logos, watermarks, UI, or panel borders.'} ${characterDirection} ${breakdownDirection} ${freeformDirection} ${referenceDirection} Visual direction: ${prompt}. Camera direction: ${cameraDirection}.`,
+    prompt: `${styleOpening} ${isFreeformImagine ? 'Allow typography only when the user explicitly requests it.' : 'No typography, captions, logos, watermarks, UI, or panel borders.'} ${characterDirection} ${breakdownDirection} ${freeformDirection} ${referenceDirection} Visual direction: ${prompt}. Camera direction: ${cameraDirection}.`,
     userId: sid,
     size,
     quality,
@@ -7794,11 +7798,14 @@ const PUBLIC_STATIC_FILES = new Set([
   "character-name-tools.js",
   "funnel-tracking.js",
   "billing-client.js",
+  "credit-indicator.js",
   "profile-onboarding.js",
   "lumiere-client.js",
+  "lumiere-access-modal.js",
   "lumiere-preferences.js",
   "pdf-import.js",
   "scripts-client.js",
+  "project-client.js",
   "preproduction-client.js",
   "canvas-client.js",
   "canvas-workspace.js",

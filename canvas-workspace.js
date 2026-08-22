@@ -56,7 +56,8 @@
        primary action anchored to the far edge of the workspace. */
     .cv-imagine-controls{width:100%;min-width:0;gap:10px}.cv-imagine-controls .cv-imagine-generate{margin-left:auto;flex:0 0 auto;min-width:124px;height:39px;padding-inline:18px;border:1px solid color-mix(in srgb,var(--cv-accent) 72%,var(--cv-hair));border-radius:12px 11px 13px 10px;background:linear-gradient(135deg,color-mix(in srgb,var(--cv-accent) 88%,#fff 12%),var(--cv-accent));color:#fff;box-shadow:0 8px 20px color-mix(in srgb,var(--cv-accent) 31%,transparent),inset 0 1px 0 rgba(255,255,255,.36);text-shadow:0 1px 1px rgba(0,0,0,.14)}.cv-imagine-controls .cv-imagine-generate:hover{filter:saturate(1.07) brightness(1.04);box-shadow:0 12px 26px color-mix(in srgb,var(--cv-accent) 39%,transparent),inset 0 1px 0 rgba(255,255,255,.4)}.cv-imagine-aspect-trigger,.cv-imagine-style-trigger{border-color:color-mix(in srgb,var(--cv-surface) 78%,var(--cv-hair));background:linear-gradient(135deg,color-mix(in srgb,var(--cv-surface) 78%,transparent),color-mix(in srgb,var(--cv-accent) 7%,transparent));backdrop-filter:blur(18px) saturate(150%);-webkit-backdrop-filter:blur(18px) saturate(150%);box-shadow:inset 0 1px 0 color-mix(in srgb,var(--cv-surface) 88%,transparent),0 5px 16px color-mix(in srgb,var(--cv-ink) 9%,transparent);transition:transform .18s cubic-bezier(.2,.8,.2,1),border-color .18s ease,background .18s ease,box-shadow .18s ease}.cv-imagine-aspect-trigger:hover,.cv-imagine-style-trigger:hover{border-color:color-mix(in srgb,var(--cv-accent) 48%,var(--cv-hair));background:linear-gradient(135deg,color-mix(in srgb,var(--cv-surface) 86%,transparent),color-mix(in srgb,var(--cv-accent) 13%,transparent));box-shadow:inset 0 1px 0 color-mix(in srgb,var(--cv-surface) 94%,transparent),0 9px 22px color-mix(in srgb,var(--cv-ink) 14%,transparent);transform:translateY(-1px)}.cv-imagine-aspect-menu,.cv-imagine-style-menu{border-color:color-mix(in srgb,var(--cv-surface) 72%,var(--cv-hair));background:color-mix(in srgb,var(--cv-surface) 86%,transparent);backdrop-filter:blur(22px) saturate(155%);-webkit-backdrop-filter:blur(22px) saturate(155%);box-shadow:0 16px 34px color-mix(in srgb,var(--cv-ink) 21%,transparent),inset 0 1px 0 color-mix(in srgb,var(--cv-surface) 85%,transparent)}@media(max-width:720px){.cv-imagine-controls{gap:8px}.cv-imagine-controls .cv-imagine-generate{min-width:108px;margin-left:auto}.cv-imagine-aspect-trigger,.cv-imagine-style-trigger{flex:0 1 auto}}
     /* One consistent liquid-glass menu treatment, including over images. */
-    .cv-imagine-aspect-menu,.cv-imagine-style-menu{border-color:color-mix(in srgb,var(--cv-surface) 72%,var(--cv-hair));background:linear-gradient(135deg,color-mix(in srgb,var(--cv-surface) 72%,transparent),color-mix(in srgb,var(--cv-surface) 54%,transparent));backdrop-filter:blur(30px) saturate(165%) brightness(1.08);-webkit-backdrop-filter:blur(30px) saturate(165%) brightness(1.08);box-shadow:0 16px 34px color-mix(in srgb,var(--cv-ink) 24%,transparent),inset 0 1px 0 color-mix(in srgb,var(--cv-surface) 86%,transparent)}
+    .cv-imagine-aspect-menu,.cv-imagine-style-menu{border-color:color-mix(in srgb,var(--cv-surface) 86%,var(--cv-hair));background:linear-gradient(145deg,color-mix(in srgb,var(--cv-surface) 88%,transparent),color-mix(in srgb,var(--cv-soft) 78%,transparent));backdrop-filter:blur(150px) saturate(175%) brightness(1.05) contrast(1.04);-webkit-backdrop-filter:blur(150px) saturate(175%) brightness(1.05) contrast(1.04);box-shadow:0 20px 42px color-mix(in srgb,var(--cv-ink) 25%,transparent),inset 0 1px 0 color-mix(in srgb,var(--cv-surface) 90%,transparent)}
+    .cv-imagine-aspect-trigger,.cv-imagine-style-trigger{border-color:color-mix(in srgb,var(--cv-surface) 86%,var(--cv-hair));background:linear-gradient(135deg,color-mix(in srgb,var(--cv-surface) 90%,transparent),color-mix(in srgb,var(--cv-accent) 7%,transparent));backdrop-filter:blur(48px) saturate(175%) brightness(1.05);-webkit-backdrop-filter:blur(48px) saturate(175%) brightness(1.05)}
     .cv-imagine-aspect-menu button,.cv-imagine-style-menu button{text-shadow:0 1px 12px color-mix(in srgb,var(--cv-surface) 70%,transparent)}
     .cv-imagine-controls .cv-imagine-generate{min-width:94px;padding-inline:15px}
     /* A pending frame occupies the exact selected aspect ratio immediately.
@@ -94,6 +95,46 @@
     @media(max-width:760px){.cv-module-loader{padding:24px 20px}.cv-module-loader-head{grid-template-columns:50px minmax(0,1fr);gap:13px}.cv-module-loader-mark{width:50px;height:50px}.cv-module-loader-grid{gap:8px}.cv-module-loader-cell{min-height:92px}.cv-module-loader-cell:nth-child(3){display:none}.cv-imagine-skeleton-gallery{grid-template-columns:repeat(6,minmax(0,1fr));grid-auto-rows:72px;gap:5px}.cv-imagine-skeleton{grid-column:span 3}.cv-imagine-skeleton.wide{grid-column:span 4}.cv-imagine-skeleton.portrait{grid-column:span 2;grid-row:span 3}}
     @media(prefers-reduced-motion:reduce){.cv-module-loader,.cv-module-loader:before,.cv-module-loader-mark:before,.cv-module-loader-mark span,.cv-module-loader-cell,.cv-module-loader-cell:before,.cv-module-loader-status:before,.cv-imagine-skeleton,.cv-imagine-skeleton:before,.cv-imagine-tile.is-image-loading:before{animation:none!important}}
     @media(prefers-reduced-transparency:reduce){.cv-module-loader,.cv-module-loader-mark,.cv-module-loader-cell,.cv-imagine-skeleton{background:var(--cv-surface);backdrop-filter:none;-webkit-backdrop-filter:none}}
+    /* Canvas Liquid Glass: quiet translucent controls with strong text
+       contrast, preserving the existing workspace hierarchy and actions. */
+    .cv-top,.cv-board-top{background:linear-gradient(135deg,color-mix(in srgb,var(--cv-surface) 76%,transparent),color-mix(in srgb,var(--cv-soft) 42%,transparent));border-color:color-mix(in srgb,var(--cv-surface) 72%,var(--cv-hair));box-shadow:inset 0 1px 0 color-mix(in srgb,var(--cv-surface) 88%,transparent),0 10px 24px color-mix(in srgb,var(--cv-ink) 7%,transparent);backdrop-filter:blur(18px) saturate(135%);-webkit-backdrop-filter:blur(18px) saturate(135%)}
+    .cv-tabs,.cv-view-toggle{padding:4px;border:1px solid color-mix(in srgb,var(--cv-surface) 70%,var(--cv-hair));border-radius:999px;background:color-mix(in srgb,var(--cv-surface) 52%,transparent);box-shadow:inset 0 1px 0 color-mix(in srgb,var(--cv-surface) 84%,transparent);backdrop-filter:blur(16px) saturate(135%);-webkit-backdrop-filter:blur(16px) saturate(135%)}
+    .cv-tab,.cv-view-toggle button{min-height:34px;border-radius:999px}.cv-tab:hover,.cv-tab[aria-current=true],.cv-view-toggle button.active{background:color-mix(in srgb,var(--cv-surface) 82%,transparent);box-shadow:0 5px 14px color-mix(in srgb,var(--cv-ink) 9%,transparent)}
+    .cv-btn,.cv-icon-btn{min-height:40px;border-radius:999px;border-color:color-mix(in srgb,var(--cv-surface) 70%,var(--cv-hair));background:linear-gradient(135deg,color-mix(in srgb,var(--cv-surface) 72%,transparent),color-mix(in srgb,var(--cv-soft) 38%,transparent));box-shadow:inset 0 1px 0 color-mix(in srgb,var(--cv-surface) 84%,transparent);backdrop-filter:blur(14px) saturate(125%);-webkit-backdrop-filter:blur(14px) saturate(125%)}
+    .cv-btn:hover,.cv-icon-btn:hover{border-color:color-mix(in srgb,var(--cv-accent) 60%,var(--cv-hair));box-shadow:0 8px 20px color-mix(in srgb,var(--cv-ink) 11%,transparent),inset 0 1px 0 color-mix(in srgb,var(--cv-surface) 90%,transparent)}
+    .cv-btn.accent{background:var(--cv-accent);border-color:var(--cv-accent);box-shadow:0 8px 20px color-mix(in srgb,var(--cv-accent) 22%,transparent)}
+    .cv-card,.cv-item,.cv-board-card{border-color:color-mix(in srgb,var(--cv-surface) 70%,var(--cv-hair));background:linear-gradient(135deg,color-mix(in srgb,var(--cv-surface) 80%,transparent),color-mix(in srgb,var(--cv-soft) 34%,transparent));box-shadow:inset 0 1px 0 color-mix(in srgb,var(--cv-surface) 86%,transparent),0 16px 36px color-mix(in srgb,var(--cv-ink) 9%,transparent);backdrop-filter:blur(14px) saturate(120%);-webkit-backdrop-filter:blur(14px) saturate(120%)}
+    .cv-card:after{border-color:color-mix(in srgb,var(--cv-surface) 42%,transparent)}
+    .cv-toolbar{padding:6px;border:1px solid color-mix(in srgb,var(--cv-surface) 68%,var(--cv-hair));border-radius:999px;background:color-mix(in srgb,var(--cv-surface) 50%,transparent);box-shadow:inset 0 1px 0 color-mix(in srgb,var(--cv-surface) 82%,transparent);backdrop-filter:blur(16px) saturate(130%);-webkit-backdrop-filter:blur(16px) saturate(130%)}
+    .cv-search input,.cv-filter{height:40px;border-radius:999px;border-color:color-mix(in srgb,var(--cv-surface) 72%,var(--cv-hair));background:color-mix(in srgb,var(--cv-surface) 66%,transparent);backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px)}
+    .cv-item-menu{border-radius:999px;background:color-mix(in srgb,var(--cv-surface) 66%,transparent);box-shadow:0 5px 14px color-mix(in srgb,var(--cv-ink) 11%,transparent)}
+    .cv-board-viewport{background-image:radial-gradient(circle,color-mix(in srgb,var(--cv-muted) 20%,transparent) 1px,transparent 1px)}
+    @media(prefers-reduced-transparency:reduce){.cv-top,.cv-board-top,.cv-tabs,.cv-view-toggle,.cv-btn,.cv-icon-btn,.cv-card,.cv-item,.cv-board-card,.cv-toolbar,.cv-search input,.cv-filter{backdrop-filter:none;-webkit-backdrop-filter:none;background:var(--cv-surface)}}
+    @media(prefers-reduced-motion:reduce){.cv-btn,.cv-icon-btn,.cv-card,.cv-item,.cv-board-card,.cv-tab{transition-duration:.01ms!important}}
+    /* Imagine becomes a focused, app-like workspace on phones. These final
+       overrides are isolated here so the desktop Canvas surfaces stay intact. */
+    .cv-imagine-mobile-header,.cv-imagine-reference-label,.cv-imagine-control-label{display:none}
+    @media(max-width:900px){
+      :host{min-height:100dvh}
+      .cv-imagine-page{position:fixed;z-index:400;top:var(--cv-imagine-visual-top,0);right:0;left:0;width:100vw;height:var(--cv-imagine-visual-height,100dvh);min-height:0;margin:0;overflow:hidden;background:var(--cv-bg)}
+      .cv-imagine-stage{position:relative;display:block;width:100%;height:100%;min-height:0;overflow:hidden;scrollbar-gutter:auto;background:var(--cv-bg)}
+      .cv-imagine-mobile-header{position:absolute;z-index:40;top:0;right:0;left:0;display:flex;height:calc(58px + env(safe-area-inset-top));align-items:flex-end;justify-content:space-between;padding:env(safe-area-inset-top) 14px 7px;border-bottom:1px solid color-mix(in srgb,var(--cv-hair) 82%,transparent);background:color-mix(in srgb,var(--cv-surface) 90%,transparent);box-shadow:0 8px 24px color-mix(in srgb,var(--cv-ink) 7%,transparent);backdrop-filter:blur(24px) saturate(150%);-webkit-backdrop-filter:blur(24px) saturate(150%)}
+      .cv-imagine-mobile-title{display:flex;min-height:44px;align-items:center;gap:10px}.cv-imagine-mobile-title>span:last-child{display:grid;gap:1px}.cv-imagine-mobile-title small{color:var(--cv-muted);font-size:9px;font-weight:760;letter-spacing:.8px;text-transform:uppercase}.cv-imagine-mobile-title strong{font-size:18px;font-weight:850;letter-spacing:-.35px}
+      .cv-imagine-mobile-mark{position:relative;display:block;width:38px;height:38px;border:1px solid color-mix(in srgb,var(--cv-accent) 68%,var(--cv-hair));border-radius:12px 10px 13px 9px;background:var(--cv-accent);box-shadow:0 7px 17px color-mix(in srgb,var(--cv-accent) 24%,transparent)}.cv-imagine-mobile-mark:before{content:'';position:absolute;inset:6px 5px 5px 6px;border:1.5px solid #fff;border-radius:8px 6px 9px 7px;transform:rotate(-3deg)}.cv-imagine-mobile-mark:after{content:'✦';position:absolute;inset:0;display:grid;place-items:center;color:#fff;font-size:17px;line-height:1}
+      .cv-imagine-mobile-header>button{display:grid;width:44px;height:44px;padding:0;place-items:center;border:0;border-radius:14px;background:var(--cv-soft);color:var(--cv-ink);font-size:27px;font-weight:350;line-height:1;cursor:pointer}
+      .cv-imagine-gallery{display:flex;width:100%;height:100%;min-height:0;overflow-x:hidden;overflow-y:auto;overscroll-behavior:contain;scrollbar-gutter:auto;gap:6px;padding:calc(65px + env(safe-area-inset-top)) 6px calc(272px + env(safe-area-inset-bottom));background:var(--cv-bg);-webkit-overflow-scrolling:touch}
+      .cv-imagine-gallery-row{gap:6px}.cv-imagine-tile{min-height:108px;border-radius:13px 11px 14px 10px}.cv-imagine-tile:after{display:none}.cv-imagine-empty{min-height:calc(100% - 24px);border-radius:18px;background:radial-gradient(circle at 50% 42%,color-mix(in srgb,var(--cv-accent) 16%,var(--cv-surface)),var(--cv-bg) 72%)}
+      .cv-imagine-console{position:absolute;z-index:30;right:0;bottom:0;left:0;width:100%;max-height:calc(100% - 58px - env(safe-area-inset-top));margin:0;padding:12px 14px max(12px,env(safe-area-inset-bottom));transform:none;border-width:1px 0 0;border-radius:24px 21px 0 0;background:color-mix(in srgb,var(--cv-surface) 94%,transparent);box-shadow:0 -16px 46px color-mix(in srgb,var(--cv-ink) 18%,transparent),inset 0 1px 0 color-mix(in srgb,var(--cv-surface) 94%,transparent);backdrop-filter:blur(34px) saturate(165%);-webkit-backdrop-filter:blur(34px) saturate(165%);animation:cv-imagine-mobile-console-in .28s cubic-bezier(.2,.8,.2,1) both}
+      .cv-imagine-console:hover,.cv-imagine-console:focus-within,.cv-imagine-console.is-dragging{transform:none}.cv-imagine-console:before,.cv-imagine-console:after{content:none}.cv-imagine-console-top{display:flex;align-items:stretch;gap:10px}.cv-imagine-console textarea{height:76px;min-height:76px;max-height:116px;padding:11px 12px;border:1px solid var(--cv-hair);border-radius:15px 13px 16px 12px;background:color-mix(in srgb,var(--cv-bg) 82%,transparent);font-size:16px;line-height:1.35}.cv-imagine-console textarea:focus{border-color:color-mix(in srgb,var(--cv-accent) 60%,var(--cv-hair));box-shadow:0 0 0 3px var(--cv-accent-soft)}
+      .cv-imagine-reference,.cv-imagine-reference-add{display:grid;flex:0 0 64px;width:64px;height:76px;min-width:64px;min-height:76px;align-content:center;justify-items:center;gap:5px;padding:6px;border-radius:15px 13px 16px 12px}.cv-imagine-reference>svg{width:20px}.cv-imagine-reference-label{display:block;max-width:100%;overflow:hidden;color:var(--cv-muted);font-size:8px;font-weight:750;line-height:1;text-overflow:ellipsis;white-space:nowrap}.cv-imagine-reference-row{display:flex;flex:0 0 auto;gap:7px}.cv-imagine-reference-wrap{flex:0 0 58px;width:58px;height:76px}.cv-imagine-reference-wrap .cv-imagine-reference{width:58px;min-width:58px;height:76px;min-height:76px}.cv-imagine-reference-row .cv-imagine-reference-add{flex-basis:58px;width:58px;min-width:58px}.cv-imagine-reference-remove{top:-4px;right:-4px;width:24px;height:24px;opacity:1;transform:none}
+      .cv-imagine-controls{display:grid;width:100%;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;margin-top:10px}.cv-imagine-aspect-picker,.cv-imagine-style-picker{width:100%;min-width:0}.cv-imagine-aspect-trigger,.cv-imagine-style-trigger{display:grid;width:100%;height:52px;min-width:0;padding:6px 4px;align-content:center;justify-items:center;gap:2px;border-radius:13px 11px 14px 10px;transform:none}.cv-imagine-aspect-trigger:hover,.cv-imagine-style-trigger:hover{transform:none}.cv-imagine-aspect-trigger .cv-aspect-preview{display:none}.cv-imagine-control-label,.cv-imagine-style-trigger span{display:block;color:var(--cv-muted);font-size:9px;font-weight:750;line-height:1.05}.cv-imagine-aspect-trigger strong,.cv-imagine-style-trigger strong{display:block;max-width:100%;overflow:hidden;font-size:10.5px;line-height:1.2;text-overflow:ellipsis;white-space:nowrap}
+      .cv-imagine-controls .cv-imagine-generate{grid-column:1/-1;width:100%;height:52px;min-width:0;margin:0;padding:0 18px;border-radius:15px 13px 16px 12px;font-size:14px;font-weight:850}.cv-imagine-aspect-menu,.cv-imagine-style-menu{bottom:calc(100% + 7px);max-height:min(220px,calc(var(--cv-imagine-visual-height,100dvh) - 235px));overflow:auto;animation:none}.cv-imagine-style-picker:not(.cv-imagine-quality-picker) .cv-imagine-style-menu{left:50%;transform:translateX(-50%)}.cv-imagine-quality-picker .cv-imagine-style-menu{right:0;left:auto}.cv-imagine-aspect-menu button,.cv-imagine-style-menu button{min-height:44px;height:44px}
+      .cv-imagine-preview-backdrop{z-index:500;padding:0}.cv-imagine-preview-solo{width:100%;max-width:none;height:100%;max-height:none;border-radius:0}.cv-imagine-preview-solo-image{min-height:44vh;padding:calc(14px + env(safe-area-inset-top)) 12px 12px}.cv-imagine-preview-solo-image>img{max-block-size:calc(100dvh - 330px)}
+      @keyframes cv-imagine-mobile-console-in{from{opacity:0;transform:translateY(18px)}to{opacity:1;transform:none}}
+    }
+    @media(max-width:900px) and (max-height:480px){
+      .cv-imagine-mobile-header{height:calc(50px + env(safe-area-inset-top));padding-bottom:3px}.cv-imagine-mobile-title{min-height:42px}.cv-imagine-mobile-title small{display:none}.cv-imagine-gallery{padding-top:calc(55px + env(safe-area-inset-top));padding-bottom:210px}.cv-imagine-console{padding-top:8px;padding-bottom:max(8px,env(safe-area-inset-bottom))}.cv-imagine-console textarea,.cv-imagine-reference,.cv-imagine-reference-add,.cv-imagine-reference-wrap,.cv-imagine-reference-wrap .cv-imagine-reference{height:56px;min-height:56px}.cv-imagine-aspect-trigger,.cv-imagine-style-trigger{height:44px}.cv-imagine-controls .cv-imagine-generate{height:46px}.cv-imagine-reference-label{display:none}
+    }
   `;
 
   const esc = (value) => String(value ?? '').replace(/[&<>"']/g, (char) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[char]));
@@ -155,7 +196,7 @@
         vaultMenu: null, boardMenu: null, pickerMode: '', boardTool: 'select', toast: '', autosave: 'Saved',
         storyboardImageModal: false, storyboardImageGenerating: false, storyboardReferenceIds: [],
         visualReferencePicker: null, visualReferencePickerSource: 'imagine', visualReferencePickerDragging: false,
-        imaginePendingJobs: [], imagineReferenceIds: [], imagineDragging: false, imagineStyle: 'cinematic', imagineStyleMenu: false,
+        imaginePendingJobs: [], imagineReferenceIds: [], imagineDragging: false, imagineStyle: '', imagineStyleMenu: false,
         imagineOrientation: 'horizontal', imagineAspectMenu: false, imagineSize: '1536x1024', imagineSizeMenu: false, imagineQuality: 'low', imagineQualityMenu: false, imaginePrompt: '', imaginePreviewId: '',
         entitlements: null, accountTier: 'free', accountAuthenticated: null,
       };
@@ -186,11 +227,20 @@
       this._loadRetryTimer = 0;
       this._loadRetryCount = 0;
       this._onImagineViewportResize = () => {
+        this._syncImagineVisualViewport();
         clearTimeout(this._imagineLayoutTimer);
         this._imagineLayoutTimer = setTimeout(() => {
           if (this.isConnected && this.state.view === 'imagine') this.render();
         }, 120);
       };
+    }
+
+    _syncImagineVisualViewport() {
+      const viewport = window.visualViewport;
+      const height = Math.max(1, Math.round(viewport?.height || window.innerHeight || 1));
+      const top = Math.max(0, Math.round(viewport?.offsetTop || 0));
+      this.style.setProperty('--cv-imagine-visual-height', `${height}px`);
+      this.style.setProperty('--cv-imagine-visual-top', `${top}px`);
     }
 
     get scriptId() { return this.getAttribute('script-id') || ''; }
@@ -222,6 +272,9 @@
         this.shadowRoot.addEventListener('keydown', (event) => this._onKeyDown(event));
       }
       window.addEventListener('resize', this._onImagineViewportResize, { passive: true });
+      window.visualViewport?.addEventListener('resize', this._onImagineViewportResize, { passive: true });
+      window.visualViewport?.addEventListener('scroll', this._onImagineViewportResize, { passive: true });
+      this._syncImagineVisualViewport();
       if (!this._canvasDragHandler) this._canvasDragHandler = (event) => this._applyRemoteCanvasDrag(event.detail);
       if (!this._canvasOperationHandler) this._canvasOperationHandler = (event) => this._applyRemoteCanvasOperation(event.detail);
       window.addEventListener('filmscript:canvas.drag', this._canvasDragHandler);
@@ -237,6 +290,8 @@
       clearTimeout(this._loadRetryTimer);
       this._loadRetryTimer = 0;
       window.removeEventListener('resize', this._onImagineViewportResize);
+      window.visualViewport?.removeEventListener('resize', this._onImagineViewportResize);
+      window.visualViewport?.removeEventListener('scroll', this._onImagineViewportResize);
       window.removeEventListener('filmscript:canvas.drag', this._canvasDragHandler);
       window.removeEventListener('filmscript:content.operation', this._canvasOperationHandler);
       this._clearImagineRecoveryTimers();
@@ -416,7 +471,7 @@
           prompt: job.prompt,
           orientation: job.orientation,
           size: job.size,
-          style: job.style,
+          style: ['', 'cinematic', 'animated', 'sketch', 'anime'].includes(String(job.style || '')) ? String(job.style || '') : '',
           quality: job.quality || 'low',
           mode: 'imagine-freeform',
           referenceAssetIds: job.referenceAssetIds,
@@ -716,6 +771,19 @@
       this.render();
     }
 
+    closeImagine() {
+      const fallback = new URL('App.dc.html', window.location.href).href;
+      if (window.history.length <= 1) {
+        window.location.assign(fallback);
+        return;
+      }
+      const current = window.location.href;
+      window.history.back();
+      window.setTimeout(() => {
+        if (window.location.href === current && document.visibilityState === 'visible') window.location.assign(fallback);
+      }, 450);
+    }
+
     toast(message) {
       this.state.toast = message;
       clearTimeout(this._toastTimer);
@@ -952,8 +1020,9 @@
       const imageActionTitle = imageLocked
         ? this.imageGenerationMessage({ exhausted: this.state.accountTier === 'full' })
         : (this._imagineSubmissionStarting ? 'Checking image access' : 'Generate image');
-      const style = ['cinematic', 'animated', 'sketch', 'anime'].includes(this.state.imagineStyle) ? this.state.imagineStyle : 'cinematic';
-      const styleLabel = style[0].toUpperCase() + style.slice(1);
+      const styleValues = ['', 'cinematic', 'animated', 'sketch', 'anime'];
+      const style = styleValues.includes(this.state.imagineStyle) ? this.state.imagineStyle : '';
+      const styleLabel = style ? style[0].toUpperCase() + style.slice(1) : 'Sin estilo';
       const sizeOption = this.imagineSizeOption(this.state.imagineSize);
       const orientation = sizeOption.orientation;
       const quality = ['low', 'medium', 'high'].includes(this.state.imagineQuality) ? this.state.imagineQuality : 'low';
@@ -979,15 +1048,16 @@
         : `<div class="cv-imagine-empty"><div>${icon('image')}<strong>Make your first frame</strong><span>It will live here, ready for Boards and Shot List.</span></div></div>`;
       const referencePreview = references.length ? `<div class="cv-imagine-reference-list"><img src="${esc(this.assetUrl(references[0].id))}" alt="${esc(references[0].prompt || 'Reference image')}">${references.length > 1 ? `<span>+${references.length - 1}</span>` : ''}</div>` : '';
       const referenceControl = references.length
-        ? `<div class="cv-imagine-reference-row"><div class="cv-imagine-reference-wrap"><span class="cv-imagine-reference has-references" title="Current visual references">${referencePreview}</span><button class="cv-imagine-reference-remove" type="button" data-action="imagine-remove-reference" data-id="${esc(references[0].id)}" aria-label="Remove reference" title="Remove reference" ${disabled}>×</button></div><label class="cv-imagine-reference cv-imagine-reference-add" title="Add another visual reference">${icon('image')}<input data-file="imagine-references" type="file" accept="image/png,image/jpeg,image/webp" multiple ${disabled}></label></div>`
-        : `<label class="cv-imagine-reference" title="Add visual references">${icon('image')}<input data-file="imagine-references" type="file" accept="image/png,image/jpeg,image/webp" multiple ${disabled}></label>`;
-      const styleOptions = ['cinematic', 'animated', 'sketch', 'anime'].map((value) => `<button type="button" role="menuitemradio" aria-checked="${style === value}" class="${style === value ? 'active' : ''}" data-action="imagine-style-select" data-style="${value}">${value[0].toUpperCase() + value.slice(1)}</button>`).join('');
+        ? `<div class="cv-imagine-reference-row"><div class="cv-imagine-reference-wrap"><span class="cv-imagine-reference has-references" title="Current visual references">${referencePreview}</span><button class="cv-imagine-reference-remove" type="button" data-action="imagine-remove-reference" data-id="${esc(references[0].id)}" aria-label="Remove reference" title="Remove reference" ${disabled}>×</button></div><label class="cv-imagine-reference cv-imagine-reference-add" title="Add another visual reference">${icon('image')}<span class="cv-imagine-reference-label">Reference</span><input data-file="imagine-references" type="file" accept="image/png,image/jpeg,image/webp" multiple ${disabled}></label></div>`
+        : `<label class="cv-imagine-reference" title="Add visual references">${icon('image')}<span class="cv-imagine-reference-label">Reference</span><input data-file="imagine-references" type="file" accept="image/png,image/jpeg,image/webp" multiple ${disabled}></label>`;
+      const styleOptions = styleValues.map((value) => `<button type="button" role="menuitemradio" aria-checked="${style === value}" class="${style === value ? 'active' : ''}" data-action="imagine-style-select" data-style="${value}">${value ? value[0].toUpperCase() + value.slice(1) : 'Sin estilo'}</button>`).join('');
       const sizeOptions = this.imagineSizeOptions().map((entry) => `<button type="button" role="menuitemradio" aria-checked="${sizeOption.value === entry.value}" class="${sizeOption.value === entry.value ? 'active' : ''}" data-action="imagine-size-select" data-size="${entry.value}" aria-label="${entry.compact}"><i class="cv-aspect-preview ${entry.orientation}" aria-hidden="true"></i><span>${entry.compact}</span></button>`).join('');
       const qualityOptions = ['low', 'medium', 'high'].map((value) => `<button type="button" role="menuitemradio" aria-checked="${quality === value}" class="${quality === value ? 'active' : ''}" data-action="imagine-quality-select" data-quality="${value}"><span>${value[0].toUpperCase() + value.slice(1)}</span><b>${qualityCredits[value]} credits</b></button>`).join('');
       const imageAction = imageLocked
         ? `<button class="cv-imagine-generate" type="button" data-action="imagine-unlock-full" title="${esc(imageActionTitle)}">${imageActionLabel}</button>`
         : `<button class="cv-imagine-generate" type="submit" title="${esc(imageActionTitle)}" ${this._imagineSubmissionStarting ? 'disabled' : ''}>${imageActionLabel}</button>`;
-      return `<section class="cv-imagine-stage"><div class="cv-imagine-gallery${animateEntrance ? ' is-entering' : ''}">${tiles}</div><form class="cv-imagine-console ${this.state.imagineDragging ? 'is-dragging' : ''}" data-form="imagine-image"><span class="cv-imagine-drop-hint">Drop to add as reference</span><div class="cv-imagine-console-top">${referenceControl}<textarea data-imagine-prompt name="prompt" required minlength="8" maxlength="3000" placeholder="Describe the frame you want to create…" ${disabled}>${esc(this.state.imaginePrompt)}</textarea></div><div class="cv-imagine-controls"><div class="cv-imagine-aspect-picker cv-imagine-size-picker"><input type="hidden" name="size" value="${sizeOption.value}"><input type="hidden" name="orientation" value="${orientation}"><button class="cv-imagine-aspect-trigger" type="button" data-action="imagine-size-menu" aria-label="Aspect ratio: ${sizeOption.compact}" aria-haspopup="menu" aria-expanded="${this.state.imagineSizeMenu}" ${disabled}><i class="cv-aspect-preview ${orientation}" aria-hidden="true"></i><strong>${sizeOption.compact}</strong></button>${this.state.imagineSizeMenu ? `<div class="cv-imagine-aspect-menu cv-imagine-size-menu" role="menu">${sizeOptions}</div>` : ''}</div><div class="cv-imagine-style-picker"><input type="hidden" name="style" value="${style}"><button class="cv-imagine-style-trigger" type="button" data-action="imagine-style-menu" aria-label="Style: ${styleLabel}" aria-haspopup="menu" aria-expanded="${this.state.imagineStyleMenu}" ${disabled}><span>Style</span><strong>${styleLabel}</strong></button>${this.state.imagineStyleMenu ? `<div class="cv-imagine-style-menu" role="menu">${styleOptions}</div>` : ''}</div><div class="cv-imagine-style-picker cv-imagine-quality-picker"><input type="hidden" name="quality" value="${quality}"><button class="cv-imagine-style-trigger" type="button" data-action="imagine-quality-menu" aria-label="Quality: ${qualityLabel}, ${qualityCredits[quality]} credits" aria-haspopup="menu" aria-expanded="${this.state.imagineQualityMenu}" ${disabled}><span>Quality</span><strong>${qualityLabel}</strong></button>${this.state.imagineQualityMenu ? `<div class="cv-imagine-style-menu cv-imagine-quality-menu" role="menu">${qualityOptions}</div>` : ''}</div>${imageAction}</div></form></section>`;
+      const mobileHeader = `<header class="cv-imagine-mobile-header"><div class="cv-imagine-mobile-title"><span class="cv-imagine-mobile-mark" aria-hidden="true"></span><span><small>FilmScript</small><strong>Imagine</strong></span></div><button type="button" data-action="imagine-close" aria-label="Cerrar Imagine">×</button></header>`;
+      return `<section class="cv-imagine-stage">${mobileHeader}<div class="cv-imagine-gallery${animateEntrance ? ' is-entering' : ''}">${tiles}</div><form class="cv-imagine-console ${this.state.imagineDragging ? 'is-dragging' : ''}" data-form="imagine-image"><span class="cv-imagine-drop-hint">Drop to add as reference</span><div class="cv-imagine-console-top">${referenceControl}<textarea data-imagine-prompt name="prompt" required minlength="8" maxlength="3000" placeholder="Describe the frame you want to create…" ${disabled}>${esc(this.state.imaginePrompt)}</textarea></div><div class="cv-imagine-controls"><div class="cv-imagine-aspect-picker cv-imagine-size-picker"><input type="hidden" name="size" value="${sizeOption.value}"><input type="hidden" name="orientation" value="${orientation}"><button class="cv-imagine-aspect-trigger" type="button" data-action="imagine-size-menu" aria-label="Aspect ratio: ${sizeOption.compact}" aria-haspopup="menu" aria-expanded="${this.state.imagineSizeMenu}" ${disabled}><span class="cv-imagine-control-label">Ratio</span><i class="cv-aspect-preview ${orientation}" aria-hidden="true"></i><strong>${sizeOption.compact}</strong></button>${this.state.imagineSizeMenu ? `<div class="cv-imagine-aspect-menu cv-imagine-size-menu" role="menu">${sizeOptions}</div>` : ''}</div><div class="cv-imagine-style-picker"><input type="hidden" name="style" value="${style}"><button class="cv-imagine-style-trigger" type="button" data-action="imagine-style-menu" aria-label="Style: ${styleLabel}" aria-haspopup="menu" aria-expanded="${this.state.imagineStyleMenu}" ${disabled}><span>Style</span><strong>${styleLabel}</strong></button>${this.state.imagineStyleMenu ? `<div class="cv-imagine-style-menu" role="menu">${styleOptions}</div>` : ''}</div><div class="cv-imagine-style-picker cv-imagine-quality-picker"><input type="hidden" name="quality" value="${quality}"><button class="cv-imagine-style-trigger" type="button" data-action="imagine-quality-menu" aria-label="Quality: ${qualityLabel}, ${qualityCredits[quality]} credits" aria-haspopup="menu" aria-expanded="${this.state.imagineQualityMenu}" ${disabled}><span>Quality</span><strong>${qualityLabel}</strong></button>${this.state.imagineQualityMenu ? `<div class="cv-imagine-style-menu cv-imagine-quality-menu" role="menu">${qualityOptions}</div>` : ''}</div>${imageAction}</div></form></section>`;
     }
 
     // Imagine's pickers are intentionally patched in place. Re-rendering the
@@ -998,14 +1068,15 @@
       if (!form || this.state.view !== 'imagine') return this.render();
 
       const imageLocked = this.state.accountAuthenticated === true && !this.hasImageGenerationAccess();
-      const style = ['cinematic', 'animated', 'sketch', 'anime'].includes(this.state.imagineStyle) ? this.state.imagineStyle : 'cinematic';
-      const styleLabel = style[0].toUpperCase() + style.slice(1);
+      const styleValues = ['', 'cinematic', 'animated', 'sketch', 'anime'];
+      const style = styleValues.includes(this.state.imagineStyle) ? this.state.imagineStyle : '';
+      const styleLabel = style ? style[0].toUpperCase() + style.slice(1) : 'Sin estilo';
       const sizeOption = this.imagineSizeOption(this.state.imagineSize);
       const quality = ['low', 'medium', 'high'].includes(this.state.imagineQuality) ? this.state.imagineQuality : 'low';
       const qualityCredits = { low: 3, medium: 5, high: 10 };
       const qualityLabel = quality[0].toUpperCase() + quality.slice(1);
       const sizeOptions = this.imagineSizeOptions().map((entry) => `<button type="button" role="menuitemradio" aria-checked="${sizeOption.value === entry.value}" class="${sizeOption.value === entry.value ? 'active' : ''}" data-action="imagine-size-select" data-size="${entry.value}" aria-label="${entry.compact}"><i class="cv-aspect-preview ${entry.orientation}" aria-hidden="true"></i><span>${entry.compact}</span></button>`).join('');
-      const styleOptions = ['cinematic', 'animated', 'sketch', 'anime'].map((value) => `<button type="button" role="menuitemradio" aria-checked="${style === value}" class="${style === value ? 'active' : ''}" data-action="imagine-style-select" data-style="${value}">${value[0].toUpperCase() + value.slice(1)}</button>`).join('');
+      const styleOptions = styleValues.map((value) => `<button type="button" role="menuitemradio" aria-checked="${style === value}" class="${style === value ? 'active' : ''}" data-action="imagine-style-select" data-style="${value}">${value ? value[0].toUpperCase() + value.slice(1) : 'Sin estilo'}</button>`).join('');
       const qualityOptions = ['low', 'medium', 'high'].map((value) => `<button type="button" role="menuitemradio" aria-checked="${quality === value}" class="${quality === value ? 'active' : ''}" data-action="imagine-quality-select" data-quality="${value}"><span>${value[0].toUpperCase() + value.slice(1)}</span><b>${qualityCredits[value]} credits</b></button>`).join('');
 
       const sizePicker = form.querySelector('.cv-imagine-size-picker');
@@ -1277,7 +1348,8 @@
       const orientation = this.imagineFormatLabel(asset);
       const created = asset.createdAt ? new Date(asset.createdAt).toLocaleString(undefined, { dateStyle: 'medium', timeStyle: 'short' }) : 'Just now';
       const dimensions = num(asset.width) > 0 && num(asset.height) > 0 ? `${Math.round(num(asset.width))} × ${Math.round(num(asset.height) )}` : orientation;
-      const style = String(generation.style || 'cinematic').replace(/^./, (letter) => letter.toUpperCase());
+      const rawStyle = String(generation.style || '');
+      const style = rawStyle ? rawStyle.replace(/^./, (letter) => letter.toUpperCase()) : 'Sin estilo';
       const quality = ['low', 'medium', 'high'].includes(String(generation.quality || '')) ? String(generation.quality).replace(/^./, (letter) => letter.toUpperCase()) : 'Low';
       const referenceAssets = (Array.isArray(generation.referenceAssetIds) ? generation.referenceAssetIds : []).map((id) => this.asset(id)).filter(Boolean);
       const referenceThumbs = referenceAssets.length ? `<div class="cv-imagine-preview-references">${referenceAssets.slice(0, 4).map((reference) => `<button type="button" class="cv-imagine-preview-reference" data-action="imagine-copy-reference" data-id="${esc(reference.id)}" title="Copy reference to Imagine"><img src="${esc(this.assetUrl(reference.id))}" alt="Reference image"><span>Copy</span></button>`).join('')}${referenceAssets.length > 4 ? `<span>+${referenceAssets.length - 4}</span>` : ''}</div>` : '<span class="cv-imagine-preview-none">No references</span>';
@@ -1395,6 +1467,9 @@
       const action = trigger.dataset.action;
       const id = trigger.dataset.id || '';
       event.stopPropagation();
+      if (window.innerWidth <= 900 && ['imagine-style-menu', 'imagine-size-menu', 'imagine-aspect-menu', 'imagine-quality-menu'].includes(action)) {
+        this.shadowRoot.activeElement?.blur();
+      }
       if (action === 'none') return;
       if (action === 'retry') return this.load();
       if (action === 'view-home') return this.setView('home');
@@ -1402,6 +1477,7 @@
       if (action === 'view-boards') return this.setView('boards');
       if (action === 'view-shotlist') return this.setView('shotlist');
       if (action === 'view-imagine') return this.setView('imagine');
+      if (action === 'imagine-close') return this.closeImagine();
       if (action === 'imagine-unlock-full') {
         return this.presentImageGenerationUpgrade({
           requiredTier: 'full',
@@ -1423,8 +1499,10 @@
       }
       if (action === 'imagine-style-menu') { this.state.imagineStyleMenu = !this.state.imagineStyleMenu; this.state.imagineAspectMenu = this.state.imagineSizeMenu = this.state.imagineQualityMenu = false; return this._patchImagineControls(); }
       if (action === 'imagine-style-select') {
-        const style = trigger.dataset.style;
-        if (['cinematic', 'animated', 'sketch', 'anime'].includes(style)) this.state.imagineStyle = style;
+        const style = String(trigger.dataset.style || '');
+        if (['', 'cinematic', 'animated', 'sketch', 'anime'].includes(style)) {
+          this.state.imagineStyle = style && this.state.imagineStyle === style ? '' : style;
+        }
         this.state.imagineStyleMenu = false;
         return this._patchImagineControls();
       }
@@ -2081,7 +2159,8 @@
         if (prompt.length < 8) return this.toast('Describe the image in a little more detail.');
         const sizeOption = this.imagineSizeOption(String(form.get('size') || this.state.imagineSize));
         const orientation = sizeOption.orientation === 'vertical' ? 'vertical' : 'horizontal';
-        const style = ['cinematic', 'animated', 'sketch', 'anime'].includes(String(form.get('style') || '')) ? String(form.get('style')) : 'cinematic';
+        const requestedStyle = String(form.get('style') || '');
+        const style = ['', 'cinematic', 'animated', 'sketch', 'anime'].includes(requestedStyle) ? requestedStyle : '';
         const quality = ['low', 'medium', 'high'].includes(String(form.get('quality') || '')) ? String(form.get('quality')) : 'low';
         const referenceAssetIds = [...this.state.imagineReferenceIds];
         const createdAtMs = Date.now();

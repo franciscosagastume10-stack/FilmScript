@@ -2,7 +2,7 @@
 <html>
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <link rel="icon" href="./assets/filmscript-favicon.svg?v=20260813" type="image/svg+xml">
 <link rel="shortcut icon" href="./assets/filmscript-favicon.svg?v=20260813" type="image/svg+xml">
 <!-- Vercel Web Analytics: production page views and navigation. -->
@@ -26,10 +26,10 @@
 <script defer src="./pdf-import.js"></script>
 <script defer src="./project-client.js?v=20260820-browser-safe1"></script>
 <script defer src="./preproduction-client.js?v=20260819-collab2"></script>
-<script defer src="./platform-client.js?v=20260821-personal-name1"></script>
+<script defer src="./platform-client.js?v=20260822-mobile4"></script>
 <link rel="stylesheet" href="./auth-modal.css?v=20260712-auth2">
 <link rel="stylesheet" href="./filmscript-controls.css?v=20260716-typography1">
-<link rel="stylesheet" href="./platform-ui.css?v=20260821-invitations1">
+<link rel="stylesheet" href="./platform-ui.css?v=20260822-mobile4">
 </head>
 <body>
 <x-dc>
@@ -236,22 +236,31 @@
   @media (prefers-reduced-transparency: reduce) { .fs-scripts-actions .fs-scripts-action, .fs-script-card, .fs-script-card-menu { background: var(--surface, #FFFEF9) !important; backdrop-filter: none; -webkit-backdrop-filter: none; } }
   @media (prefers-reduced-motion: reduce) { .fs-script-import-dots i { animation: none; } .fs-scripts-actions .fs-scripts-action, .fs-script-card, .fs-script-thumb { transition: none !important; } .fs-script-card.is-new-shared { animation: none !important; } }
   @media (max-width: 700px) {
-    .fs-scripts-dashboard { position: relative; isolation: isolate; padding: 30px 20px 44px !important; background-size: cover !important; background-position: center !important; background-attachment: scroll !important; }
+    .fs-app-topbar { height: calc(52px + env(safe-area-inset-top)) !important; min-height: calc(52px + env(safe-area-inset-top)); flex-basis: calc(52px + env(safe-area-inset-top)) !important; padding: env(safe-area-inset-top) 14px 0 !important; }
+    .fs-theme-mobile-control { width: 44px; height: 44px; justify-content: center; padding: 0 !important; }
+    .fs-app-topbar [data-testid="account-avatar"] { width: 44px !important; height: 44px !important; flex: 0 0 44px; }
+    .fs-scripts-dashboard { position: relative; isolation: isolate; padding: 30px 20px calc(112px + env(safe-area-inset-bottom)) !important; background-size: cover !important; background-position: center !important; background-attachment: scroll !important; }
     .fs-scripts-dashboard::before { content: ""; position: absolute; inset: 0; z-index: 0; pointer-events: none; background: color-mix(in srgb, var(--bg, #F5F0E8) 87%, transparent); }
     .fs-scripts-dashboard > * { position: relative; z-index: 1; }
     .fs-scripts-hero { min-height: 0 !important; padding-right: 0 !important; }
     .fs-scripts-hero [aria-label] { font-size: clamp(31px, 10vw, 39px) !important; max-width: 290px; }
     .fs-scripts-hero > div[style*="font-size: 14px"] { max-width: 300px !important; font-size: 14px !important; }
-    .fs-scripts-actions { position: static !important; display: flex; flex-wrap: wrap; gap: 9px; margin-top: 23px; }
-    .fs-scripts-actions .fs-scripts-action { position: static !important; width: auto !important; height: 42px !important; min-height: 42px !important; flex: 1 1 142px; padding: 0 14px !important; }
-    .fs-scripts-actions .fs-scripts-action > div { height: 42px !important; }
+    .fs-scripts-actions { position: static !important; width: 100% !important; display: flex; flex-wrap: wrap; gap: 9px; margin-top: 23px; }
+    .fs-scripts-actions .fs-scripts-action { position: static !important; width: auto !important; height: 48px !important; min-height: 48px !important; flex: 1 1 142px; padding: 0 14px !important; }
+    .fs-scripts-actions .fs-scripts-action > div { height: 48px !important; }
     .fs-scripts-import-note { position: static !important; width: 100% !important; margin-top: 2px; text-align: left !important; }
     .fs-scripts-list-head { align-items: flex-start !important; flex-direction: column; gap: 12px !important; margin-bottom: 16px !important; }
-    .fs-scripts-search { width: 100% !important; }
+    .fs-scripts-search { width: 100% !important; min-height: 48px; padding: 2px 10px !important; }
+    .fs-scripts-search input { min-height: 44px; }
     .fs-scripts-grid { grid-template-columns: repeat(2, minmax(0, 1fr)) !important; gap: 12px !important; }
     .fs-scripts-grid .fs-script-card { min-height: 178px !important; padding: 14px !important; }
     .fs-scripts-grid .fs-script-card-title { font-size: 14px !important; }
     .fs-scripts-grid .fs-script-card-meta { font-size: 10.5px !important; }
+    .fs-script-card-options { width: 44px !important; height: 44px !important; right: 7px !important; top: 7px !important; }
+  }
+  @media (max-width: 520px) {
+    .fs-scripts-grid { grid-template-columns: 1fr !important; gap: 13px !important; }
+    .fs-scripts-grid .fs-script-card { min-height: 158px !important; }
   }
   @keyframes fs-pulse { 0% { transform: scale(.7); opacity: .28; } 100% { transform: scale(1.9); opacity: 0; } }
   @keyframes fs-paywall-in { 0% { opacity: 0; transform: translateY(10px) scale(.97); } 100% { opacity: 1; transform: translateY(0) scale(1); } }
@@ -293,7 +302,7 @@
 </style>
 </helmet>
 
-<div style="--accent: {{ accent }}; --accent-hover: {{ accentHover }}; --bg: {{ bg }}; --chrome: {{ chrome }}; --surface: {{ surface }}; --ink: {{ ink }}; --muted: {{ muted }}; --line: {{ line }}; --soft: {{ soft }}; height: 100vh; width: 100%; position: relative; display: flex; flex-direction: column; background: var(--bg, #F5F0E8); color: var(--ink, #2C2C2A); overflow: hidden; font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;">
+<div style="--accent: {{ accent }}; --accent-hover: {{ accentHover }}; --bg: {{ bg }}; --chrome: {{ chrome }}; --surface: {{ surface }}; --ink: {{ ink }}; --muted: {{ muted }}; --line: {{ line }}; --soft: {{ soft }}; height: 100dvh; width: 100%; position: relative; display: flex; flex-direction: column; background: var(--bg, #F5F0E8); color: var(--ink, #2C2C2A); overflow: hidden; font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;">
 
   <!-- hand-drawn sketch filter: wobbles the edges of any bordered element -->
   <svg width="0" height="0" style="position: absolute;"><defs><filter id="fs-sketch" x="-6%" y="-22%" width="112%" height="144%"><feTurbulence type="fractalNoise" baseFrequency="0.014" numOctaves="2" seed="7" result="n"></feTurbulence><feDisplacementMap in="SourceGraphic" in2="n" scale="2.6" xChannelSelector="R" yChannelSelector="G"></feDisplacementMap></filter></defs></svg>
@@ -305,7 +314,7 @@
     <div style="flex: 1;"></div>
 
     <div style="display: flex; align-items: center; gap: 8px;">
-      <div onClick="{{ toggleDark }}" title="Theme" class="fsx-bright" style="cursor: pointer; padding: 6px; color: #b9b8b2; display: flex; align-items: center;">
+      <div onClick="{{ toggleDark }}" title="Theme" class="fsx-bright fs-theme-mobile-control" style="cursor: pointer; padding: 6px; color: #b9b8b2; display: flex; align-items: center;">
         <sc-if value="{{ darkMode }}" hint-placeholder-val="{{ false }}">
           <svg viewBox="0 0 20 20" style="width: 18px; height: 18px;" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><circle cx="10" cy="10" r="3.1"></circle><path d="M10 3.4 V5 M10 15 V16.6 M3.4 10 H5 M15 10 H16.6 M5.5 5.5 L6.6 6.6 M13.4 13.4 L14.5 14.5 M14.5 5.5 L13.4 6.6 M6.6 13.4 L5.5 14.5"></path></svg>
         </sc-if>
@@ -412,10 +421,10 @@
     <!-- right pane: scripts list -->
     <div style="width: min(100%, 1220px); margin: 0 auto;">
       <div class="fs-scripts-list-head" style="display: flex; align-items: center; gap: 16px; margin-bottom: 18px; animation: fs-rise .5s ease both .1s;">
-        <div style="flex: 1;"><div style="font-size: 24px; letter-spacing: -.55px; color: var(--ink, #2C2C2A); font-weight: 700;">Your scripts</div><div style="font-size: 12px; color: var(--muted, #888780); margin-top: 5px;">{{ scriptSummary }}</div></div>
+        <div style="flex: 1;"><div style="font-size: 24px; letter-spacing: -.55px; color: var(--ink, #2C2C2A); font-weight: 700;">Your projects</div><div style="font-size: 12px; color: var(--muted, #888780); margin-top: 5px;">{{ scriptSummary }}</div></div>
         <div class="fs-scripts-search" style="width: 196px; display: flex; align-items: center; gap: 7px; padding: 7px 10px; border: 1.2px solid var(--soft, #e4e2d8); border-radius: 10px; background: var(--surface, #FFFEF9);">
           <span style="font-size: 15px; color: var(--muted, #888780); line-height: 1;">⌕</span>
-          <input value="{{ scriptsSearch }}" onInput="{{ onScriptsSearch }}" placeholder="Search scripts" aria-label="Search scripts" style="width: 100%; min-width: 0; border: none; outline: none; background: transparent; color: var(--ink, #2C2C2A); font: inherit; font-size: 12px;">
+          <input value="{{ scriptsSearch }}" onInput="{{ onScriptsSearch }}" placeholder="Search projects" aria-label="Search projects" style="width: 100%; min-width: 0; border: none; outline: none; background: transparent; color: var(--ink, #2C2C2A); font: inherit; font-size: 12px;">
         </div>
       </div>
   <div class="fs-scripts-grid" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)); gap: 16px;">
@@ -452,8 +461,8 @@
                 <div class="fs-script-access"><span class="fs-script-access-pill">{{ card.roleLabel }}</span><span class="fs-script-access-owner" data-i18n-skip>{{ card.ownerLabel }}</span></div>
               </sc-if>
             </div>
-            <sc-if value="{{ card.hasMenu }}" hint-placeholder-val="false">
-              <div onClick="{{ card.toggleMenu }}" title="Script options" style="position: absolute; right: 13px; top: 13px; width: 30px; height: 30px; display: flex; align-items: center; justify-content: center; color: var(--muted, #888780); font-size: 18px; border-radius: 8px; cursor: pointer; letter-spacing: 1px;">•••
+            <sc-if value="{{ card.canDelete }}" hint-placeholder-val="false">
+              <div onClick="{{ card.toggleMenu }}" title="Script options" class="fs-script-card-options" style="position: absolute; right: 13px; top: 13px; width: 30px; height: 30px; display: flex; align-items: center; justify-content: center; color: var(--muted, #888780); font-size: 18px; border-radius: 8px; cursor: pointer; letter-spacing: 1px;">•••
                 <sc-if value="{{ card.menuOpen }}" hint-placeholder-val="false">
                   <div class="fs-script-card-menu" style="position: absolute; z-index: 10; right: 0; top: 30px; width: 126px; padding: 6px; background: var(--surface, #FFFEF9); border: 1.3px solid var(--line, #2C2C2A); border-radius: 10px 9px 11px 8px; color: var(--ink, #2C2C2A); font-size: 12px; font-weight: 600; letter-spacing: 0; white-space: nowrap;">
                     <sc-if value="{{ card.canRename }}" hint-placeholder-val="false"><button type="button" onClick="{{ card.rename }}" style="display:block; width:100%; padding: 8px 7px; border:0; border-radius: 6px; background:transparent; color:inherit; font:inherit; text-align:left; cursor:pointer;">Rename</button></sc-if>
@@ -475,7 +484,7 @@
       <div style="padding: 30px 6px; color: var(--muted, #888780); font-size: 13px;">No scripts match “{{ scriptsSearch }}”.</div>
     </sc-if>
     <sc-if value="{{ noScriptsYet }}" hint-placeholder-val="false">
-      <div style="grid-column: 1 / -1; padding: 30px 6px; color: var(--muted, #888780); font-size: 13px;">No scripts yet. Start a new page when you’re ready.</div>
+      <div style="grid-column: 1 / -1; padding: 30px 6px; color: var(--muted, #888780); font-size: 13px;">No projects yet. Start a new page when you’re ready.</div>
     </sc-if>
   </div>
     </div>
@@ -957,13 +966,14 @@ class Component extends DCLogic {
     // return this avoids racing the new session cookie / identity hydration.
     const me = await this._refreshBilling(params.get('payment') === 'success', params.get('checkout_id'));
     if (me?.authenticated && params.get('profile') === '1') window.filmscriptPlatform?.openAccount?.();
-    await this._loadScripts({ retries: 5 });
+    const scripts = await this._loadScripts({ retries: 5 });
     if (acceptedProjectId) {
       params.delete('acceptedProject');
       const cleanQuery = params.toString();
       window.history.replaceState({}, '', `${window.location.pathname}${cleanQuery ? `?${cleanQuery}` : ''}${window.location.hash || ''}`);
       this._sharedArrivalTimer = window.setTimeout(() => this.setState({ highlightedScriptId: null }), 3200);
     }
+    this._openRequestedMobileDestination(params, Array.isArray(scripts) ? scripts : []);
   }
 
   componentWillUnmount() {
@@ -1081,13 +1091,14 @@ class Component extends DCLogic {
     for (let attempt = 0; attempt <= retries; attempt += 1) {
       try {
         const result = await window.filmscriptScripts.list();
+        const scripts = result?.scripts || [];
         this.setState({
-          importedScripts: result?.scripts || [],
+          importedScripts: scripts,
           scriptsLoading: false,
           scriptsLoaded: true,
           scriptsLoadError: ''
         });
-        return true;
+        return scripts;
       } catch (e) {
         // The first request after Google OAuth can briefly arrive before the
         // authenticated session is visible to the API. Retry it in place instead
@@ -1120,6 +1131,29 @@ class Component extends DCLogic {
       scriptsLoadError: 'We could not sync your scripts. Please try again.'
     });
     return false;
+  }
+
+  _openRequestedMobileDestination(params, scripts) {
+    const destination = params.get('imagine') === '1'
+      ? 'imagine'
+      : params.get('library') === '1'
+        ? 'canvas'
+        : '';
+    if (!destination) return;
+    const latest = [...scripts].sort((left, right) => {
+      const leftDate = Date.parse(left?.updatedAt || left?.createdAt || '') || 0;
+      const rightDate = Date.parse(right?.updatedAt || right?.createdAt || '') || 0;
+      return rightDate - leftDate;
+    })[0];
+    if (!latest?.id) {
+      window.history.replaceState({}, '', 'App.dc.html');
+      this.setState({ importNote: destination === 'imagine'
+        ? 'Create or import a project before opening Imagine.'
+        : 'Create or import a project before opening your Library.' });
+      return;
+    }
+    const destinationRoute = destination === 'imagine' ? 'view=imagine' : 'view=canvas';
+    window.location.replace(`Editor%20v5.dc.html?script=${encodeURIComponent(latest.id)}&${destinationRoute}`);
   }
 
   async _refreshBilling(sync = false, checkoutId = null) {
