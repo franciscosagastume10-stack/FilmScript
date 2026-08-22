@@ -6,7 +6,10 @@ import { normalizePreviewError, previewError } from "./errors.js";
 
 const PROJECT_ID = /^scr_[0-9a-f]{20,64}$/;
 const MEDIA_ID = /^med_[0-9a-f]{32}$/;
+const PROJECT_VERSION = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d{1,6})?(?:Z|[+-]\d{2}:\d{2})$/;
 const READ_METHODS = new Set(["GET", "HEAD"]);
+const SCRIPT_DOCUMENT_BYTES = 8 * 1024 * 1024;
+const SCRIPT_METADATA_BYTES = 500_000;
 
 function header(req, name) {
   const value = req.headers?.[name.toLowerCase()];
@@ -57,18 +60,20 @@ function bearerToken(req) {
   return match[1];
 }
 
-async function readBytes(req, maximumBytes) {
+async function readBytes(req, maximumBytes, tooLarge = () => (
+  previewError(413, "upload_too_large", "Preview uploads are limited to 10 MiB.")
+)) {
   const contentLength = Number(header(req, "content-length") || 0);
   if (Number.isFinite(contentLength) && contentLength > maximumBytes) {
-    throw previewError(413, "upload_too_large", "Preview uploads are limited to 10 MiB.");
+    throw tooLarge();
   }
   if (Buffer.isBuffer(req.body)) {
-    if (req.body.length > maximumBytes) throw previewError(413, "upload_too_large", "Preview uploads are limited to 10 MiB.");
+    if (req.body.length > maximumBytes) throw tooLarge();
     return req.body;
   }
   if (typeof req.body === "string") {
     const value = Buffer.from(req.body);
-    if (value.length > maximumBytes) throw previewError(413, "upload_too_large", "Preview uploads are limited to 10 MiB.");
+    if (value.length > maximumBytes) throw tooLarge();
     return value;
   }
   const chunks = [];
@@ -76,18 +81,33 @@ async function readBytes(req, maximumBytes) {
   for await (const chunk of req) {
     const value = Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk);
     size += value.length;
-    if (size > maximumBytes) throw previewError(413, "upload_too_large", "Preview uploads are limited to 10 MiB.");
+    if (size > maximumBytes) throw tooLarge();
     chunks.push(value);
   }
   return Buffer.concat(chunks);
 }
 
 async function jsonBody(req, maximumBytes = 32 * 1024) {
-  if (req.body && typeof req.body === "object" && !Buffer.isBuffer(req.body)) return req.body;
-  const bytes = await readBytes(req, maximumBytes);
+  if (req.body && typeof req.body === "object" && !Buffer.isBuffer(req.body)) {
+    let serialized;
+    try { serialized = JSON.stringify(req.body); }
+    catch { throw previewError(400, "invalid_json", "The request body must be valid JSON."); }
+    if (Buffer.byteLength(serialized) > maximumBytes) {
+      throw previewError(413, "request_too_large", "The request body is too large.");
+    }
+    return req.body;
+  }
+  const bytes = await readBytes(req, maximumBytes, () => (
+    previewError(413, "request_too_large", "The request body is too large.")
+  ));
   if (!bytes.length) return {};
   try { return JSON.parse(bytes.toString("utf8")); }
   catch { throw previewError(400, "invalid_json", "The request body must be valid JSON."); }
+}
+
+function jsonSize(value) {
+  try { return Buffer.byteLength(JSON.stringify(value)); }
+  catch { throw previewError(400, "invalid_project_update", "The project update is invalid."); }
 }
 
 function safeFilename(value) {
@@ -121,6 +141,9 @@ function normalizeProject(row, state = null, membership = null) {
     source: row.source,
     text: row.text,
     blocks: row.blocks,
+    chat: row.chat,
+    titleRoom: row.title_room,
+    characterNames: row.character_names,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
     archived: Boolean(state?.archived_at),
@@ -184,7 +207,7 @@ async function listProjects(client, context, req) {
 
 async function readProject(client, context, projectId) {
   const rows = await client.table("scripts", {
-    select: "id,user_id,title,filename,source,text,blocks,created_at,updated_at",
+    select: "id,user_id,title,filename,source,text,blocks,chat,title_room,character_names,created_at,updated_at",
     id: `eq.${projectId}`,
     limit: "1",
   }, context.token);
@@ -207,17 +230,94 @@ async function readProject(client, context, projectId) {
   });
 }
 
-async function renameProject(client, context, projectId, req) {
-  const body = await jsonBody(req);
-  const title = String(body.title || "").trim().slice(0, 160);
-  if (!title) throw previewError(400, "title_required", "A project title is required.");
-  const rows = await client.table("scripts", { id: `eq.${projectId}`, select: "id,user_id,title,filename,source,created_at,updated_at" }, context.token, {
-    method: "PATCH",
-    body: { title },
-    prefer: "return=representation",
-  });
-  if (!rows?.[0]) throw previewError(404, "project_not_found", "The project was not found.");
-  return normalizeProject(rows[0], null, { currentUserId: context.profile.id });
+function projectPatch(body) {
+  const has = (name) => Object.prototype.hasOwnProperty.call(body, name);
+  const allowed = new Set(["title", "blocks", "chat", "titleRoom", "characterNames", "expectedUpdatedAt"]);
+  const unknown = Object.keys(body).filter((name) => !allowed.has(name));
+  if (unknown.length) {
+    throw previewError(400, "invalid_project_update", "The project update contains unsupported fields.");
+  }
+
+  const patch = {};
+  if (has("title")) {
+    const title = typeof body.title === "string" ? body.title.trim().slice(0, 160) : "";
+    if (!title) throw previewError(400, "title_required", "A project title is required.");
+    patch.title = title;
+  }
+  if (has("blocks")) {
+    if (!Array.isArray(body.blocks)) {
+      throw previewError(400, "invalid_project_update", "Screenplay blocks must be an array.");
+    }
+    patch.blocks = body.blocks;
+  }
+  if (has("chat")) {
+    if (!Array.isArray(body.chat)) {
+      throw previewError(400, "invalid_project_update", "Screenplay chat must be an array.");
+    }
+    patch.chat = body.chat.slice(0, 250)
+      .map((message) => ({
+        who: message?.who === "w" ? "w" : "l",
+        text: String(message?.text || "").slice(0, 10_000),
+      }))
+      .filter((message) => message.text.trim());
+  }
+  for (const [requestName, columnName] of [
+    ["titleRoom", "title_room"],
+    ["characterNames", "character_names"],
+  ]) {
+    if (!has(requestName)) continue;
+    const value = body[requestName];
+    if (!value || typeof value !== "object" || Array.isArray(value)) {
+      throw previewError(400, "invalid_project_update", `${requestName} must be an object.`);
+    }
+    if (jsonSize(value) > SCRIPT_METADATA_BYTES) {
+      throw previewError(413, "request_too_large", `${requestName} data is too large.`);
+    }
+    patch[columnName] = value;
+  }
+  if (!Object.keys(patch).length) {
+    throw previewError(400, "invalid_project_update", "A supported project field is required.");
+  }
+
+  const changesDocument = ["blocks", "chat", "title_room", "character_names"]
+    .some((column) => Object.prototype.hasOwnProperty.call(patch, column));
+  let expectedUpdatedAt = null;
+  if (changesDocument) {
+    expectedUpdatedAt = typeof body.expectedUpdatedAt === "string" ? body.expectedUpdatedAt.trim() : "";
+    if (!PROJECT_VERSION.test(expectedUpdatedAt) || !Number.isFinite(Date.parse(expectedUpdatedAt))) {
+      throw previewError(
+        428,
+        "project_version_required",
+        "The current project updatedAt value is required for document updates.",
+      );
+    }
+  }
+  return { patch, expectedUpdatedAt };
+}
+
+async function updateProject(client, context, projectId, req) {
+  const body = await jsonBody(req, SCRIPT_DOCUMENT_BYTES);
+  const { patch, expectedUpdatedAt } = projectPatch(body);
+  const permission = await client.rpc("has_project_permission", {
+    requested_project_id: projectId,
+    requested_module: "script",
+    needed_level: "edit",
+  }, context.token);
+  if (permission !== true) {
+    throw previewError(404, "project_not_found", "The project was not found.");
+  }
+  const result = await client.rpc("preview_update_project_document", {
+    requested_project_id: projectId,
+    requested_expected_updated_at: expectedUpdatedAt,
+    requested_patch: patch,
+  }, context.token);
+  if (result?.status === "conflict") {
+    throw previewError(409, "project_version_conflict", "The project changed before this update was saved.");
+  }
+  if (result?.status !== "updated" || !result.project?.id) {
+    throw previewError(502, "supabase_preview_unavailable", "The project update could not be confirmed.");
+  }
+  return normalizeProject(result.project, null, { currentUserId: context.profile.id });
 }
 
 async function uploadFile(client, config, context, projectId, req, randomBytes) {
@@ -318,7 +418,7 @@ export function createSupabasePreviewHandler({
         const projectId = assertProjectId(segments[1]);
         if (segments.length === 2) {
           if (READ_METHODS.has(method)) return sendJson(res, 200, { project: await readProject(client, context, projectId) }, method);
-          if (method === "PATCH") return sendJson(res, 200, { project: await renameProject(client, context, projectId, req) }, method);
+          if (method === "PATCH") return sendJson(res, 200, { project: await updateProject(client, context, projectId, req) }, method);
           return methodNotAllowed(res, method, ["GET", "HEAD", "PATCH"]);
         }
         if (segments.length === 3 && new Set(["archive", "restore"]).has(segments[2])) {

@@ -1,7 +1,27 @@
 begin;
 
 create extension if not exists pgtap with schema extensions;
-select extensions.plan(100);
+select extensions.plan(106);
+
+select extensions.is(
+  (select count(*)
+   from information_schema.table_privileges
+   where table_schema = 'private'
+     and table_name = 'legacy_orphan_records'
+     and grantee in ('anon', 'authenticated', 'PUBLIC')),
+  0::bigint,
+  'legacy orphan quarantine has no browser or public table grants'
+);
+
+select extensions.is(
+  (select count(*)
+   from information_schema.table_privileges
+   where table_schema = 'private'
+     and table_name = 'legacy_orphan_storage'
+     and grantee in ('anon', 'authenticated', 'PUBLIC')),
+  0::bigint,
+  'legacy orphan Storage quarantine has no browser or public table grants'
+);
 
 -- -------------------------------------------------------------------------
 -- Auth linking: unconfirmed identities have no profile or claim authority.
@@ -438,6 +458,22 @@ insert into public.collaboration_documents (
   ('scr_security', 'doc_script', 'script', decode('544f5020534543524554', 'hex'), 1),
   ('scr_security', 'doc_budget', 'budget', decode('51554f5445203130303030', 'hex'), 1);
 
+select extensions.throws_ok(
+  $$insert into public.collaboration_documents
+      (project_id, document_id, module, snapshot, version, legacy_synthetic_parent)
+    values ('scr_security', 'doc_invalid_anchor', 'breakdown', decode('01', 'hex'), 1, true)$$,
+  '23514',
+  null,
+  'synthetic collaboration provenance rejects a materialized snapshot'
+);
+
+select extensions.lives_ok(
+  $$insert into public.collaboration_documents
+      (project_id, document_id, module, snapshot, version, legacy_synthetic_parent)
+    values ('scr_security', 'doc_legacy_anchor', 'breakdown', decode('', 'hex'), 0, true)$$,
+  'synthetic collaboration provenance accepts only an empty version-zero FK anchor'
+);
+
 insert into public.collaboration_entities (
   project_id, document_id, module, entity_type, entity_id, value, version
 ) values (
@@ -576,6 +612,8 @@ from (
     ('med_canvas', 'scr_security', 'objects/canvas.png', 'canvas_asset', '{"access_module":"canvas"}'::jsonb),
     ('med_imagine', 'scr_security', 'objects/imagine.png', 'canvas_asset', '{"access_module":"imagine"}'::jsonb),
     ('med_unclassified', 'scr_security', 'objects/unclassified.png', 'canvas_asset', '{}'::jsonb),
+    ('med_library_shared', null, 'objects/library-shared.png', 'canvas_asset',
+      '{"access_module":"imagine","legacy_access_scope":"owner_only_cross_project_library","legacy_reference_project_ids":["scr_security","scr_replica"]}'::jsonb),
     ('med_file', 'scr_security', 'objects/project-file.pdf', 'project_file', '{}'::jsonb),
     ('med_export', 'scr_security', 'objects/project-export.pdf', 'project_export', '{}'::jsonb),
     ('med_account', null, 'objects/account.png', 'account_private', '{}'::jsonb)
@@ -836,6 +874,16 @@ select extensions.is(
   'project collaborator cannot read owner account-private media'
 );
 select extensions.is(
+  (select count(*) from public.media_objects where id = 'med_library_shared'),
+  0::bigint,
+  'Imagine collaborator cannot read a cross-project library asset scoped to its owner'
+);
+select extensions.is(
+  (select count(*) from storage.objects where name = 'objects/library-shared.png'),
+  0::bigint,
+  'Imagine collaborator cannot read bytes for a cross-project library asset scoped to its owner'
+);
+select extensions.is(
   (select count(*) from public.media_objects where id = 'med_export'),
   1::bigint,
   'exports:view authorizes project exports independently from project files'
@@ -881,12 +929,12 @@ set local role authenticated;
 set local "request.jwt.claim.sub" = '20000000-0000-0000-0000-000000000001';
 select extensions.is(
   (select count(*) from public.media_objects where id like 'med_%'),
-  9::bigint,
+  10::bigint,
   'project owner retains access to classified, unclassified and account-private media'
 );
 select extensions.is(
   (select count(*) from storage.objects where name like 'objects/%'),
-  9::bigint,
+  10::bigint,
   'owner retains access to all corresponding private Storage objects'
 );
 

@@ -12,6 +12,7 @@ import {
   parseArgs,
   quoteIdentifier,
   readJson,
+  normalizeTimestamp,
   requiredArg,
   requireProductionConfirmation,
   resolveInside,
@@ -21,6 +22,7 @@ import {
   stableStringify,
   writeJsonExclusive,
 } from "./lib/common.mjs";
+import { validateCreditMaterializationManifest } from "./materialize-legacy-credits.mjs";
 
 function sqliteChecks(database) {
   const integrity = database.pragma("integrity_check").map((row) => row.integrity_check);
@@ -110,9 +112,35 @@ function orderedSelect(tableName, metadata, tableSql) {
   return `SELECT * FROM ${quoteIdentifier(tableName)} ORDER BY ${order}`;
 }
 
+function utcWeekKey(timestamp) {
+  const date = new Date(normalizeTimestamp(timestamp, "SQLite snapshot capturedAt"));
+  const mondayOffset = (date.getUTCDay() + 6) % 7;
+  date.setUTCHours(0, 0, 0, 0);
+  date.setUTCDate(date.getUTCDate() - mondayOffset);
+  return date.toISOString().slice(0, 10);
+}
+
+function assertMaterializationPrecedesSnapshot(attestation, snapshotCapturedAt) {
+  if (Date.parse(snapshotCapturedAt) < Date.parse(attestation.clock.completedAt)) {
+    throw new Error("SQLite snapshot predates completion of credit materialization");
+  }
+  if (snapshotCapturedAt.slice(0, 7) !== attestation.clock.utcMonth
+    || utcWeekKey(snapshotCapturedAt) !== attestation.clock.utcWeek) {
+    throw new Error("SQLite snapshot crossed a UTC credit boundary after materialization");
+  }
+}
+
 export async function snapshotSqlite({ source, outputDirectory }) {
   const sourcePath = path.resolve(source);
   assertRegularFile(sourcePath, "SQLite source");
+  const siblingMaterializationManifest = path.join(path.dirname(sourcePath), "materialization-manifest.json");
+  const creditMaterialization = fs.existsSync(siblingMaterializationManifest)
+    ? validateCreditMaterializationManifest({
+      manifestPath: siblingMaterializationManifest,
+      databasePath: sourcePath,
+      requirePhysicalMatch: true,
+    })
+    : null;
   const output = createExclusiveDirectory(outputDirectory);
   const snapshotPath = path.join(output, "source.sqlite");
   const sourceDatabase = new Database(sourcePath, { readonly: true, fileMustExist: true });
@@ -122,6 +150,25 @@ export async function snapshotSqlite({ source, outputDirectory }) {
     await sourceDatabase.backup(snapshotPath);
   } finally {
     sourceDatabase.close();
+  }
+  // Credit reservations and cycle eligibility are evaluated against the
+  // instant the immutable SQLite backup finished, never the later time at
+  // which potentially large NDJSON/BLOB exports happened to complete.
+  const sourceCapturedAt = new Date().toISOString();
+  if (creditMaterialization) {
+    assertMaterializationPrecedesSnapshot(creditMaterialization.manifest, sourceCapturedAt);
+  }
+
+  let creditMaterializationReference = null;
+  if (creditMaterialization) {
+    const relative = "credit-materialization.json";
+    const target = path.join(output, relative);
+    fs.copyFileSync(siblingMaterializationManifest, target, fs.constants.COPYFILE_EXCL);
+    fs.chmodSync(target, 0o600);
+    creditMaterializationReference = {
+      file: relative,
+      sha256: creditMaterialization.manifestSha256,
+    };
   }
 
   fs.chmodSync(snapshotPath, 0o600);
@@ -179,7 +226,11 @@ export async function snapshotSqlite({ source, outputDirectory }) {
       format: "filmscript-sqlite-export",
       formatVersion: EXPORT_FORMAT_VERSION,
       generatedAt: new Date().toISOString(),
-      source: { basename: path.basename(sourcePath) },
+      source: {
+        basename: path.basename(sourcePath),
+        capturedAt: sourceCapturedAt,
+        creditMaterialization: creditMaterializationReference,
+      },
       snapshot: {
         file: "source.sqlite",
         bytes: snapshotStats.size,
@@ -203,10 +254,31 @@ export function validateSnapshotExport(exportDirectory) {
   if (manifest.format !== "filmscript-sqlite-export" || manifest.formatVersion !== EXPORT_FORMAT_VERSION) {
     throw new Error(`Unsupported SQLite export format version: ${manifest.formatVersion}`);
   }
+  const capturedAt = normalizeTimestamp(manifest.source?.capturedAt || manifest.generatedAt, "SQLite snapshot capturedAt");
+  const generatedAt = normalizeTimestamp(manifest.generatedAt, "SQLite export generatedAt");
+  if (Date.parse(capturedAt) > Date.parse(generatedAt)) {
+    throw new Error("SQLite snapshot capturedAt cannot be later than export generatedAt");
+  }
   const snapshotPath = resolveInside(root, manifest.snapshot.file, "snapshot file");
   const snapshotStats = assertRegularFile(snapshotPath, "SQLite snapshot");
   if (snapshotStats.size !== manifest.snapshot.bytes || sha256File(snapshotPath) !== manifest.snapshot.sha256) {
     throw new Error("SQLite snapshot checksum or size does not match its manifest");
+  }
+  if (manifest.source?.creditMaterialization) {
+    const materializationPath = resolveInside(
+      root,
+      manifest.source.creditMaterialization.file,
+      "credit materialization attestation",
+    );
+    if (sha256File(materializationPath) !== manifest.source.creditMaterialization.sha256) {
+      throw new Error("Credit materialization attestation hash does not match the SQLite export");
+    }
+    const materialization = validateCreditMaterializationManifest({
+      manifestPath: materializationPath,
+      databasePath: snapshotPath,
+      requirePhysicalMatch: false,
+    });
+    assertMaterializationPrecedesSnapshot(materialization.manifest, capturedAt);
   }
   const database = new Database(snapshotPath, { readonly: true, fileMustExist: true });
   database.defaultSafeIntegers(true);

@@ -23,6 +23,21 @@ These tools prepare, validate, import, and reconcile a FilmScript migration with
 
 The Postgres tools resolve `psql` in this order: `PSQL_BIN`, `PATH`, `/opt/homebrew/opt/libpq/bin/psql`, then `/usr/local/opt/libpq/bin/psql`. Homebrew `libpq` does not need to be globally linked.
 
+## 0. Materialize paid credit ledgers on an offline copy
+
+When the source has active paid subscriptions, first materialize the current legacy credit ledgers on a copy. The helper never edits the source, refuses SQLite `-wal`/`-shm`/`-journal` sidecars, requires zero active jobs and reservations, freezes one UTC clock for both entitlement hooks, and publishes its output only by an atomic rename after every check passes. Run it only against a write-fenced/offline schema-v18 backup:
+
+```bash
+node scripts/supabase-migration/materialize-legacy-credits.mjs \
+  --source /secure/staged-source.sqlite \
+  --output /secure/materialized-credit-copy \
+  --runtime-hashes /secure/runtime-hashes.json \
+  --image-digest sha256:DEPLOYED_IMAGE_DIGEST \
+  --confirm-copy MATERIALIZE_LEGACY_CREDIT_COPY
+```
+
+The runtime attestation must cover exactly `server.js`, `permissions-model.js`, `database.js`, and `platform-database.js`. The output contains mode-0600 `source.sqlite` and `materialization-manifest.json`; no raw user IDs, names, emails, or source paths are written to the manifest. Snapshot `/secure/materialized-credit-copy/source.sqlite` in the next step. The snapshot tool verifies the database against its sibling materialization manifest, copies that attestation into the export, and the transform binds its database, policy, runtime, and deployed-image hashes into the Postgres bundle. A full bundle with any active paid subscription is rejected without this chain.
+
 ## 1. Create and verify a SQLite snapshot
 
 Dry-run is not meaningful for a local backup, so this command creates only a new exclusive output directory and never overwrites one:
@@ -82,11 +97,17 @@ The default mapping matches the versioned Supabase migrations in this repository
 - `*_json` text is parsed strictly and becomes JSONB without the suffix.
 - SQLite `0/1` flags become booleans and dates/timestamps are normalized.
 - collaboration snapshots remain byte-identical `bytea`.
+- Legacy generic collaboration entities/operations that lack a document row receive an empty version-zero FK anchor only when their live project/document scope proves exactly one canonical module. The row is marked `legacy_synthetic_parent = true`, is not presented as a materialized CRDT snapshot, and its deterministic contract is revalidated from the bundle. Mixed-module, conflict-scope, or unsupported-module data fails closed for explicit review. Collaboration rows whose project was already deleted in SQLite are never re-exposed through public project tables: their canonical rows and any snapshot bytes are preserved exactly in service-only `private.legacy_orphan_records`, with deterministic IDs, per-table counts, and a validator-rebuilt hash.
 - budget receipt BLOBs become private Storage objects plus `public.media_objects` and `private.budget_receipts` metadata.
 - Canvas and shot-reference S3 keys remain unchanged, while deterministic media rows provide authorization and reconciliation metadata.
+- A legacy Canvas asset present in the owner's global library and replicated into more than one same-owner/same-module project is migrated with `project_id = NULL`. All legacy project references remain provenance only, so collaborators in none of those projects inherit access. Owner or module disagreement fails closed.
+- The only ownerless Storage objects accepted are the exact reviewed quarantine contracts: two unreferenced byte-identical profile avatars, 95 unreferenced Canvas objects under one missing-project prefix, and one unreferenced shot reference in that same missing-project namespace. Their source keys, bytes, hashes, dates, and inventory evidence remain in `private.legacy_orphan_storage`; copied objects use isolated `migration-quarantine/...` paths and never receive `public.media_objects` rows. Any new object, reference, prefix, count, byte total, or hash aborts the transform.
 - private invitations/shares/provider data and billing data go to their non-browser schemas.
+- Legacy `activity_events.updated_at` SQL `NULL` is mapped only to that row's exact `created_at`, matching the reviewed legacy migration-013 rule required by the Postgres `NOT NULL` target. Each affected target row carries a reserved provenance marker, and the manifest records an independently rebuilt count and SHA-256 contract; all existing non-null timestamps remain unchanged.
+- Every live project must end with exactly one active owner matching authoritative `scripts.user_id`. If and only if no owner and no pre-existing membership for that user exists, the full transform adds a canonical `mem_legacy_owner_<hash>` membership with all owner modules, financial owner rights, self-invitation provenance, and the script timestamps. Existing rows are never overwritten; the manifest records and the validator rebuilds the synthetic-owner hash.
+- `app_settings.lumiere_credits` remains byte-for-byte equivalent JSON in `private.app_settings` and is also normalized into credit accounts, cycle windows, reservations, settlement/usage ledger evidence, and lifetime feature allowances. The bundle validator independently rebuilds that normalized graph from the retained JSON. Current-cycle allowances must be exact; a historical allowance that the legacy JSON never recorded stays explicitly `NULL` with `legacy_allowance_unknown = true` rather than being guessed.
 
-Any unknown SQLite table, malformed JSON, invalid date, invalid project ownership graph, missing S3 project, incomplete/wrong-bucket S3 inventory, duplicate ID, duplicate Storage path, or checksum mismatch stops the transform.
+Any unknown SQLite table, malformed JSON, invalid date, ambiguous collaboration scope, orphan credit account, contradictory balance/cycle/reservation, billing-plan mismatch, invalid project ownership graph, missing S3 project, incomplete/wrong-bucket S3 inventory, duplicate ID, duplicate Storage path, or checksum mismatch stops the transform.
 
 Audit every schema-v18 source column against the real target schema before creating import SQL:
 

@@ -27,6 +27,7 @@ test("Supabase migrations preserve FilmScript IDs and translate SQLite values", 
     "20260822100000_rls.sql",
     "20260822101000_realtime.sql",
     "20260822103000_realtime_authorization.sql",
+    "20260822110000_legacy_ai_attempt_events.sql",
   ]) {
     assert.ok(migrationFiles.includes(expected), `missing ${expected}`);
   }
@@ -61,6 +62,10 @@ test("secrets, billing, receipts and provider attempts are not browser tables", 
   }
   assert.doesNotMatch(allSql, /create table (?:public\.)?(?:sessions|oauth_states|auth_handoffs)\s*\(/i);
   assert.match(allSql, /legacy_sessions_imported', false/i);
+  assert.match(
+    migrations["20260822110000_legacy_ai_attempt_events.sql"],
+    /drop constraint if exists ai_job_attempts_job_id_attempt_number_key/i,
+  );
 });
 
 test("RLS is explicit and security definer functions pin search_path", () => {

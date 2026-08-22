@@ -74,6 +74,8 @@ export function reconcilePostgres({ bundleDirectory, captureManifest, expectedEn
     ok: differences.length === 0,
     expectedDatabaseDataSha256: bundle.manifest.databaseDataSha256,
     actualDatabaseDataSha256: capture.databaseDataSha256,
+    collaborationRemediation: bundle.manifest.collaborationRemediation,
+    creditNormalization: bundle.manifest.creditNormalization,
     differences,
   };
 }

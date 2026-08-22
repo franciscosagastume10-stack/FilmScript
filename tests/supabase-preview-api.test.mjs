@@ -176,13 +176,29 @@ test("project list, read, rename, archive, and restore stay on JWT-scoped REST a
     source: "new",
     text: "INT. ROOM - DAY",
     blocks: [],
+    chat: [],
+    title_room: {},
+    character_names: {},
     created_at: "2026-08-22T01:00:00Z",
     updated_at: "2026-08-22T01:00:00Z",
   };
   const { fetchImpl, calls } = authenticatedFetch({
     handle(target, options) {
+      if (target.pathname === "/rest/v1/rpc/has_project_permission") return jsonResponse(true);
       if (target.pathname === "/rest/v1/scripts") {
-        return jsonResponse([{ ...projectRow, title: options.method === "PATCH" ? "Renamed" : projectRow.title }]);
+        return jsonResponse([projectRow]);
+      }
+      if (target.pathname === "/rest/v1/rpc/preview_update_project_document") {
+        const body = JSON.parse(options.body);
+        assert.deepEqual(body, {
+          requested_project_id: projectRow.id,
+          requested_expected_updated_at: null,
+          requested_patch: { title: "Renamed" },
+        });
+        return jsonResponse({
+          status: "updated",
+          project: { ...projectRow, title: "Renamed", updated_at: "2026-08-22T01:01:00Z" },
+        });
       }
       if (target.pathname === "/rest/v1/project_states") {
         return jsonResponse([{ project_id: projectRow.id, archived_at: null, archived_by_user_id: null }]);
@@ -218,6 +234,93 @@ test("project list, read, rename, archive, and restore stay on JWT-scoped REST a
   assert.ok(dataCalls.length >= 9);
   assert.ok(dataCalls.every((call) => call.options.headers.authorization === "Bearer user-jwt"));
   assert.ok(dataCalls.every((call) => call.options.headers.authorization !== `Bearer ${previewEnvironment.SUPABASE_SERVICE_ROLE_KEY}`));
+});
+
+test("project document updates require an optimistic version and preserve the full screenplay payload", async () => {
+  const originalUpdatedAt = "2026-08-22T01:00:00.000Z";
+  const committedUpdatedAt = "2026-08-22T01:01:00.000Z";
+  let stale = false;
+  const { fetchImpl, calls } = authenticatedFetch({
+    handle(target, options) {
+      if (target.pathname === "/rest/v1/rpc/has_project_permission") return jsonResponse(true);
+      if (target.pathname === "/rest/v1/rpc/preview_update_project_document") {
+        if (stale) return jsonResponse({ status: "conflict" });
+        const args = JSON.parse(options.body);
+        assert.equal(args.requested_project_id, "scr_aaaaaaaaaaaaaaaaaaaa");
+        assert.equal(args.requested_expected_updated_at, originalUpdatedAt);
+        assert.deepEqual(args.requested_patch, {
+          blocks: [{ type: "action", text: "The door opens." }],
+          chat: [{ who: "w", text: "Keep this note" }, { who: "l", text: "Trimmed role" }],
+          title_room: { logline: "A locked-room story" },
+          character_names: { MARA: "Mara" },
+        });
+        return jsonResponse({
+          status: "updated",
+          project: {
+            id: "scr_aaaaaaaaaaaaaaaaaaaa",
+            user_id: "usr_aaaaaaaaaaaaaaaaaaaa",
+            title: "Project One",
+            filename: null,
+            source: "new",
+            text: "",
+            ...args.requested_patch,
+            created_at: originalUpdatedAt,
+            updated_at: committedUpdatedAt,
+          },
+        });
+      }
+      return null;
+    },
+  });
+  const handler = createSupabasePreviewHandler({ environment: previewEnvironment, fetchImpl });
+  const body = {
+    blocks: [{ type: "action", text: "The door opens." }],
+    chat: [{ who: "w", text: "Keep this note" }, { who: "unexpected", text: "Trimmed role" }],
+    titleRoom: { logline: "A locked-room story" },
+    characterNames: { MARA: "Mara" },
+    expectedUpdatedAt: originalUpdatedAt,
+  };
+  const saved = responseRecorder();
+  await handler(request({
+    method: "PATCH",
+    url: "/api/supabase/projects/scr_aaaaaaaaaaaaaaaaaaaa",
+    path: ["projects", "scr_aaaaaaaaaaaaaaaaaaaa"],
+    headers: { authorization: "Bearer user-jwt", "content-type": "application/json" },
+    body: JSON.stringify(body),
+  }), saved);
+  assert.equal(saved.statusCode, 200);
+  assert.equal(saved.json().project.updatedAt, committedUpdatedAt);
+  assert.deepEqual(saved.json().project.titleRoom, body.titleRoom);
+  assert.deepEqual(saved.json().project.characterNames, body.characterNames);
+  assert.equal(calls.filter((call) => call.target.pathname === "/rest/v1/scripts"
+    && call.options.method === "PATCH").length, 0);
+  assert.equal(calls.filter((call) => call.target.pathname
+    === "/rest/v1/rpc/preview_update_project_document").length, 1);
+  assert.ok(calls.every((call) => !call.target.pathname.startsWith("/rest/v1/")
+    || call.options.headers.authorization === "Bearer user-jwt"));
+
+  stale = true;
+  const conflict = responseRecorder();
+  await handler(request({
+    method: "PATCH",
+    url: "/api/supabase/projects/scr_aaaaaaaaaaaaaaaaaaaa",
+    path: ["projects", "scr_aaaaaaaaaaaaaaaaaaaa"],
+    headers: { authorization: "Bearer user-jwt", "content-type": "application/json" },
+    body: JSON.stringify({ blocks: body.blocks, expectedUpdatedAt: originalUpdatedAt }),
+  }), conflict);
+  assert.equal(conflict.statusCode, 409);
+  assert.equal(conflict.json().error, "project_version_conflict");
+
+  const missingVersion = responseRecorder();
+  await handler(request({
+    method: "PATCH",
+    url: "/api/supabase/projects/scr_aaaaaaaaaaaaaaaaaaaa",
+    path: ["projects", "scr_aaaaaaaaaaaaaaaaaaaa"],
+    headers: { authorization: "Bearer user-jwt", "content-type": "application/json" },
+    body: JSON.stringify({ blocks: body.blocks }),
+  }), missingVersion);
+  assert.equal(missingVersion.statusCode, 428);
+  assert.equal(missingVersion.json().error, "project_version_required");
 });
 
 test("private upload compensates Storage if the JWT-scoped manifest transaction fails", async () => {
@@ -287,7 +390,13 @@ test("private downloads query the manifest with the user JWT before signing", as
 });
 
 test("Preview migration pins SECURITY DEFINER functions and routing bypasses the AWS catch-all", () => {
-  for (const name of ["preview_create_project", "preview_claim_verified_legacy_profile", "preview_set_project_archived", "preview_register_upload"]) {
+  for (const name of [
+    "preview_create_project",
+    "preview_claim_verified_legacy_profile",
+    "preview_set_project_archived",
+    "preview_register_upload",
+    "preview_update_project_document",
+  ]) {
     assert.match(migrations, new RegExp(`function public\\.${name}\\([\\s\\S]*?security definer[\\s\\S]*?set search_path = ''`, "i"));
     assert.match(migrations, new RegExp(`revoke all on function public\\.${name}\\([\\s\\S]*?from public, anon`, "i"));
   }
@@ -297,6 +406,8 @@ test("Preview migration pins SECURITY DEFINER functions and routing bypasses the
   assert.match(migrations, /function public\.preview_claim_verified_legacy_profile\(\)[\s\S]*?email_confirmed_at[\s\S]*?identity\.provider = 'google'[\s\S]*?identity\.identity_data ->> 'sub'[\s\S]*?= identity\.provider_id[\s\S]*?google_identity_count > 1[\s\S]*?PT409[\s\S]*?private\.sync_auth_user_profile/i);
   assert.doesNotMatch(migrations, /preview_claim_verified_legacy_profile\([^)]*(?:profile|email)/i);
   assert.doesNotMatch(migrations, /raise notice/i);
+  assert.match(migrations, /function public\.preview_update_project_document\([\s\S]*?has_project_permission\(requested_project_id, 'script', 'edit'\)[\s\S]*?script\.updated_at = requested_expected_updated_at/i);
+  assert.match(migrations, /private\.require_runtime_flag\('preview_api_enabled'\)/i);
 
   const vercel = JSON.parse(fs.readFileSync(path.join(ROOT, "vercel.json"), "utf8"));
   const awsCatchAll = vercel.rewrites.find((rewrite) => rewrite.source.startsWith("/api/:path"));

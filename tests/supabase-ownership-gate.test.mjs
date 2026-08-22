@@ -9,7 +9,10 @@ import {
   stableStringify,
 } from "../scripts/supabase-migration/lib/common.mjs";
 import { validateBundle } from "../scripts/supabase-migration/lib/bundle.mjs";
-import { validateProjectOwnershipGraph } from "../scripts/supabase-migration/lib/project-ownership.mjs";
+import {
+  validateProjectOwnershipGraph,
+  validateProjectOwnershipRemediation,
+} from "../scripts/supabase-migration/lib/project-ownership.mjs";
 import { reconcilePostgres } from "../scripts/supabase-migration/reconcile.mjs";
 
 const PRODUCTION_BUCKET = "filmscript-production-mediabucket-xzgdb1rat94u";
@@ -49,7 +52,12 @@ function writeBundle({ scripts, memberships, validationMode = "full" }) {
     target, rowCount, rowSha256, databaseRowSha256,
   }));
   const projectOwnership = validationMode === "full"
-    ? { status: "verified", projectCount: scripts.length, activeOwnerCount: scripts.length }
+    ? {
+      status: "verified",
+      projectCount: scripts.length,
+      activeOwnerCount: scripts.length,
+      legacyOwnerRemediation: validateProjectOwnershipRemediation({ scripts, memberships }),
+    }
     : { status: "not_enforced_partial_schema" };
   fs.writeFileSync(path.join(root, "manifest.json"), `${JSON.stringify({
     format: "filmscript-postgres-bundle",
@@ -129,7 +137,7 @@ test("full bundle rejects an active owner that differs from scripts.user_id", ()
 test("full bundle rejects an owner membership for a nonexistent project", () => {
   const root = writeBundle({ scripts: [script], memberships: [{ ...owner, project_id: "scr_missing" }] });
   try {
-    assert.throws(() => validateBundle(root), /owner membership .* references nonexistent project scr_missing/);
+    assert.throws(() => validateBundle(root), /membership .* references nonexistent project scr_missing/);
   } finally {
     fs.rmSync(root, { recursive: true, force: true });
   }

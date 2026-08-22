@@ -25,12 +25,38 @@ import {
   writeJsonExclusive,
   writeTextExclusive,
 } from "./lib/common.mjs";
-import { validateProjectOwnershipGraph } from "./lib/project-ownership.mjs";
+import {
+  remediateLegacyProjectOwners,
+  validateProjectOwnershipGraph,
+} from "./lib/project-ownership.mjs";
+import { creditTargetDefinitions, normalizeLegacyCredits } from "./lib/credit-normalization.mjs";
+import {
+  analyzeLegacyCollaborationGraph,
+  collaborationQuarantineTargetDefinition,
+  validateNormalizedCollaborationGraph,
+} from "./lib/collaboration-remediation.mjs";
+import {
+  buildMissingProjectPrefixQuarantine,
+  buildUnreferencedAvatarQuarantine,
+  isProfileAvatarStorageKey,
+  isReviewedMissingProjectStorageKey,
+  legacyOrphanStorageTargetDefinition,
+  validateLegacyOrphanStorageGraph,
+  validateLegacyOrphanStorageRows,
+} from "./lib/storage-quarantine.mjs";
+import {
+  LEGACY_ACTIVITY_UPDATED_AT_MARKER,
+  validateActivityTimestampRemediation,
+} from "./lib/activity-remediation.mjs";
+import { validateCreditMaterializationAttestation } from "./materialize-legacy-credits.mjs";
 import { validateSnapshotExport } from "./snapshot-sqlite.mjs";
 
 const DEFAULT_MAPPING_PATH = new URL("./default-mapping.json", import.meta.url);
 const REQUIRED_SOURCE_SCHEMA_VERSION = "18";
 const REQUIRED_FULL_S3_SOURCE_BUCKET = "filmscript-production-mediabucket-xzgdb1rat94u";
+const COLLABORATION_SOURCE_TABLES = new Set([
+  "collaboration_documents", "collaboration_entities", "collaboration_operations", "content_conflicts",
+]);
 
 function columnType(sourceColumn, tableMapping, value, declaredType = "") {
   if (tableMapping.booleanColumns?.includes(sourceColumn)) return "boolean";
@@ -137,6 +163,63 @@ function transformStandardRow(row, sourceTable, sourceMetadata, tableMapping, so
   return { row: transformed, columnTypes, targetPrimaryKey };
 }
 
+function transformAiJobRow(row, sourceMetadata, tableMapping, sourceRoot, bundleRoot) {
+  let prepared = row;
+  if (typeof row.output_json === "string") {
+    let parsedOutput;
+    try { parsedOutput = JSON.parse(row.output_json); }
+    catch { parsedOutput = undefined; }
+    if (parsedOutput === null) {
+      const status = String(row.status || "").trim().toLowerCase();
+      if (!new Set(["failed", "cancelled"]).has(status)) {
+        throw new Error(`ai_jobs.${row.id || "unknown"}.output_json contains JSON null for non-failed status ${status || "missing"}`);
+      }
+      // Legacy updateAIJob serialized a JavaScript null to the JSON text
+      // literal "null" on terminal failures. Postgres models the absence of
+      // an output as SQL NULL. This one table/status-specific conversion must
+      // never weaken the generic JSON-null gate for completed work.
+      prepared = { ...row, output_json: null };
+    }
+  }
+  const transformed = transformStandardRow(
+    prepared, "ai_jobs", sourceMetadata, tableMapping, sourceRoot, bundleRoot,
+  );
+  for (const sourceColumn of ["status", "progress", "error_code"]) {
+    const targetColumn = targetColumnName(sourceColumn, tableMapping);
+    if (stableStringify(row[sourceColumn]) !== stableStringify(transformed.row[targetColumn])) {
+      throw new Error(`ai_jobs.${row.id || "unknown"}.${sourceColumn} was not preserved`);
+    }
+  }
+  return transformed;
+}
+
+function transformActivityEventRow(row, sourceMetadata, tableMapping, sourceRoot, bundleRoot) {
+  const transformed = transformStandardRow(
+    row, "activity_events", sourceMetadata, tableMapping, sourceRoot, bundleRoot,
+  );
+  const metadata = transformed.row.metadata == null ? {} : transformed.row.metadata;
+  if (typeof metadata !== "object" || Array.isArray(metadata)) {
+    throw new Error(`activity_events.${row.id || "unknown"}.metadata_json must decode to an object`);
+  }
+  if (Object.hasOwn(metadata, LEGACY_ACTIVITY_UPDATED_AT_MARKER)) {
+    throw new Error(`activity_events.${row.id || "unknown"}.metadata_json uses a reserved migration marker`);
+  }
+  if (row.updated_at == null) {
+    if (!transformed.row.created_at) {
+      throw new Error(`activity_events.${row.id || "unknown"} cannot infer updated_at without created_at`);
+    }
+    // Legacy migration 013 used this exact field-level fill. The copy-only
+    // materializer restores the source NULL; the target is NOT NULL, so the
+    // ETL applies only that reviewed rule and records its provenance.
+    transformed.row.updated_at = transformed.row.created_at;
+    transformed.row.metadata = {
+      ...metadata,
+      [LEGACY_ACTIVITY_UPDATED_AT_MARKER]: true,
+    };
+  }
+  return transformed;
+}
+
 const PROJECT_NOTIFICATION_MODULES = new Set([
   "script", "analysis", "breakdown", "shot_list", "stripboard", "calendar", "budget",
   "canvas", "location_plan", "imagine", "files", "project_settings", "members",
@@ -177,45 +260,6 @@ function transformNotificationRow(row, sourceMetadata, tableMapping, sourceRoot,
     return transformed;
   }
   throw new Error(`notifications.${transformed.row.id || "unknown"} has project content without an authoritative module`);
-}
-
-function validateLegacyCollaborationGraph(sourceRoot, sourceManifest) {
-  const tableByName = new Map(sourceManifest.tables.map((table) => [table.name, table]));
-  const rows = (name) => {
-    const table = tableByName.get(name);
-    return table ? readNdjson(resolveInside(sourceRoot, table.dataFile, `${name} data`)) : [];
-  };
-  const key = (projectId, documentId) => `${String(projectId || "")}\u0000${String(documentId || "")}`;
-  const documents = new Map(rows("collaboration_documents").map((row) => [
-    key(row.project_id, row.document_id), String(row.module || ""),
-  ]));
-  const operations = new Map();
-  const issues = [];
-  const inspectChild = (tableName, row) => {
-    const documentModule = documents.get(key(row.project_id, row.document_id));
-    if (!documentModule) {
-      issues.push(`${tableName}:${row.id || row.entity_id || "unknown"} has no collaboration_document`);
-    } else if (documentModule !== String(row.module || "")) {
-      issues.push(`${tableName}:${row.id || row.entity_id || "unknown"} module ${row.module || "(blank)"} differs from document module ${documentModule}`);
-    }
-  };
-  for (const row of rows("collaboration_entities")) inspectChild("collaboration_entities", row);
-  for (const row of rows("collaboration_operations")) {
-    inspectChild("collaboration_operations", row);
-    operations.set(String(row.id || ""), row);
-  }
-  for (const row of rows("content_conflicts")) {
-    const operation = operations.get(String(row.operation_id || ""));
-    if (!operation) {
-      issues.push(`content_conflicts:${row.id || "unknown"} has no collaboration_operation`);
-    } else if (String(row.project_id || "") !== String(operation.project_id || "") || String(row.module || "") !== String(operation.module || "")) {
-      issues.push(`content_conflicts:${row.id || "unknown"} disagrees with its collaboration_operation scope`);
-    }
-  }
-  if (issues.length) {
-    const preview = issues.slice(0, 12).join("; ");
-    throw new Error(`Legacy collaboration graph needs explicit remediation before import (${issues.length} issue${issues.length === 1 ? "" : "s"}): ${preview}`);
-  }
 }
 
 function budgetReceiptRows(row, sourceMetadata, tableMapping, sourceRoot, bundleRoot, storageBucket) {
@@ -291,27 +335,41 @@ function storedObjectKey(value) {
 function canvasAssetIndexes(targets) {
   const byKey = new Map();
   const ambiguous = Symbol("ambiguous canvas asset ownership");
-  const record = (asset, ownerUserId, projectId = null) => {
+  const record = (asset, ownerUserId, projectId = null, fromOwnerLibrary = false) => {
     const key = storedObjectKey(asset);
     if (!key || !ownerUserId) return;
     const source = String(asset?.source || "").trim().toLowerCase();
     const accessModule = ["imagine", "imagine_reference"].includes(source) ? "imagine" : "canvas";
     if (byKey.get(key) === ambiguous) return;
     const existing = byKey.get(key);
-    const projectConflict = existing?.projectId && projectId && existing.projectId !== projectId;
-    if (existing && (existing.ownerUserId !== ownerUserId || existing.accessModule !== accessModule || projectConflict)) {
+    if (existing && (existing.ownerUserId !== ownerUserId || existing.accessModule !== accessModule)) {
       byKey.set(key, ambiguous);
       return;
     }
-    if (!existing || (!existing.projectId && projectId)) byKey.set(key, { ownerUserId, projectId, accessModule });
+    if (!existing) {
+      byKey.set(key, {
+        ownerUserId,
+        accessModule,
+        projectIds: new Set(projectId ? [projectId] : []),
+        fromOwnerLibrary,
+      });
+    } else if (projectId) {
+      existing.projectIds.add(projectId);
+    }
+    if (fromOwnerLibrary && existing) existing.fromOwnerLibrary = true;
   };
   for (const row of targets.get("public.canvas_workspaces")?.rows || []) {
     for (const asset of Array.isArray(row.data?.assets) ? row.data.assets : []) record(asset, row.user_id, row.script_id);
   }
   for (const row of targets.get("public.canvas_libraries")?.rows || []) {
-    for (const asset of Array.isArray(row.data?.assets) ? row.data.assets : []) record(asset, row.user_id, null);
+    for (const asset of Array.isArray(row.data?.assets) ? row.data.assets : []) record(asset, row.user_id, null, true);
   }
-  return new Map([...byKey].map(([key, value]) => [key, value === ambiguous ? null : value]));
+  return new Map([...byKey].map(([key, value]) => [key, value === ambiguous ? null : {
+    ownerUserId: value.ownerUserId,
+    accessModule: value.accessModule,
+    projectIds: [...value.projectIds].sort(),
+    fromOwnerLibrary: value.fromOwnerLibrary,
+  }]));
 }
 
 function profileAvatarOwners(targets) {
@@ -347,6 +405,22 @@ function mediaRowForS3(entry, { scriptsById, profilesById, assetByKey, avatarOwn
   if (namespace === "shot-references" && !script) {
     throw new Error(`Shot reference ${entry.source.key} references unknown project ${scopeId}`);
   }
+  if (namespace === "canvas" && script && indexedAsset && indexedAsset.ownerUserId !== script.user_id) {
+    throw new Error(`S3 object ${entry.source.key} has Canvas references owned by someone other than its path project owner`);
+  }
+  const isCrossProjectOwnerLibraryAsset = namespace === "canvas"
+    && script
+    && indexedAsset?.projectIds?.length > 1
+    && indexedAsset.fromOwnerLibrary;
+  if (namespace === "canvas" && script && indexedAsset?.projectIds?.length > 1) {
+    if (!indexedAsset.fromOwnerLibrary) {
+      throw new Error(`S3 object ${entry.source.key} has cross-project references without an authoritative owner library`);
+    }
+    if (!indexedAsset.projectIds.includes(script.id)
+      || indexedAsset.projectIds.some((projectRef) => !scriptsById.has(projectRef))) {
+      throw new Error(`S3 object ${entry.source.key} has cross-project owner-library references outside the live project graph`);
+    }
+  }
   if (namespace === "canvas" && scopeId === "profiles") {
     projectId = null;
     ownerUserId = avatarOwnerByKey.get(sourceKey) || null;
@@ -360,7 +434,7 @@ function mediaRowForS3(entry, { scriptsById, profilesById, assetByKey, avatarOwn
       ownerUserId = accountUserId;
       kind = "imagine_asset";
       accessModule = "imagine";
-    } else if (indexedAsset?.projectId === null && profilesById.has(indexedAsset.ownerUserId)) {
+    } else if (indexedAsset?.projectIds?.length === 0 && profilesById.has(indexedAsset.ownerUserId)) {
       projectId = null;
       ownerUserId = indexedAsset.ownerUserId;
       kind = indexedAsset.accessModule === "imagine" ? "imagine_asset" : "canvas_asset";
@@ -368,6 +442,13 @@ function mediaRowForS3(entry, { scriptsById, profilesById, assetByKey, avatarOwn
     } else {
       throw new Error(`S3 object ${entry.source.key} does not map to a known project or account owner`);
     }
+  }
+  if (isCrossProjectOwnerLibraryAsset) {
+    // The legacy owner library merged one asset into several projects. Retaining any
+    // one project here would expose the object to that project's collaborators.
+    projectId = null;
+    ownerUserId = indexedAsset.ownerUserId;
+    kind = indexedAsset.accessModule === "imagine" ? "imagine_asset" : "canvas_asset";
   }
   if (!ownerUserId || !profilesById.has(ownerUserId)) throw new Error(`S3 object ${entry.source.key} has no known FilmScript owner`);
   const targetPath = normalizeRelativePath(entry.target?.path || entry.source.key, `${entry.id} target path`);
@@ -377,6 +458,8 @@ function mediaRowForS3(entry, { scriptsById, profilesById, assetByKey, avatarOwn
     legacy_s3_bucket: entry.source.bucket,
     legacy_s3_key: entry.source.key,
     ...(accessModule ? { access_module: accessModule } : {}),
+    ...(indexedAsset?.projectIds?.length ? { legacy_reference_project_ids: indexedAsset.projectIds } : {}),
+    ...(isCrossProjectOwnerLibraryAsset ? { legacy_access_scope: "owner_only_cross_project_library" } : {}),
   };
   return {
     transformed: {
@@ -406,7 +489,15 @@ function mediaRowForS3(entry, { scriptsById, profilesById, assetByKey, avatarOwn
       ...entry,
       id: mediaObjectId,
       target: { bucket: storageBucket, path: targetPath },
-      metadata: { ...entry.metadata, projectId, ownerUserId, kind, ...(accessModule ? { accessModule } : {}) },
+      metadata: {
+        ...entry.metadata,
+        projectId,
+        ownerUserId,
+        kind,
+        ...(accessModule ? { accessModule } : {}),
+        ...(indexedAsset?.projectIds?.length ? { legacyReferenceProjectIds: indexedAsset.projectIds } : {}),
+        ...(isCrossProjectOwnerLibraryAsset ? { legacyAccessScope: "owner_only_cross_project_library" } : {}),
+      },
     },
   };
 }
@@ -440,6 +531,36 @@ function compareRowsByPrimaryKey(primaryKey) {
   };
 }
 
+function utcWeekKey(timestamp) {
+  const value = new Date(normalizeTimestamp(timestamp, "SQLite snapshot capturedAt"));
+  const mondayOffset = (value.getUTCDay() + 6) % 7;
+  value.setUTCHours(0, 0, 0, 0);
+  value.setUTCDate(value.getUTCDate() - mondayOffset);
+  return value.toISOString().slice(0, 10);
+}
+
+function providerCycleBounds(subscription) {
+  const storedKey = String(subscription.billing_cycle_key || "").trim();
+  const providerKey = storedKey.match(/^provider:(\d{10,16}):(\d{10,16})$/);
+  if (/^\d{4}-\d{2}$/.test(storedKey)) return null;
+  let start = providerKey ? Number(providerKey[1]) : Date.parse(String(subscription.current_period_start || ""));
+  let end = providerKey ? Number(providerKey[2]) : Date.parse(String(subscription.current_period_end || ""));
+  if (!Number.isFinite(start) || !Number.isFinite(end) || end <= start) return null;
+  return { start, end };
+}
+
+function assertCreditCaptureProviderCycles(subscriptions, creditCapturedAt, snapshotCapturedAt) {
+  const creditTime = Date.parse(creditCapturedAt);
+  const snapshotTime = Date.parse(snapshotCapturedAt);
+  for (const subscription of subscriptions) {
+    const bounds = providerCycleBounds(subscription);
+    if (bounds && (creditTime < bounds.start || creditTime >= bounds.end
+      || snapshotTime < bounds.start || snapshotTime >= bounds.end)) {
+      throw new Error("Credit materialization and SQLite snapshot are not in the same active provider billing cycle");
+    }
+  }
+}
+
 export function transformBundle({
   exportDirectory,
   outputDirectory,
@@ -450,6 +571,36 @@ export function transformBundle({
   const sourceRoot = path.resolve(exportDirectory);
   validateSnapshotExport(sourceRoot);
   const sourceManifest = readJson(path.join(sourceRoot, "manifest.json"), "SQLite export manifest");
+  const sourceCapturedAt = normalizeTimestamp(
+    sourceManifest.source?.capturedAt || sourceManifest.generatedAt,
+    "SQLite snapshot capturedAt",
+  );
+  let creditMaterializationBinding = null;
+  let creditCapturedAt = sourceCapturedAt;
+  if (sourceManifest.source?.creditMaterialization) {
+    const attestationPath = resolveInside(
+      sourceRoot,
+      sourceManifest.source.creditMaterialization.file,
+      "credit materialization attestation",
+    );
+    if (sha256File(attestationPath) !== sourceManifest.source.creditMaterialization.sha256) {
+      throw new Error("SQLite export credit materialization attestation hash mismatch");
+    }
+    const attestation = readJson(attestationPath, "credit materialization attestation");
+    validateCreditMaterializationAttestation(attestation);
+    if (Date.parse(sourceCapturedAt) < Date.parse(attestation.clock.completedAt)) {
+      throw new Error("SQLite snapshot predates completion of its credit materialization attestation");
+    }
+    if (sourceCapturedAt.slice(0, 7) !== attestation.clock.utcMonth
+      || utcWeekKey(sourceCapturedAt) !== attestation.clock.utcWeek) {
+      throw new Error("SQLite snapshot crossed a UTC credit boundary after materialization; rematerialize and recapture");
+    }
+    creditMaterializationBinding = {
+      manifestSha256: sourceManifest.source.creditMaterialization.sha256,
+      attestation,
+    };
+    creditCapturedAt = attestation.clock.capturedAt;
+  }
   const mappingFilename = mappingPath instanceof URL ? mappingPath : path.resolve(mappingPath);
   const mapping = readJson(mappingFilename, "SQLite to Postgres mapping");
   if (mapping.format !== "filmscript-sqlite-postgres-mapping" || mapping.version !== 1) throw new Error("Unsupported mapping format");
@@ -464,11 +615,12 @@ export function transformBundle({
   if (!allowPartialSchema && !s3InventoryPath) {
     throw new Error("Full production transform requires a complete --s3-inventory");
   }
-  validateLegacyCollaborationGraph(sourceRoot, sourceManifest);
+  const collaborationRemediation = analyzeLegacyCollaborationGraph({ sourceRoot, sourceManifest });
   const bundleRoot = createExclusiveDirectory(outputDirectory);
   const targets = new Map();
   const skipped = [];
   const storage = [];
+  const legacyOrphanStorageRows = [];
   const mappedSources = new Set();
 
   for (const sourceTable of sourceManifest.tables) {
@@ -483,6 +635,10 @@ export function transformBundle({
     parseQualifiedName(tableMapping.target);
     const rows = readNdjson(resolveInside(sourceRoot, sourceTable.dataFile, `${sourceTable.name} data`));
     for (const row of rows) {
+      if (COLLABORATION_SOURCE_TABLES.has(sourceTable.name)
+        && collaborationRemediation.quarantinedProjectIds.has(String(row.project_id || ""))) {
+        continue;
+      }
       if (tableMapping.special === "budgetReceiptStorage") {
         const transformed = budgetReceiptRows(row, sourceTable, tableMapping, sourceRoot, bundleRoot, mapping.storageBucket);
         addTargetRow(targets, tableMapping.target, tableMapping.order, transformed.receipt);
@@ -492,17 +648,33 @@ export function transformBundle({
         addTargetRow(targets, tableMapping.target, tableMapping.order, transformNotificationRow(
           row, sourceTable, tableMapping, sourceRoot, bundleRoot,
         ));
+      } else if (sourceTable.name === "ai_jobs") {
+        addTargetRow(targets, tableMapping.target, tableMapping.order, transformAiJobRow(
+          row, sourceTable, tableMapping, sourceRoot, bundleRoot,
+        ));
+      } else if (sourceTable.name === "activity_events") {
+        addTargetRow(targets, tableMapping.target, tableMapping.order, transformActivityEventRow(
+          row, sourceTable, tableMapping, sourceRoot, bundleRoot,
+        ));
       } else {
         addTargetRow(targets, tableMapping.target, tableMapping.order, transformStandardRow(
           row, sourceTable.name, sourceTable, tableMapping, sourceRoot, bundleRoot,
         ));
       }
     }
-    if (!rows.length && !targets.has(tableMapping.target)) {
+    if (!targets.has(tableMapping.target)) {
       const primaryKey = sourceTable.primaryKey.map((column) => targetColumnName(column, tableMapping));
+      const omittedColumns = new Set([
+        ...(tableMapping.omitColumns || []),
+        ...(tableMapping.special === "budgetReceiptStorage" ? ["data_blob"] : []),
+      ]);
       const columnTypes = Object.fromEntries(sourceTable.columns
-        .filter((column) => !(tableMapping.omitColumns || []).includes(column.name))
+        .filter((column) => !omittedColumns.has(column.name))
         .map((column) => [targetColumnName(column.name, tableMapping), columnType(column.name, tableMapping, null, column.type)]));
+      if (tableMapping.special === "budgetReceiptStorage") {
+        columnTypes.media_object_id = "scalar";
+        columnTypes.legacy_blob_sha256 = "scalar";
+      }
       targets.set(tableMapping.target, { target: tableMapping.target, order: tableMapping.order, primaryKey, columnTypes, rows: [] });
     }
   }
@@ -511,15 +683,125 @@ export function transformBundle({
     if (!mappedSources.has(name)) skipped.push({ table: name, rowCount: 0, reason: "Table was not present in this SQLite snapshot" });
   }
 
-  const projectOwnership = allowPartialSchema
-    ? { status: "not_enforced_partial_schema" }
-    : {
-        status: "verified",
-        ...validateProjectOwnershipGraph({
-          scripts: targets.get("public.scripts")?.rows,
-          memberships: targets.get("public.project_memberships")?.rows,
-        }),
+  const activityTimestampRemediation = validateActivityTimestampRemediation(
+    targets.get("public.activity_events")?.rows || [],
+  );
+
+  const quarantineDefinition = collaborationQuarantineTargetDefinition(
+    collaborationRemediation.quarantineRows.map((row) => {
+      if (!row.blob_payload) return row;
+      return {
+        ...row,
+        blob_payload: verifyAndCopyBlob(
+          row.payload[row.blob_column],
+          sourceRoot,
+          bundleRoot,
+          row.blob_payload.path,
+          `private.legacy_orphan_records.${row.id}.blob_payload`,
+        ),
       };
+    }),
+  );
+  if (targets.has(quarantineDefinition.target)) {
+    throw new Error(`Collaboration quarantine target ${quarantineDefinition.target} already exists`);
+  }
+  targets.set(quarantineDefinition.target, quarantineDefinition);
+
+  const collaborationDocuments = targets.get("public.collaboration_documents");
+  if (!collaborationDocuments && collaborationRemediation.syntheticParents.length) {
+    throw new Error("Cannot create deterministic collaboration parents because collaboration_documents is absent from the source mapping");
+  }
+  if (collaborationDocuments) {
+    collaborationDocuments.columnTypes.legacy_synthetic_parent = "boolean";
+    for (const row of collaborationDocuments.rows) row.legacy_synthetic_parent = false;
+    if (collaborationRemediation.syntheticParents.length) {
+      const emptySnapshot = Buffer.alloc(0);
+      const emptySnapshotSha256 = sha256(emptySnapshot);
+      const relativeSnapshotPath = normalizeRelativePath(path.posix.join(
+        "blobs", "collaboration", `${emptySnapshotSha256}.bin`,
+      ));
+      writeTextExclusive(resolveInside(bundleRoot, relativeSnapshotPath), "");
+      const version = collaborationDocuments.columnTypes.version === "bigint"
+        ? { $type: "bigint", value: "0" }
+        : 0;
+      for (const parent of collaborationRemediation.syntheticParents) {
+        collaborationDocuments.rows.push({
+          project_id: parent.projectId,
+          document_id: parent.documentId,
+          module: parent.module,
+          snapshot: {
+            $type: "blob",
+            bytes: 0,
+            path: relativeSnapshotPath,
+            sha256: emptySnapshotSha256,
+          },
+          version,
+          updated_at: parent.updatedAt,
+          legacy_synthetic_parent: true,
+        });
+      }
+    }
+  }
+  const normalizedCollaboration = validateNormalizedCollaborationGraph({
+    tables: [...targets.values()],
+    capturedAt: sourceCapturedAt,
+  });
+  if (stableStringify(normalizedCollaboration) !== stableStringify(collaborationRemediation.summary)) {
+    throw new Error("Deterministic collaboration-parent remediation does not match the legacy collaboration graph");
+  }
+
+  const normalizedCredits = normalizeLegacyCredits({
+    appSettings: targets.get("private.app_settings")?.rows || [],
+    profiles: targets.get("public.profiles")?.rows || [],
+    subscriptions: targets.get("billing.subscriptions")?.rows || [],
+    aiJobs: targets.get("public.ai_jobs")?.rows || [],
+    capturedAt: creditCapturedAt,
+    enforceBilling: !allowPartialSchema,
+  });
+  const activePaidSubscriptions = (targets.get("billing.subscriptions")?.rows || []).filter((row) => {
+    const status = String(row.status || "").trim().toLowerCase();
+    const plan = String(row.plan || "").trim().toLowerCase();
+    return status === "active" && ["basic", "creator", "full", "lumiere"].includes(plan);
+  });
+  if (creditMaterializationBinding) {
+    assertCreditCaptureProviderCycles(activePaidSubscriptions, creditCapturedAt, sourceCapturedAt);
+  }
+  if (!allowPartialSchema && activePaidSubscriptions.length) {
+    if (!creditMaterializationBinding) {
+      throw new Error("Active paid subscriptions require a bound credit materialization attestation");
+    }
+    if (creditMaterializationBinding.attestation.verification.activePaidSubscriptionCount
+      !== activePaidSubscriptions.length) {
+      throw new Error("Credit materialization attestation paid-account count disagrees with the source snapshot");
+    }
+  }
+  for (const definition of creditTargetDefinitions()) {
+    if (targets.has(definition.target)) throw new Error(`Credit normalization target ${definition.target} already exists`);
+    targets.set(definition.target, {
+      ...definition,
+      rows: normalizedCredits.rowsByTarget.get(definition.target) || [],
+    });
+  }
+
+  let projectOwnership;
+  if (allowPartialSchema) {
+    projectOwnership = { status: "not_enforced_partial_schema" };
+  } else {
+    const scripts = targets.get("public.scripts")?.rows;
+    const membershipTarget = targets.get("public.project_memberships");
+    if (!membershipTarget) throw new Error("Full project ownership remediation requires public.project_memberships");
+    const ownerRemediation = remediateLegacyProjectOwners({
+      scripts,
+      memberships: membershipTarget.rows,
+      versionType: membershipTarget.columnTypes.version,
+    });
+    membershipTarget.rows.push(...ownerRemediation.syntheticRows);
+    projectOwnership = {
+      status: "verified",
+      ...validateProjectOwnershipGraph({ scripts, memberships: membershipTarget.rows }),
+      legacyOwnerRemediation: ownerRemediation.summary,
+    };
+  }
 
   let s3InventoryProvenance = null;
   if (s3InventoryPath) {
@@ -555,12 +837,64 @@ export function transformBundle({
     const profilesById = new Map((targets.get("public.profiles")?.rows || []).map((row) => [row.id, row]));
     const assetByKey = canvasAssetIndexes(targets);
     const avatarOwnerByKey = profileAvatarOwners(targets);
+    const orphanProfileAvatars = inventory.entries.filter((entry) => {
+      const sourceKey = normalizeRelativePath(entry.source?.key, `${entry.id} S3 key`);
+      return isProfileAvatarStorageKey(sourceKey) && !avatarOwnerByKey.has(sourceKey);
+    });
+    const orphanAvatarGroups = new Map();
+    for (const entry of orphanProfileAvatars) {
+      const fingerprint = `${entry.source?.bytes}:${String(entry.source?.sha256 || "").toLowerCase()}`;
+      const group = orphanAvatarGroups.get(fingerprint) || [];
+      group.push(entry);
+      orphanAvatarGroups.set(fingerprint, group);
+    }
+    const duplicateForOrphanAvatar = new Map();
+    for (const group of orphanAvatarGroups.values()) {
+      group.sort((left, right) => String(left.source.key).localeCompare(String(right.source.key)));
+      if (group.length < 2) {
+        throw new Error(`Unreferenced profile avatar ${group[0].source.key} has no byte-identical orphan duplicate approved for quarantine`);
+      }
+      for (const [index, entry] of group.entries()) {
+        duplicateForOrphanAvatar.set(entry, index === 0 ? group[1] : group[0]);
+      }
+    }
     for (const entry of inventory.entries) {
+      if (duplicateForOrphanAvatar.has(entry)) {
+        const quarantined = buildUnreferencedAvatarQuarantine({
+          entry,
+          duplicateEntry: duplicateForOrphanAvatar.get(entry),
+          targetBucket: mapping.storageBucket,
+          importedAt: sourceCapturedAt,
+        });
+        legacyOrphanStorageRows.push(quarantined.row);
+        storage.push(quarantined.storage);
+        continue;
+      }
+      if (isReviewedMissingProjectStorageKey(entry.source?.key)) {
+        const quarantined = buildMissingProjectPrefixQuarantine({
+          entry,
+          targetBucket: mapping.storageBucket,
+          importedAt: sourceCapturedAt,
+        });
+        legacyOrphanStorageRows.push(quarantined.row);
+        storage.push(quarantined.storage);
+        continue;
+      }
       const media = mediaRowForS3(entry, { scriptsById, profilesById, assetByKey, avatarOwnerByKey }, mapping.storageBucket);
       addTargetRow(targets, "public.media_objects", 70, media.transformed);
       storage.push(media.storage);
     }
   }
+
+  const legacyOrphanStorageDefinition = legacyOrphanStorageTargetDefinition(legacyOrphanStorageRows);
+  if (targets.has(legacyOrphanStorageDefinition.target)) {
+    throw new Error(`Legacy orphan Storage target ${legacyOrphanStorageDefinition.target} already exists`);
+  }
+  targets.set(legacyOrphanStorageDefinition.target, legacyOrphanStorageDefinition);
+  const legacyOrphanStorage = {
+    ...validateLegacyOrphanStorageRows(legacyOrphanStorageRows),
+    graph: validateLegacyOrphanStorageGraph(legacyOrphanStorageRows, [...targets.values()]),
+  };
 
   const tableManifest = [];
   for (const target of [...targets.values()].sort((left, right) => left.order - right.order || left.target.localeCompare(right.target))) {
@@ -586,6 +920,14 @@ export function transformBundle({
   const ownerOnlyUnclassifiedCount = storage.filter(
     (entry) => entry.metadata?.kind === "canvas_asset" && !entry.metadata?.accessModule,
   ).length;
+  const ownerOnlyCrossProjectLibraryEntries = storage.filter(
+    (entry) => entry.metadata?.legacyAccessScope === "owner_only_cross_project_library",
+  );
+  const ownerOnlyCrossProjectLibrary = {
+    count: ownerOnlyCrossProjectLibraryEntries.length,
+    canvasCount: ownerOnlyCrossProjectLibraryEntries.filter((entry) => entry.metadata?.kind === "canvas_asset").length,
+    imagineCount: ownerOnlyCrossProjectLibraryEntries.filter((entry) => entry.metadata?.kind === "imagine_asset").length,
+  };
   if (!allowPartialSchema && ownerOnlyUnclassifiedCount) {
     throw new Error(`Storage classification requires remediation: ${ownerOnlyUnclassifiedCount} Canvas object(s) have no authoritative Canvas/Imagine module`);
   }
@@ -608,10 +950,16 @@ export function transformBundle({
     generatedAt: new Date().toISOString(),
     source: {
       schemaVersion: sourceManifest.schemaVersion,
+      generatedAt: sourceManifest.generatedAt,
+      capturedAt: sourceCapturedAt,
       dataSha256: sourceManifest.dataSha256,
       snapshotSha256: sourceManifest.snapshot.sha256,
+      creditMaterialization: creditMaterializationBinding,
       s3Inventory: s3InventoryProvenance,
     },
+    collaborationRemediation: collaborationRemediation.summary,
+    activityTimestampRemediation,
+    creditNormalization: normalizedCredits.summary,
     mappingSha256: sha256File(mappingFilename),
     dataSha256: sha256(stableStringify(tableManifest.map(({ target, rowCount, rowSha256 }) => ({ target, rowCount, rowSha256 })))),
     databaseDataSha256: sha256(stableStringify(tableManifest.map(({ target, rowCount, databaseRowSha256 }) => ({ target, rowCount, databaseRowSha256 })))),
@@ -624,6 +972,8 @@ export function transformBundle({
       contractSha256: storageContractSha256,
       classifiedAccessCount: storage.filter((entry) => entry.metadata?.accessModule || entry.metadata?.kind === "budget_receipt").length,
       ownerOnlyUnclassifiedCount,
+      ownerOnlyCrossProjectLibrary,
+      legacyOrphanStorage,
     },
   };
   writeJsonExclusive(path.join(bundleRoot, "manifest.json"), manifest);
